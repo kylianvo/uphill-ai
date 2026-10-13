@@ -23,6 +23,7 @@ struct FieldCurveChart: View {
     @State private var selectedYear: Int? = nil // nil means All/Avg
     @State private var selectedGender: String = "overall" // overall, men, women
     @State private var touchedMinutes: Double? = nil
+    @State private var chartHeight: CGFloat = 300
 
     private var availableYears: [Int] {
         Array(Set(benchmarks.map { $0.year })).sorted(by: >)
@@ -35,40 +36,56 @@ struct FieldCurveChart: View {
         return benchmarks.first
     }
 
+    private var finisherCount: Int? {
+        guard let bench = activeBenchmark else { return nil }
+        switch selectedGender {
+        case "men": return bench.finishersMen ?? bench.finishers
+        case "women": return bench.finishersWomen ?? bench.finishers
+        default: return bench.finishers
+        }
+    }
+
+    private var winnerTime: String? {
+        guard let bench = activeBenchmark else { return nil }
+        return selectedGender == "women" ? (bench.winnerTimeWomen ?? bench.winnerTime) : bench.winnerTime
+    }
+
+    /// Ranked top-N times ("top3", "top10"…) for the selected group, fastest first.
+    private var topTimes: [(rank: Int, time: String)] {
+        let dict = activeBenchmark?.topTimes?[selectedGender] ?? [:]
+        return dict.compactMap { key, value in
+            Int(key.replacingOccurrences(of: "top", with: "")).map { (rank: $0, time: value) }
+        }.sorted { $0.rank < $1.rank }
+    }
+
+    /// Verified anchors only (winner, top-N ranks, percentiles), joined with straight lines.
     private var curvePoints: [FieldCurvePoint] {
-        guard let bench = activeBenchmark,
-              let percentilesDict = bench.percentiles?[selectedGender] ?? bench.percentiles?["overall"] else {
-            return []
+        guard activeBenchmark != nil else { return [] }
+        let percentilesDict = activeBenchmark?.percentiles?[selectedGender] ?? activeBenchmark?.percentiles?["overall"]
+        var raw: [FieldCurvePoint] = []
+        if let winnerTime, let m = GoalEstimate.parseTimeToMinutes(winnerTime) {
+            raw.append(FieldCurvePoint(minutes: m, percentile: finisherCount.map { 100.0 / Double($0) } ?? 0, label: L("Winner")))
         }
-
-        var points: [FieldCurvePoint] = []
-
-        // Winner time anchor (approx 0.1 percentile)
-        let winnerTimeStr = selectedGender == "women" ? (bench.winnerTimeWomen ?? bench.winnerTime) : bench.winnerTime
-        if let winnerTimeStr, let winnerMins = GoalEstimate.parseTimeToMinutes(winnerTimeStr) {
-            points.append(FieldCurvePoint(minutes: winnerMins, percentile: 0.2, label: L("Winner")))
+        if let n = finisherCount, n > 0 {
+            for t in topTimes where t.rank > 1 {
+                if let m = GoalEstimate.parseTimeToMinutes(t.time) {
+                    raw.append(FieldCurvePoint(minutes: m, percentile: 100.0 * Double(t.rank) / Double(n), label: L("Top %lld", t.rank)))
+                }
+            }
         }
-
-        if let p5 = percentilesDict.p5, let m = GoalEstimate.parseTimeToMinutes(p5) {
-            points.append(FieldCurvePoint(minutes: m, percentile: 5.0, label: L("Top 5%")))
+        let pcts: [(String?, Double)] = [(percentilesDict?.p5, 5), (percentilesDict?.p10, 10), (percentilesDict?.p25, 25),
+                                         (percentilesDict?.p50, 50), (percentilesDict?.p75, 75), (percentilesDict?.p90, 90)]
+        for (time, q) in pcts {
+            if let time, let m = GoalEstimate.parseTimeToMinutes(time) {
+                raw.append(FieldCurvePoint(minutes: m, percentile: q, label: L("Top %lld%%", Int(q))))
+            }
         }
-        if let p10 = percentilesDict.p10, let m = GoalEstimate.parseTimeToMinutes(p10) {
-            points.append(FieldCurvePoint(minutes: m, percentile: 10.0, label: L("Top 10%")))
+        var anchors: [FieldCurvePoint] = []
+        for pt in raw.sorted(by: { $0.percentile < $1.percentile }) {
+            if let prev = anchors.last, !(pt.percentile > prev.percentile && pt.minutes > prev.minutes) { continue }
+            anchors.append(pt)
         }
-        if let p25 = percentilesDict.p25, let m = GoalEstimate.parseTimeToMinutes(p25) {
-            points.append(FieldCurvePoint(minutes: m, percentile: 25.0, label: L("Top 25%")))
-        }
-        if let p50 = percentilesDict.p50, let m = GoalEstimate.parseTimeToMinutes(p50) {
-            points.append(FieldCurvePoint(minutes: m, percentile: 50.0, label: L("Median (50%)")))
-        }
-        if let p75 = percentilesDict.p75, let m = GoalEstimate.parseTimeToMinutes(p75) {
-            points.append(FieldCurvePoint(minutes: m, percentile: 75.0, label: L("Top 75%")))
-        }
-        if let p90 = percentilesDict.p90, let m = GoalEstimate.parseTimeToMinutes(p90) {
-            points.append(FieldCurvePoint(minutes: m, percentile: 90.0, label: L("Top 90%")))
-        }
-
-        return points.sorted(by: { $0.minutes < $1.minutes })
+        return anchors
     }
 
     private var goalMarkers: [GoalMarkerPoint] {
@@ -188,6 +205,29 @@ struct FieldCurveChart: View {
                         .symbolSize(30)
                     }
 
+                    if let touched = touchedMinutes, let first = curvePoints.first, let last = curvePoints.last,
+                       touched >= first.minutes, touched <= last.minutes {
+                        let pct = interpolatePercentile(mins: touched)
+                        RuleMark(x: .value("Selected", touched))
+                            .foregroundStyle(UH.Palette.ink.opacity(0.35))
+                            .lineStyle(StrokeStyle(lineWidth: 1))
+                            .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                                VStack(spacing: 1) {
+                                    Text(GoalEstimate.formatMinutes(touched))
+                                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                    Text(L("top %@%%", pct < 5 ? String(format: "%.1f", pct) : String(Int(pct.rounded()))))
+                                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                        .foregroundStyle(UH.Palette.secondary)
+                                }
+                                .padding(.horizontal, 8).padding(.vertical, 4)
+                                .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: 6))
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(UH.Palette.line))
+                            }
+                        PointMark(x: .value("Selected", touched), y: .value("Pct", pct))
+                            .foregroundStyle(UH.Palette.ink)
+                            .symbolSize(60)
+                    }
+
                     // Goal Markers (A, B, C)
                     ForEach(goalMarkers) { m in
                         RuleMark(x: .value("Goal Time", m.minutes))
@@ -210,6 +250,7 @@ struct FieldCurveChart: View {
                         }
                     }
                 }
+                .chartXSelection(value: $touchedMinutes)
                 .chartYScale(domain: 0...100)
                 .chartYAxis {
                     AxisMarks(values: [0, 25, 50, 75, 100]) { value in
@@ -237,8 +278,15 @@ struct FieldCurveChart: View {
                         }
                     }
                 }
-                .frame(height: 220)
+                .frame(height: chartHeight)
+                .sensoryFeedback(.selection, trigger: touchedMinutes.map { Int($0 / 5) })
                 .padding(.vertical, 8)
+
+                Text("Drag across the chart to read any finish time.")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.muted)
+
+                podiumStrip
 
                 // Legend
                 HStack(spacing: 14) {
@@ -259,6 +307,47 @@ struct FieldCurveChart: View {
             }
         }
         .trainingCard()
+    }
+
+    /// Reference times: winner and ranked top-N finishes for the selected group.
+    @ViewBuilder private var podiumStrip: some View {
+        let rows: [(String, String)] = (winnerTime.map { [(L("Winner"), $0)] } ?? [])
+            + topTimes.filter { $0.rank > 1 }.map { (L("Top %lld", $0.rank), $0.time) }
+        if !rows.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("PODIUM & TOP TIMES")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(UH.Palette.muted)
+                    Spacer()
+                    if let n = finisherCount {
+                        Text(L("%lld finishers", n))
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(UH.Palette.muted)
+                    }
+                }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 8)], spacing: 8) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 4) {
+                                if index == 0 && winnerTime != nil {
+                                    Image(systemName: "trophy.fill").font(.system(size: 10)).foregroundStyle(Color(hex: "#d4a017"))
+                                }
+                                Text(row.0)
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(UH.Palette.secondary)
+                            }
+                            Text(row.1)
+                                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                                .foregroundStyle(UH.Palette.ink)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(10)
+                        .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                    }
+                }
+            }
+        }
     }
 
     private func legendItem(color: Color, label: String) -> some View {

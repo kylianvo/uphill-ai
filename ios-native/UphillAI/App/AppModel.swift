@@ -17,6 +17,7 @@ final class AppModel {
     let knowledgeService: any KnowledgeServicing
     let deviceConnectionService: any DeviceConnectionServicing
     let coachingService: any CoachingServicing
+    var raceMatchService: RaceMatchService { RaceMatchService(client: client) }
     /// The server (`/api/shoe-rotation`) owns the rotation; every local change is saved back.
     var shoeRotation = ShoeRotation() {
         didSet {

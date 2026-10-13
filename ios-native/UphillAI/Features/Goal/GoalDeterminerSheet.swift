@@ -12,6 +12,7 @@ struct GoalDeterminerSheet: View {
     /// Race details to start from when there is no plan yet (plan setup).
     var prefill: GoalPrefill? = nil
     var onPlanPacing: ((Double) -> Void)? = nil
+    var raceMatchService: RaceMatchService? = nil
 
     // Form inputs
     @State private var raceName: String = ""
@@ -79,9 +80,11 @@ struct GoalDeterminerSheet: View {
         onPlanPacing: ((Double) -> Void)? = nil,
         initialEstimate: GoalEstimate? = nil,
         initialTab: GoalResultTab = .goals,
-        prefill: GoalPrefill? = nil
+        prefill: GoalPrefill? = nil,
+        raceMatchService: RaceMatchService? = nil
     ) {
         self.prefill = prefill
+        self.raceMatchService = raceMatchService
         self.service = service
         self.pacingService = pacingService
         self.activePlan = activePlan
@@ -216,11 +219,10 @@ struct GoalDeterminerSheet: View {
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(UH.Palette.muted)
 
-                    TextField("Race name (e.g. Dalat Ultra Trail 50K)", text: $raceName)
-                        .font(UH.TextStyle.body)
-                        .padding(10)
-                        .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
-                        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+                    RaceSearchField(raceName: $raceName, service: raceMatchService, placeholder: L("Race name (e.g. Dalat Ultra Trail 50K)")) { course in
+                        distanceKm = course.distanceKm
+                        if let gain = course.elevationGainM { elevationGainM = gain }
+                    }
 
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {

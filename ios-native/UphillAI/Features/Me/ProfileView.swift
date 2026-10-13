@@ -118,7 +118,7 @@ struct ProfileView: View {
                 case .nutritionLab:
                     NutritionLabSheet(service: app.nutritionService, activePlan: app.plan.snapshot?.plan, user: app.session.user)
                 case .gearVault:
-                    GearVaultSheet(service: app.gearService, activePlan: app.plan.snapshot?.plan, user: app.session.user) { newShoe in
+                    GearVaultSheet(service: app.gearService, activePlan: app.plan.snapshot?.plan, user: app.session.user, raceMatchService: app.raceMatchService) { newShoe in
                         app.shoeRotation.shoes.removeAll { $0.slot == newShoe.slot }
                         app.shoeRotation.shoes.append(newShoe)
                     }
@@ -136,7 +136,8 @@ struct ProfileView: View {
                         },
                         onPlanPacing: { _ in
                             path.append(.paceStrategy)
-                        }
+                        },
+                        raceMatchService: app.raceMatchService
                     )
                 case .paceStrategy:
                     PaceStrategySheet(

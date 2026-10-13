@@ -7,8 +7,11 @@ struct GearVaultSheet: View {
     var user: User?
     var isPresentedInSheet: Bool = false
     var onAssignToRotation: ((ShoeItem) -> Void)? = nil
+    var raceMatchService: RaceMatchService? = nil
 
     // Form inputs
+    @State private var raceName: String = ""
+    @State private var raceDistance: String = ""
     @State private var surface: String = "trail"
     @State private var cushioning: String = "balanced"
     @State private var width: String = "normal"
@@ -35,11 +38,15 @@ struct GearVaultSheet: View {
         service: any GearServicing,
         activePlan: Plan? = nil,
         user: User? = nil,
+        raceMatchService: RaceMatchService? = nil,
         isPresentedInSheet: Bool = false,
         onAssignToRotation: ((ShoeItem) -> Void)? = nil,
         initialPlan: GearPlan? = nil
     ) {
         self.service = service
+        self.raceMatchService = raceMatchService
+        _raceName = State(initialValue: activePlan?.raceName ?? "")
+        _raceDistance = State(initialValue: activePlan?.courseDistanceKm.map { "\(Int($0.rounded())) km" } ?? "")
         self.activePlan = activePlan
         self.user = user
         self.isPresentedInSheet = isPresentedInSheet
@@ -127,19 +134,31 @@ struct GearVaultSheet: View {
                         .foregroundStyle(UH.Palette.secondary)
                 }
 
-                if let plan = activePlan {
-                    HStack(spacing: 8) {
-                        Image(systemName: "flag.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(UH.Palette.accentInk)
-                        Text("Active Race: \(plan.raceName)")
-                            .font(UH.TextStyle.caption.weight(.semibold))
-                            .foregroundStyle(UH.Palette.ink)
+                VStack(alignment: .leading, spacing: UH.Space.small) {
+                    HStack {
+                        Text("RACE")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundStyle(UH.Palette.muted)
                         Spacer()
+                        if let plan = activePlan, raceName != plan.raceName {
+                            Button("Use my plan's race") {
+                                raceName = plan.raceName
+                                raceDistance = plan.courseDistanceKm.map { "\(Int($0.rounded())) km" } ?? ""
+                            }
+                            .font(UH.TextStyle.disclosure.weight(.bold))
+                            .foregroundStyle(UH.Palette.accentInk)
+                        }
                     }
-                    .padding(UH.Space.small)
-                    .background(UH.Palette.activeFill, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                    RaceSearchField(raceName: $raceName, service: raceMatchService, placeholder: L("Race name (optional)")) { course in
+                        raceDistance = course.label ?? "\(Int(course.distanceKm.rounded())) km"
+                    }
+                    if !raceDistance.isEmpty {
+                        Text(L("Distance: %@", raceDistance))
+                            .font(UH.TextStyle.caption)
+                            .foregroundStyle(UH.Palette.secondary)
+                    }
                 }
+                .trainingCard()
 
                 if let error = errorMessage {
                     HStack(spacing: 8) {
@@ -602,7 +621,8 @@ struct GearVaultSheet: View {
             useCase: surface == "road" ? roadUseCase : nil,
             preferredBrands: preferredBrands.isEmpty ? nil : preferredBrands,
             additionalContext: additionalContext.isEmpty ? nil : additionalContext,
-            raceName: activePlan?.raceName
+            raceDistance: raceDistance.isEmpty ? nil : raceDistance,
+            raceName: raceName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : raceName
         )
 
         do {
