@@ -27,8 +27,7 @@ selection or new behavior in the matcher.
 
 - `vietnam_courses_2026-10-13.zip` contains the original bytes under
   `prenn_2025/` and `vietnam_highlands_2027/`.
-  The ZIP is stored with Git LFS to respect the repository's 1MB Git file limit.
-  Run `git lfs pull` if a checkout contains its pointer instead of the ZIP.
+  The ZIP (7.9MB) is a regular Git file; its SHA-256 is recorded in the JSON below.
 - `vietnam_courses_2026-10-13.json` records the archive checksum, individual
   file checksums, edition, parser summaries, horizontal distance, and
   approximately 1km checkpoints. `source_url` identifies the corresponding
