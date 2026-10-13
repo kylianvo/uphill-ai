@@ -18,15 +18,15 @@
 
 | Task | State | Commits |
 |---|---|---|
-| 1 | todo | |
-| 2 | todo | |
-| 3 | todo | |
-| 4 | todo | |
-| 5 | todo | |
-| 6 | todo | |
-| 7 | todo | |
-| 8 | todo | |
-| 9 | todo | |
+| 1 | done | 060ce38 |
+| 2 | done | 060ce38 |
+| 3 | done | 060ce38 |
+| 4 | done | 0ca6293 |
+| 5 | code done, evals not run (no keys) | ccf1494 |
+| 6 | written, not compiled | ba5b905 |
+| 7 | written, not compiled | ba5b905 |
+| 8 | written, no UI test/screenshots | ba5b905 |
+| 9 | partial (backend checks, CLAUDE.md) | |
 
 ## Global Constraints
 
