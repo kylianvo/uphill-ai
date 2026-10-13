@@ -1,5 +1,10 @@
 # race_courses KB seed
 
+**Current curation state (13 October 2026):** the catalog contains 45 races.
+See [the Vietnam course source notes](raw_race_courses/README.md) for the four
+season updates, archived GPXs, and unresolved source conflicts. Setup notes and
+coverage counts below predate the current integration and catalog.
+
 `race_courses.json` is a new KB domain (35 races: Vietnam, Australia, ASEAN, and Asia trail + road races) built to give the Scheduler and Gear Finder course-specific context — distances, elevation gain/loss, terrain, key climbs, climate, and runner reviews — matched against a user's race name + distance input.
 
 It follows the same `{"domain", "chunks": [{"domain", "kind", "title", "content", "payload", "source_label"}]}` shape as `gear.json` / `nutrition.json` / `scheduler.json`, so it loads through the existing `kb_distiller.load_seed()` / `db.replace_kb_chunks()` path unchanged. Each chunk's `payload` carries structured fields (`race_name`, `aliases`, `distances[]`, `terrain[]`, `key_climbs[]`, `climate`, `runner_reviews[]`, `matching_hints`) in the same style as a `gear` catalog_item, so `services/kb_context.py:render_catalog_context()` can inject it into a prompt exactly like the gear/nutrition catalogs (full-catalog injection — only 29 rows, no retrieval-miss risk).

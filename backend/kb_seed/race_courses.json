@@ -5508,7 +5508,7 @@
       "domain": "race_courses",
       "kind": "race_profile",
       "title": "Lâm Đồng Trail — Đà Lạt, Vietnam",
-      "content": "Course Overview: Lâm Đồng Trail takes place each November in the pine highlands of Đà Lạt and Lạc Dương, Lâm Đồng Province. Course distances span 10km, 21km (800m D+), 45km (1,850m D+), and 75km (3,200m D+), traversing protected conservation zones around Tuyền Lâm Lake and Bidoup-Núi Bà National Park buffer areas.\n\nSignature Climbs & Landmarks: Features the sustained ascent of Ra-đa Peak (Rada Hill), the technical ridgeline of Núi Voi (Elephant Mountain), and the rolling perimeter trails of Tuyền Lâm Lake and Robin Hill cable car ridge.\n\nTerrain & Technical Footing: Predominantly runnable singletrack through primary pine forests, packed forest service doubletrack, soft organic loam, and technical root networks on ridge climbs. Several knee-deep forest stream crossings require water evacuation shoes.\n\nWeather & Climate: November brings the onset of the Central Highlands dry season: cool morning starts (13-16°C), mild daytime peaks (22-25°C), low humidity, and clear sunny skies with breezy plateau winds.\n\nCoach Training Implications: Build strong aerobic pacing efficiency for fast 45k/75k trail cruising. Program punchy 200-400m pine climb repeats, downhill turnover drills, and shoe/sock testing for quick drainage post-stream crossings.",
+      "content": "Course Overview: Lamdong Trail, Da Lat, 6-8 November 2026, based at TTC World - Valley of Love. Current maps: 5KM and 5KM Kids Trail (5.7km/+163m), 15km/+547m, 25KM (23.7km/+1,022m), 55KM (55.6km/+2,583m), and 85KM (83.6km/+4,044m).\n\nCourse Routes: Pine forest, grassland, coffee farms, village trails and red basalt paths around the highlands. The two longest maps include Tam Tham Waterfall. All routes return to Valley of Love; published cutoffs are 2, 6.5, 8.5, 16.5 and 21 hours.\n\nSeason Separation: Former 3km Kids, 45km and 75km are not current categories. Past results are retained. The official page says its GPX map is being updated; no active GPX profile is fabricated.",
       "payload": {
         "region": "ASEAN",
         "aliases": [
@@ -5516,7 +5516,7 @@
           "Lâm Đồng Trail"
         ],
         "climate": {
-          "notes": "'By no means an easy flat run in the park' — over 4,000m of cumulative D+ across the longer distances.",
+          "notes": "Organizer describes cool highland conditions, changing weather and wild sunflower paths during the November event.",
           "season": "November",
           "avg_temp_c": "cool highland (~1,500m altitude)",
           "humidity_pct": "moderate"
@@ -5997,39 +5997,85 @@
           }
         ],
         "terrain": [
-          "Lâm Đồng highland pine forest and hill trail"
+          "pine forest trails",
+          "grassland",
+          "coffee farms and village paths",
+          "red basalt hill trails"
         ],
         "location": "Đà Lạt, Lâm Đồng Province, Vietnam",
         "distances": [
           {
-            "label": "3km Kidstrail",
-            "distance_km": 3.0,
-            "elevation_gain_m": null
+            "label": "5km",
+            "distance_km": 5.7,
+            "elevation_gain_m": 163,
+            "source_url": "https://lamdongtrail.vn/en/distance/",
+            "course_map_url": "https://lamdongtrail.vn/wp-content/uploads/2026/06/5km.jpg",
+            "cutoff_hours": 2,
+            "start_time": "07:30",
+            "start_location": "TTC World - Valley of Love",
+            "finish_location": "TTC World - Valley of Love"
+          },
+          {
+            "label": "5km Kids Trail",
+            "distance_km": 5.7,
+            "elevation_gain_m": 163,
+            "source_url": "https://lamdongtrail.vn/en/distance/",
+            "course_map_url": "https://lamdongtrail.vn/wp-content/uploads/2026/06/5km.jpg",
+            "cutoff_hours": 2,
+            "start_time": "07:30",
+            "start_location": "TTC World - Valley of Love",
+            "finish_location": "TTC World - Valley of Love"
           },
           {
             "label": "15km",
-            "distance_km": 15.0,
-            "elevation_gain_m": null
+            "distance_km": 15,
+            "elevation_gain_m": 547,
+            "source_url": "https://lamdongtrail.vn/en/distance/",
+            "course_map_url": "https://lamdongtrail.vn/wp-content/uploads/2026/06/15km.jpg",
+            "cutoff_hours": 6.5,
+            "start_time": "08:30",
+            "start_location": "TTC World - Valley of Love",
+            "finish_location": "TTC World - Valley of Love"
           },
           {
             "label": "25km",
-            "distance_km": 25.0,
-            "elevation_gain_m": 1041
+            "distance_km": 23.7,
+            "elevation_gain_m": 1022,
+            "source_url": "https://lamdongtrail.vn/en/distance/",
+            "course_map_url": "https://lamdongtrail.vn/wp-content/uploads/2026/06/25km.jpg",
+            "cutoff_hours": 8.5,
+            "start_time": "07:00",
+            "start_location": "TTC World - Valley of Love",
+            "finish_location": "TTC World - Valley of Love"
           },
           {
-            "label": "45km",
-            "distance_km": 45.0,
-            "elevation_gain_m": 2329
+            "label": "55km",
+            "distance_km": 55.6,
+            "elevation_gain_m": 2583,
+            "source_url": "https://lamdongtrail.vn/en/distance/",
+            "course_map_url": "https://lamdongtrail.vn/wp-content/uploads/2026/06/55km.jpg",
+            "cutoff_hours": 16.5,
+            "start_time": "04:30",
+            "start_location": "TTC World - Valley of Love",
+            "finish_location": "TTC World - Valley of Love"
           },
           {
-            "label": "75km",
-            "distance_km": 75.0,
-            "elevation_gain_m": 3805
+            "label": "85km",
+            "distance_km": 83.6,
+            "elevation_gain_m": 4044,
+            "source_url": "https://lamdongtrail.vn/en/distance/",
+            "course_map_url": "https://lamdongtrail.vn/wp-content/uploads/2026/06/85km.jpg",
+            "cutoff_hours": 21,
+            "start_time": "03:00",
+            "start_location": "TTC World - Valley of Love",
+            "finish_location": "TTC World - Valley of Love"
           }
         ],
         "race_name": "Lam Dong Trail",
         "race_type": "mountain_trail",
-        "key_climbs": [],
+        "key_climbs": [
+          "Tam Tham Waterfall area on the 55km and 85km course maps"
+        ],
         "month_held": "November",
         "matching_hints": {
           "name_keywords": [
@@ -6038,16 +6084,27 @@
             "lâm đồng"
           ],
           "distance_km_options": [
-            3.0,
-            15.0,
-            25.0,
-            45.0,
-            75.0
+            5.7,
+            15,
+            23.7,
+            55.6,
+            83.6
           ]
         },
-        "runner_reviews": []
+        "runner_reviews": [],
+        "edition_year": 2026,
+        "event_dates": [
+          "2026-11-06",
+          "2026-11-07",
+          "2026-11-08"
+        ],
+        "verified_at": "2026-10-13",
+        "source_urls": [
+          "https://lamdongtrail.vn/en/distance/"
+        ],
+        "gpx_profile_status": "not_supplied; organizer GPX map is being updated"
       },
-      "source_label": "Web research (2026-07)"
+      "source_label": "Organizer course pages and maps verified 2026-10-13 (2026 edition)"
     },
     {
       "domain": "race_courses",
@@ -8406,7 +8463,7 @@
       "domain": "race_courses",
       "kind": "race_profile",
       "title": "Prenn Trail (Challenge/Summit) — Đà Lạt, Vietnam",
-      "content": "Course Overview: Prenn Trail (Prenn Trail Summit/Challenge) runs in the southern gateway mountains of Đà Lạt, Lâm Đồng Province, Vietnam, featuring distances of 10km, 25km, 55km, 100km, and 187km.\n\nSignature Climbs & Landmarks: Deep valleys of Prenn Waterfall, steep climbs up Elephant Mountain (Núi Voi), and ridgelines around Tuyền Lâm Lake.\n\nTerrain & Technical Footing: Dense pine forest singletrack, steep pine-needle slopes, technical root webs, and deep forest gullies.\n\nWeather & Climate: Dry highland autumn (November): 14-25°C, cool breezes, high morning clarity.\n\nCoach Training Implications: Focus on sustained quad loading and eccentric resistance for prolonged pine hill descending.",
+      "content": "Course Overview: Prenn Trail Summit, Lam Dong, December 2026. Current organizer maps list 3km/+290m; 10KM (12km/+550m); 25km/+1,289m; 55KM (52km/+2,485m); 75km/+3,989m; 100km/+5,722m; 100 miles (163km/+7,860m); and 250km/+11,738m.\n\nCourse Routes: Shorter races start and finish at Tea Resort Prenn. The 100-mile and 250km routes start at Kala Lake and finish at Tea Resort Prenn, crossing forested highlands with repeated climbs and descents. Published cutoffs range from 2 to 73 hours.\n\nSeason Separation: The current distance page and course image use 100KM, despite 103KM appearing in introductory text. The supplied 2025 GPXs, including 103km and 187km, are historical routes and are archived separately; they are not active 2026 estimator profiles.",
       "payload": {
         "region": "ASEAN",
         "aliases": [
@@ -8420,8 +8477,8 @@
           "The Gods"
         ],
         "climate": {
-          "notes": "Hosted at Tea Resort Prenn, Prenn Pass foot, Đà Lạt City — one of Vietnam's most extreme distance offerings, up to a 246km 'Gods' category with ~11,500m D+.",
-          "season": "varies",
+          "notes": "Highland courses; longest categories span multiple nights. Published 250km map shows +11,738m, with Kala Lake start and Tea Resort Prenn finish.",
+          "season": "December (2026 edition)",
           "avg_temp_c": "cool for most of the day given ~1,500m plateau altitude",
           "humidity_pct": "moderate"
         },
@@ -9025,40 +9082,140 @@
         "location": "Prenn Pass, Đà Lạt, Lâm Đồng Province, Vietnam",
         "distances": [
           {
+            "label": "3km",
+            "distance_km": 3,
+            "elevation_gain_m": 290,
+            "source_url": "https://prenntrailchallenge.vn/en/distance",
+            "elevation_loss_m": 290,
+            "course_map_url": "https://unique-static.hcm04.vstorage.vngcloud.vn/prenntrailchallenge/3ele-at-2x-100-6ac49dfbc9f6a.jpg",
+            "race_date": "2026-12-13",
+            "start_time": "08:00",
+            "cutoff_hours": 2,
+            "minimum_age": 6,
+            "finish_location": "Tea Resort Prenn",
+            "start_location": "Tea Resort Prenn",
+            "eligibility_notes": "Organizer wording: over 6 years old on race day; consult the eligibility page for the exact age boundary. Prize eligibility is limited to children aged 6-12; older runners may enter."
+          },
+          {
+            "label": "10km",
+            "distance_km": 12,
+            "elevation_gain_m": 550,
+            "source_url": "https://prenntrailchallenge.vn/en/distance",
+            "elevation_loss_m": 550,
+            "course_map_url": "https://unique-static.hcm04.vstorage.vngcloud.vn/prenntrailchallenge/10ele-at-2x-100-6ac49dea083cf.jpg",
+            "race_date": "2026-12-13",
+            "start_time": "07:00",
+            "cutoff_hours": 5,
+            "minimum_age": 12,
+            "finish_location": "Tea Resort Prenn",
+            "start_location": "Tea Resort Prenn",
+            "eligibility_notes": "Organizer wording: over 12 years old on race day; consult the eligibility page for the exact age boundary."
+          },
+          {
             "label": "25km / The Leaders",
-            "distance_km": 25.0,
-            "elevation_gain_m": null
+            "distance_km": 25,
+            "elevation_gain_m": 1289,
+            "source_url": "https://prenntrailchallenge.vn/en/distance",
+            "elevation_loss_m": 1289,
+            "course_map_url": "https://unique-static.hcm04.vstorage.vngcloud.vn/prenntrailchallenge/25ele-at-2x-100-6ac49dd18de78.jpg",
+            "race_date": "2026-12-13",
+            "start_time": "06:00",
+            "cutoff_hours": 8,
+            "minimum_age": 15,
+            "finish_location": "Tea Resort Prenn",
+            "start_location": "Tea Resort Prenn",
+            "eligibility_notes": "Organizer wording: over 15 years old on race day; consult the eligibility page for the exact age boundary."
           },
           {
             "label": "55km / The Challengers",
-            "distance_km": 51.43,
-            "elevation_gain_m": 2127
+            "distance_km": 52,
+            "elevation_gain_m": 2485,
+            "source_url": "https://prenntrailchallenge.vn/en/distance",
+            "elevation_loss_m": 2485,
+            "course_map_url": "https://unique-static.hcm04.vstorage.vngcloud.vn/prenntrailchallenge/55ele-at-2x-100-6ac49dbfabc3c.jpg",
+            "race_date": "2026-12-12",
+            "start_time": "05:00",
+            "cutoff_hours": 19,
+            "minimum_age": 18,
+            "finish_location": "Tea Resort Prenn",
+            "start_location": "Tea Resort Prenn",
+            "eligibility_notes": "Organizer wording: over 18 years old on race day; consult the eligibility page for the exact age boundary.",
+            "qualifying_distance_km": 21,
+            "qualification": "Recognized finishing result within two years, assessed one month before race day; trail/road allowed for 55KM, trail required for longer categories."
           },
           {
             "label": "75km / The Warriors",
-            "distance_km": 75.0,
-            "elevation_gain_m": 3800
+            "distance_km": 75,
+            "elevation_gain_m": 3989,
+            "source_url": "https://prenntrailchallenge.vn/en/distance",
+            "elevation_loss_m": 3988,
+            "course_map_url": "https://unique-static.hcm04.vstorage.vngcloud.vn/prenntrailchallenge/75ele-at-2x-100-6ac49daa47951.jpg",
+            "race_date": "2026-12-12",
+            "start_time": "00:00",
+            "cutoff_hours": 24,
+            "minimum_age": 18,
+            "finish_location": "Tea Resort Prenn",
+            "start_location": "Tea Resort Prenn",
+            "eligibility_notes": "Organizer wording: over 18 years old on race day; consult the eligibility page for the exact age boundary.",
+            "qualifying_distance_km": 35,
+            "qualification": "Recognized finishing result within two years, assessed one month before race day; trail/road allowed for 55KM, trail required for longer categories."
           },
           {
-            "label": "103km / The Heroes",
-            "distance_km": 103.0,
-            "elevation_gain_m": null
+            "label": "100km / The Heroes",
+            "distance_km": 100,
+            "elevation_gain_m": 5722,
+            "source_url": "https://prenntrailchallenge.vn/en/distance",
+            "elevation_loss_m": 5722,
+            "course_map_url": "https://unique-static.hcm04.vstorage.vngcloud.vn/prenntrailchallenge/100ele-at-2x-100-6ac49d8e42aec.jpg",
+            "race_date": "2026-12-11",
+            "start_time": "16:00",
+            "cutoff_hours": 32,
+            "minimum_age": 18,
+            "finish_location": "Tea Resort Prenn",
+            "start_location": "Tea Resort Prenn",
+            "eligibility_notes": "Organizer wording: over 18 years old on race day; consult the eligibility page for the exact age boundary.",
+            "qualifying_distance_km": 42,
+            "qualification": "Recognized finishing result within two years, assessed one month before race day; trail/road allowed for 55KM, trail required for longer categories."
           },
           {
-            "label": "187km / The Legends",
-            "distance_km": 187.0,
-            "elevation_gain_m": null
+            "label": "100 miles",
+            "distance_km": 163,
+            "elevation_gain_m": 7860,
+            "source_url": "https://prenntrailchallenge.vn/en/distance",
+            "elevation_loss_m": 7640,
+            "course_map_url": "https://unique-static.hcm04.vstorage.vngcloud.vn/prenntrailchallenge/100mele-at-2x-100-6ac49b069888d.jpg",
+            "race_date": "2026-12-11",
+            "start_time": "07:00",
+            "cutoff_hours": 55,
+            "minimum_age": 18,
+            "finish_location": "Tea Resort Prenn",
+            "start_location": "Kala Lake",
+            "eligibility_notes": "Organizer wording: over 18 years old on race day; consult the eligibility page for the exact age boundary.",
+            "qualifying_distance_km": 70,
+            "qualification": "Recognized finishing result within two years, assessed one month before race day; trail/road allowed for 55KM, trail required for longer categories."
           },
           {
             "label": "250km / The Gods",
-            "distance_km": 246.04,
-            "elevation_gain_m": 11496
+            "distance_km": 250,
+            "elevation_gain_m": 11738,
+            "source_url": "https://prenntrailchallenge.vn/en/distance",
+            "elevation_loss_m": 11618,
+            "course_map_url": "https://unique-static.hcm04.vstorage.vngcloud.vn/prenntrailchallenge/250ele-at-2x-100-6ac49ac7d2f40.jpg",
+            "race_date": "2026-12-10",
+            "start_time": "11:00",
+            "cutoff_hours": 73,
+            "minimum_age": 18,
+            "finish_location": "Tea Resort Prenn",
+            "start_location": "Kala Lake",
+            "eligibility_notes": "Organizer wording: over 18 years old on race day; consult the eligibility page for the exact age boundary.",
+            "qualifying_distance_km": 100,
+            "qualification": "Recognized finishing result within two years, assessed one month before race day; trail/road allowed for 55KM, trail required for longer categories."
           }
         ],
         "race_name": "Prenn Trail",
         "race_type": "mountain_trail",
         "key_climbs": [],
-        "month_held": "varies (organizer: Tea Resort Prenn)",
+        "month_held": "December (2026 edition)",
         "matching_hints": {
           "name_keywords": [
             "prenn trail",
@@ -9068,17 +9225,36 @@
             "the gods"
           ],
           "distance_km_options": [
-            25.0,
-            51.43,
-            75.0,
-            103.0,
-            187.0,
-            246.04
+            3,
+            12,
+            25,
+            52,
+            75,
+            100,
+            163,
+            250
           ]
         },
-        "runner_reviews": []
+        "runner_reviews": [],
+        "edition_year": 2026,
+        "event_dates": [
+          "2026-12-10",
+          "2026-12-11",
+          "2026-12-12",
+          "2026-12-13"
+        ],
+        "verified_at": "2026-10-13",
+        "source_urls": [
+          "https://prenntrailchallenge.vn/en/distance"
+        ],
+        "verification_notes": [
+          "Current 100KM map is used instead of the older 103KM introductory label.",
+          "2025 tracks were explicitly identified as historical by the user; no equivalence to 2026 is asserted."
+        ],
+        "gpx_profile_status": "2025 historical profiles archived; current 2026 GPXs not supplied",
+        "gpx_source_manifest": "kb_seed/raw_race_courses/vietnam_courses_2026-10-13.json"
       },
-      "source_label": "Web research (2026-07)"
+      "source_label": "Organizer course pages and maps verified 2026-10-13 (2026 edition)"
     },
     {
       "domain": "race_courses",
@@ -18262,7 +18438,7 @@
       "domain": "race_courses",
       "kind": "race_profile",
       "title": "Vietnam Highlands Trail by UTMB — Đà Lạt, Vietnam",
-      "content": "Course Overview: Vietnam Highlands Trail by UTMB is Vietnam's premier UTMB World Series Event, held in the Bidoup-Núi Bà National Park and Đà Lạt highlands, Lâm Đồng Province. Distances include 20K, 50K, 100K, and 100M through ancient mossy cloud forests and high-elevation pine plateaus.\n\nSignature Climbs & Landmarks: Bidoup Peak (2,287m - highest peak in Lâm Đồng), pristine mossy dwarf rhododendron cloud forests, and Langbiang mountain ridges.\n\nTerrain & Technical Footing: Diverse terrain spanning carpeted pine needle singletrack, mossy cloud forest roots, technical rock steps, and dirt forestry roads.\n\nWeather & Climate: Cool highland climate (12-24°C), high UV index, potential misty rains on high summits.\n\nCoach Training Implications: High-altitude power climbing for 2,000m+ summits, high-cadence pine descending, and strict mandatory gear compliance.",
+      "content": "Course Overview: Vietnam Highlands Trail by UTMB, Da Lat, 8-10 January 2027; all four races start on 9 January. Tuyen Lam 10K is 11.3km/+486m; Pinhatt 20K is 24.1km/+1,113m; Elephant 50K is 56.4km/+2,946m; Langbiang 100K is 104.2km/+5,533m. The current race listing has no 100M.\n\nCourse Routes: Loop from Clay Tunnel through pine woods, open grassland and lakeside hills; an introductory trail course without the high mountain summits. Clay Tunnel loop via Maple Leaf and Pinhatt (1,600m), returning along Tuyen Lam Lake; steep early climbs, forest singletrack and stream crossings. Lam Vien Square to Clay Tunnel via Gan Reo coffee farms, Elephant Mountain (1,815m) and Pinhatt (1,600m); forest climbs and lakeside descent. Lam Vien Square to Clay Tunnel via Langbiang (2,167m), Suoi Vang, Gan Reo, Elephant Mountain and Pinhatt; roads, forest tracks and technical climbs.\n\nRoute Verification: Published figures are used. Pinhatt headline and GPX section conflict with an older 22.8km/+1,100m details table. Local GPXs have substantial raw elevation discrepancies and are archived for review, without active estimator checkpoints. January 2026 results are historical; route equivalence with 2027 is unconfirmed.",
       "payload": {
         "region": "ASEAN",
         "aliases": [
@@ -18271,7 +18447,7 @@
           "Vietnam Highlands"
         ],
         "climate": {
-          "notes": "First-ever UTMB World Series race in Vietnam; Đà Lạt's mild highland climate in the dry season.",
+          "notes": "Da Lat highland forests and lakeside trails; January dry-season setting. Published course descriptions mention cool morning starts.",
           "season": "January (dry season)",
           "avg_temp_c": "15-24",
           "humidity_pct": "moderate"
@@ -18457,37 +18633,123 @@
           }
         ],
         "terrain": [
-          "alpine ridgeline",
-          "primary forest",
-          "ridgeline overlooking Tuyền Lâm Lake",
-          "technical Elephant Mountain singletrack"
+          "pine forest trails",
+          "primary forest singletrack",
+          "dirt roads and double track",
+          "short paved sections",
+          "Tuyen Lam lakeside trails"
         ],
         "location": "Đà Lạt, Lâm Đồng Province, Vietnam",
         "distances": [
           {
-            "label": "5km",
-            "distance_km": 5.0,
-            "elevation_gain_m": null
-          },
-          {
             "label": "10km",
-            "distance_km": 10.0,
-            "elevation_gain_m": null
+            "distance_km": 11.3,
+            "elevation_gain_m": 486,
+            "source_url": "https://vietnamhighlands.utmb.world/races/10Ktuyenlam",
+            "course_name": "10K Tuyen Lam",
+            "cutoff_hours": 5,
+            "minimum_age": 12,
+            "start_time": "09:00",
+            "race_date": "2027-01-09",
+            "start_location": "Clay Tunnel",
+            "finish_location": "Clay Tunnel",
+            "course_description": "Loop from Clay Tunnel through pine woods, open grassland and lakeside hills; an introductory trail course without the high mountain summits."
           },
           {
-            "label": "20km / Pinhatt 25",
-            "distance_km": 20.0,
-            "elevation_gain_m": 1300
+            "label": "20km / Pinhatt 20",
+            "distance_km": 24.1,
+            "elevation_gain_m": 1113,
+            "source_url": "https://vietnamhighlands.utmb.world/races/20Kpinhatt",
+            "course_name": "20K Pinhatt",
+            "cutoff_hours": 9.5,
+            "minimum_age": 16,
+            "start_time": "07:30",
+            "race_date": "2027-01-09",
+            "start_location": "Clay Tunnel",
+            "finish_location": "Clay Tunnel",
+            "course_description": "Clay Tunnel loop via Maple Leaf and Pinhatt (1,600m), returning along Tuyen Lam Lake; steep early climbs, forest singletrack and stream crossings.",
+            "utmb_category": "20K",
+            "running_stones": 1,
+            "age_groups": [
+              "16-17",
+              "18-19",
+              "20-34",
+              "35-39",
+              "40-44",
+              "45-49",
+              "50-54",
+              "55-59",
+              "60-64",
+              "65-69",
+              "70-74",
+              "75-79",
+              "80-84",
+              "85+"
+            ]
           },
           {
             "label": "50km / Elephant 50",
-            "distance_km": 55.4,
-            "elevation_gain_m": 3200
+            "distance_km": 56.4,
+            "elevation_gain_m": 2946,
+            "source_url": "https://vietnamhighlands.utmb.world/races/50Kelephant",
+            "course_name": "50K Elephant",
+            "cutoff_hours": 18.5,
+            "minimum_age": 18,
+            "start_time": "05:00",
+            "race_date": "2027-01-09",
+            "start_location": "Lam Vien Square",
+            "finish_location": "Clay Tunnel",
+            "course_description": "Lam Vien Square to Clay Tunnel via Gan Reo coffee farms, Elephant Mountain (1,815m) and Pinhatt (1,600m); forest climbs and lakeside descent.",
+            "elevation_loss_m": 3038,
+            "utmb_category": "50K",
+            "running_stones": 2,
+            "age_groups": [
+              "18-19",
+              "20-34",
+              "35-39",
+              "40-44",
+              "45-49",
+              "50-54",
+              "55-59",
+              "60-64",
+              "65-69",
+              "70-74",
+              "75-79",
+              "80-84",
+              "85+"
+            ]
           },
           {
             "label": "100km",
-            "distance_km": 104.0,
-            "elevation_gain_m": 5533
+            "distance_km": 104.2,
+            "elevation_gain_m": 5533,
+            "source_url": "https://vietnamhighlands.utmb.world/races/100Klangbiang",
+            "course_name": "100K Langbiang",
+            "cutoff_hours": 29,
+            "minimum_age": 18,
+            "start_time": "03:00",
+            "race_date": "2027-01-09",
+            "start_location": "Lam Vien Square",
+            "finish_location": "Clay Tunnel",
+            "course_description": "Lam Vien Square to Clay Tunnel via Langbiang (2,167m), Suoi Vang, Gan Reo, Elephant Mountain and Pinhatt; roads, forest tracks and technical climbs.",
+            "elevation_loss_m": 5625,
+            "utmb_category": "100K",
+            "running_stones": 3,
+            "age_groups": [
+              "18-19",
+              "20-34",
+              "35-39",
+              "40-44",
+              "45-49",
+              "50-54",
+              "55-59",
+              "60-64",
+              "65-69",
+              "70-74",
+              "75-79",
+              "80-84",
+              "85+"
+            ]
           }
         ],
         "race_name": "Vietnam Highlands Trail by UTMB",
@@ -18495,19 +18757,15 @@
         "key_climbs": [
           {
             "name": "Langbiang",
-            "notes": "Panoramic alpine landscape."
-          },
-          {
-            "name": "Bidoup",
-            "notes": "Untouched primary forest climb."
-          },
-          {
-            "name": "Pinhatt",
-            "notes": "Ridgeline overlooking Tuyền Lâm Lake."
+            "notes": "2,167m summit on the 100K course."
           },
           {
             "name": "Elephant Mountain",
-            "notes": "Denser, more technical trail."
+            "notes": "1,815m summit on the 50K and 100K courses."
+          },
+          {
+            "name": "Pinhatt",
+            "notes": "1,600m summit on the 20K, 50K and 100K courses."
           }
         ],
         "month_held": "January",
@@ -18521,16 +18779,36 @@
             "pinhatt"
           ],
           "distance_km_options": [
-            5.0,
-            10.0,
-            20.0,
-            55.4,
-            104.0
+            11.3,
+            24.1,
+            56.4,
+            104.2
           ]
         },
-        "runner_reviews": []
+        "runner_reviews": [],
+        "edition_year": 2027,
+        "event_dates": [
+          "2027-01-08",
+          "2027-01-09",
+          "2027-01-10"
+        ],
+        "verified_at": "2026-10-13",
+        "source_urls": [
+          "https://vietnamhighlands.utmb.world/races/100Klangbiang",
+          "https://vietnamhighlands.utmb.world/races/50Kelephant",
+          "https://vietnamhighlands.utmb.world/races/20Kpinhatt",
+          "https://vietnamhighlands.utmb.world/races/10Ktuyenlam"
+        ],
+        "verification_notes": [
+          "20K headline: 24.1km/+1113m; details table: 22.8km/+1100m. Retain headline with this conflict visible.",
+          "5K appeared in an earlier announcement but is absent from the supplied current race pages; not in the current catalog.",
+          "100K terrain percentages on the page add to 90%; no inferred remainder is stored.",
+          "Some logistics and expected-finisher timestamps still say 2026; only confirmed 2027 race dates and start times are retained."
+        ],
+        "gpx_profile_status": "archived_for_review: raw GPX elevation totals conflict with published figures",
+        "gpx_source_manifest": "kb_seed/raw_race_courses/vietnam_courses_2026-10-13.json"
       },
-      "source_label": "Web research (2026-07)"
+      "source_label": "Organizer course pages and maps verified 2026-10-13 (2027 edition)"
     },
     {
       "domain": "race_courses",
@@ -21128,7 +21406,7 @@
       "domain": "race_courses",
       "kind": "race_profile",
       "title": "Vietnam Trail Marathon (VTM) — Mộc Châu, Vietnam",
-      "content": "Course Overview: The Vietnam Trail Marathon (VTM), organized by Topas in January, takes place in Mộc Châu, Sơn La Province, northern Vietnam. Distances include 10km, 21km (900m D+), 42km (2,100m D+), and 70km (68.1km / 3,150m D+), celebrated for running through blooming white plum and peach blossom orchards.\n\nSignature Climbs & Landmarks: Key course highlights include the steep climb into Phiêng Cành plum valley, the remote hidden valley of Hang Táu (The Primitive Village), the heart-shaped tea plantations (Đồi Chè Trái Tim), and the grueling limestone pass climbing out of Mu Náu valley.\n\nTerrain & Technical Footing: A dynamic mix of fast dirt singletrack through orchards, packed clay village paths, and highly technical sectors over razor-sharp limestone karst rock. Limestone teeth require precise foot placement and stiff protective rock plates; orchard trails are fast and runnable.\n\nWeather & Climate: January in Mộc Châu is true northern winter. Temperatures range from 6°C to 18°C. Morning starts are freezing with thick mountain fog, burning off into clear, crisp, dry afternoon sun. Low humidity (55-65%).\n\nCoach Training Implications: Focus on cold-weather layering and race-start warm-up routines. Train rhythm changes from fast flat orchard running to abrupt, choppy limestone footwork. Require rock plate shoes to avoid stone bruises from sharp karst.",
+      "content": "Course Overview: Vietnam Trail Marathon, Moc Chau, 16 January 2027. Categories: 5km (5.0km/+160m), 10km (11.1km/+320m), 21km (21.6km/+1,000m), 50km (50.2km/+2,000m), and 70km (67.2km/+2,800m). The new 50km replaces the former 42km course; historical 42km results remain archived.\n\nCourse Routes: Na Ka plum valley to Heart-shaped Tea Hill, with easy opening trails and three short climbs; family and introductory distance. Phieng Canh village to Heart-shaped Tea Hill through blossom orchards, Na Ka valley and a short rocky climb. Muong Thanh Moc Chau Hotel to Heart-shaped Tea Hill via orchard singletrack, technical sections, Phieng Canh and Na Ka. New 2027 route replacing 42km: Mu Nau orchards, Hang Tau, Ta Phenh valley, Ban Doi and remote climbing before Heart-shaped Tea Hill. Muong Thanh Moc Chau Hotel to Heart-shaped Tea Hill via Mu Nau orchards, remote valleys, technical trails and highland villages.\n\nTerrain and Preparation: Orchards, limestone hills, village trails, jungle sections and tea fields; longer routes include steep climbs and technical sections. All finish at Heart-shaped Tea Hill. Local GPXs for 2027 were not supplied.",
       "payload": {
         "region": "ASEAN",
         "aliases": [
@@ -22039,39 +22317,128 @@
         "distances": [
           {
             "label": "5km",
-            "distance_km": 5.0,
-            "elevation_gain_m": null
+            "distance_km": 5,
+            "elevation_gain_m": 160,
+            "source_url": "https://vietnamtrailseries.com/trail-marathon/5km-trail-run/",
+            "race_date": "2027-01-16",
+            "start_time": "09:00",
+            "minimum_age": 6,
+            "cutoff_hours": 4,
+            "finish_location": "Heart-shaped Tea Hill (Doi Che Trai Tim)",
+            "course_description": "Na Ka plum valley to Heart-shaped Tea Hill, with easy opening trails and three short climbs; family and introductory distance.",
+            "age_groups": [
+              "Under 12",
+              "12-17",
+              "18-39",
+              "40+"
+            ],
+            "start_location": "Na Ka Plum Valley",
+            "eligibility_notes": "Under-16 runners require parental consent and must run with a separately registered guardian.",
+            "cutoff_note": "Duration from the published start to finish closure; wave starts can shorten individual available time."
           },
           {
             "label": "10km",
-            "distance_km": 10.0,
-            "elevation_gain_m": null
+            "distance_km": 11.1,
+            "elevation_gain_m": 320,
+            "source_url": "https://vietnamtrailseries.com/trail-marathon/10km-trail-run/",
+            "race_date": "2027-01-16",
+            "start_time": "09:00",
+            "minimum_age": 16,
+            "cutoff_hours": 6,
+            "finish_location": "Heart-shaped Tea Hill (Doi Che Trai Tim)",
+            "course_description": "Phieng Canh village to Heart-shaped Tea Hill through blossom orchards, Na Ka valley and a short rocky climb.",
+            "age_groups": [
+              "Under 30",
+              "30-39",
+              "40-49",
+              "50-59",
+              "60-69",
+              "70+"
+            ],
+            "start_location": "Phieng Canh village sports ground",
+            "cutoff_note": "Duration from the published start to finish closure; wave starts can shorten individual available time."
           },
           {
             "label": "21km",
-            "distance_km": 21.9,
-            "elevation_gain_m": 1200
-          },
-          {
-            "label": "42km",
-            "distance_km": 41.2,
-            "elevation_gain_m": 2150
+            "distance_km": 21.6,
+            "elevation_gain_m": 1000,
+            "source_url": "https://vietnamtrailseries.com/trail-marathon/21km-trail-run/",
+            "race_date": "2027-01-16",
+            "start_time": "08:00",
+            "minimum_age": 18,
+            "cutoff_hours": 10,
+            "finish_location": "Heart-shaped Tea Hill (Doi Che Trai Tim)",
+            "course_description": "Muong Thanh Moc Chau Hotel to Heart-shaped Tea Hill via orchard singletrack, technical sections, Phieng Canh and Na Ka.",
+            "age_groups": [
+              "Under 30",
+              "30-39",
+              "40-49",
+              "50-59",
+              "60-69",
+              "70+"
+            ],
+            "start_location": "Muong Thanh Moc Chau Hotel",
+            "utmb_category": "20K",
+            "itra_points": 1,
+            "cutoff_note": "Duration from the published start to finish closure; wave starts can shorten individual available time."
           },
           {
             "label": "50km",
-            "distance_km": 50.0,
-            "elevation_gain_m": null
+            "distance_km": 50.2,
+            "elevation_gain_m": 2000,
+            "source_url": "https://vietnamtrailseries.com/trail-marathon/50km-ultra-trail/",
+            "race_date": "2027-01-16",
+            "start_time": "07:00",
+            "minimum_age": 18,
+            "cutoff_hours": 14,
+            "finish_location": "Heart-shaped Tea Hill (Doi Che Trai Tim)",
+            "course_description": "New 2027 route replacing 42km: Mu Nau orchards, Hang Tau, Ta Phenh valley, Ban Doi and remote climbing before Heart-shaped Tea Hill.",
+            "age_groups": [
+              "Under 30",
+              "30-39",
+              "40-49",
+              "50-59",
+              "60-69",
+              "70+"
+            ],
+            "start_location": "Muong Thanh Moc Chau Hotel",
+            "utmb_category": "50K",
+            "itra_points": 2,
+            "qualification": "Completed chip-timed trail race of at least 20km with significant elevation; loops and virtual races excluded.",
+            "cutoff_note": "Duration from the published start to finish closure; wave starts can shorten individual available time."
           },
           {
             "label": "70km",
-            "distance_km": 67.6,
-            "elevation_gain_m": 2858,
-            "elevation_loss_m": 2799
+            "distance_km": 67.2,
+            "elevation_gain_m": 2800,
+            "source_url": "https://vietnamtrailseries.com/trail-marathon/70km-ultra-trail/",
+            "race_date": "2027-01-16",
+            "start_time": "05:00",
+            "minimum_age": 18,
+            "cutoff_hours": 18.5,
+            "finish_location": "Heart-shaped Tea Hill (Doi Che Trai Tim)",
+            "course_description": "Muong Thanh Moc Chau Hotel to Heart-shaped Tea Hill via Mu Nau orchards, remote valleys, technical trails and highland villages.",
+            "age_groups": [
+              "Under 30",
+              "30-39",
+              "40-49",
+              "50-59",
+              "60-69",
+              "70+"
+            ],
+            "start_location": "Muong Thanh Moc Chau Hotel",
+            "utmb_category": "100K",
+            "itra_points": 3,
+            "qualification": "Completed chip-timed mountain race of at least 40km with significant elevation; loops and virtual races excluded.",
+            "cutoff_note": "Duration from the published start to finish closure; wave starts can shorten individual available time."
           }
         ],
         "race_name": "Vietnam Trail Marathon",
         "race_type": "mountain_trail",
-        "key_climbs": [],
+        "key_climbs": [
+          "Mu Nau orchard climb on the 50km and 70km routes",
+          "Steep climb after CP1 on the 21km route"
+        ],
         "month_held": "January",
         "matching_hints": {
           "name_keywords": [
@@ -22081,17 +22448,29 @@
             "mộc châu"
           ],
           "distance_km_options": [
-            5.0,
-            10.0,
-            21.9,
-            41.2,
-            50.0,
-            67.6
+            5,
+            11.1,
+            21.6,
+            50.2,
+            67.2
           ]
         },
-        "runner_reviews": []
+        "runner_reviews": [],
+        "edition_year": 2027,
+        "event_dates": [
+          "2027-01-16"
+        ],
+        "verified_at": "2026-10-13",
+        "source_urls": [
+          "https://vietnamtrailseries.com/trail-marathon/70km-ultra-trail/",
+          "https://vietnamtrailseries.com/trail-marathon/50km-ultra-trail/",
+          "https://vietnamtrailseries.com/trail-marathon/21km-trail-run/",
+          "https://vietnamtrailseries.com/trail-marathon/10km-trail-run/",
+          "https://vietnamtrailseries.com/trail-marathon/5km-trail-run/"
+        ],
+        "gpx_profile_status": "not_supplied"
       },
-      "source_label": "Web research (2026-07)"
+      "source_label": "Organizer course pages and maps verified 2026-10-13 (2027 edition)"
     },
     {
       "domain": "race_courses",
