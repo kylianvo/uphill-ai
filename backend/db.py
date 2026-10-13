@@ -3387,6 +3387,24 @@ def get_activity_external_ids(user_id: int, provider: str) -> set[str]:
         return {row for row in rows if row}
 
 
+def delete_activities_by_external_ids(user_id: int, provider: str, external_ids: list[str]) -> int:
+    """Hard-delete one provider's activities by their provider ids (e.g. workouts the
+    athlete deleted in Apple Health). A workout matched to a deleted row and another
+    provider's copy that pointed at it are both released by ON DELETE SET NULL."""
+    if not external_ids:
+        return 0
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+            DELETE FROM activities
+            WHERE user_id = :u AND source_provider = :p AND external_ids ->> :p = ANY(:ids)
+            """),
+            {"u": user_id, "p": provider, "ids": list(external_ids)},
+        )
+        conn.commit()
+        return result.rowcount
+
+
 def upsert_activity(user_id: int, activity) -> int:
     """Insert an activity, or return the existing row id if we already have it.
 
