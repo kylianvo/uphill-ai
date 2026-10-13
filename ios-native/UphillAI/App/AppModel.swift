@@ -50,6 +50,8 @@ final class AppModel {
     var appleHealthLastSync: String?
     var appleHealthSyncing = false
     var appleHealthMessage: String?
+    /// Failures show in the danger tone; the nothing-found hint and retry notice don't.
+    var appleHealthMessageIsError = false
     private var lastAppleHealthSync: Date?
 
     func loadAppleHealthStatus() async {
@@ -73,16 +75,19 @@ final class AppModel {
             let outcome = try await appleHealth.connect(userId: userID)
             appleHealthConnected = true
             lastAppleHealthSync = .now
+            appleHealthMessageIsError = false
             appleHealthMessage = outcome.nothingFound
                 ? L("No workouts found. Check Settings → Health → Data Access & Devices → Uphill AI.")
                 : nil
             await plan.applyWatchMatches()
             await loadAppleHealthStatus()
         } catch AppleHealthSyncError.unavailable {
+            appleHealthMessageIsError = true
             appleHealthMessage = L("Apple Health isn't available on this device.")
         } catch {
             // Connected locally; the next foreground or background wake retries the upload.
             appleHealthConnected = await appleHealth.isObserving(userId: userID)
+            appleHealthMessageIsError = false
             appleHealthMessage = L("Couldn't sync with Uphill. I'll try again next time you open the app.")
         }
     }
@@ -100,7 +105,9 @@ final class AppModel {
     }
 
     func disconnectAppleHealth() async {
-        guard let userID = session.user?.id else { return }
+        guard let userID = session.user?.id, !appleHealthSyncing else { return }
+        appleHealthSyncing = true
+        defer { appleHealthSyncing = false }
         do {
             try await AppleHealthAPI(client: client).disconnect()
             await appleHealth.stopObserving(userId: userID)
@@ -108,6 +115,7 @@ final class AppModel {
             appleHealthLastSync = nil
             appleHealthMessage = nil
         } catch {
+            appleHealthMessageIsError = true
             appleHealthMessage = L("Couldn't disconnect. Check your connection and try again.")
         }
     }

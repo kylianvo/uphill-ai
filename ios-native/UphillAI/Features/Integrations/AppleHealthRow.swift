@@ -22,16 +22,16 @@ struct AppleHealthRow: View {
                 if app.appleHealthSyncing { ProgressView().controlSize(.small) }
             }
             if let message = app.appleHealthMessage {
-                // Hints and retry notices, not failures: warning tone rather than danger.
+                let isError = app.appleHealthMessageIsError
                 HStack(alignment: .top, spacing: 6) {
-                    Image(systemName: "info.circle.fill").accessibilityHidden(true)
+                    Image(systemName: isError ? "exclamationmark.triangle.fill" : "info.circle.fill").accessibilityHidden(true)
                     Text(message).fixedSize(horizontal: false, vertical: true)
                 }
                 .font(UH.TextStyle.caption)
-                .foregroundStyle(UH.Palette.warningInk)
+                .foregroundStyle(isError ? UH.Palette.danger : UH.Palette.warningInk)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(UH.Palette.warningFill, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                .background(isError ? UH.Palette.danger.opacity(0.1) : UH.Palette.warningFill, in: RoundedRectangle(cornerRadius: UH.Radius.control))
                 .accessibilityIdentifier("health.message")
             }
             if app.appleHealthConnected {

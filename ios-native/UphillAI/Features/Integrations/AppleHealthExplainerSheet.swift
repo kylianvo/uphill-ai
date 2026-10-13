@@ -23,7 +23,7 @@ struct AppleHealthExplainerSheet: View {
                     point("checkmark.circle", "Why",
                           "To mark your planned sessions done and start your plan from your real weekly mileage.")
                     point("lock", "What I send to Uphill",
-                          "Time, distance, climb, heart rate and calories for each workout. Your GPS routes stay on your phone.")
+                          "Time, distance, climb, heart rate, calories and the app that recorded each workout. Your GPS routes stay on your phone.")
                     point("square.and.pencil", "Nothing written", "I never write to Apple Health.")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
