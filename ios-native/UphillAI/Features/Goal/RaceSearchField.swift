@@ -8,6 +8,8 @@ struct RaceSearchField: View {
     var placeholder: String = L("Search race name or enter manually")
     /// Called with the picked course (distance km, D+ m, label).
     let onPick: (RaceDistance) -> Void
+    /// Called when the name is edited away from a matched race, so stale course values can be dropped.
+    var onClear: (() -> Void)? = nil
 
     @State private var candidates: [RaceMatch] = []
     @State private var selected: RaceMatch?
@@ -117,6 +119,7 @@ struct RaceSearchField: View {
     private func search() async {
         let name = raceName.trimmingCharacters(in: .whitespacesAndNewlines)
         if selected?.raceName == name { return }
+        if selected != nil { onClear?() }
         selected = nil
         pickedDistance = nil
         guard name.count >= 3, let service else { candidates = []; return }

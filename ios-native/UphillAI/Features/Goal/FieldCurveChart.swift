@@ -106,6 +106,18 @@ struct FieldCurveChart: View {
         return markers
     }
 
+    /// From the winner to the slowest anchor or goal, so the curve fills the width.
+    private var timeDomain: ClosedRange<Double> {
+        let times = curvePoints.map(\.minutes) + goalMarkers.map(\.minutes)
+        guard let lo = times.min(), let hi = times.max(), hi > lo else { return 0...1 }
+        let pad = (hi - lo) * 0.04
+        return (lo - pad)...(hi + pad)
+    }
+
+    private func pctLabel(_ pct: Double) -> String {
+        pct < 5 ? String(format: "%.1f", pct) : String(Int(pct.rounded()))
+    }
+
     private func interpolatePercentile(mins: Double) -> Double {
         guard let first = curvePoints.first else { return 50.0 }
         guard let last = curvePoints.last else { return 50.0 }
@@ -215,7 +227,7 @@ struct FieldCurveChart: View {
                                 VStack(spacing: 1) {
                                     Text(GoalEstimate.formatMinutes(touched))
                                         .font(.system(size: 13, weight: .bold, design: .monospaced))
-                                    Text(L("top %@%%", pct < 5 ? String(format: "%.1f", pct) : String(Int(pct.rounded()))))
+                                    Text(L("top %@%%", pctLabel(pct)))
                                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
                                         .foregroundStyle(UH.Palette.secondary)
                                 }
@@ -240,17 +252,15 @@ struct FieldCurveChart: View {
                         )
                         .foregroundStyle(m.color)
                         .symbolSize(80)
-                        .annotation(position: .top) {
-                            Text("\(m.label): top \(Int(m.percentile))%")
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
-                                .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: 4))
-                                .overlay(RoundedRectangle(cornerRadius: 4).stroke(m.color, lineWidth: 1))
+                        .annotation(position: .top, spacing: 2) {
+                            Text(m.label)
+                                .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                                .foregroundStyle(m.color)
                         }
                     }
                 }
                 .chartXSelection(value: $touchedMinutes)
+                .chartXScale(domain: timeDomain)
                 .chartYScale(domain: 0...100)
                 .chartYAxis {
                     AxisMarks(values: [0, 25, 50, 75, 100]) { value in
@@ -281,6 +291,8 @@ struct FieldCurveChart: View {
                 .frame(height: chartHeight)
                 .sensoryFeedback(.selection, trigger: touchedMinutes.map { Int($0 / 5) })
                 .padding(.vertical, 8)
+                // Bleed toward the card edges: the curve needs the width more than the card needs its inset.
+                .padding(.horizontal, -(UH.Space.regular - 6))
 
                 Text("Drag across the chart to read any finish time.")
                     .font(UH.TextStyle.caption)
@@ -290,9 +302,9 @@ struct FieldCurveChart: View {
 
                 // Legend
                 HStack(spacing: 14) {
-                    legendItem(color: Color(hex: "#10b981"), label: L("A: Ambitious"))
-                    legendItem(color: UH.Palette.accentInk, label: L("B: Realistic"))
-                    legendItem(color: Color(hex: "#f59e0b"), label: L("C: Safe"))
+                    ForEach(goalMarkers) { m in
+                        legendItem(color: m.color, label: L("%@ · top %@%%", m.label, pctLabel(m.percentile)))
+                    }
                     Spacer()
                     Text("UTMB verified")
                         .font(.system(size: 9, weight: .bold, design: .monospaced))

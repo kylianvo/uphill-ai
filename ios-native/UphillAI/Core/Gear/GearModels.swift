@@ -208,15 +208,19 @@ struct GearPlan: Codable, Sendable, Equatable {
     let recommendations: [ShoeRecommendation]
     let tips: [String]
     let feedbackToken: String?
+    /// The KB race the server matched the race name to, used as context.
+    var matchedRace: RaceMatch? = nil
 
     init(
         recommendations: [ShoeRecommendation],
         tips: [String],
-        feedbackToken: String? = nil
+        feedbackToken: String? = nil,
+        matchedRace: RaceMatch? = nil
     ) {
         self.recommendations = recommendations
         self.tips = tips
         self.feedbackToken = feedbackToken
+        self.matchedRace = matchedRace
     }
 }
 

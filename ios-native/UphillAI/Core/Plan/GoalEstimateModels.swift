@@ -102,6 +102,8 @@ struct GoalEstimate: Codable, Sendable, Equatable {
     let referenceConfidence: String?
     let sources: [GoalSourceItem]?
     let reasoning: [String]?
+    /// Data the server lacked (race_history, watch…), shown as "to sharpen this" hints.
+    var missing: [String]? = nil
 
     init(
         raceName: String? = nil,

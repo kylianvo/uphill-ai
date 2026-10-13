@@ -9,7 +9,9 @@ enum AppEnvironment: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .production: URL(string: "https://api.uphill-ai.io.vn")!
         case .staging: URL(string: "https://staging-api.uphill-ai.io.vn")!
-        case .local: URL(string: "http://localhost:8000")!
+        case .local:
+            // Debug-only override (`-UPHILL_LOCAL_URL http://localhost:8010`) for when 8000 is taken.
+            UserDefaults.standard.string(forKey: "UPHILL_LOCAL_URL").flatMap(URL.init(string:)) ?? URL(string: "http://localhost:8000")!
         }
     }
 

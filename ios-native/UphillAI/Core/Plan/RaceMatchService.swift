@@ -1,6 +1,6 @@
 import Foundation
 
-struct RaceMatch: Decodable, Sendable, Equatable {
+struct RaceMatch: Codable, Sendable, Equatable {
     let raceName: String
     let distanceLabel: String?
     let distanceKm: Double?
@@ -9,7 +9,7 @@ struct RaceMatch: Decodable, Sendable, Equatable {
     var distances: [RaceDistance]? = nil
 }
 
-struct RaceDistance: Decodable, Sendable, Equatable, Hashable {
+struct RaceDistance: Codable, Sendable, Equatable, Hashable {
     let label: String?
     let distanceKm: Double
     let elevationGainM: Double?

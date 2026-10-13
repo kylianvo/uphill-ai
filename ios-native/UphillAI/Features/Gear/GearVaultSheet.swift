@@ -149,9 +149,9 @@ struct GearVaultSheet: View {
                             .foregroundStyle(UH.Palette.accentInk)
                         }
                     }
-                    RaceSearchField(raceName: $raceName, service: raceMatchService, placeholder: L("Race name (optional)")) { course in
-                        raceDistance = course.label ?? "\(Int(course.distanceKm.rounded())) km"
-                    }
+                    RaceSearchField(raceName: $raceName, service: raceMatchService, placeholder: L("Race name (optional)"),
+                                    onPick: { course in raceDistance = course.label ?? "\(Int(course.distanceKm.rounded())) km" },
+                                    onClear: { raceDistance = "" })
                     if !raceDistance.isEmpty {
                         Text(L("Distance: %@", raceDistance))
                             .font(UH.TextStyle.caption)
@@ -360,6 +360,10 @@ struct GearVaultSheet: View {
     private func resultsView(_ plan: GearPlan) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: UH.Space.regular) {
+                if let race = plan.matchedRace {
+                    matchedRaceChip(race)
+                }
+
                 // Header badge
                 HStack {
                     Text("RECOMMENDED MATCHES (\(plan.recommendations.count))")
@@ -604,6 +608,24 @@ struct GearVaultSheet: View {
         }
         .padding(.horizontal, UH.Space.small)
         .padding(.top, 12)
+    }
+
+    private func matchedRaceChip(_ race: RaceMatch) -> some View {
+        let detail = race.distanceLabel.map { label in
+            race.elevationGainM.map { L("%@, %lld m D+", label, Int($0)) } ?? label
+        }
+        return HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "mappin.circle.fill").foregroundStyle(UH.Palette.accentInk)
+            (Text("Using ") + Text(race.raceName).bold() + Text(" as context") + Text(detail.map { " — \($0)" } ?? ""))
+                .font(UH.TextStyle.caption)
+                .foregroundStyle(UH.Palette.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(UH.Palette.activeFill, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("gear.matchedRace")
     }
 
     private func recommend() async {

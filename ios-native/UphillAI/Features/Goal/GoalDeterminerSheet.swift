@@ -524,6 +524,12 @@ struct GoalDeterminerSheet: View {
                     tierCard(tier: "B", name: L("Realistic"), minutes: goals.realistic, color: UH.Palette.accentInk, desc: L("Primary target goal with solid execution"))
                     tierCard(tier: "C", name: L("Safe"), minutes: goals.safe, color: Color(hex: "#f59e0b"), desc: L("Conservative buffer against heat, fatigue or cramps"))
                 }
+            } else {
+                notEnoughDataCard
+            }
+
+            if estimate.goals != nil, !missingHints(estimate).isEmpty {
+                hintList(missingHints(estimate))
             }
 
             // Coach Reasoning
@@ -569,6 +575,51 @@ struct GoalDeterminerSheet: View {
                 .foregroundStyle(UH.Palette.muted)
                 .padding(.horizontal, 4)
         }
+    }
+
+    private static let hintCopy: [(key: String, text: String)] = [
+        ("recent_trail_result", L("Link a past trail race result")),
+        ("race_history", L("Link your UTMB or VBM profile")),
+        ("utmb_index", L("Link your UTMB profile for your UTMB index")),
+        ("watch", L("Connect your watch for recent training")),
+        ("vo2max", L("Sync VO2max from your watch")),
+    ]
+
+    private func missingHints(_ estimate: GoalEstimate) -> [String] {
+        let missing = Set(estimate.missing ?? [])
+        return Self.hintCopy.filter { missing.contains($0.key) }.map(\.text)
+    }
+
+    private func hintList(_ hints: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("To sharpen this:")
+                .font(UH.TextStyle.caption.weight(.semibold))
+            ForEach(hints, id: \.self) { Text("· \($0)").font(UH.TextStyle.caption) }
+        }
+        .foregroundStyle(Color(hex: "#b45309"))
+    }
+
+    /// Shown when the server had too little personal data to set A/B/C times.
+    private var notEnoughDataCard: some View {
+        VStack(alignment: .leading, spacing: UH.Space.small) {
+            Label("Not enough data for goal times yet", systemImage: "chart.line.uptrend.xyaxis")
+                .font(UH.TextStyle.label)
+                .foregroundStyle(UH.Palette.ink)
+            Text("I need at least one past result, a linked profile or recent watch training to estimate A/B/C times for this race.")
+                .font(UH.TextStyle.caption)
+                .foregroundStyle(UH.Palette.secondary)
+            if let estimate { hintList(missingHints(estimate)) }
+            if raceHistoryService != nil {
+                Button { showLinkProfileSheet = true } label: {
+                    Text("Link UTMB / VBM")
+                        .font(UH.TextStyle.label)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(UH.Palette.accentInk)
+            }
+        }
+        .trainingCard()
     }
 
     // MARK: - Tier Card with "Use for plan" & "Plan pacing"

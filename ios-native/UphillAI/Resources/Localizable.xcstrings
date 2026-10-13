@@ -13000,6 +13000,226 @@
           }
         }
       }
+    },
+    " as context": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " làm ngữ cảnh"
+          }
+        }
+      }
+    },
+    "%@, %lld m D+": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, %lld m D+"
+          }
+        }
+      }
+    },
+    "Connect your watch for recent training": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối đồng hồ để có dữ liệu tập gần đây"
+          }
+        }
+      }
+    },
+    "Distance: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cự ly: %@"
+          }
+        }
+      }
+    },
+    "Drag across the chart to read any finish time.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kéo trên biểu đồ để xem từng thời gian về đích."
+          }
+        }
+      }
+    },
+    "I need at least one past result, a linked profile or recent watch training to estimate A/B/C times for this race.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần ít nhất một kết quả giải trước, hồ sơ đã liên kết hoặc dữ liệu tập gần đây từ đồng hồ để ước tính mục tiêu A/B/C cho giải này."
+          }
+        }
+      }
+    },
+    "Link a past trail race result": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết kết quả Trail race trước"
+          }
+        }
+      }
+    },
+    "Link your UTMB or VBM profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết hồ sơ UTMB hoặc VBM"
+          }
+        }
+      }
+    },
+    "Link your UTMB profile for your UTMB index": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết hồ sơ UTMB để có UTMB index"
+          }
+        }
+      }
+    },
+    "Matched race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã khớp giải"
+          }
+        }
+      }
+    },
+    "Not enough data for goal times yet": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa đủ dữ liệu để đặt mục tiêu thời gian"
+          }
+        }
+      }
+    },
+    "PODIUM & TOP TIMES": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BỤC VINH QUANG & THỜI GIAN TOP"
+          }
+        }
+      }
+    },
+    "Race name (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên giải (tùy chọn)"
+          }
+        }
+      }
+    },
+    "Sync VO2max from your watch": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đồng bộ VO2max từ đồng hồ"
+          }
+        }
+      }
+    },
+    "To sharpen this:": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để chính xác hơn:"
+          }
+        }
+      }
+    },
+    "Top %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Top %lld"
+          }
+        }
+      }
+    },
+    "Top %lld%%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Top %lld%%"
+          }
+        }
+      }
+    },
+    "Use my plan's race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dùng giải trong giáo án"
+          }
+        }
+      }
+    },
+    "Using ": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang dùng "
+          }
+        }
+      }
+    },
+    "Which distance?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cự ly nào?"
+          }
+        }
+      }
+    },
+    "top %@%%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "top %@%%"
+          }
+        }
+      }
+    },
+    "%@ · top %@%%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · top %@%%"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
