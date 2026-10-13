@@ -1691,6 +1691,16 @@
         }
       }
     },
+    "Adapting your week…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang điều chỉnh tuần tập…"
+          }
+        }
+      }
+    },
     "Building the next block…": {
       "localizations": {
         "vi": {
