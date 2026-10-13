@@ -41,6 +41,7 @@ targets:
         NSCalendarsFullAccessUsageDescription: "Uphill AI syncs your scheduled training plan workouts and long runs to your calendar."
         NSCalendarsWriteOnlyAccessUsageDescription: "Uphill AI adds your scheduled workouts directly to your calendar."
         NSHealthShareUsageDescription: "Uphill AI reads your runs, hikes and strength workouts so it can mark planned sessions done and start your plan from your real weekly mileage."
+        NSHealthUpdateUsageDescription: "Uphill AI does not write to Apple Health. It only reads your workouts to mark planned sessions done."
         GIDClientID: 451637841654-ncj3jhv24t9rq665noctori05faajiej.apps.googleusercontent.com
         CFBundleURLTypes:
           - CFBundleURLSchemes:
