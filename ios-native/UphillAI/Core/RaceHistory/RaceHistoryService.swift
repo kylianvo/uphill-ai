@@ -2,6 +2,7 @@ import Foundation
 
 protocol RaceHistoryServicing: Sendable {
     func history() async throws -> RaceHistoryResponse
+    func detail(id: Int, courseId: Int?, athleteId: Int?) async throws -> RaceDetailResponse
     func searchCandidates(source: String, query: String) async throws -> [RaceCandidate]
     func addClaim(source: String, externalId: String) async throws
     func deleteClaim(id: Int) async throws
@@ -30,6 +31,12 @@ struct RaceHistoryService: RaceHistoryServicing {
 
     func history() async throws -> RaceHistoryResponse {
         try await client.send(.get("/api/race-history"))
+    }
+
+    func detail(id: Int, courseId: Int? = nil, athleteId: Int? = nil) async throws -> RaceDetailResponse {
+        let prefix = athleteId.map { "/api/coaching/athletes/\($0)/race-history" } ?? "/api/race-history"
+        let query = courseId.map { [URLQueryItem(name: "course_id", value: String($0))] } ?? []
+        return try await client.send(.get("\(prefix)/results/\(id)/detail", query: query))
     }
 
     func searchCandidates(source: String, query: String) async throws -> [RaceCandidate] {

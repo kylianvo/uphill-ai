@@ -1,32 +1,13 @@
 "use client";
 
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
-import { ArrowClockwise, CaretDown, CheckCircle, Flag, LinkSimple, MagnifyingGlass, Mountains, Plus, Trophy, X } from "@phosphor-icons/react";
+import { ArrowClockwise, CaretDown, CheckCircle, Flag, LinkSimple, MagnifyingGlass, Mountains, Plus, X } from "@phosphor-icons/react";
 import styles from "./RaceHistory.module.css";
+import RaceDetailDialog from "./RaceDetailDialog";
 import { getApiBaseUrl } from "@/lib/apiUrlOverride";
 
-type Claim = {
-  id: number; source: "utmb" | "vbm"; display_name: string; sync_status: string;
-  sync_error?: string | null; verified: boolean; verification_methods: string[];
-  meta?: { indexes?: Array<{ piCategory?: string; index?: number }> };
-};
-type Result = {
-  id: number; claim_id: number | null; source: string; race_name: string; race_date: string;
-  discipline: string; distance_km: number; elevation_gain_m: number | null;
-  finish_time_sec: number | null; is_dnf: boolean; bib: string | null;
-  selected: boolean; hidden: boolean; user_note: string | null;
-  verified: boolean; verification_methods: string[];
-  rank_overall?: number | null; total_overall?: number | null;
-};
-type History = {
-  claims: Claim[]; results: Result[];
-  summary: {
-    trail_finishes: number; trail_dnfs: number; ultras: number;
-    longest_finish: Result | null;
-    road_hm_pr: { time_sec: number; stale: boolean } | null;
-    road_fm_pr: { time_sec: number; stale: boolean } | null;
-  };
-};
+import { formatKm, formatNumber, manualResultPayload, safeResultUrl } from "../lib/raceHistory";
+import type { RaceResult as Result, RaceHistory as History, RoadKey } from "../lib/raceHistory";
 
 function duration(seconds: number | null): string {
   if (!seconds) return "DNF";
@@ -51,7 +32,6 @@ export default function RaceHistoryPanel({ lang, athleteId, initiallyOpen = fals
   const [source, setSource] = useState<"utmb" | "vbm">("utmb");
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<Array<{ external_id: string; display_name: string; age_group?: string; index?: number }>>([]);
-  const [filter, setFilter] = useState<"all" | "trail" | "road">("all");
   const [showManual, setShowManual] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -60,8 +40,9 @@ export default function RaceHistoryPanel({ lang, athleteId, initiallyOpen = fals
   const [confirmation, setConfirmation] = useState<{ kind: "claim" | "result"; id: number } | null>(null);
   const panelId = useId();
   const manualRef = useRef<HTMLDivElement>(null);
+  const [detailResult, setDetailResult] = useState<Result | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const emptyManual = { race_name: "", race_date: "", discipline: "trail", distance_km: "", elevation_gain_m: "", finish_time: "", is_dnf: false, rank_overall: "", total_overall: "" };
+  const emptyManual = { location: "", bib: "", result_url: "", user_note: "", rank_gender: "", total_gender: "", rank_age_group: "", total_age_group: "", race_name: "", race_date: "", discipline: "trail", distance_km: "", elevation_gain_m: "", finish_time: "", is_dnf: false, rank_overall: "", total_overall: "" };
   const [manual, setManual] = useState(emptyManual);
 
   const api = useCallback(async (path: string, init?: RequestInit) => {
@@ -76,28 +57,32 @@ export default function RaceHistoryPanel({ lang, athleteId, initiallyOpen = fals
   const load = useCallback(async () => {
     const path = readOnly ? `/api/coaching/athletes/${athleteId}/race-history` : "/api/race-history";
     try { setHistory(await api(path)); setError(""); }
-    catch (err) { setError(String(err)); }
+    catch (err) { setError(String(err)); throw err; }
   }, [api, athleteId, readOnly]);
 
   useEffect(() => {
     if (!open) return;
-    const timer = window.setTimeout(() => void load(), 0);
+    const timer = window.setTimeout(() => void load().catch(() => {}), 0);
     return () => window.clearTimeout(timer);
   }, [open, load]);
   useEffect(() => {
     if (!open || !history?.claims.some((claim) => claim.sync_status === "pending")) return;
-    const timer = window.setInterval(() => void load(), 5000);
+    const timer = window.setInterval(() => void load().catch(() => {}), 5000);
     return () => window.clearInterval(timer);
   }, [open, history?.claims, load]);
 
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true); setError("");
-    try { await action(); await load(); }
+    try {
+      await action();
+      try { await load(); }
+      catch { setError(t("Saved, but refresh failed. Retry.", "Đã lưu. Tải lại dữ liệu thất bại. Thử lại.")); }
+    }
     catch (err) { setError(err instanceof Error ? err.message : String(err)); }
     finally { setBusy(false); }
   };
   const changeResult = (id: number, changes: Record<string, unknown>) => run(() => api(`/api/race-history/results/${id}`, { method: "PATCH", body: JSON.stringify(changes) }));
-  const visible = (history?.results || []).filter((result) => result.selected && (filter === "all" || result.discipline === filter));
+  const visible = (history?.results || []).filter((result) => result.selected);
   const pendingVBM = (history?.results || []).filter((result) => result.source === "vbm" && !result.selected);
   const utmbIndexes = (history?.claims || []).flatMap((claim) => claim.source === "utmb" ? (claim.meta?.indexes || []) : [])
     .filter((value) => value.index && value.index > 0);
@@ -112,6 +97,9 @@ export default function RaceHistoryPanel({ lang, athleteId, initiallyOpen = fals
     setEditingId(result.id); setShowManual(true); setShowImport(false);
     setManual({ race_name: result.race_name, race_date: result.race_date, discipline: result.discipline,
       distance_km: String(result.distance_km), elevation_gain_m: result.elevation_gain_m == null ? "" : String(result.elevation_gain_m),
+      location: result.location || "", bib: result.bib || "", result_url: result.result_url || "", user_note: result.user_note || "",
+      rank_gender: result.rank_gender?.toString() || "", total_gender: result.total_gender?.toString() || "",
+      rank_age_group: result.rank_age_group?.toString() || "", total_age_group: result.total_age_group?.toString() || "",
       finish_time: result.finish_time_sec ? duration(result.finish_time_sec) : "", is_dnf: result.is_dnf,
       rank_overall: result.rank_overall == null ? "" : String(result.rank_overall), total_overall: result.total_overall == null ? "" : String(result.total_overall) });
     window.setTimeout(() => { manualRef.current?.scrollIntoView({ block: "nearest" }); manualRef.current?.querySelector("input")?.focus(); }, 0);
@@ -138,17 +126,27 @@ export default function RaceHistoryPanel({ lang, athleteId, initiallyOpen = fals
       </button>
       {open && <div id={panelId} className={styles.body}>
         {error && <div role="alert" className={styles.error}>{error}</div>}
+        {error && <button type="button" className={styles.button} onClick={() => void load().catch(() => {})}>{t("Retry", "Thử lại")}</button>}
         {!history && !error && <div className={styles.loading} role="status"><ArrowClockwise className={styles.spin} size={18} />{t("Loading race history…", "Đang tải lịch sử Race…")}</div>}
         {history && <>
+          <section className={styles.pbSection} aria-label={t("Road personal bests", "PR Road")}>
+            <h3>{t("Road personal bests", "PR Road")}</h3>
+            <div className={styles.pbGrid}>{(["5k", "10k", "hm", "fm"] as RoadKey[]).map((key) => {
+              const best = history.summary.road_prs ? history.summary.road_prs[key] : key === "hm" ? history.summary.road_hm_pr : key === "fm" ? history.summary.road_fm_pr : null;
+              return <button type="button" key={key} className={styles.pbItem} disabled={!best || !("result_id" in best) || !best.result_id} onClick={() => { if (best && "result_id" in best) setDetailResult(history.results.find(r => r.id === best.result_id) || null); }}>
+                <span>{key === "hm" ? "HM" : key === "fm" ? "FM" : key === "5k" ? "5 km" : "10 km"}</span>
+                <strong>{best ? duration(best.time_sec) : "—"}</strong>
+                <small>{best && "date" in best ? String(best.date) : best ? t("Recorded finish", "Kết quả đã lưu") : t("No confirmed result", "Chưa xác nhận")}</small>
+              </button>;
+            })}</div>
+          </section>
           {selectedCount > 0 && <div>
             <div className={styles.stats}>
               <div className={styles.stat}><strong>{history.summary.trail_finishes}</strong><small>{t("Trail finishes", "Hoàn thành Trail")}</small></div>
               <div className={styles.stat}><strong>{history.summary.ultras}</strong><small>{t("Ultra finishes", "Hoàn thành Ultra")}</small></div>
               <div className={styles.stat}><strong>{history.summary.longest_finish ? <>{history.summary.longest_finish.distance_km}<span> km</span></> : "—"}</strong><small>{t("Longest trail", "Trail dài nhất")}</small></div>
             </div>
-            {(history.summary.road_hm_pr || history.summary.road_fm_pr || utmbIndexes.length > 0) && <div className={styles.records} style={{ marginTop: 12 }}>
-              {history.summary.road_hm_pr && <span><Trophy size={14} />HM PR <b>{duration(history.summary.road_hm_pr.time_sec)}</b>{history.summary.road_hm_pr.stale && t("· over 2 years ago", "· hơn 2 năm")}</span>}
-              {history.summary.road_fm_pr && <span><Trophy size={14} />FM PR <b>{duration(history.summary.road_fm_pr.time_sec)}</b>{history.summary.road_fm_pr.stale && t("· over 2 years ago", "· hơn 2 năm")}</span>}
+            {utmbIndexes.length > 0 && <div className={styles.records} style={{ marginTop: 12 }}>
               {utmbIndexes.map((value, index) => <span key={`${value.piCategory}-${index}`}>UTMB {value.piCategory || ""} <b>{value.index}</b></span>)}
             </div>}
           </div>}
@@ -187,16 +185,14 @@ export default function RaceHistoryPanel({ lang, athleteId, initiallyOpen = fals
               <label className={styles.check}><input type="checkbox" checked={manual.is_dnf} onChange={(e) => setManual({ ...manual, is_dnf: e.target.checked })} />{t("Did not finish (DNF)", "Không hoàn thành (DNF)")}</label>
               <label className={styles.field}>{t("Overall rank", "Thứ hạng chung")}<input type="number" min="1" className={styles.input} placeholder={t("Optional", "Tùy chọn")} value={manual.rank_overall} onChange={(e) => setManual({ ...manual, rank_overall: e.target.value })} /></label>
               <label className={styles.field}>{t("Total finishers", "Tổng VĐV về đích")}<input type="number" min="1" className={styles.input} placeholder={t("Optional", "Tùy chọn")} value={manual.total_overall} onChange={(e) => setManual({ ...manual, total_overall: e.target.value })} /></label>
+              {([['location', 'Location', 'Địa điểm'], ['bib', 'Bib', 'Bib'], ['result_url', 'Result link', 'Link kết quả'], ['user_note', 'Race note', 'Ghi chú Race'], ['rank_gender', 'Gender rank', 'Hạng giới tính'], ['total_gender', 'Gender finishers', 'VĐV cùng giới'], ['rank_age_group', 'Age-group rank', 'Hạng nhóm tuổi'], ['total_age_group', 'Age-group finishers', 'VĐV nhóm tuổi']] as const).map(([key, en, vi]) => <label key={key} className={styles.field}>
+                {t(en, vi)}<input className={styles.input} value={manual[key]} type={key.startsWith('rank_') || key.startsWith('total_') ? 'number' : key === 'result_url' ? 'url' : 'text'} min={key.startsWith('rank_') || key.startsWith('total_') ? 1 : undefined} maxLength={key === 'location' ? 200 : key === 'bib' ? 100 : key === 'result_url' ? 2048 : key === 'user_note' ? 2000 : undefined} onChange={(event) => setManual({ ...manual, [key]: event.target.value })} />
+              </label>)}
+              <p className={styles.full}>{t("A result link supports your record; it does not verify your identity.", "Link hỗ trợ kết quả đã nhập; không xác minh danh tính.")}</p>
             </div>
             <div className={styles.actions}>
               <button type="button" className={styles.primary} disabled={busy || !manual.race_name.trim() || !manual.race_date || Number(manual.distance_km) <= 0 || (!manual.is_dnf && !parseDuration(manual.finish_time))} onClick={() => void run(async () => {
-                await api(editingId ? `/api/race-history/results/${editingId}` : "/api/race-history/results", { method: editingId ? "PATCH" : "POST", body: JSON.stringify({
-                  race_name: manual.race_name, race_date: manual.race_date, discipline: manual.discipline,
-                  distance_km: Number(manual.distance_km), elevation_gain_m: manual.elevation_gain_m ? Number(manual.elevation_gain_m) : null,
-                  finish_time_sec: manual.is_dnf ? null : parseDuration(manual.finish_time), is_dnf: manual.is_dnf,
-                  rank_overall: manual.rank_overall ? Number(manual.rank_overall) : null,
-                  total_overall: manual.total_overall ? Number(manual.total_overall) : null,
-                }) }); setShowManual(false); setEditingId(null); setManual(emptyManual);
+                await api(editingId ? `/api/race-history/results/${editingId}` : "/api/race-history/results", { method: editingId ? "PATCH" : "POST", body: JSON.stringify(manualResultPayload(manual, lang))  }); setShowManual(false); setEditingId(null); setManual(emptyManual);
               })}>{busy ? t("Saving…", "Đang lưu…") : editingId ? t("Save changes", "Lưu thay đổi") : t("Save result", "Lưu kết quả")}</button>
               <button type="button" className={styles.quiet} onClick={() => setShowManual(false)}>{t("Cancel", "Hủy")}</button>
             </div>
@@ -222,24 +218,27 @@ export default function RaceHistoryPanel({ lang, athleteId, initiallyOpen = fals
           </div>}
 
           {!readOnly && pendingVBM.length > 0 && <div className={styles.surface}>
-            <div className={styles.sectionHead}><h3>{t("Choose your VBM results", "Chọn kết quả VBM")}</h3><span className={styles.badge}>{pendingVBM.length}</span></div>
+            <div className={styles.sectionHead}><h3>{t("Confirm your VBM results", "Xác nhận kết quả VBM")}</h3><span className={styles.badge}>{pendingVBM.length}</span></div>
             <p>{t("Only selected races become part of your history.", "Chỉ Race đã chọn được thêm vào lịch sử.")}</p>
-            <div className={styles.selection}>{pendingVBM.map((result) => <label key={result.id} className={styles.check}>
-              <input type="checkbox" checked={false} disabled={busy} onChange={() => void changeResult(result.id, { selected: true })} />
-              <span><strong>{result.race_name}</strong><br /><span className={styles.muted}>{dateLabel(result.race_date)} · {result.distance_km} km · {duration(result.finish_time_sec)}{result.bib ? ` · bib ${result.bib}` : ""}</span></span>
-            </label>)}</div>
+            <div className={styles.selection}>{pendingVBM.map((result) => <div key={result.id} className={styles.pendingResult}>
+              <span><strong>{result.race_name}</strong><br /><span className={styles.muted}>{dateLabel(result.race_date)} · {formatKm(result.distance_km)} km · {duration(result.finish_time_sec)}{result.bib ? ` · bib ${result.bib}` : ""}</span></span>
+              <button type="button" className={styles.button} onClick={() => setDetailResult(result)}>{t("View details", "Xem chi tiết")}</button>
+              <button type="button" className={styles.primary} disabled={busy} onClick={() => void changeResult(result.id, { selected: true })}>{t("This is my result", "Của tôi")}</button>
+            </div>)}</div>
           </div>}
 
           {selectedCount === 0 ? <div className={styles.empty}><Mountains size={34} weight="duotone" /><strong>{t("Every race tells your story", "Mỗi Race, một dấu mốc")}</strong><p>{readOnly ? t("No race results have been added yet.", "Chưa có kết quả Race.") : t("Link UTMB or VBM, or add a finish yourself. Your history gives Coach more context for your training.", "Liên kết UTMB, VBM hoặc tự thêm kết quả để Coach hiểu kinh nghiệm của bạn.")}</p></div> : <div>
             <div className={styles.sectionHead}><h3>{t("Your races", "Các Race của bạn")} <span className={styles.muted}>({selectedCount})</span></h3>
-              <div className={styles.segmented} role="group" aria-label={t("Filter results", "Lọc kết quả")}>{(["all", "trail", "road"] as const).map((value) => <button type="button" key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{value === "all" ? t("All", "Tất cả") : value === "trail" ? "Trail" : "Road"}</button>)}</div>
+
             </div>
-            {visible.length === 0 && <p className={styles.notice}>{t("No results in this category yet.", "Chưa có kết quả ở loại Race này.")}</p>}
             <div className={styles.results}>{visible.map((result) => <details key={result.id} className={styles.result}>
               <summary><div className={styles.resultMain}><div className={styles.resultMeta}><span>{dateLabel(result.race_date)}</span><span className={styles.badge}>{result.source === "manual" ? t("Manual", "Nhập tay") : result.source.toUpperCase()}</span>{result.verified && <CheckCircle size={13} color="#147653" aria-label={t("Evidence matched", "Đã khớp")} />}{result.hidden && <span className={styles.badge}>{t("Excluded from text", "Ẩn khỏi lời Coach")}</span>}</div>
-                <h4>{result.race_name}</h4><div className={styles.resultNumbers}><strong>{duration(result.finish_time_sec)}</strong><span>{result.distance_km} km</span>{result.elevation_gain_m != null && <span>{result.elevation_gain_m.toLocaleString()} m D+</span>}</div>
+                <h4>{result.race_name}</h4><span className={styles.badge}>{result.discipline === "road" ? "Road" : "Trail"}</span><div className={styles.resultNumbers}><strong>{duration(result.finish_time_sec)}</strong><span>{formatKm(result.distance_km)} km</span>{result.elevation_gain_m != null && <span>{formatNumber(result.elevation_gain_m, lang)} m D+</span>}</div>
               </div><CaretDown className={styles.chevron} size={15} /></summary>
               <div className={styles.resultDetail}>
+                <button type="button" className={styles.button} onClick={() => setDetailResult(result)}>{t("View details", "Xem chi tiết")}</button>
+                {safeResultUrl(result.result_url) && <a className={styles.sourceLink} href={safeResultUrl(result.result_url)!} target="_blank" rel="noopener noreferrer">{t("View result source", "Xem nguồn kết quả")}</a>}
+                {result.location && <p>{result.location}</p>}
                 {result.rank_overall && <p>{t("Overall rank", "Thứ hạng chung")}: {result.rank_overall}{result.total_overall ? ` / ${result.total_overall}` : ""}</p>}
                 {result.verified && <p>{result.verification_methods.includes("bib") ? t("Bib matches a public VBM result; identity is not proven.", "Bib khớp kết quả VBM công khai; chưa xác minh danh tính.") : ""} {result.verification_methods.includes("coros") ? t("Matched a COROS activity.", "Khớp hoạt động COROS.") : ""}</p>}
                 {readOnly ? <p>{result.user_note || t("No note added.", "Chưa có ghi chú.")}</p> : <>
@@ -257,6 +256,7 @@ export default function RaceHistoryPanel({ lang, athleteId, initiallyOpen = fals
 
         </>}
       </div>}
+    {detailResult && <RaceDetailDialog key={detailResult.id} result={detailResult} lang={lang} athleteId={athleteId} onClose={() => setDetailResult(null)} onChanged={() => void load().catch(() => {})} onEdit={result => { setDetailResult(null); edit(result); }} />}
     </section>
   );
 }

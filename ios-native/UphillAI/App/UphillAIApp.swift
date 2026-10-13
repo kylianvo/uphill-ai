@@ -3,8 +3,17 @@ import SwiftUI
 
 @main
 struct UphillAIApp: App {
-    @State private var app = AppModel(tokenStore: KeychainTokenStore())
+    @State private var app = AppModel(tokenStore: Self.makeTokenStore())
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.en
+
+    @MainActor private static func makeTokenStore() -> any TokenStore {
+        #if DEBUG
+        if let token = AppEnvironment.uiTestSessionToken(
+            url: AppEnvironment.current().baseURL, environment: ProcessInfo.processInfo.environment
+        ) { return InMemoryTokenStore(token) }
+        #endif
+        return KeychainTokenStore()
+    }
 
     var body: some Scene {
         WindowGroup {

@@ -15,6 +15,7 @@ return real, non-empty responses.
 """
 
 import datetime
+import json
 import os
 import sys
 from urllib.parse import urlparse
@@ -181,6 +182,112 @@ def _seed_coach(athlete_id, active_plan_id, start, total_weeks):
     )
 
 
+def _seed_race_history(athlete_id: int) -> None:
+    from services import race_history
+
+    with db.engine.begin() as conn:
+        conn.execute(
+            text("DELETE FROM race_profile_claims WHERE user_id=:uid AND external_id='race-history-preview'"),
+            {"uid": athlete_id},
+        )
+        conn.execute(
+            text(
+                "DELETE FROM race_results WHERE user_id=:uid AND source='manual' AND source_key LIKE 'race-history-preview:%'"
+            ),
+            {"uid": athlete_id},
+        )
+        claim = dict(
+            conn.execute(
+                text("""
+            INSERT INTO race_profile_claims (user_id, source, external_id, display_name, sync_status)
+            VALUES (:uid, 'vbm', 'race-history-preview', 'Preview Runner', 'ok') RETURNING *
+        """),
+                {"uid": athlete_id},
+            )
+            .mappings()
+            .one()
+        )
+        for event, name, time, bib in [
+            ("FMM", "Preview City Marathon 03/12/2023", "03:39:14", "42"),
+            ("HMM", "Preview Half Marathon 19/11/2023", "01:44:04", "21"),
+        ]:
+            parent = {"event": event, "race_full_name": name, "mark": time, "bib": bib}
+            raw = {"race": name, "time": time, "bib": bib}
+            normal = race_history.normalize_vbm(parent, raw)
+            assert normal is not None
+            race_history._upsert_result(conn, claim, normal)
+        conn.execute(
+            text("""
+            INSERT INTO race_results (user_id, source, source_key, discipline, race_name,
+                race_date, distance_km, finish_time_sec, selected, is_dnf)
+            VALUES (:uid, 'manual', 'race-history-preview:trail', 'trail', 'Preview Trail Marathon',
+                '2024-09-01', 43, 22696, TRUE, FALSE)
+        """),
+            {"uid": athlete_id},
+        )
+
+        conn.execute(text("DELETE FROM kb_chunks WHERE domain='race_courses' AND source_label='race-history-preview'"))
+        for index, (suffix, name, year, dnf) in enumerate(
+            [
+                ("same", "Preview Review Mountain Trail", 2026, False),
+                ("different", "Preview Review Mountain Trail", 2024, False),
+                ("missing", "Preview Review Unknown Wilderness", 2024, False),
+                ("ambiguous", "Preview Review Twin Trail", 2024, False),
+                ("dnf", "Preview Review DNF Trail", 2024, True),
+                (
+                    "unknown-edition",
+                    "Preview Review Alpine Traverse With an Extra Long Race Name Across the National Park",
+                    2024,
+                    False,
+                ),
+            ]
+        ):
+            conn.execute(
+                text("""
+                INSERT INTO race_results (user_id,source,source_key,discipline,race_name,race_date,distance_km,
+                    elevation_gain_m,finish_time_sec,selected,is_dnf,rank_overall,total_overall,user_note)
+                VALUES (:uid,'manual',:key,'trail',:name,:date,50,2200,:time,TRUE,:dnf,30,:total,:note)
+            """),
+                dict(
+                    uid=athlete_id,
+                    key=f"race-history-preview:{suffix}",
+                    name=name,
+                    date=f"{year}-06-01",
+                    time=None if dnf else 22000 + index * 846,
+                    dnf=dnf,
+                    total=None if dnf else 100,
+                    note="Steady climbs, patient pacing.",
+                ),
+            )
+        for name, aliases in [
+            ("Preview Review Mountain Trail", []),
+            ("Preview Review Twin Trail North", ["Preview Review Twin Trail"]),
+            ("Preview Review Twin Trail South", ["Preview Review Twin Trail"]),
+            ("Preview Review Alpine Traverse With an Extra Long Race Name Across the National Park", []),
+        ]:
+            payload = dict(
+                race_name=name,
+                aliases=aliases,
+                race_type="trail",
+                edition_year=None if "Alpine Traverse" in name else 2026,
+                distances=[dict(label="50 km", distance_km=50, elevation_gain_m=2200)],
+                location="Mountain Town",
+                terrain=["Technical singletrack"],
+                key_climbs=["Summit climb"],
+                climate=dict(notes="Cool mornings; exposed ridges."),
+                runner_reviews=["Save energy for the final descent."],
+                source_urls=["https://example.org/course"],
+                verified_at="2026-10-13",
+            )
+            conn.execute(
+                text("""
+                INSERT INTO kb_chunks (domain,kind,title,content,payload,source_label,content_hash)
+                VALUES ('race_courses','race_profile',:name,:name,CAST(:payload AS JSONB),'race-history-preview',:hash)
+            """),
+                dict(name=name, payload=json.dumps(payload), hash=f"race-history-preview:{name}"),
+            )
+
+
 def main():
     today = datetime.date.today()
     this_monday = today - datetime.timedelta(days=today.weekday())
@@ -266,6 +373,7 @@ def main():
 
     print(f"Seeded {EMAIL} (user {uid}): active plan {plan_id}, older plan {older}. Week 1 starts {start}.")
     _seed_coach(uid, plan_id, start, total_weeks)
+    _seed_race_history(uid)
 
 
 if __name__ == "__main__":

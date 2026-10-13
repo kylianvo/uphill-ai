@@ -403,16 +403,31 @@ def set_verified_bib(claim_id: int, user_id: int, bib: str) -> None:
 def create_manual(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
     import uuid
 
-    params = dict(data)
+    params = {
+        key: None
+        for key in (
+            "location",
+            "bib",
+            "result_url",
+            "user_note",
+            "rank_gender",
+            "total_gender",
+            "rank_age_group",
+            "total_age_group",
+        )
+    }
+    params.update(data)
     params.update({"uid": user_id, "key": str(uuid.uuid4()), "raw": "{}"})
     with engine.begin() as conn:
         row = (
             conn.execute(
                 text("""
             INSERT INTO race_results (user_id, source, source_key, discipline, race_name, race_date,
-              distance_km, elevation_gain_m, finish_time_sec, is_dnf, rank_overall, total_overall, raw)
+              distance_km, elevation_gain_m, finish_time_sec, is_dnf, rank_overall, total_overall, location, bib, result_url, user_note,
+              rank_gender, total_gender, rank_age_group, total_age_group, raw)
             VALUES (:uid, 'manual', :key, :discipline, :race_name, :race_date,
-              :distance_km, :elevation_gain_m, :finish_time_sec, :is_dnf, :rank_overall, :total_overall, CAST(:raw AS jsonb))
+              :distance_km, :elevation_gain_m, :finish_time_sec, :is_dnf, :rank_overall, :total_overall, :location, :bib, :result_url, :user_note,
+              :rank_gender, :total_gender, :rank_age_group, :total_age_group, CAST(:raw AS jsonb))
             RETURNING *
         """),
                 params,
@@ -442,6 +457,13 @@ _EDITABLE_MANUAL = _EDITABLE_IMPORTED | {
     "is_dnf",
     "rank_overall",
     "total_overall",
+    "location",
+    "bib",
+    "result_url",
+    "rank_gender",
+    "total_gender",
+    "rank_age_group",
+    "total_age_group",
 }
 
 
@@ -882,27 +904,19 @@ def build_summary(user_id: int, as_of: date | None = None, prompt: bool = False)
     rows = _dedupe([r for r in list_results(user_id, False) if not (prompt and r["hidden"])])
     finished = [r for r in rows if not r["is_dnf"] and r["finish_time_sec"]]
     trail = [r for r in finished if r["discipline"] == "trail"]
-    road = [r for r in finished if r["discipline"] == "road"]
 
-    def road_pr(km: float) -> dict[str, Any] | None:
-        candidates = [r for r in road if abs(r["distance_km"] - km) < 0.5]
-        if not candidates:
-            return None
-        best = min(candidates, key=lambda r: r["finish_time_sec"])
-        return {
-            "result_id": best["id"],
-            "time_sec": best["finish_time_sec"],
-            "date": best["race_date"],
-            "stale": (today - date.fromisoformat(best["race_date"])).days > 730,
-        }
+    from services.race_personal_bests import compute_road_prs
+
+    prs = compute_road_prs(rows, today)
 
     return {
         "trail_finishes": len(trail),
         "trail_dnfs": sum(r["discipline"] == "trail" and r["is_dnf"] for r in rows),
         "ultras": sum(r["distance_km"] > 42.195 for r in trail),
         "longest_finish": max(trail, key=lambda r: r["distance_km"], default=None),
-        "road_hm_pr": road_pr(21.0975),
-        "road_fm_pr": road_pr(42.195),
+        "road_prs": prs,
+        "road_hm_pr": prs["hm"],
+        "road_fm_pr": prs["fm"],
         "last_race_date": rows[0]["race_date"] if rows else None,
         "races_12m": sum((today - date.fromisoformat(r["race_date"])).days <= 365 for r in rows),
         "recent": rows[:8],

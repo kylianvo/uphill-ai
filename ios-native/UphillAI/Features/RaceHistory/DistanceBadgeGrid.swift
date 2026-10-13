@@ -4,23 +4,24 @@ struct DistanceBadgeGrid: View {
     let badges: [DistanceBadge]
     var onSelectBadge: ((DistanceBadge) -> Void)? = nil
 
-    private let topGridColumns = [
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var topGridColumns: [GridItem] { dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [
         GridItem(.flexible(), spacing: 8),
         GridItem(.flexible(), spacing: 8),
         GridItem(.flexible(), spacing: 8)
-    ]
+    ] }
 
     var body: some View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
             HStack {
-                Text("DISTANCE BADGES & PERSONAL BESTS")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .tracking(0.6)
+                Text("Distance achievements")
+                    .font(UH.TextStyle.eyebrow)
                     .foregroundStyle(UH.Palette.muted)
                 Spacer()
                 let unlockedCount = badges.filter { $0.unlocked }.count
                 Text("\(unlockedCount)/\(badges.count) UNLOCKED")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(UH.TextStyle.eyebrow)
                     .foregroundStyle(unlockedCount > 0 ? UH.Palette.accentInk : UH.Palette.muted)
             }
 
@@ -58,8 +59,8 @@ struct DistanceBadgeGrid: View {
                         .foregroundStyle(badge.unlocked ? Color(hex: "#f59e0b") : UH.Palette.muted.opacity(0.5))
                 }
 
-                Text(badge.formattedPB)
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                Text(badge.unlocked ? "Completed" : "—")
+                    .font(UH.TextStyle.label)
                     .foregroundStyle(badge.unlocked ? UH.Palette.ink : UH.Palette.muted.opacity(0.6))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 2)
@@ -71,7 +72,7 @@ struct DistanceBadgeGrid: View {
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    Text(badge.unlocked ? L("PB Recorded") : L("Locked"))
+                    Text(badge.unlocked ? L("Latest finish") : L("Locked"))
                         .font(.system(size: 9.5))
                         .foregroundStyle(UH.Palette.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -85,6 +86,7 @@ struct DistanceBadgeGrid: View {
             )
         }
         .buttonStyle(.plain)
+        .disabled(!badge.unlocked || onSelectBadge == nil)
     }
 
     private func hundredMilesTile(_ badge: DistanceBadge) -> some View {
@@ -110,7 +112,7 @@ struct DistanceBadgeGrid: View {
                         Spacer()
                         if badge.unlocked {
                             Text("ULTRA PINNACLE")
-                                .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                                .font(UH.TextStyle.eyebrow)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(Color(hex: "#f59e0b").opacity(0.16), in: Capsule())
@@ -119,11 +121,11 @@ struct DistanceBadgeGrid: View {
                     }
 
                     if let race = badge.bestRaceName, badge.unlocked {
-                        Text("\(race) · PB \(badge.formattedPB)")
+                        Text("Latest finish: \(race)")
                             .font(UH.TextStyle.caption.weight(.semibold))
                             .foregroundStyle(UH.Palette.accentInk)
                     } else {
-                        Text(badge.unlocked ? "PB \(badge.formattedPB)" : L("Complete a 100-mile race to unlock"))
+                        Text(badge.unlocked ? L("Completed") : L("Complete a 100-mile race to unlock"))
                             .font(UH.TextStyle.caption)
                             .foregroundStyle(UH.Palette.secondary)
                     }
@@ -137,5 +139,6 @@ struct DistanceBadgeGrid: View {
             )
         }
         .buttonStyle(.plain)
+        .disabled(!badge.unlocked || onSelectBadge == nil)
     }
 }
