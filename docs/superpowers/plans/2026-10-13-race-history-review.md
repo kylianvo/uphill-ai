@@ -461,3 +461,5 @@ Run targeted Vitest, `npx tsc --noEmit`, and eslint on the touched TS/TSX files.
 | Real screenshots and bilingual web copy | B3/B4 evidence |
 
 After final edits run the targeted backend suites, native detail/model suites and race E2E, and web detail/component/E2E suites. Review branch changes against both Phase A and B contracts. New GET routes can deploy before clients, but deployment and native distribution require a separate user instruction. No automatic repair of the reported athlete account is included.
+
+User amendment (2026-10-13): show one confirmed race list without Trail/Road filters. Keep discipline labels and discipline-specific calculations; pending VBM confirmation stays separate. This supersedes earlier filter requirements.

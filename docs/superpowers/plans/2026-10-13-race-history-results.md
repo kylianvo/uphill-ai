@@ -457,3 +457,5 @@ Run the targeted npm test command, `npx tsc --noEmit`, and `npx eslint src/compo
 ## Phase A completion and handoff
 
 Run the touched backend unit/integration suites, native targeted tests/E2E, and web targeted tests once after final edits. Review the branch diff for unrelated changes and summarize evidence. No production database update, deployment, or native release is included. Phase A can ship independently; Phase B adds tappable detail and review on top of these contracts.
+
+User amendment (2026-10-13): show one confirmed race list without Trail/Road filters. Keep discipline labels and discipline-specific calculations; pending VBM confirmation stays separate. This supersedes earlier filter requirements.

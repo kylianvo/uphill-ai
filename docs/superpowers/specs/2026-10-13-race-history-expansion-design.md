@@ -159,3 +159,5 @@ type RaceDetail = {
 Phase A plan: `docs/superpowers/plans/2026-10-13-race-history-results.md`.
 
 Phase B plan: `docs/superpowers/plans/2026-10-13-race-history-review.md`. It consumes Phase A's metadata and road-PB contract. No automatic deployment is requested; backend additive changes can ship before new clients after review.
+
+User amendment (2026-10-13): show one confirmed race list without Trail/Road filters. Keep discipline labels and discipline-specific calculations; pending VBM confirmation stays separate. This supersedes earlier filter requirements.
