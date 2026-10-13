@@ -1,0 +1,16 @@
+{
+  "accepted": 1,
+  "deleted": 0,
+  "matching": {
+    "matched": 0,
+    "skipped_manual": 0,
+    "suggested": 0,
+    "unmatched": 1
+  },
+  "rejected": [
+    {
+      "external_id": "6F1C2E9A-0000-4000-8000-000000000002",
+      "reason": "end_time is not after start_time"
+    }
+  ]
+}

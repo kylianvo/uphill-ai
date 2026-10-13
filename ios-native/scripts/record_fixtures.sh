@@ -109,6 +109,13 @@ TOKEN=$(printf '%s' "$PREVIEW" | python3 -c 'import json,sys; print(json.load(sy
 get /api/coach/active-plan active_plan.json
 get /api/coach/recent-plans recent_plans.json
 
+# Apple Health: one plausible workout and one with end before start (lands in "rejected").
+curl -sf -X POST "$BASE/api/integrations/apple-health/sync" -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"workouts":[{"external_id":"6F1C2E9A-0000-4000-8000-000000000001","activity_type":"outdoor_run","start_time":"2026-10-12T06:00:00+07:00","end_time":"2026-10-12T07:02:00+07:00","duration_seconds":3720,"distance_km":10.4,"elevation_gain_m":412,"avg_hr":148,"max_hr":171,"calories":690,"source_name":"Apple Watch"},{"external_id":"6F1C2E9A-0000-4000-8000-000000000002","activity_type":"outdoor_run","start_time":"2026-10-12T08:00:00+07:00","end_time":"2026-10-12T07:00:00+07:00","duration_seconds":60}],"deleted_ids":[]}' \
+  | scrub > "$OUT/apple_health_sync.json"
+curl -sf "$BASE/api/integrations/status" -H "Authorization: Bearer $TOKEN" | scrub > "$OUT/integrations_status.json"
+
 echo "Recorded fixtures into $OUT"
 
 PLAN_ID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["plan"]["id"])' "$OUT/active_plan.json")

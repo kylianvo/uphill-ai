@@ -1,0 +1,15 @@
+{
+  "apple_health": {
+    "connected": true,
+    "enabled": true,
+    "last_sync_at": "2026-10-13T14:29:30.427957+00:00"
+  },
+  "coros": {
+    "connected": false,
+    "coros_running_level": null,
+    "coros_vo2max": null,
+    "last_sync_at": null,
+    "pace_zone_model": "5_zone",
+    "threshold_pace": null
+  }
+}

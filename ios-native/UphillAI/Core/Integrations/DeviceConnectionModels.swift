@@ -14,9 +14,12 @@ public struct CorosConnectionStatus: Codable, Sendable, Equatable {
 
 public struct DeviceConnectionStatus: Codable, Sendable, Equatable {
     public let coros: CorosConnectionStatus?
+    /// Absent on backends older than the Apple Health release.
+    public let appleHealth: AppleHealthConnectionStatus?
 
-    public init(coros: CorosConnectionStatus? = nil) {
+    public init(coros: CorosConnectionStatus? = nil, appleHealth: AppleHealthConnectionStatus? = nil) {
         self.coros = coros
+        self.appleHealth = appleHealth
     }
 
     public var isCorosConnected: Bool {
