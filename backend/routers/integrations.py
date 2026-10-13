@@ -578,17 +578,17 @@ MAX_DURATION_SECONDS = 48 * 3600
 
 
 class AppleHealthWorkout(BaseModel):
-    external_id: str = Field(min_length=1, max_length=64)
+    external_id: str
     activity_type: str
     start_time: datetime
     end_time: datetime
-    duration_seconds: float = Field(gt=0)
-    distance_km: float | None = Field(default=None, ge=0)
-    elevation_gain_m: float | None = Field(default=None, ge=0)
+    duration_seconds: float
+    distance_km: float | None = None
+    elevation_gain_m: float | None = None
     avg_hr: int | None = None
     max_hr: int | None = None
-    calories: int | None = Field(default=None, ge=0)
-    source_name: str | None = Field(default=None, max_length=100)
+    calories: int | None = None
+    source_name: str | None = None
 
 
 class AppleHealthSyncRequest(BaseModel):
@@ -601,8 +601,18 @@ class AppleHealthSyncRequest(BaseModel):
 def _implausible(w: AppleHealthWorkout, now: datetime) -> str | None:
     """Why a row from Apple Health can't be trusted, or None. Third-party apps write
     to Health too, so a bad row is skipped rather than failing the athlete's batch."""
+    if not 1 <= len(w.external_id) <= 64:
+        return "external_id must be 1-64 characters"
     if w.activity_type not in APPLE_HEALTH_TYPES:
         return "unsupported activity_type"
+    if w.duration_seconds <= 0:
+        return "duration must be positive"
+    if (
+        (w.distance_km is not None and w.distance_km < 0)
+        or (w.elevation_gain_m is not None and w.elevation_gain_m < 0)
+        or (w.calories is not None and w.calories < 0)
+    ):
+        return "negative distance, climb or calories"
     if w.start_time.tzinfo is None or w.end_time.tzinfo is None:
         return "start_time and end_time need a UTC offset"
     if w.end_time <= w.start_time:
@@ -637,7 +647,7 @@ def _to_canonical(w: AppleHealthWorkout) -> CanonicalActivity:
         max_hr=w.max_hr,
         avg_pace_sec_per_km=pace,
         calories=w.calories,
-        device_model=w.source_name,
+        device_model=w.source_name[:100] if w.source_name else None,
     )
 
 

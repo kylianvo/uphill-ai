@@ -135,6 +135,15 @@ def test_implausible_rows_are_rejected_not_fatal(fake):
     assert list(fake["stored"]) == ["ok"]
 
 
+def test_one_malformed_row_does_not_fail_the_batch(fake):
+    rows = [_row("ok"), _row("zero-duration", duration_seconds=0), _row("neg-distance", distance_km=-1)]
+    resp = client.post(SYNC, json={"workouts": rows})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["accepted"] == 1
+    assert {r["external_id"] for r in body["rejected"]} == {"zero-duration", "neg-distance"}
+
+
 def test_strength_without_distance_is_accepted(fake):
     row = _row("gym", activity_type="strength", distance_km=None, elevation_gain_m=None)
     body = client.post(SYNC, json={"workouts": [row]}).json()
