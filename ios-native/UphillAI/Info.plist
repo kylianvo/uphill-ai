@@ -48,7 +48,7 @@
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
 	<string>Uphill AI adds your scheduled workouts directly to your calendar.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Uphill AI reads your runs, hikes and strength workouts so it can mark planned sessions done and start your plan from your real weekly mileage.</string>
+	<string>Uphill AI reads your runs, hikes and strength workouts, plus resting heart rate, HRV and sleep, so it can mark sessions done, measure your weekly mileage and adjust training to how you're recovering.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Uphill AI does not write to Apple Health. It only reads your workouts to mark planned sessions done.</string>
 	<key>UIAppFonts</key>

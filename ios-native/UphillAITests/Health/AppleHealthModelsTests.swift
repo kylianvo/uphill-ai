@@ -33,4 +33,30 @@ struct AppleHealthModelsTests {
         #expect(!json.contains("distance_km"))
         #expect(!json.contains("plan_id"))
     }
+
+    @Test func dailyMetricsEncodeSnakeCase() throws {
+        var body = AppleHealthSyncBody(workouts: [], deletedIds: [], planId: nil, tzOffsetMinutes: 0)
+        body.dailyMetrics = [AppleHealthDailyMetricUpload(date: "2026-10-13", restingHr: 52, hrvSdnnMs: 61.4, sleepMinutes: nil)]
+        let json = try #require(String(data: JSONCoding.encoder.encode(body), encoding: .utf8))
+        #expect(json.contains(#""daily_metrics":[{"#))
+        #expect(json.contains(#""resting_hr":52"#))
+        #expect(json.contains(#""hrv_sdnn_ms":61.4"#))
+        #expect(!json.contains("sleep_minutes"))
+    }
+
+    @Test func syncResultDecodesDailyMetrics() throws {
+        let raw = #"{"accepted":0,"rejected":[],"deleted":0,"daily_metrics":{"accepted":2,"rejected":[{"date":"2026-10-01","reason":"no values"}]}}"#
+        let result = try JSONCoding.decoder.decode(AppleHealthSyncResult.self, from: Data(raw.utf8))
+        #expect(result.dailyMetrics?.accepted == 2)
+        #expect(result.dailyMetrics?.rejected.first?.reason == "no values")
+        #expect(result.dailyMetrics?.disabled == nil)
+    }
+
+    @Test func statusWithoutRecoveryFlagDecodesAsNil() throws {
+        let raw = #"{"apple_health":{"enabled":true,"connected":true,"last_sync_at":null}}"#
+        let status = try JSONCoding.decoder.decode(DeviceConnectionStatus.self, from: Data(raw.utf8))
+        #expect(status.appleHealth?.recoveryEnabled == nil)
+        let off = #"{"apple_health":{"enabled":true,"connected":true,"recovery_enabled":false}}"#
+        #expect(try JSONCoding.decoder.decode(DeviceConnectionStatus.self, from: Data(off.utf8)).appleHealth?.recoveryEnabled == false)
+    }
 }

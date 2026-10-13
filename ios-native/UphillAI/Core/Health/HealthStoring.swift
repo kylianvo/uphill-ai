@@ -13,7 +13,10 @@ protocol HealthStoring: Sendable {
     func requestAuthorization() async throws
     /// Workouts added or deleted since `anchor`; with no anchor, those starting after `start`.
     func workouts(after anchor: Data?, since start: Date) async throws -> HealthWorkoutPage
-    /// Registers background delivery; `onUpdate` runs when a workout is saved to Health.
+    /// Resting HR, HRV and asleep minutes per local day from `from` up to `to`, one row per day
+    /// with any value. Sleep is read from the evening before `from`, so the first night is complete.
+    func dailyMetrics(from: Date, to: Date) async throws -> [AppleHealthDailyMetricUpload]
+    /// Registers background delivery; `onUpdate` runs when a workout, sleep or resting HR is saved to Health.
     func startObserving(onUpdate: @escaping @Sendable () async -> Void) async throws
     func stopObserving() async
 }
@@ -25,6 +28,10 @@ protocol HealthAnchorStoring: Sendable {
     /// before the session is restored, so the sync identifies the athlete from this.
     var observingUserId: Int? { get }
     func setObservingUserId(_ id: Int?)
+    /// Whether this athlete's first 35 days of recovery data reached the server; after that
+    /// each sync re-sends only the last 3 days.
+    func metricsSeeded(for userId: Int) -> Bool
+    func setMetricsSeeded(_ seeded: Bool, for userId: Int)
 }
 
 /// UserDefaults is thread-safe; the class only holds it.
@@ -38,10 +45,15 @@ final class UserDefaultsAnchorStore: HealthAnchorStoring, @unchecked Sendable {
     func setAnchor(_ anchor: Data?, for userId: Int) { defaults.set(anchor, forKey: "UPHILL_HEALTH_ANCHOR_\(userId)") }
     var observingUserId: Int? { defaults.object(forKey: Self.observingKey) as? Int }
     func setObservingUserId(_ id: Int?) { defaults.set(id, forKey: Self.observingKey) }
+    func metricsSeeded(for userId: Int) -> Bool { defaults.bool(forKey: "appleHealthMetricsSeeded_\(userId)") }
+    func setMetricsSeeded(_ seeded: Bool, for userId: Int) {
+        defaults.set(seeded, forKey: "appleHealthMetricsSeeded_\(userId)")
+    }
 }
 
 /// Debug-only stand-in for HealthKit (Developer menu → Sample Health data): three workouts
-/// from this week on the first sync, nothing after.
+/// from this week on the first sync, nothing after, and 35 days of recovery data whose last
+/// five days (today included) dip in HRV, so the server marks them "low".
 struct SampleHealthStore: HealthStoring {
     static let defaultsKey = "UPHILL_SAMPLE_HEALTH"
     var isAvailable: Bool { true }
@@ -49,6 +61,28 @@ struct SampleHealthStore: HealthStoring {
     func requestAuthorization() async throws {}
     func startObserving(onUpdate: @escaping @Sendable () async -> Void) async throws {}
     func stopObserving() async {}
+
+    func dailyMetrics(from: Date, to: Date) async throws -> [AppleHealthDailyMetricUpload] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        var rows: [AppleHealthDailyMetricUpload] = []
+        var day = calendar.startOfDay(for: from)
+        while day <= to {
+            let daysAgo = calendar.dateComponents([.day], from: day, to: today).day ?? 0
+            if (0..<35).contains(daysAgo) {
+                let dip = (1...4).contains(daysAgo) || daysAgo == 0
+                rows.append(AppleHealthDailyMetricUpload(
+                    date: HealthDailyMetricMapper.dayKey(day, calendar: calendar),
+                    restingHr: 50 + daysAgo % 5,
+                    hrvSdnnMs: dip ? 48 + Double(daysAgo % 3) : 62 + Double(daysAgo % 5) - 2,
+                    sleepMinutes: 380 + (daysAgo * 17) % 81
+                ))
+            }
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return rows
+    }
 
     func workouts(after anchor: Data?, since start: Date) async throws -> HealthWorkoutPage {
         guard anchor == nil else { return HealthWorkoutPage(samples: [], deleted: [], anchor: anchor) }
