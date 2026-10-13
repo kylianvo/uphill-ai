@@ -93,13 +93,13 @@ struct DistanceBadge: Codable, Sendable, Identifiable, Equatable {
     }
 
     static func deriveBadges(from results: [RaceResult]) -> [DistanceBadge] {
-        let validResults = results.filter { $0.selected && !$0.hidden && !$0.isDnf && ($0.finishTimeSec ?? 0) > 0 }
+        let validResults = results.filter { $0.selected && !$0.isDnf && ($0.finishTimeSec ?? 0) > 0 }
 
         return DistanceCategory.allCases.map { category in
             let matching = validResults.filter { result in
                 DistanceCategory.match(distanceKm: result.distanceKm) == category
             }
-            if let best = matching.min(by: { ($0.finishTimeSec ?? Int.max) < ($1.finishTimeSec ?? Int.max) }),
+            if let best = matching.sorted(by: { $0.raceDate == $1.raceDate ? $0.id < $1.id : $0.raceDate > $1.raceDate }).first,
                let time = best.finishTimeSec {
                 return DistanceBadge(
                     category: category,
@@ -150,10 +150,14 @@ struct RaceClaim: Codable, Sendable, Identifiable, Equatable {
 struct PRTime: Codable, Sendable, Equatable {
     let timeSec: Int
     let stale: Bool
+    let resultId: Int?
+    let date: String?
 
-    init(timeSec: Int, stale: Bool = false) {
+    init(timeSec: Int, stale: Bool = false, resultId: Int? = nil, date: String? = nil) {
         self.timeSec = timeSec
         self.stale = stale
+        self.resultId = resultId
+        self.date = date
     }
 }
 
@@ -164,6 +168,7 @@ struct HistorySummary: Codable, Sendable, Equatable {
     let longestFinish: RaceResult?
     let roadHmPr: PRTime?
     let roadFmPr: PRTime?
+    let roadPrs: [String: PRTime?]?
 
     init(
         trailFinishes: Int = 0,
@@ -171,7 +176,8 @@ struct HistorySummary: Codable, Sendable, Equatable {
         ultras: Int = 0,
         longestFinish: RaceResult? = nil,
         roadHmPr: PRTime? = nil,
-        roadFmPr: PRTime? = nil
+        roadFmPr: PRTime? = nil,
+        roadPrs: [String: PRTime?]? = nil
     ) {
         self.trailFinishes = trailFinishes
         self.trailDnfs = trailDnfs
@@ -179,6 +185,7 @@ struct HistorySummary: Codable, Sendable, Equatable {
         self.longestFinish = longestFinish
         self.roadHmPr = roadHmPr
         self.roadFmPr = roadFmPr
+        self.roadPrs = roadPrs
     }
 }
 
@@ -202,6 +209,13 @@ struct RaceResult: Codable, Sendable, Identifiable, Equatable {
     let rankOverall: Int?
     let totalOverall: Int?
 
+    let location: String?
+    let resultUrl: String?
+    let rankGender: Int?
+    let totalGender: Int?
+    let rankAgeGroup: Int?
+    let totalAgeGroup: Int?
+
     init(
         id: Int,
         claimId: Int? = nil,
@@ -220,7 +234,13 @@ struct RaceResult: Codable, Sendable, Identifiable, Equatable {
         verified: Bool = false,
         verificationMethods: [String] = [],
         rankOverall: Int? = nil,
-        totalOverall: Int? = nil
+        totalOverall: Int? = nil,
+        location: String? = nil,
+        resultUrl: String? = nil,
+        rankGender: Int? = nil,
+        totalGender: Int? = nil,
+        rankAgeGroup: Int? = nil,
+        totalAgeGroup: Int? = nil
     ) {
         self.id = id
         self.claimId = claimId
@@ -240,6 +260,12 @@ struct RaceResult: Codable, Sendable, Identifiable, Equatable {
         self.verificationMethods = verificationMethods
         self.rankOverall = rankOverall
         self.totalOverall = totalOverall
+        self.location = location
+        self.resultUrl = resultUrl
+        self.rankGender = rankGender
+        self.totalGender = totalGender
+        self.rankAgeGroup = rankAgeGroup
+        self.totalAgeGroup = totalAgeGroup
     }
 
     var formattedDuration: String {
@@ -299,6 +325,15 @@ struct ManualResultPayload: Codable, Sendable {
     var rankOverall: Int?
     var totalOverall: Int?
 
+    var location: String?
+    var resultUrl: String?
+    var rankGender: Int?
+    var totalGender: Int?
+    var rankAgeGroup: Int?
+    var totalAgeGroup: Int?
+    var bib: String?
+    var userNote: String?
+
     init(
         raceName: String,
         raceDate: String,
@@ -308,7 +343,15 @@ struct ManualResultPayload: Codable, Sendable {
         finishTimeSec: Int? = nil,
         isDnf: Bool = false,
         rankOverall: Int? = nil,
-        totalOverall: Int? = nil
+        totalOverall: Int? = nil,
+        location: String? = nil,
+        resultUrl: String? = nil,
+        rankGender: Int? = nil,
+        totalGender: Int? = nil,
+        rankAgeGroup: Int? = nil,
+        totalAgeGroup: Int? = nil,
+        bib: String? = nil,
+        userNote: String? = nil
     ) {
         self.raceName = raceName
         self.raceDate = raceDate
@@ -319,5 +362,13 @@ struct ManualResultPayload: Codable, Sendable {
         self.isDnf = isDnf
         self.rankOverall = rankOverall
         self.totalOverall = totalOverall
+        self.location = location
+        self.resultUrl = resultUrl
+        self.rankGender = rankGender
+        self.totalGender = totalGender
+        self.rankAgeGroup = rankAgeGroup
+        self.totalAgeGroup = totalAgeGroup
+        self.bib = bib
+        self.userNote = userNote
     }
 }
