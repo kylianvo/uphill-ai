@@ -7,7 +7,15 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Uphill AI reads your runs, hikes and strength workouts so it can mark planned sessions done and start your plan from your real weekly mileage." } },
         "vi" : { "stringUnit" : { "state" : "translated", "value" : "Uphill AI đọc các buổi chạy, hike và strength của bạn để đánh dấu buổi đã xong trong plan và bắt đầu plan từ khối lượng tuần thực tế." } }
       }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Uphill AI does not write to Apple Health. It only reads your workouts to mark planned sessions done." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Uphill AI không ghi dữ liệu vào Apple Health. Ứng dụng chỉ đọc buổi tập để đánh dấu buổi đã xong trong plan." } }
+      }
     }
+
   },
   "version" : "1.0"
 }
