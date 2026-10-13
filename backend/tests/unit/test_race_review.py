@@ -126,3 +126,47 @@ def test_previous_finish_requires_safe_identity_and_comparable_distance():
     assert (
         module().previous_finish(current, [{**prior, "race_name": "Other course"}], {2: 10, 1: 10})["delta_sec"] == -846
     )
+
+
+@pytest.mark.parametrize(
+    "changes", [{"distances": None}, {"distances": ["50 km"]}, {"climate": "hot"}, {"results": None}]
+)
+def test_malformed_course_payload_shapes_do_not_raise(monkeypatch, changes):
+    review = module()
+    chunk = course(**changes)
+    monkeypatch.setattr(review, "score_race_course_chunks", lambda name, chunks: [(chunk, 100)])
+    context = review.select_course_context(result(), [chunk])
+    if "distances" in changes:
+        assert context["status"] == "missing"
+    elif "climate" in changes:
+        assert context["course"]["climate"] == {}
+    else:
+        assert review.historical_field(chunk["payload"], "50 km", 50, 2024) is None
+
+
+def test_list_payload_is_no_course():
+    review = module()
+    assert review.select_course_context(result(), [{"id": 1, "title": "x", "payload": []}])["status"] == "missing"
+
+
+def test_historical_field_whitelists_keys():
+    review = module()
+    payload = course(
+        results=[
+            {"year": 2024, "distance_label": "50 km", "distance_km": 50, "raw_csv": "x", "source": "s", "finishers": 9}
+        ]
+    )["payload"]
+    assert review.historical_field(payload, "50 km", 50, 2024) == {
+        "year": 2024,
+        "distance_label": "50 km",
+        "distance_km": 50,
+        "finishers": 9,
+    }
+
+
+def test_string_temperature_range_passes(monkeypatch):
+    review = module()
+    chunk = course(climate={"avg_temp_c": "24-32", "humidity_pct": "60-80"})
+    monkeypatch.setattr(review, "score_race_course_chunks", lambda name, chunks: [(chunk, 100)])
+    climate = review.select_course_context(result(), [chunk])["course"]["climate"]
+    assert climate == {"avg_temp_c": "24-32", "humidity_pct": "60-80"}

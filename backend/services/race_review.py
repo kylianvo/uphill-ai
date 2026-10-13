@@ -8,6 +8,21 @@ from services.race_history import normalize_name
 from services.race_matcher import _payload_as_dict, score_race_course_chunks
 
 
+def _course_payload(raw: Any) -> dict[str, Any]:
+    try:
+        payload = _payload_as_dict(raw)
+    except (TypeError, ValueError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _dicts(values: Any) -> list[dict[str, Any]]:
+    return [v for v in values if isinstance(v, dict)] if isinstance(values, list) else []
+
+
+_FIELD_KEYS = ("year", "distance_label", "distance_km", "finishers", "winner_time", "winner_time_women", "percentiles")
+
+
 def compatible_distance(result_km: float, entry_km: Any) -> bool:
     return (
         isinstance(entry_km, int | float)
@@ -25,12 +40,13 @@ def historical_field(
     label = distance_label.strip().casefold()
     matches = [
         row
-        for row in payload.get("results", [])
+        for row in _dicts(payload.get("results"))
         if row.get("year") == year
-        and (row.get("distance_label") or "").strip().casefold() == label
+        and isinstance(row.get("distance_label"), str)
+        and row["distance_label"].strip().casefold() == label
         and compatible_distance(distance_km, row.get("distance_km"))
     ]
-    return dict(matches[0]) if len(matches) == 1 else None
+    return {k: matches[0][k] for k in _FIELD_KEYS if k in matches[0]} if len(matches) == 1 else None
 
 
 def safe_source_url(value: Any) -> str | None:
@@ -62,13 +78,14 @@ def select_course_context(
 ) -> dict[str, Any]:
     context = dict(status="missing", candidates=[], course=None, message=None)
     scored = []
+    chunks = [chunk for chunk in chunks if _course_payload(chunk.get("payload"))]
     for chunk, score in score_race_course_chunks(result["race_name"], chunks):
-        payload = _payload_as_dict(chunk.get("payload"))
+        payload = _course_payload(chunk.get("payload"))
         if payload.get("race_type") != result["discipline"]:
             continue
         entries = [
             entry
-            for entry in payload.get("distances", [])
+            for entry in _dicts(payload.get("distances"))
             if compatible_distance(result["distance_km"], entry.get("distance_km"))
             and isinstance(entry.get("label"), str)
             and entry["label"].strip()
@@ -103,7 +120,7 @@ def select_course_context(
             candidates=[
                 {
                     "id": item[0]["id"],
-                    "race_name": _payload_as_dict(item[0]["payload"]).get("race_name") or item[0]["title"],
+                    "race_name": _course_payload(item[0]["payload"]).get("race_name") or item[0]["title"],
                     "distance_label": item[2]["label"],
                 }
                 for item in allowed
@@ -119,18 +136,18 @@ def select_course_context(
             raise ValueError("Course distance is ambiguous")
         context["message"] = "Course distance is ambiguous"
         return context
-    payload = _payload_as_dict(chunk.get("payload"))
+    payload = _course_payload(chunk.get("payload"))
     year = payload.get("edition_year")
     year = year if type(year) is int else None
     result_year = int(result["race_date"][:4])
     climate = {}
-    raw_climate = payload.get("climate") or {}
+    raw_climate = payload.get("climate") if isinstance(payload.get("climate"), dict) else {}
     for key in ("avg_temp_c", "humidity_pct", "season", "notes"):
         value = raw_climate.get(key)
         if key in ("season", "notes"):
             if isinstance(value, str):
                 climate[key] = value
-        elif key == "humidity_pct" and isinstance(value, str):
+        elif key in ("humidity_pct", "avg_temp_c") and isinstance(value, str):
             climate[key] = value
         elif _number(value) is not None:
             climate[key] = value
@@ -232,7 +249,7 @@ def build_detail(user_id: int, result_id: int, course_id: int | None = None) -> 
     field = None
     if context["course"] is not None:
         chosen = context["course"]
-        payload = _payload_as_dict(next(chunk["payload"] for chunk in chunks if chunk["id"] == chosen["id"]))
+        payload = _course_payload(next(chunk["payload"] for chunk in chunks if chunk["id"] == chosen["id"]))
         field = historical_field(payload, chosen["distance_label"], result["distance_km"], int(result["race_date"][:4]))
     pace = None
     if (
