@@ -21,18 +21,19 @@
 |---|---|---|
 | 1 | done, reviewed | 7255a54 |
 | 2 | done, reviewed (fix round 1: malformed rows go to `rejected`, never 422 the batch) | c72db7b, faa4129 |
-| 3 | done, reviewed; **golden eval still owed** (no GEMINI_API_KEY locally) | 0e0caaa |
+| 3 | done, reviewed; golden eval (scheduler) run on Mac: no regression. Branch fails the week-2 volume gate on 2 fixtures, `main` on the same 2 plus a third (Gemini variance; KB retrieval was unreachable in both runs) | 0e0caaa |
 | 4 | done, reviewed (minors: shared EmptyResponse, plainer rounding) | 8613f9e, 786ca13 |
 | 5 | done, reviewed (fix: sync never returns a stale/other athlete's run; tests pin anchor clearing and per-batch sign-out guard) | f4b3eed, da7c8c7 |
 | 6 | done, reviewed (fix: connected = this phone observing) | 04f1fc3, 4692fe8 |
 | 7 | done, reviewed | a129f24, e8221f2 |
 | 8 | done, reviewed (fix: error tone, disconnect guard, explainer lists source app) | 1ffe519, f354cf9 |
-| 9 | docs done; backend unit (1280) + activity persistence integration (12) pass; iOS build/tests/e2e/screenshots/Impeccable polish **deferred to Mac** | |
+| 9 | done on Mac: xcodegen no diff; iOS unit 463 pass; e2e Plan/Tools/Coach/Onboarding pass (RaceHistory skipped, needs another session's seeded servers); simulator screenshots; end-to-end by hand with sample Health data (sync, match, auto re-sync on launch, disconnect deletes rows); Impeccable polish; fix: matched runs labelled COROS | 24ab20a, 8f891ac |
 
 Decisions made while executing:
 - Integration tests used a throwaway Postgres (`postgresql://uphill:uphill_secret@localhost:5440/uphill_ai_test`); port 5433 on the owner's Mac belongs to another stack.
 - Fixtures for Task 4 were recorded only for the two new files against a scratch backend; never re-run the whole `record_fixtures.sh` on an empty DB.
 - Task 6 keeps the old `loadWatchVolume` closure; Task 7 switches it (build-order fix).
+- Mac session: this branch's backend ran on :8020 (8000/8014/8015 belonged to other sessions); UI tests pointed there for the run only. Apple Health marked with an SF Symbol heart in Health pink, not Apple's official icon artwork.
 - Deferred minors for the final review: `avg_hr > max_hr` unchecked; oversized `external_id` echoed in `rejected`; `deleted_ids` items unbounded in length; readiness query runs for Apple-only athletes (empty, harmless).
 
 ## Global Constraints
