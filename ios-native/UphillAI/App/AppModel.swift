@@ -156,6 +156,12 @@ final class AppModel {
     private(set) var lastSetup: PlanSetupViewModel?
 
     func makeSetup(mode: PlanSetupViewModel.Mode) -> PlanSetupViewModel {
+        // Onboarding treats "nothing found" as success; only a failed connect returns a message.
+        let connectHealth: (@MainActor () async -> String?)? = appleHealthEnabled ? { [weak self] in
+            guard let self else { return nil }
+            await self.connectAppleHealth()
+            return self.appleHealthConnected ? nil : self.appleHealthMessage
+        } : nil
         let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session, raceService: RaceMatchService(client: client),
                                        goalEstimateService: goalEstimateService, raceHistoryService: raceHistoryService,
                                        deviceService: deviceConnectionService,
@@ -164,11 +170,7 @@ final class AppModel {
                                                  ["coros", "apple_health"].contains(snapshot.weeklyKmSource) else { return nil }
                                            return snapshot
                                        },
-                                       connectAppleHealth: appleHealthEnabled ? { [weak self] in
-                                           guard let self else { return nil }
-                                           await self.connectAppleHealth()
-                                           return self.appleHealthConnected ? nil : self.appleHealthMessage
-                                       } : nil,
+                                       connectAppleHealth: connectHealth,
                                        appleHealthConnected: appleHealthConnected)
         lastSetup = setup
         return setup
