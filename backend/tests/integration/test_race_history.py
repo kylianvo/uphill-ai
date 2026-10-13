@@ -312,3 +312,20 @@ def test_reported_vbm_prs_require_confirmation_and_rejection_survives_sync(clien
     refreshed = client.get("/api/race-history", headers=h).json()
     assert refreshed["summary"]["road_prs"]["hm"] is None
     assert not next(row for row in refreshed["results"] if row["id"] == half["id"])["selected"]
+
+
+def test_local_preview_race_seed_is_scoped_and_idempotent(client, auth_headers):
+    import db
+    from scripts import seed_ios_preview
+    from services import race_history
+
+    seed = getattr(seed_ios_preview, "_seed_race_history", None)
+    assert seed is not None, "Preview seed does not include race-history fixtures"
+    retained = _manual(client, auth_headers["headers"], name="Keep this race")
+    seed(auth_headers["user_id"])
+    seed(auth_headers["user_id"])
+    results = race_history.list_results(auth_headers["user_id"])
+    assert len(results) == 10
+    assert len(db.get_kb_chunks("race_courses", kind="race_profile")) == 4
+    assert any(row["id"] == retained["id"] for row in results)
+    assert sum(row["source"] == "vbm" and not row["selected"] for row in results) == 2
