@@ -15,6 +15,22 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-14-apple-health-run-import-design.md`. Read it before starting any task.
 
+## Progress (update as tasks land)
+
+| Task | State | Commits |
+|---|---|---|
+| 1 | done, reviewed | 7255a54 |
+| 2 | done, reviewed (fix round 1: malformed rows go to `rejected`, never 422 the batch) | c72db7b, faa4129 |
+| 3 | done, reviewed; **golden eval still owed** (no GEMINI_API_KEY locally) | 0e0caaa |
+| 4 | done, **not yet reviewed** | 8613f9e |
+| 5–9 | not started | |
+
+Decisions made while executing:
+- Integration tests used a throwaway Postgres (`postgresql://uphill:uphill_secret@localhost:5440/uphill_ai_test`); port 5433 on the owner's Mac belongs to another stack.
+- Fixtures for Task 4 were recorded only for the two new files against a scratch backend; never re-run the whole `record_fixtures.sh` on an empty DB.
+- Task 6 keeps the old `loadWatchVolume` closure; Task 7 switches it (build-order fix).
+- Deferred minors for the final review: `avg_hr > max_hr` unchecked; oversized `external_id` echoed in `rejected`; `deleted_ids` items unbounded in length; readiness query runs for Apple-only athletes (empty, harmless).
+
 ## Global Constraints
 
 - Provider string is exactly `"apple_health"`, everywhere: DB, API, Swift.
@@ -40,6 +56,7 @@
   - Features depend on Core and DesignSystem only
 - Every new user-visible string ships in English and Vietnamese. Load the `uphill-ai-vietnamese-copy` skill before writing VI.
 - Every UI change gets an iOS Simulator screenshot in `ios-native/docs/screenshots/apple-health/`.
+- **UI design uses Impeccable** (owner decision 2026-10-14). Before writing any view in Tasks 7–8, load the `impeccable:impeccable` skill and design the screen with it. After the screenshots, run its `polish` + `harden` pass on them and apply the findings in SwiftUI. Its browser tools target web DOM, so feed it Simulator screenshots. Record the main findings and what you changed in the commit body. Content and behaviour still come from this plan; Impeccable decides layout, hierarchy, spacing and states.
 - Run `ios-native/scripts/test.sh 2>&1 | tail -40` once at the end of each iOS task, not before.
 
 ## Review Focus
@@ -1902,6 +1919,8 @@ git commit -m "feat(ios): HealthKit store, entitlements and Apple Health sync wi
   - `PlanSetupViewModel.appleHealthConnected: Bool`
   - `PlanSetupViewModel.connectAppleHealth() async -> String?`
 
+- [ ] **Step 0: Impeccable.** Load the `impeccable:impeccable` skill and use it to shape this task's screens before coding, per Global Constraints. At the screenshot step, run Impeccable `polish` + `harden` on the shots and apply its findings.
+
 - [ ] **Step 1: Update and add the tests.** In `PlanSetupViewModelTests.swift`:
   - Change the `make` helper parameter to `loadWatchVolume: (@Sendable () async -> WatchVolume?)? = nil` and add `connectAppleHealth: (@MainActor () async -> String?)? = nil`, passing both through.
   - Change the existing test at line 128 to `make(.newPlan, loadWatchVolume: { WatchVolume(weeklyKm: 41.6, weeklyKmSource: "coros") })`.
@@ -2056,6 +2075,8 @@ git commit -m "feat(ios): connect Apple Health in onboarding; volume label names
 **Interfaces:**
 - Consumes: `AppModel.appleHealthEnabled/Connected/LastSync/Syncing/Message`, `connectAppleHealth()`, `syncAppleHealthIfDue`, `disconnectAppleHealth()`, `loadAppleHealthStatus()` (Task 6); `SampleHealthStore.defaultsKey` (Task 5).
 - Produces: `AppleHealthRow(app: AppModel)`, `AppleHealthExplainerSheet(onContinue: () -> Void)`.
+
+- [ ] **Step 0: Impeccable.** Load the `impeccable:impeccable` skill and use it to shape this task's screens before coding, per Global Constraints. At the screenshot step, run Impeccable `polish` + `harden` on the shots and apply its findings.
 
 - [ ] **Step 1: Developer switch.** In `DeveloperMenu.swift` add `@AppStorage(SampleHealthStore.defaultsKey) private var sampleHealth = false`, and inside the `Form` after the backend caption:
 
