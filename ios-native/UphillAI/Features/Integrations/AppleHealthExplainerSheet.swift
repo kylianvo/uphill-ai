@@ -11,7 +11,7 @@ struct AppleHealthExplainerSheet: View {
                 VStack(alignment: .leading, spacing: UH.Space.section) {
                     Image(systemName: "heart.fill")
                         .font(.largeTitle)
-                        .foregroundStyle(UH.Palette.accentInk)
+                        .foregroundStyle(UH.Palette.healthPink)
                         .accessibilityHidden(true)
                     Text("Connect Apple Health")
                         .font(UH.TextStyle.screenTitle)

@@ -107,7 +107,7 @@ struct WatchChannelsList: View {
     private var appleHealthCard: some View {
         VStack(alignment: .leading, spacing: UH.Space.regular) {
             HStack(spacing: UH.Space.regular) {
-                channelBadge(symbol: "heart.fill", live: true)
+                channelBadge(symbol: "heart.fill", live: true, tint: UH.Palette.healthPink)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: "Apple Health").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
                     Text("Runs, hikes and strength sessions from your iPhone, Apple Watch or any app that saves to Health.")
@@ -155,12 +155,12 @@ struct WatchChannelsList: View {
         .trainingCard()
     }
 
-    private func channelBadge(symbol: String, live: Bool) -> some View {
+    private func channelBadge(symbol: String, live: Bool, tint: Color = UH.Palette.accentInk) -> some View {
         Image(systemName: symbol)
             .font(.title3.weight(.semibold))
-            .foregroundStyle(live ? UH.Palette.accentInk : UH.Palette.muted)
+            .foregroundStyle(live ? tint : UH.Palette.muted)
             .frame(width: 44, height: 44)
-            .background(live ? UH.Palette.accent.opacity(0.12) : UH.Palette.surface,
+            .background(live ? (tint == UH.Palette.accentInk ? UH.Palette.accent : tint).opacity(0.12) : UH.Palette.surface,
                         in: RoundedRectangle(cornerRadius: UH.Radius.control))
     }
 }

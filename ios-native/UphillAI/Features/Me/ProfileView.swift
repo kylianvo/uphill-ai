@@ -93,6 +93,7 @@ struct ProfileView: View {
                             AppleHealthRow(app: app)
                                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                                 .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden, edges: .top)
                         }
                     }
                 }

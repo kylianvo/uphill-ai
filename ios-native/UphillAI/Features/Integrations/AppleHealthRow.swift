@@ -10,7 +10,7 @@ struct AppleHealthRow: View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
             HStack(alignment: .top, spacing: UH.Space.small) {
                 Image(systemName: "heart.fill")
-                    .foregroundStyle(UH.Palette.accentInk)
+                    .foregroundStyle(UH.Palette.healthPink)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: "Apple Health").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)

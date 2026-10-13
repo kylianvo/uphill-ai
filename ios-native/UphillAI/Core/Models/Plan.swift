@@ -77,12 +77,13 @@ struct Workout: Codable, Sendable, Equatable, Identifiable {
     var matchedDistanceKm: Double?
     var matchedDurationSeconds: Double?
     var matchedAvgHr: Int?
+    var matchedSourceProvider: String?
 
     enum CodingKeys: String, CodingKey {
         case id, planId, weekNumber, dayOfWeek, phase, title, type, durationMinutes, distanceKm, targetZone
         case targetHrRange, targetPace, treadmillIncline, treadmillSpeed, elevationGainM, gradePercent
         case intervalReps, intervalRepValue, intervalRepUnit, walkIntervalValue, description, fuelingTip
-        case source, isCompleted, isMissed, approvedAt, rpe, notes, sessionSlot, isPriority, matchedActivityId, matchedDeviceModel, matchedDistanceKm, matchedDurationSeconds, matchedAvgHr
+        case source, isCompleted, isMissed, approvedAt, rpe, notes, sessionSlot, isPriority, matchedActivityId, matchedDeviceModel, matchedDistanceKm, matchedDurationSeconds, matchedAvgHr, matchedSourceProvider
     }
 
     init(from decoder: any Decoder) throws {
@@ -123,6 +124,7 @@ struct Workout: Codable, Sendable, Equatable, Identifiable {
         matchedDistanceKm = try c.decodeIfPresent(Double.self, forKey: .matchedDistanceKm)
         matchedDurationSeconds = try c.decodeIfPresent(Double.self, forKey: .matchedDurationSeconds)
         matchedAvgHr = try c.decodeIfPresent(Int.self, forKey: .matchedAvgHr)
+        matchedSourceProvider = try c.decodeIfPresent(String.self, forKey: .matchedSourceProvider)
     }
 
     /// The web defaults unknown days to Monday; so do we.
@@ -130,6 +132,9 @@ struct Workout: Codable, Sendable, Equatable, Identifiable {
     var isRest: Bool { type == "Rest" || durationMinutes == 0 }
     var isDone: Bool { isCompleted == 1 || (isCompleted != 0 && isMatched) }
     var isMissedFlag: Bool { isMissed == 1 }
+    /// Brand name for the matched activity's source; COROS was the only provider before Apple Health.
+    var matchedFromAppleHealth: Bool { matchedSourceProvider == "apple_health" }
+    var matchedSourceName: String { matchedFromAppleHealth ? "Apple Health" : "COROS" }
     var isMatched: Bool { matchedActivityId != nil || (matchedDistanceKm != nil && matchedDistanceKm! > 0) }
     var isStrengthOrME: Bool {
         let t = type.lowercased()
