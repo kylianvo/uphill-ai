@@ -198,7 +198,7 @@ struct PlanView: View {
                         if let app, let user, app.actingAsAthlete == nil {
                             SharpenChecklistCard(
                                 user: user,
-                                corosConnected: app.corosConnected,
+                                corosConnected: app.corosConnected || app.appleHealthConnected,
                                 raceHistoryLinked: !(app.raceHistory?.claims.isEmpty ?? true),
                                 onOpen: onSharpen
                             )

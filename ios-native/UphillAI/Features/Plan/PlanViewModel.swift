@@ -194,6 +194,12 @@ final class PlanViewModel {
         isSyncingWatch = true
         defer { isSyncingWatch = false }
         guard (try? await service.syncWatch(planID: plan.id)) != nil else { return }
+        await applyWatchMatches()
+    }
+
+    /// Reloads the plan and marks settled matches done. Shared by COROS and Apple Health syncs.
+    func applyWatchMatches() async {
+        guard athleteId == nil else { return }
         await load()
         let marked = await markMatchedWorkoutsDone()
         if marked > 0 {
