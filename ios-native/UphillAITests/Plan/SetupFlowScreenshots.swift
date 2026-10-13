@@ -41,7 +41,8 @@ struct SetupFlowScreenshots {
                 let watch = ScrollView {
                     VStack(alignment: .leading, spacing: UH.Space.section) {
                         Text("Connect your watch").font(UH.TextStyle.screenTitle)
-                        WatchChannelsList(connected: connected, available: true) { nil }
+                        WatchChannelsList(connected: connected, available: true, healthConnected: false, healthAvailable: true,
+                                          connect: { nil }, connectHealth: { nil })
                     }
                     .padding(UH.Space.section)
                 }

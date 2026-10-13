@@ -12,14 +12,16 @@ struct PlanSetupViewModelTests {
     private var now: Date { PlanCalendar.day(from: "2026-10-07", calendar: cal)! }
 
     private func make(_ mode: PlanSetupViewModel.Mode, service: FakeGenerationService = FakeGenerationService(),
-                      loadWatchVolume: (@Sendable () async -> Double?)? = nil)
+                      loadWatchVolume: (@Sendable () async -> WatchVolume?)? = nil,
+                      connectAppleHealth: (@MainActor () async -> String?)? = nil)
         -> (PlanSetupViewModel, FakeGenerationService, GenerationCenter, SessionStore) {
         let session = SessionStore(tokenStore: InMemoryTokenStore())
         let center = GenerationCenter(service: service, defaults: UserDefaults(suiteName: UUID().uuidString)!,
                                       makePoller: { JobPoller(service: $0, interval: .seconds(60), timeout: .seconds(120)) })
         let now = self.now
         let model = PlanSetupViewModel(mode: mode, user: nil, service: service, generation: center,
-                                       session: session, now: { now }, calendar: cal, loadWatchVolume: loadWatchVolume)
+                                       session: session, now: { now }, calendar: cal, loadWatchVolume: loadWatchVolume,
+                                       connectAppleHealth: connectAppleHealth)
         return (model, service, center, session)
     }
 
@@ -124,8 +126,38 @@ struct PlanSetupViewModelTests {
         #expect(model.draft.targetMinutes == 412)
     }
 
+    @Test func appleHealthVolumeIsLabelledAsAppleHealth() async {
+        let (model, _, _, _) = make(.newPlan, loadWatchVolume: { WatchVolume(weeklyKm: 52.4, weeklyKmSource: "apple_health") })
+        await model.prefillWatchVolume()
+        #expect(model.draft.currentWeeklyKm == 52)
+        #expect(model.watchVolumeSource == "apple_health")
+    }
+
+    @Test func connectingAppleHealthMarksItAndPrefills() async {
+        let (model, _, _, _) = make(.newPlan,
+                                    loadWatchVolume: { WatchVolume(weeklyKm: 60, weeklyKmSource: "apple_health") },
+                                    connectAppleHealth: { nil })
+        let error = await model.connectAppleHealth()
+        #expect(error == nil)
+        #expect(model.appleHealthConnected)
+        #expect(model.draft.currentWeeklyKm == 60)
+    }
+
+    @Test func appleHealthConnectErrorIsReturned() async {
+        let (model, _, _, _) = make(.newPlan, connectAppleHealth: { "Apple Health isn't available on this device." })
+        #expect(await model.connectAppleHealth() == "Apple Health isn't available on this device.")
+        #expect(!model.appleHealthConnected)
+    }
+
+    @Test func watchStepIsNotSkipOnceAppleHealthIsConnected() async {
+        let (model, _, _, _) = make(.onboarding, connectAppleHealth: { nil })
+        _ = await model.connectAppleHealth()
+        model.jump(to: .watch)
+        #expect(model.primaryTitle != L("Skip for now"))
+    }
+
     @Test func watchVolumePrefillsUntilTheAthleteTypes() async {
-        let (model, _, _, _) = make(.newPlan, loadWatchVolume: { 41.6 })
+        let (model, _, _, _) = make(.newPlan, loadWatchVolume: { WatchVolume(weeklyKm: 41.6, weeklyKmSource: "coros") })
         model.draft.currentWeeklyKm = 25
         await model.prefillWatchVolume()
         #expect(model.draft.currentWeeklyKm == 42)

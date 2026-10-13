@@ -161,9 +161,15 @@ final class AppModel {
                                        deviceService: deviceConnectionService,
                                        loadWatchVolume: { [client] in
                                            guard let snapshot = try? await client.send(Endpoint<WatchVolume>.get("/api/auth/fitness-snapshot")),
-                                                 snapshot.weeklyKmSource == "coros" else { return nil }
-                                           return snapshot.weeklyKm
-                                       })
+                                                 ["coros", "apple_health"].contains(snapshot.weeklyKmSource) else { return nil }
+                                           return snapshot
+                                       },
+                                       connectAppleHealth: appleHealthEnabled ? { [weak self] in
+                                           guard let self else { return nil }
+                                           await self.connectAppleHealth()
+                                           return self.appleHealthConnected ? nil : self.appleHealthMessage
+                                       } : nil,
+                                       appleHealthConnected: appleHealthConnected)
         lastSetup = setup
         return setup
     }

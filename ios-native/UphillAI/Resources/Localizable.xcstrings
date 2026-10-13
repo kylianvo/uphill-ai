@@ -13570,6 +13570,96 @@
           }
         }
       }
+    },
+    "Apple Health connected": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối Apple Health"
+          }
+        }
+      }
+    },
+    "Apple Health isn't available on this device.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Health không khả dụng trên thiết bị này."
+          }
+        }
+      }
+    },
+    "Connect Apple Health": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối Apple Health"
+          }
+        }
+      }
+    },
+    "Connected. I'll use your recent workouts to set your starting mileage.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối. Tôi sẽ dùng các buổi tập gần đây để đặt khối lượng khởi đầu."
+          }
+        }
+      }
+    },
+    "Couldn't disconnect. Check your connection and try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không ngắt kết nối được. Kiểm tra mạng rồi thử lại."
+          }
+        }
+      }
+    },
+    "Couldn't sync with Uphill. I'll try again next time you open the app.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không đồng bộ được với Uphill. Tôi sẽ thử lại lần sau khi bạn mở app."
+          }
+        }
+      }
+    },
+    "From Apple Health: %lld km a week over the last 4 full weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ Apple Health: %lld km/tuần, trung bình 4 tuần đầy đủ gần nhất"
+          }
+        }
+      }
+    },
+    "No workouts found. Check Settings → Health → Data Access & Devices → Uphill AI.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thấy buổi tập nào. Kiểm tra Cài đặt → Sức khỏe → Truy cập dữ liệu & thiết bị → Uphill AI."
+          }
+        }
+      }
+    },
+    "Runs, hikes and strength sessions from your iPhone, Apple Watch or any app that saves to Health.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy, hike và buổi Strength từ iPhone, Apple Watch hoặc app nào lưu vào Health."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

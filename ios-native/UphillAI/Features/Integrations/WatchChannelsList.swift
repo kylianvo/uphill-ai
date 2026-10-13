@@ -6,14 +6,20 @@ struct WatchChannelsList: View {
     let connected: Bool
     /// False when no device service is wired (previews, tests): the connect button hides.
     let available: Bool
+    let healthConnected: Bool
+    /// False when Apple Health can't be offered (no HealthKit, feature off, previews): its block hides.
+    let healthAvailable: Bool
     /// Runs the COROS connection; returns an error message to show, or nil.
     let connect: () async -> String?
+    /// Runs the Apple Health connection; returns an error message to show, or nil.
+    let connectHealth: () async -> String?
 
     @State private var isConnecting = false
     @State private var error: String?
+    @State private var isConnectingHealth = false
+    @State private var healthError: String?
 
     static let upcoming: [(name: String, symbol: String)] = [
-        ("Apple Health", "heart.fill"),
         ("Garmin", "watch.analog"),
         ("Suunto", "watch.analog"),
         ("Polar", "watch.analog"),
@@ -66,6 +72,8 @@ struct WatchChannelsList: View {
             }
             .trainingCard()
 
+            if healthAvailable { appleHealthCard }
+
             VStack(alignment: .leading, spacing: UH.Space.small) {
                 Text("Coming soon").font(UH.TextStyle.label).foregroundStyle(UH.Palette.secondary)
                 VStack(spacing: 0) {
@@ -94,6 +102,57 @@ struct WatchChannelsList: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    private var appleHealthCard: some View {
+        VStack(alignment: .leading, spacing: UH.Space.regular) {
+            HStack(spacing: UH.Space.regular) {
+                channelBadge(symbol: "heart.fill", live: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: "Apple Health").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                    Text("Runs, hikes and strength sessions from your iPhone, Apple Watch or any app that saves to Health.")
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                if healthConnected {
+                    Label("Connected", systemImage: "checkmark.circle.fill")
+                        .labelStyle(.iconOnly)
+                        .font(.title2)
+                        .foregroundStyle(UH.Palette.accentInk)
+                        .accessibilityLabel(L("Apple Health connected"))
+                }
+            }
+
+            if healthConnected {
+                Text("Connected. I'll use your recent workouts to set your starting mileage.")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.accentInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Button {
+                    Task {
+                        isConnectingHealth = true
+                        healthError = await connectHealth()
+                        isConnectingHealth = false
+                    }
+                } label: {
+                    if isConnectingHealth { ProgressView() } else { Text("Connect Apple Health") }
+                }
+                .buttonStyle(.uhPrimary)
+                .disabled(isConnectingHealth)
+                .accessibilityIdentifier("setup.connectAppleHealth")
+            }
+
+            if let healthError {
+                Text(healthError)
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .trainingCard()
     }
 
     private func channelBadge(symbol: String, live: Bool) -> some View {
