@@ -98,7 +98,7 @@ Each phase ends with an internal TestFlight build. A phase is done when its plan
 
 **Status on 2026-10-14** (checked against `main` at `afa2893`): Phases 0–3, 5 and 6 are in the app. Still open:
 
-- **Phase 4:** HealthKit import, WorkoutKit push, local reminders, APNs (app and backend), Today widget. Run matching works, but only for COROS. Apple Health is split into three sub-projects: A run import (`2026-10-14-apple-health-run-import-design.md`), B recovery metrics, C WorkoutKit push.
+- **Phase 4:** HealthKit import, WorkoutKit push, local reminders, APNs (app and backend), Today widget. Apple Health is split into three sub-projects: A run import (`2026-10-14-apple-health-run-import-design.md`) is built on branch `claude/apple-health-integration-fb471d-6nuvhe` (code only; iOS build, tests and screenshots pending on a Mac), so run matching now covers Apple Health as well as COROS; B recovery metrics and C WorkoutKit push remain.
 - **Phase 7:** `DELETE /api/auth/account` and the in-app row (App Store blocker), About / Terms / Privacy screens, product analytics, term explainers, accessibility audit, dark mode decision, App Store listing and privacy labels, retiring Capacitor iOS (`frontend/ios`). Vietnamese is done (#112).
 
 Order rationale: Plan core first because it is what athletes open daily. Chat before Watch because chat only needs an existing endpoint, while Watch/Health need new backend endpoints and Apple entitlements review.

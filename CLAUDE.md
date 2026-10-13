@@ -42,6 +42,8 @@ Knowledge Hub cards (`knowledge_cards` table, distinct from `kb_chunks`) come fr
 
 **Training venues** (`services/training_venues.py`): plans carry `training_environment` (home terrain) plus `mountain_days` (weekdays with hill/trail access, JSON text), `stair_access` and `treadmill_max_incline` (default 15). They become rule 5 "TRAINING VENUES" of the plan prompt (one venue ladder per session type) and post-processing moves hill sessions off days with no venue; edited in Schedule Preferences on web (`TrainingVenueFields`) and iOS (`TrainingVenueSection`).
 
+**Apple Health** (spec `docs/superpowers/specs/2026-10-14-apple-health-run-import-design.md`): the iOS app reads runs, hikes/stairs (`hike`) and strength workouts from HealthKit (any app's, read-only, 12-week first import, background delivery) and posts summaries to `POST /api/integrations/apple-health/sync`; rows land in `activities` as `source_provider='apple_health'` and go through the same duplicate check and matcher as COROS. `fitness_snapshot` takes measured volume from whichever device provider synced most recently. `APPLE_HEALTH_ENABLED=false` hides it without an app release. Routes and HR series never leave the phone.
+
 Treadmill `treadmill_speed`/`treadmill_incline` on workouts are TEXT range strings ("8.1-9.2" kph, "2-4" %) derived deterministically from each workout's own `target_pace` in `PlanGenerator.resolve_treadmill_settings` — never the AI's raw numbers.
 
 Auth uses JWT sessions stored in the `sessions` table. Google and Facebook OAuth are supported alongside email/password. `mock-login` endpoint only exists in non-production.

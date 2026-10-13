@@ -22,8 +22,12 @@
 | 1 | done, reviewed | 7255a54 |
 | 2 | done, reviewed (fix round 1: malformed rows go to `rejected`, never 422 the batch) | c72db7b, faa4129 |
 | 3 | done, reviewed; **golden eval still owed** (no GEMINI_API_KEY locally) | 0e0caaa |
-| 4 | done, **not yet reviewed** | 8613f9e |
-| 5–9 | not started | |
+| 4 | done, reviewed (minors: shared EmptyResponse, plainer rounding) | 8613f9e, 786ca13 |
+| 5 | done, reviewed (fix: sync never returns a stale/other athlete's run; tests pin anchor clearing and per-batch sign-out guard) | f4b3eed, da7c8c7 |
+| 6 | done, reviewed (fix: connected = this phone observing) | 04f1fc3, 4692fe8 |
+| 7 | done, reviewed | a129f24, e8221f2 |
+| 8 | done, reviewed (fix: error tone, disconnect guard, explainer lists source app) | 1ffe519, f354cf9 |
+| 9 | docs done; backend unit (1280) + activity persistence integration (12) pass; iOS build/tests/e2e/screenshots/Impeccable polish **deferred to Mac** | |
 
 Decisions made while executing:
 - Integration tests used a throwaway Postgres (`postgresql://uphill:uphill_secret@localhost:5440/uphill_ai_test`); port 5433 on the owner's Mac belongs to another stack.
