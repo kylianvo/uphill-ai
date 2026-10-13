@@ -38,7 +38,7 @@ B and C reuse A's entitlement, permission flow and the Apple Health connection.
 {
   "workouts": [{
     "external_id": "<HKWorkout UUID>",
-    "activity_type": "outdoor_run" | "indoor_run" | "gps_cardio" | "gym_cardio" | "strength",
+    "activity_type": "outdoor_run" | "indoor_run" | "hike" | "strength",
     "start_time": "<ISO 8601 with offset>",
     "end_time": "<ISO 8601 with offset>",
     "duration_seconds": 3720,
@@ -52,10 +52,10 @@ B and C reuse A's entitlement, permission flow and the Apple Health connection.
   "plan_id": 123,                 // optional, matching window
   "tz_offset_minutes": 420        // optional, passed to matching
 }
-→ { "stored": n, "skipped_duplicates": n, "rejected": [{"external_id", "reason"}], "deleted": n, "matching": {...} }
+→ { "accepted": n, "rejected": [{"external_id", "reason"}], "deleted": n, "matching": {...} | null }
 ```
 
-- Pydantic validates each row. Implausible rows (pace under 2:30 /km, HR over 250, duration over 48 h, end before start) go to `rejected`; the rest are stored. One bad row never blocks a batch.
+- Pydantic checks field types. Rows with an unsupported `activity_type` or implausible values (pace under 2:30 /km, HR outside 25–250, duration over 48 h, end before start, no UTC offset, start more than a day in the future) go to `rejected`; the rest are stored. One bad row never blocks a batch.
 - Each row goes through `db.upsert_activity` with `provider = "apple_health"`. It is idempotent on `(user, provider, external_id)`, and `_find_duplicate` links copies of a COROS run.
 - `deleted_ids`: new `db.delete_activities_by_external_ids(user_id, "apple_health", ids)`. It deletes those rows. The schema already handles what pointed at them: a workout's `matched_activity_id` and another activity's `duplicate_of` are both `ON DELETE SET NULL`, and the following matching run re-evaluates the affected workouts.
 - On the first sync, create the connection with `db.save_connection(user_id, "apple_health", access_token_enc=None, refresh_token_enc=None, token_expires_at=None, scopes="read")` (the token columns are nullable; the function signature stays as it is). Every successful sync calls `db.mark_connection_synced`, then `matching_runner.match_user` over the plan window (`_resolve_plan_window`) or the last 30 days. A matching failure is logged; the import still returns success.
@@ -71,9 +71,10 @@ Today `services/fitness_snapshot.py` reads only COROS (`PROVIDER = "coros"`), an
 
 - `fitness_snapshot.build` picks the connected device provider with the latest `last_sync_at` among `("coros", "apple_health")`. It uses that provider's connection for `last_sync_at` and its first activity for `first_activity_at`. Weekly sums already exclude `duplicate_of` rows, so a run seen through both providers counts once.
 - `weekly_km_source` can be `"coros"`, `"apple_health"` or `"self_reported"`. The prompt label map gains `"apple_health": "Apple Health"`.
+- iOS plan setup prefills weekly km from either device source and says where it came from ("From Apple Health: …" or "From your COROS: …"). The web prefill stays COROS-only: the web has no Apple Health connect, and the backend uses measured volume anyway when the form is empty.
 - `plan_generator.py` and the vert condition check "source is a device" (`in DEVICE_SOURCES`) instead of `== "coros"`.
 - Threshold pace from a COROS assessment stays COROS-only.
-- This changes a value inside the `plan_generation` prompt, not the template. Run `scripts/golden_eval.py compare --service plan` once; COROS users must show no difference.
+- This changes a value inside the `plan_generation` prompt, not the template. Run `scripts/golden_eval.py compare --service scheduler` once; COROS users must show no difference.
 
 ### Schema
 
@@ -93,12 +94,10 @@ No new tables or columns. `activities`, `athlete_connections` and `daily_metrics
 - **`HealthStoring`**: a protocol over `HKHealthStore` (request authorization, anchored workout query, per-workout statistics, route locations, observer and background delivery). `HealthKitStore` is the real implementation; tests use a fake.
 - **`HealthWorkoutMapper`**: a pure function from a plain `HealthWorkoutSample` struct to the upload DTO.
   - `.running` → `outdoor_run`, or `indoor_run` when `HKMetadataKeyIndoorWorkout` is true. We don't guess `trail_run`: Health has no trail flag.
-  - `.hiking` → `gps_cardio`
-  - `.stairClimbing`, `.stairs` → `gym_cardio`
+  - `.hiking`, `.stairClimbing`, `.stairs` → `hike`. COROS uses `hike` for hikes too. The weekly-volume query counts `hike` as on-foot, and the matcher scores it as an endurance session. `gps_cardio` and `gym_cardio` would be wrong: the matcher treats both as strength (`services/matching/scorer.py`), and volume ignores them.
   - `.traditionalStrengthTraining`, `.functionalStrengthTraining` → `strength`
   - Distance: `statistics(for: distanceWalkingRunning).sumQuantity()`. HR: average and max from `statistics(for: heartRate)`. Calories: active energy sum.
   - Vert: `HKMetadataKeyElevationAscended` when present. Otherwise route altitudes, summing only climbs over a 3 m threshold so GPS noise doesn't inflate it. Otherwise nil.
-  - The plan checks that `gps_cardio` and `gym_cardio` match hike and stair workouts in `services/matching`. If they don't, the plan adjusts the mapping rather than the matcher.
 - **`AppleHealthSyncService`** (actor):
   - Runs an anchored query from the stored anchor. With no anchor, it reads from 12 weeks ago.
   - Uploads new workouts and deleted UUIDs in batches of up to 500.
@@ -117,7 +116,7 @@ No new tables or columns. `activities`, `athlete_connections` and `daily_metrics
 - **Onboarding watch step** (`WatchChannelsList`): Apple Health moves from `upcoming` to a live channel with its own Connect button, so the starting mileage can come from Health.
 - **Matching:** `WatchMatchSheet` and the run cards are unchanged. Apple Health runs show `device_model` ("Apple Watch", "Garmin Connect").
 - Every new string ships in English and Vietnamese (`uphill-ai-vietnamese-copy` skill).
-- **Debug only:** the developer menu gets "Seed sample workouts", which saves three synthetic workouts (run, hike, strength) to the Simulator's Health store, because the Simulator has none.
+- **Debug only:** the developer menu gets a "Sample Health data" switch. When it's on, the app uses a fake `HealthStoring` that returns three synthetic workouts (run, hike, strength) instead of HealthKit. Writing real samples would need the Health write permission, which A doesn't request.
 
 ## Privacy and App Review
 
