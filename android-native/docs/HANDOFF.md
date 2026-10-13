@@ -34,7 +34,10 @@ Do not claim exact font rendering or complete UI parity.
 - Added eighth UI case: schedule edit enables changed-only rebuild and confirms it.
   Post-design eight-case rerun remains outstanding.
 - Final release check initially failed on Media3 zoom API opt-in; the opt-in was added.
-  Rerun is `/tmp/uphill-android-handoff-release.log`: inspect final exit.
+  `/tmp/uphill-android-handoff-release.log` then passed lint, 60 release JVM tests and
+  minified signed build (2m6s). Script verified certificate/package/version and copied
+  `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk` (26,992,568 bytes). Release device smoke
+  test, debug test rerun and eight UI flows after the final design pass remain pending.
   Earlier certificate inspection matched Capacitor exactly. Script now handles build-tools37
   `V2 Signer` output as well as older `Signer #1` output.
 - Screenshots in docs/screenshots PRECEDE latest design changes. plan-en.png is a loading
