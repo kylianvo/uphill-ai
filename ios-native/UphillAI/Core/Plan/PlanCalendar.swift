@@ -88,3 +88,108 @@ enum PlanCalendar {
         return calendar.isDate(date, inSameDayAs: tomorrow) ? "TOMORROW" : nil
     }
 }
+
+extension CalendarDayCell {
+    /// Non-rest workouts, in plan order.
+    var sessions: [Workout] { workouts.filter { !$0.isRest } }
+    var km: Double { sessions.reduce(0) { $0 + ($1.distanceKm ?? 0) } }
+}
+
+extension Workout {
+    /// Weight behind a calendar bar's height: km, else minutes at a flat ~10 min/km so
+    /// strength and cross sessions still show. shortcut: no real effort model, add one if non-run load must rank.
+    var calendarLoad: Double { (distanceKm ?? 0) > 0 ? distanceKm! : durationMinutes / 10 }
+}
+
+/// One Monday-to-Sunday row of the month grid.
+struct CalendarWeekRow: Identifiable, Equatable, Sendable {
+    let cells: [CalendarDayCell]
+    var id: String { cells[0].id }
+    /// Plan week, shared by all seven days; nil outside the plan.
+    var weekNumber: Int? { cells[0].weekNumber }
+    var km: Double { cells.reduce(0) { $0 + $1.km } }
+    var containsToday: Bool { cells.contains(where: \.isToday) }
+}
+
+/// A month of the plan laid out for the calendar grid, with the totals its header and bars need.
+struct CalendarMonth: Equatable, Sendable {
+    let weeks: [CalendarWeekRow]
+    let isCurrentMonth: Bool
+    /// Month-only totals (days spilling in from a neighbouring month are not counted).
+    let km: Double
+    let hours: Double
+    let sessionsDone: Int
+    let sessionsTotal: Int
+    /// Plan-wide scale for the bars, so heights compare across months: the biggest single session
+    /// (race day left out, or one event flattens every training day) and the biggest week.
+    let maxSessionLoad: Double
+    let maxWeekKm: Double
+
+    static func make(month: Date, plan: Plan?, workouts: [Workout], now: Date,
+                     calendar: Calendar = PlanCalendar.calendar) -> CalendarMonth {
+        let first = calendar.date(from: calendar.dateComponents([.year, .month], from: month))!
+        let dayCount = calendar.range(of: .day, in: .month, for: first)!.count
+        let last = calendar.date(byAdding: .day, value: dayCount - 1, to: first)!
+        let start = PlanCalendar.monday(of: first, calendar: calendar)
+        let end = calendar.date(byAdding: .day, value: 6, to: PlanCalendar.monday(of: last, calendar: calendar))!
+
+        let weekOne = plan.flatMap { PlanCalendar.weekOneMonday(plan: $0, workouts: workouts, calendar: calendar) }
+        let lastWeek = plan.map { max($0.totalWeeks, workouts.map(\.weekNumber).max() ?? 0) } ?? 0
+        var byDay: [String: [Workout]] = [:]
+        if let weekOne {
+            for w in workouts {
+                guard let d = calendar.date(byAdding: .day, value: (w.weekNumber - 1) * 7 + w.weekday.offset, to: weekOne) else { continue }
+                byDay[PlanCalendar.ymd(d, calendar: calendar), default: []].append(w)
+            }
+        }
+        let raceDay = PlanCalendar.day(from: plan?.raceDate, calendar: calendar)
+
+        var rows: [CalendarWeekRow] = []
+        var cells: [CalendarDayCell] = []
+        var day = start
+        while day <= end {
+            var week: Int?
+            if let weekOne {
+                let days = calendar.dateComponents([.day], from: weekOne, to: day).day ?? 0
+                let n = Int((Double(days) / 7).rounded(.down)) + 1
+                week = (1...max(lastWeek, 1)).contains(n) ? n : nil
+            }
+            cells.append(CalendarDayCell(
+                date: day,
+                isCurrentMonth: calendar.isDate(day, equalTo: first, toGranularity: .month),
+                isToday: calendar.isDate(day, inSameDayAs: now),
+                isRaceDay: raceDay.map { calendar.isDate(day, inSameDayAs: $0) } ?? false,
+                weekNumber: week,
+                workouts: byDay[PlanCalendar.ymd(day, calendar: calendar)] ?? []
+            ))
+            if cells.count == 7 { rows.append(CalendarWeekRow(cells: cells)); cells = [] }
+            day = calendar.date(byAdding: .day, value: 1, to: day)!
+        }
+
+        let raceKey = raceDay.map { PlanCalendar.ymd($0, calendar: calendar) }
+        var weekKm: [Int: Double] = [:]
+        for w in workouts where !w.isRest { weekKm[w.weekNumber, default: 0] += w.distanceKm ?? 0 }
+
+        let inMonth = rows.flatMap(\.cells).filter(\.isCurrentMonth).flatMap(\.sessions)
+        return CalendarMonth(
+            weeks: rows,
+            isCurrentMonth: calendar.isDate(now, equalTo: first, toGranularity: .month),
+            km: inMonth.reduce(0) { $0 + ($1.distanceKm ?? 0) },
+            hours: inMonth.reduce(0) { $0 + $1.durationMinutes } / 60,
+            sessionsDone: inMonth.filter(\.isDone).count,
+            sessionsTotal: inMonth.count,
+            maxSessionLoad: byDay.filter { $0.key != raceKey }.values.flatMap { $0 }.filter { !$0.isRest }.map(\.calendarLoad).max() ?? 0,
+            maxWeekKm: weekKm.values.max() ?? 0
+        )
+    }
+}
+
+extension PlanCalendar {
+    /// The date whose month the grid opens on: today when it falls inside `week`, else that week's Thursday
+    /// (the day that decides which month a week mostly belongs to).
+    static func focusDate(week: Int, plan: Plan, workouts: [Workout], now: Date, calendar: Calendar = calendar) -> Date {
+        guard let monday = date(week: week, weekday: .monday, plan: plan, workouts: workouts, calendar: calendar) else { return now }
+        let days = calendar.dateComponents([.day], from: monday, to: calendar.startOfDay(for: now)).day ?? -1
+        return (0...6).contains(days) ? now : calendar.date(byAdding: .day, value: 3, to: monday)!
+    }
+}

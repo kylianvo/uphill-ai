@@ -1,262 +1,369 @@
 import SwiftUI
 
+/// Month view of the plan. Each week is a row that reads like a small bar chart: one bar per
+/// session (height = distance, colour = effort, fill = done / planned / missed) on a shared
+/// baseline, with the week's km at the end of the row.
 struct PlanCalendarGridView: View {
     let model: PlanViewModel
-    let onSelectDay: (Date, Int) -> Void
-    @State private var viewMonth: Date = Date()
+    let onSelectDay: (MoveTarget) -> Void
+    let onOpenWeek: (Int) -> Void
+    @State private var viewMonth: Date
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let dayHeaders = ["M", "T", "W", "T", "F", "S", "S"]
+    private static let numberZone: CGFloat = 24
+    private static let barZone: CGFloat = 26
+    private static let rowHeight: CGFloat = 62
+    private static let totalWidth: CGFloat = 44
+
+    init(model: PlanViewModel, onSelectDay: @escaping (MoveTarget) -> Void, onOpenWeek: @escaping (Int) -> Void) {
+        self.model = model
+        self.onSelectDay = onSelectDay
+        self.onOpenWeek = onOpenWeek
+        _viewMonth = State(initialValue: model.calendarFocusDate)
+    }
 
     var body: some View {
+        let month = model.calendarMonth(viewMonth)
         VStack(alignment: .leading, spacing: UH.Space.small) {
-            // Month navigation & monthly totals
-            monthHeader
-
-            // Intensity color legend
-            intensityLegend
-
-            // 7-day header
-            HStack(spacing: 0) {
-                ForEach(dayHeaders.indices, id: \.self) { i in
-                    Text(dayHeaders[i])
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundStyle(UH.Palette.muted)
-                        .frame(maxWidth: .infinity)
-                }
+            header(month)
+            VStack(spacing: 0) {
+                weekdayHeader
+                grid(month)
+                    .id(String(PlanCalendar.ymd(viewMonth).prefix(7)))
+                    .transition(.opacity)
             }
-            .padding(.horizontal, 4)
-
-            // Weeks grid
-            let weeks = buildMonthGrid()
-            VStack(spacing: 4) {
-                ForEach(weeks.indices, id: \.self) { wi in
-                    HStack(spacing: 4) {
-                        ForEach(weeks[wi]) { cell in
-                            dayCellView(cell)
-                        }
-                    }
-                }
-            }
+            // shortcut: the grid stops following Dynamic Type at xxxLarge (cells are fixed-size); header, legend and day sheet keep scaling.
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            .contentShape(Rectangle())
+            .simultaneousGesture(swipe)
+            legend(month)
         }
-        .padding(UH.Space.small)
-        .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
-        .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
-        .onAppear {
-            if let date = PlanCalendar.day(from: model.snapshot?.plan.startDate) {
-                viewMonth = date
-            } else {
-                viewMonth = Date()
-            }
+        .padding(10)
+        .background(Ink.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+        .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(Ink.line))
+        .sensoryFeedback(.selection, trigger: viewMonth)
+    }
+
+    // MARK: - Header
+
+    private func header(_ month: CalendarMonth) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            headerControls(month)
+            // Own full-width line so it never wraps beside the Today pill (the grid would shift between months).
+            Text(summary(month))
+                .font(.footnote)
+                .foregroundStyle(Ink.muted)
+                .monospacedDigit()
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+                .padding(.leading, 4)
         }
     }
 
-    // MARK: - Month Header
-
-    private var monthHeader: some View {
-        HStack {
-            Button {
-                withAnimation(reduceMotion ? nil : UH.Motion.standard) {
-                    viewMonth = Calendar.current.date(byAdding: .month, value: -1, to: viewMonth) ?? viewMonth
+    private func headerControls(_ month: CalendarMonth) -> some View {
+        HStack(alignment: .center, spacing: 0) {
+            Text(monthTitle)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(Ink.ink)
+                .padding(.leading, 4)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: UH.Space.compact)
+            if !month.isCurrentMonth {
+                Button { goTo(model.calendarToday) } label: {
+                    Text("Today")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Ink.accentInk)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 32)
+                        .background(UH.Palette.activeFill, in: Capsule())
                 }
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(UH.Palette.ink)
-                    .frame(width: 44, height: 44)
+                .buttonStyle(.plain)
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("calendar.today")
             }
-            .accessibilityLabel("Previous month")
-
-            Text(viewMonth, format: .dateTime.month(.wide).year())
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(UH.Palette.ink)
-
-            Button {
-                withAnimation(reduceMotion ? nil : UH.Motion.standard) {
-                    viewMonth = Calendar.current.date(byAdding: .month, value: 1, to: viewMonth) ?? viewMonth
-                }
-            } label: {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(UH.Palette.ink)
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Next month")
-
-            Spacer()
-
-            // Month total volume pill
-            let totals = calculateMonthTotals()
-            Text("~\(Int(totals.km)) km · \(String(format: "%.1f", totals.hours))h")
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(UH.Palette.accentInk)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3.5)
-                .background(UH.Palette.activeFill, in: Capsule())
+            monthStep("chevron.left", label: L("Previous month"), delta: -1)
+            monthStep("chevron.right", label: L("Next month"), delta: 1)
         }
     }
 
-    // MARK: - Intensity Legend
+    /// "October 2026" / "Tháng 10 năm 2026": the locale pattern, first letter capitalised.
+    private var monthTitle: String {
+        let s = viewMonth.formatted(.dateTime.month(.wide).year().locale(AppLanguage.current.locale))
+        return s.prefix(1).uppercased() + s.dropFirst()
+    }
 
-    private var intensityLegend: some View {
-        HStack(spacing: 8) {
-            legendItem(name: L("Easy"), color: Color(hex: "#3b82f6"))
-            legendItem(name: L("Mod"), color: Color(hex: "#10b981"))
-            legendItem(name: L("Hard"), color: Color(hex: "#ef4444"))
-            legendItem(name: L("Strength"), color: Color(hex: "#8b5cf6"))
-            legendItem(name: L("Rest"), color: Color(hex: "#94a3b8"))
+    private func summary(_ month: CalendarMonth) -> String {
+        guard month.sessionsTotal > 0 else { return L("No sessions planned this month") }
+        let hours = month.hours.formatted(.number.precision(.fractionLength(1)).locale(AppLanguage.current.locale))
+        return L("%lld km · %@ h · %lld of %lld sessions done", Int(month.km.rounded()), hours, month.sessionsDone, month.sessionsTotal)
+    }
+
+    private func monthStep(_ icon: String, label: String, delta: Int) -> some View {
+        Button { shift(delta) } label: {
+            Image(systemName: icon)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Ink.ink)
+                .frame(width: 44, height: 44)
         }
-        .padding(.horizontal, 4)
+        .accessibilityLabel(label)
+    }
+
+    private func shift(_ delta: Int) {
+        guard let next = PlanCalendar.calendar.date(byAdding: .month, value: delta, to: viewMonth) else { return }
+        goTo(next)
+    }
+
+    private func goTo(_ date: Date) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { viewMonth = date }
+        AccessibilityNotification.Announcement(monthTitle).post()
+    }
+
+    /// Horizontal flick pages months; the chevrons stay as the accessible path.
+    private var swipe: some Gesture {
+        DragGesture(minimumDistance: 30).onEnded { v in
+            guard abs(v.translation.width) > 60, abs(v.translation.width) > abs(v.translation.height) * 1.5 else { return }
+            shift(v.translation.width < 0 ? 1 : -1)
+        }
+    }
+
+    // MARK: - Grid
+
+    private var weekdayHeader: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
+                Text(symbol)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Ink.muted)
+                    .frame(maxWidth: .infinity)
+            }
+            Text(L("km/wk"))
+                .font(.caption2.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .foregroundStyle(Ink.muted)
+                .frame(width: Self.totalWidth)
+        }
         .padding(.bottom, 2)
+        .accessibilityHidden(true)
     }
 
-    private func legendItem(name: String, color: Color) -> some View {
-        HStack(spacing: 3) {
-            Circle().fill(color).frame(width: 6, height: 6)
-            Text(name)
-                .font(.system(size: 9.5, weight: .medium))
-                .foregroundStyle(UH.Palette.muted)
+    /// Monday-first single-letter weekday names in the app language.
+    private var weekdaySymbols: [String] {
+        var c = Calendar(identifier: .gregorian)
+        c.locale = AppLanguage.current.locale
+        let sunFirst = c.veryShortStandaloneWeekdaySymbols
+        return Array(sunFirst.dropFirst()) + [sunFirst[0]]
+    }
+
+    private func grid(_ month: CalendarMonth) -> some View {
+        VStack(spacing: 0) {
+            ForEach(month.weeks) { row in
+                HStack(spacing: 0) {
+                    ForEach(Array(row.cells.enumerated()), id: \.element.id) { index, cell in
+                        dayCell(cell, weekday: Weekday.allCases[index], month: month)
+                    }
+                    weekTotal(row, month: month)
+                }
+                .frame(height: Self.rowHeight)
+            }
         }
     }
 
-    // MARK: - Day Cell View
+    @ViewBuilder
+    private func dayCell(_ cell: CalendarDayCell, weekday: Weekday, month: CalendarMonth) -> some View {
+        let content = VStack(spacing: 4) {
+            dayNumber(cell)
+            bars(cell, month: month)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 3)
+        .frame(height: Self.rowHeight, alignment: .top)
+        .background {
+            if cell.isToday { RoundedRectangle(cornerRadius: UH.Radius.control).fill(Ink.wash) }
+        }
+        .contentShape(Rectangle())
 
-    private func dayCellView(_ cell: CalendarDayCell) -> some View {
-        Button {
-            if let w = cell.weekNumber {
-                onSelectDay(cell.date, w)
-            }
-        } label: {
-            VStack(spacing: 2) {
-                // Day number & Race Day flag
-                HStack(spacing: 1) {
-                    Text("\(Calendar.current.component(.day, from: cell.date))")
-                        .font(.system(size: 11, weight: cell.isToday ? .bold : .medium, design: .monospaced))
-                        .foregroundStyle(cell.isToday ? UH.Palette.accentInk : (cell.isCurrentMonth ? UH.Palette.ink : UH.Palette.muted.opacity(0.5)))
+        if let week = cell.weekNumber {
+            Button { onSelectDay(MoveTarget(week: week, weekday: weekday, date: cell.date)) } label: { content }
+                .buttonStyle(.plain)
+                .accessibilityLabel(accessibilityLabel(cell))
+                .accessibilityHint(L("Show sessions"))
+                .accessibilityIdentifier("calendar.day.\(cell.id)")
+        } else {
+            content
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilityLabel(cell))
+        }
+    }
 
-                    if cell.isRaceDay {
-                        Image(systemName: "flag.fill")
-                            .font(.system(size: 8))
-                            .foregroundStyle(Color(hex: "#ef4444"))
-                    }
+    private func dayNumber(_ cell: CalendarDayCell) -> some View {
+        Group {
+            Text("\(PlanCalendar.calendar.component(.day, from: cell.date))")
+                .font(.footnote.weight(cell.isToday ? .bold : .medium))
+                .monospacedDigit()
+                .foregroundStyle(cell.isToday ? Ink.onAccent : (cell.isCurrentMonth ? Ink.ink : Ink.muted))
+                .frame(minWidth: Self.numberZone, minHeight: Self.numberZone)
+                .background {
+                    if cell.isToday { Circle().fill(Ink.accentInk) }
                 }
+        }
+        .overlay(alignment: .trailing) {
+            if cell.isRaceDay {
+                Image(systemName: "flag.checkered")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Ink.race)
+                    .offset(x: 11)
+            }
+        }
+    }
 
-                // Workout indicator bar / tick
-                if let workout = cell.primaryWorkout, !workout.isRest {
-                    let color = WorkoutTypePresentation.zoneColor(for: workout)
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(color.opacity(cell.isCurrentMonth ? 0.85 : 0.4))
-                            .frame(height: 14)
+    private func bars(_ cell: CalendarDayCell, month: CalendarMonth) -> some View {
+        let sessions = Array(cell.sessions.prefix(3))
+        let ceiling = Self.barZone - 2
+        return ZStack(alignment: .bottom) {
+            Rectangle().fill(Ink.line).frame(height: 1)
+            HStack(alignment: .bottom, spacing: 2) {
+                ForEach(sessions) { w in
+                    let share = month.maxSessionLoad > 0 ? w.calendarLoad / month.maxSessionLoad : 0
+                    SessionBar(color: WorkoutTypePresentation.zoneColor(for: w), state: SessionBar.Fill(w))
+                        .frame(width: sessions.count > 1 ? 9 : 11, height: min(ceiling, max(5, ceiling * share)))
+                }
+            }
+            .opacity(cell.isCurrentMonth ? 1 : 0.5)
+        }
+        .frame(height: Self.barZone, alignment: .bottom)
+    }
 
-                        if workout.isDone {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundStyle(.white)
-                        } else if let km = workout.distanceKm, km > 0 {
-                            Text(String(format: "%.0f", km))
-                                .font(.system(size: 8, weight: .bold, design: .monospaced))
-                                .foregroundStyle(.white)
+    @ViewBuilder
+    private func weekTotal(_ row: CalendarWeekRow, month: CalendarMonth) -> some View {
+        let share = month.maxWeekKm > 0 ? min(1, row.km / month.maxWeekKm) : 0
+        let content = VStack(spacing: 4) {
+            Text(row.km > 0 ? "\(Int(row.km.rounded()))" : "–")
+                .font(.footnote.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(row.containsToday ? Ink.accentInk : Ink.ink)
+                .frame(minHeight: Self.numberZone)
+            ZStack(alignment: .bottomLeading) {
+                if row.km > 0 {
+                    Capsule().fill(Ink.line).frame(height: 4)
+                    Capsule().fill(Ink.accentInk).frame(width: 30 * share, height: 4)
+                }
+            }
+            .frame(width: 30, height: Self.barZone, alignment: .bottom)
+        }
+        .padding(.top, 3)
+        .frame(width: Self.totalWidth, height: Self.rowHeight, alignment: .top)
+        .contentShape(Rectangle())
+
+        if let week = row.weekNumber {
+            Button { onOpenWeek(week) } label: { content }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L("Week %lld, %lld km", week, Int(row.km.rounded())))
+                .accessibilityHint(L("Open in list"))
+                .accessibilityIdentifier("calendar.week.\(week)")
+        } else {
+            content.accessibilityHidden(true)
+        }
+    }
+
+    private func accessibilityLabel(_ cell: CalendarDayCell) -> String {
+        var parts = [cell.date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(AppLanguage.current.locale))]
+        if cell.isToday { parts.insert(L("Today"), at: 0) }
+        if cell.isRaceDay { parts.append(L("Race day")) }
+        if cell.sessions.isEmpty {
+            if cell.weekNumber != nil { parts.append(L("Rest")) }
+        } else {
+            for w in cell.sessions {
+                parts.append("\(w.title), \(WorkoutTypePresentation.formatMetrics(for: w)), \(SessionBar.Fill(w).name)")
+            }
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    // MARK: - Legend
+
+    /// Only the effort kinds that appear on screen, then how a bar's fill reads.
+    @ViewBuilder
+    private func legend(_ month: CalendarMonth) -> some View {
+        let kinds = legendKinds(month)
+        if !kinds.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                FlowLayout(spacing: 8) {
+                    ForEach(kinds, id: \.0) { label, color in
+                        HStack(spacing: 4) {
+                            Circle().fill(color).frame(width: 8, height: 8)
+                            Text(verbatim: label)
                         }
                     }
-                } else {
-                    Circle()
-                        .fill(cell.isCurrentMonth ? UH.Palette.line.opacity(0.5) : Color.clear)
-                        .frame(width: 4, height: 4)
-                        .frame(height: 14)
                 }
-            }
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .padding(.vertical, 2)
-            .background(cell.isToday ? UH.Palette.activeFill.opacity(0.35) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(cell.isToday ? UH.Palette.accentInk : Color.clear, lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-        .disabled(cell.weekNumber == nil)
-        .accessibilityIdentifier("calendar.day.\(cell.id)")
-    }
-
-    // MARK: - Grid Calculation
-
-    private func buildMonthGrid() -> [[CalendarDayCell]] {
-        let cal = Calendar.current
-        let components = cal.dateComponents([.year, .month], from: viewMonth)
-        guard let firstOfMonth = cal.date(from: components),
-              let monthRange = cal.range(of: .day, in: .month, for: firstOfMonth) else { return [] }
-
-        let startMonday = PlanCalendar.monday(of: firstOfMonth)
-        let lastDayOfMonth = cal.date(byAdding: .day, value: monthRange.count - 1, to: firstOfMonth)!
-        let endSunday = cal.date(byAdding: .day, value: 6, to: PlanCalendar.monday(of: lastDayOfMonth))!
-
-        let plan = model.snapshot?.plan
-        let workouts = model.snapshot?.workouts ?? []
-        let raceDay = PlanCalendar.day(from: plan?.raceDate)
-        let today = Date()
-
-        var currentDay = startMonday
-        var weeks: [[CalendarDayCell]] = []
-        var currentWeekRow: [CalendarDayCell] = []
-
-        while currentDay <= endSunday {
-            let isCurrentMonth = cal.isDate(currentDay, equalTo: firstOfMonth, toGranularity: .month)
-            let isToday = cal.isDate(currentDay, inSameDayAs: today)
-            let isRace = raceDay.map { cal.isDate(currentDay, inSameDayAs: $0) } ?? false
-
-            // Find matching workouts for this day
-            var matching: [Workout] = []
-            var foundWeek: Int? = nil
-
-            if let plan {
-                for w in workouts {
-                    if let d = PlanCalendar.date(week: w.weekNumber, weekday: w.weekday, plan: plan, workouts: workouts) {
-                        if cal.isDate(currentDay, inSameDayAs: d) {
-                            matching.append(w)
-                            foundWeek = w.weekNumber
+                FlowLayout(spacing: 8) {
+                    ForEach([SessionBar.Fill.done, .planned, .missed], id: \.self) { fill in
+                        HStack(spacing: 4) {
+                            SessionBar(color: Ink.ink, state: fill).frame(width: 7, height: 11)
+                            Text(fill.name)
                         }
                     }
                 }
             }
-
-            let cell = CalendarDayCell(
-                date: currentDay,
-                isCurrentMonth: isCurrentMonth,
-                isToday: isToday,
-                isRaceDay: isRace,
-                weekNumber: foundWeek,
-                workouts: matching
-            )
-
-            currentWeekRow.append(cell)
-            if currentWeekRow.count == 7 {
-                weeks.append(currentWeekRow)
-                currentWeekRow = []
-            }
-
-            currentDay = cal.date(byAdding: .day, value: 1, to: currentDay)!
+            .font(.caption2)
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            .foregroundStyle(Ink.muted)
+            .padding(.horizontal, 4)
+            .padding(.top, 2)
+            .accessibilityHidden(true)
         }
-
-        return weeks
     }
 
-    private func calculateMonthTotals() -> (km: Double, hours: Double) {
-        let cal = Calendar.current
-        guard let plan = model.snapshot?.plan else { return (0, 0) }
-        let workouts = model.snapshot?.workouts ?? []
+    private func legendKinds(_ month: CalendarMonth) -> [(String, Color)] {
+        var seen = Set<String>()
+        return month.weeks.flatMap(\.cells).flatMap(\.sessions).compactMap { w in
+            let label = WorkoutTypePresentation.chipLabel(for: w)
+            return seen.insert(label).inserted ? (label, WorkoutTypePresentation.zoneColor(for: w)) : nil
+        }
+    }
+}
 
-        var km = 0.0
-        var mins = 0.0
+/// One session: solid when done, tinted outline when planned, dashed grey when missed.
+private struct SessionBar: View {
+    enum Fill: Hashable {
+        case done, planned, missed
 
-        for w in workouts {
-            if let d = PlanCalendar.date(week: w.weekNumber, weekday: w.weekday, plan: plan, workouts: workouts) {
-                if cal.isDate(d, equalTo: viewMonth, toGranularity: .month) {
-                    km += w.distanceKm ?? 0.0
-                    mins += w.durationMinutes
-                }
+        init(_ w: Workout) { self = w.isDone ? .done : (w.isMissedFlag ? .missed : .planned) }
+
+        var name: String {
+            switch self {
+            case .done: L("Done")
+            case .planned: L("Planned")
+            case .missed: L("Missed")
             }
         }
-        return (km, mins / 60.0)
     }
+
+    let color: Color
+    let state: Fill
+
+    var body: some View {
+        let shape = UnevenRoundedRectangle(topLeadingRadius: 3, topTrailingRadius: 3)
+        switch state {
+        case .done:
+            shape.fill(color)
+        case .planned:
+            shape.fill(color.opacity(0.22)).overlay(shape.stroke(color, lineWidth: 1.5))
+        case .missed:
+            shape.fill(color.opacity(0.08)).overlay(shape.stroke(color, style: StrokeStyle(lineWidth: 1.5, dash: [2.5, 2])))
+        }
+    }
+}
+
+/// Grid colours with a dark variant each. The app is locked to light today (Info.plist and
+/// UphillAIApp); these follow the system appearance so the grid is ready when that lock lifts.
+private enum Ink {
+    static let ink = Color(light: "#172b26", dark: "#e8f1ec")
+    static let muted = Color(light: "#5d7167", dark: "#9fb3a9")
+    static let line = Color(light: "#dce5df", dark: "#2f403a")
+    static let card = Color(light: "#ffffff", dark: "#17201c")
+    static let accentInk = Color(light: "#08764f", dark: "#19ce8b")
+    static let onAccent = Color(light: "#ffffff", dark: "#063e2b")
+    static let race = Color(light: "#b42318", dark: "#f97066")
+    static let wash = Color(hex: "#19ce8b").opacity(0.12)
 }

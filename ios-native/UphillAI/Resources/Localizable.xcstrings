@@ -201,6 +201,16 @@
         }
       }
     },
+    "%lld km · %@ h · %lld of %lld sessions done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld km · %@ h · xong %lld/%lld buổi"
+          }
+        }
+      }
+    },
     "%lld km/week": {
       "localizations": {
         "vi": {
@@ -5101,6 +5111,16 @@
         }
       }
     },
+    "km/wk": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "km/tuần"
+          }
+        }
+      }
+    },
     "LAST WEEK REVIEW": {
       "localizations": {
         "vi": {
@@ -5931,6 +5951,16 @@
         }
       }
     },
+    "No sessions planned this month": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tháng này chưa có buổi tập"
+          }
+        }
+      }
+    },
     "NOTES FOR COACH UPHILL (OPTIONAL)": {
       "localizations": {
         "vi": {
@@ -6447,6 +6477,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dinh dưỡng"
+          }
+        }
+      }
+    },
+    "Open in list": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở trong danh sách"
+          }
+        }
+      }
+    },
+    "Open week %lld in list": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở tuần %lld trong danh sách"
           }
         }
       }
@@ -7087,6 +7137,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Thêm nhanh số km từ buổi chạy gần nhất:"
+          }
+        }
+      }
+    },
+    "Race day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày race"
           }
         }
       }
@@ -7807,6 +7867,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "CHUYÊN GIA GIÀY"
+          }
+        }
+      }
+    },
+    "Show sessions": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem buổi tập"
           }
         }
       }
@@ -8947,6 +9017,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "HÔM NAY"
+          }
+        }
+      }
+    },
+    "Today": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hôm nay"
           }
         }
       }
@@ -10097,6 +10177,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "TUẦN %lld"
+          }
+        }
+      }
+    },
+    "Week %lld, %lld km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần %lld, %lld km"
           }
         }
       }
