@@ -5,6 +5,7 @@ struct AppleHealthRow: View {
     let app: AppModel
     @State private var showExplainer = false
     @State private var showDisconnect = false
+    @State private var connectAfterExplainer = false
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -60,8 +61,14 @@ struct AppleHealthRow: View {
             }
         }
         .trainingCard()
-        .sheet(isPresented: $showExplainer) {
-            AppleHealthExplainerSheet { Task { await app.connectAppleHealth() } }
+        // Connect only once the explainer is gone: HealthKit presents its permission sheet from the
+        // top view controller, and one presented mid-dismissal never appears, so the request never returns.
+        .sheet(isPresented: $showExplainer, onDismiss: {
+            guard connectAfterExplainer else { return }
+            connectAfterExplainer = false
+            Task { await app.connectAppleHealth() }
+        }) {
+            AppleHealthExplainerSheet { connectAfterExplainer = true }
         }
         .confirmationDialog("Disconnect Apple Health?", isPresented: $showDisconnect, titleVisibility: .visible) {
             Button("Disconnect", role: .destructive) { Task { await app.disconnectAppleHealth() } }

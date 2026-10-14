@@ -13671,12 +13671,12 @@
         }
       }
     },
-    "Apple starts with every switch off. Tap Turn On All, then Allow, or I can't see your workouts.": {
+    "Apple starts with every switch off. Turn them all on and choose All Recorded Data, or I can't see your workouts.": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple để mọi công tắc ở trạng thái tắt. Bấm Bật tất cả (Turn On All), rồi Cho phép (Allow), nếu không mình sẽ không thấy buổi tập của bạn."
+            "value": "Apple để mọi công tắc ở trạng thái tắt. Hãy bật tất cả và chọn Toàn bộ dữ liệu đã ghi (All Recorded Data), nếu không mình sẽ không thấy buổi tập của bạn."
           }
         }
       }
