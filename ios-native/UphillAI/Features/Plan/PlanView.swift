@@ -30,6 +30,9 @@ struct PlanView: View {
     }
     @State private var selectedWorkout: Workout?
     @State private var moveSwapDay: PlanDay?
+    @State private var calendarDay: MoveTarget?
+    /// Runs once the calendar day sheet has finished dismissing; a second sheet can't open while it is up.
+    @State private var afterCalendarDay: (() -> Void)?
     @State private var showManage = false
     @State private var toolAfterManage: TrainingDestination? = nil
     @State private var startNewAfterManage = false
@@ -42,6 +45,13 @@ struct PlanView: View {
     @State private var showAddWorkout = false
     @State private var readyBanner: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private func openWeekInList(_ week: Int) {
+        withAnimation(reduceMotion ? nil : UH.Motion.standard) {
+            model.selectedWeek = week
+            viewMode = .list
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -89,6 +99,18 @@ struct PlanView: View {
                             }
                         )
                     }
+                }
+                .sheet(item: $calendarDay, onDismiss: {
+                    afterCalendarDay?()
+                    afterCalendarDay = nil
+                }) { target in
+                    CalendarDaySheet(
+                        model: model,
+                        target: target,
+                        onOpenWeek: { week in afterCalendarDay = { openWeekInList(week) }; calendarDay = nil },
+                        onSelect: { workout in afterCalendarDay = { selectedWorkout = workout }; calendarDay = nil },
+                        onMoveOrSwap: model.athleteId == nil ? { day in afterCalendarDay = { moveSwapDay = day }; calendarDay = nil } : nil
+                    )
                 }
                 .sheet(item: $moveSwapDay) { day in
                     MoveSwapDaySheet(model: model, sourceDay: day)
@@ -244,12 +266,7 @@ struct PlanView: View {
                             ungeneratedWeekCTA(model.selectedWeek)
                                 .padding(.horizontal, UH.Space.regular)
                         } else if viewMode == .calendar {
-                            PlanCalendarGridView(model: model) { date, week in
-                                withAnimation(reduceMotion ? nil : UH.Motion.standard) {
-                                    model.selectedWeek = week
-                                    viewMode = .list
-                                }
-                            }
+                            PlanCalendarGridView(model: model, onSelectDay: { calendarDay = $0 }, onOpenWeek: openWeekInList)
                             .padding(.horizontal, UH.Space.regular)
                         } else {
                             LazyVStack(spacing: UH.Space.compact) {

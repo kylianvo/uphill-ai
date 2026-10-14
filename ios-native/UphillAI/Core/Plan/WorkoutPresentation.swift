@@ -16,29 +16,31 @@ enum WorkoutTypePresentation {
         return workout.type
     }
 
+    /// One effort palette for the whole app. Light values are the 700-weights (>= 3:1 on white, so thin
+    /// bars and outlines hold); Recovery is cyan so it parts from Easy. Dark values are the lighter 400s.
     static func zoneColor(for workout: Workout) -> Color {
         let t = workout.type.lowercased()
         let z = workout.targetZone.lowercased()
         if t.contains("strength") || t.contains("me") || t.contains("muscular") {
-            return Color(hex: "#8b5cf6")
+            return Color(light: "#7c3aed", dark: "#a78bfa")
         }
         if t.contains("interval") || t.contains("hill") || z.contains("4") || z.contains("5") {
-            return Color(hex: "#ef4444")
+            return Color(light: "#dc2626", dark: "#f87171")
         }
         if t.contains("tempo") || t.contains("threshold") || z.contains("3") {
-            return Color(hex: "#f59e0b")
+            return Color(light: "#b45309", dark: "#fbbf24")
         }
         if t.contains("long") {
-            return Color(hex: "#10b981")
+            return Color(light: "#047857", dark: "#34d399")
         }
         if t.contains("recovery") || z.contains("1") {
-            return Color(hex: "#0ea5e9")
+            return Color(light: "#0e7490", dark: "#22d3ee")
         }
         if t.contains("easy") || z.contains("2") {
-            return Color(hex: "#3b82f6")
+            return Color(light: "#2563eb", dark: "#60a5fa")
         }
         if t.contains("cross") {
-            return Color(hex: "#14b8a6")
+            return Color(light: "#0f766e", dark: "#2dd4bf")
         }
         return Color(hex: "#6b7280")
     }
