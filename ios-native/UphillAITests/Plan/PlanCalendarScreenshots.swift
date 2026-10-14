@@ -95,4 +95,16 @@ struct PlanCalendarScreenshots {
 
         if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/october-light.png")) }
     }
+
+    @Test func renderPlanScreenDark() async {
+        let model = await makeModel(week: 3)
+        let gen = GenerationCenter(service: FakeGenerationService(), defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        for (mode, name) in [(PlanViewMode.list, "plan-list"), (.calendar, "plan-calendar")] {
+            for dark in [false, true] {
+                let v = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil,
+                                 initialViewMode: mode, initialCoachExpanded: true)
+                save(v, name: "\(name)-\(dark ? "dark" : "light")", height: 874, dark: dark)
+            }
+        }
+    }
 }

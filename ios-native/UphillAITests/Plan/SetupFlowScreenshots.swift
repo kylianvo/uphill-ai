@@ -12,6 +12,8 @@ struct SetupFlowScreenshots {
     private func capture<V: View>(_ view: V, name: String, size: CGSize = CGSize(width: 393, height: 852)) async throws {
         guard let outDir else { return }
         let controller = UIHostingController(rootView: view)
+        // SCREENSHOT_DARK=1 renders the same screens in dark mode.
+        if ProcessInfo.processInfo.environment["SCREENSHOT_DARK"] != nil { controller.overrideUserInterfaceStyle = .dark }
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
         window.rootViewController = controller
         window.makeKeyAndVisible()

@@ -38,7 +38,7 @@ struct ClarificationChipsView: View {
                                 .foregroundStyle(UH.Palette.ink)
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 8)
-                                .background(Color.white.opacity(0.9), in: Capsule())
+                                .background(UH.Palette.card.opacity(0.9), in: Capsule())
                                 .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 1))
                         }
                     }

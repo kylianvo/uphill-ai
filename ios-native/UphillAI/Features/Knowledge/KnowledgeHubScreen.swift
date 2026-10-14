@@ -213,7 +213,7 @@ struct KnowledgeHubScreen: View {
                             Text(L(topic))
                                 .font(UH.TextStyle.caption.weight(isSelected ? .bold : .medium))
                         }
-                        .foregroundStyle(isSelected ? Color.white : UH.Palette.ink)
+                        .foregroundStyle(isSelected ? UH.Palette.onSolid : UH.Palette.ink)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
                         .background(isSelected ? UH.Palette.ink : UH.Palette.surface, in: Capsule())
@@ -322,7 +322,7 @@ struct KnowledgeHubScreen: View {
                         } label: {
                             Text(isSubmittingLink ? "..." : L("Ingest"))
                                 .font(UH.TextStyle.caption.weight(.bold))
-                                .foregroundStyle(Color.white)
+                                .foregroundStyle(UH.Palette.onSolid)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
                                 .background(UH.Palette.ink, in: RoundedRectangle(cornerRadius: UH.Radius.control))

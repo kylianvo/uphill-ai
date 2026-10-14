@@ -42,14 +42,14 @@ struct ChatInputBar: View {
                     }
                 }
                 .frame(width: 36, height: 36)
-                .background(canSend ? UH.Palette.accent : Color.black.opacity(0.06), in: Circle())
+                .background(canSend ? UH.Palette.accent : UH.Palette.tint, in: Circle())
             }
             .accessibilityIdentifier("chat.sendButton")
             .disabled(!canSend)
             .padding(.trailing, 6)
             .accessibilityLabel("Send message")
         }
-        .background(Color.white.opacity(0.92), in: RoundedRectangle(cornerRadius: 22))
+        .background(UH.Palette.card.opacity(0.92), in: RoundedRectangle(cornerRadius: 22))
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(UH.Palette.line, lineWidth: 1))
         .padding(.horizontal, UH.Space.regular)
         .padding(.vertical, 6)

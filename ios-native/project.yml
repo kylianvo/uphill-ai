@@ -28,7 +28,6 @@ targets:
         CFBundleDisplayName: Uphill AI
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, vi]
-        UIUserInterfaceStyle: Light
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UIAppFonts: [PlusJakartaSans.ttf]

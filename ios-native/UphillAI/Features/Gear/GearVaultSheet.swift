@@ -207,7 +207,7 @@ struct GearVaultSheet: View {
                                                 .padding(.horizontal, 10)
                                                 .padding(.vertical, 6)
                                                 .background(isSelected ? UH.Palette.accentInk : UH.Palette.surface, in: Capsule())
-                                                .foregroundStyle(isSelected ? Color.white : UH.Palette.ink)
+                                                .foregroundStyle(isSelected ? UH.Palette.onSolid : UH.Palette.ink)
                                                 .overlay(Capsule().stroke(isSelected ? Color.clear : UH.Palette.line))
                                         }
                                         .buttonStyle(.plain)
@@ -307,7 +307,7 @@ struct GearVaultSheet: View {
                                             .padding(.horizontal, 10)
                                             .padding(.vertical, 6)
                                             .background(isSelected ? UH.Palette.accentInk : UH.Palette.surface, in: Capsule())
-                                            .foregroundStyle(isSelected ? Color.white : UH.Palette.ink)
+                                            .foregroundStyle(isSelected ? UH.Palette.onSolid : UH.Palette.ink)
                                             .overlay(Capsule().stroke(isSelected ? Color.clear : UH.Palette.line))
                                     }
                                     .buttonStyle(.plain)
@@ -336,14 +336,14 @@ struct GearVaultSheet: View {
                 } label: {
                     HStack {
                         if isLoading {
-                            ProgressView().tint(Color.white)
+                            ProgressView().tint(UH.Palette.onSolid)
                         } else {
                             Image(systemName: "magnifyingglass")
                             Text("Recommend Shoes")
                         }
                     }
                     .font(UH.TextStyle.label)
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(UH.Palette.onSolid)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(UH.Palette.ink, in: RoundedRectangle(cornerRadius: UH.Radius.panel))
@@ -420,7 +420,7 @@ struct GearVaultSheet: View {
                 // Studio light-base container
                 ZStack {
                     RoundedRectangle(cornerRadius: UH.Radius.control)
-                        .fill(UH.Palette.surface)
+                        .fill(UH.Palette.packshot)
                         .frame(width: 72, height: 72)
                         .overlay(
                             RoundedRectangle(cornerRadius: UH.Radius.control)

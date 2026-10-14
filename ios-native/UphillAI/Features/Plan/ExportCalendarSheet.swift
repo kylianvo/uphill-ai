@@ -224,7 +224,7 @@ struct ExportCalendarSheet: View {
                 HStack(spacing: 8) {
                     if isSyncingAppleCalendar {
                         ProgressView()
-                            .tint(.white)
+                            .tint(UH.Palette.onSolid)
                         Text(isVietnamese ? "Đang đồng bộ..." : "Syncing to Calendar...")
                     } else {
                         Image(systemName: "calendar.badge.plus")
