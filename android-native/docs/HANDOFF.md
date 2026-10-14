@@ -79,9 +79,11 @@ See `docs/PARITY.md` for the area-by-area inventory against iOS main `5597527`.
    still need comparison. Coach inline invite and race-to-roster filtering remain.
    Calendar weekly-column label is `km` rather than iOS `km/wk` / `km/tuần`; day preview's
    Open Week button styling also differs. Fixture descriptions keep their recorded language.
-2. Live Google/COROS round trips are in progress with the user. Credential Manager
-   returned “No credentials available”; Android account settings are open for the user
-   to add Google. Do not clear/uninstall app data or run instrumentation after sign-in.
+2. Live Google/COROS round trips are in progress with the user. Original `uphill_test`
+   has old Play services 23.18.18; logs report failure to parse the button request.
+   Switched OAuth checks to installed `uphill_playstore` on emulator-5556, with Play
+   services 26.33.32. The actual Google account sign-in page is open for the user.
+   Updated release APK is installed on both emulators; no live round trip yet. Do not clear/uninstall app data or run instrumentation after sign-in.
    Physical-phone upgrade remains explicitly deferred.
 3. Deploy the two backend profile fixes when explicitly requested; current production
    has not been changed by this work.
