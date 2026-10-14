@@ -121,6 +121,7 @@ from services.matching.block_evaluator import evaluate_block_performance
 from services.nutrition_planner import NutritionParams, nutrition_planner
 from services.pacing_calculator import PacingCalculator
 from services.plan_generator import PlanGenerator
+from services.plan_rules import count_me_sessions
 from services.rag_service import RagService
 from services.training_rules import TrainingRules, resolve_zone2_pace
 from services.weather_service import WeatherService
@@ -2694,6 +2695,7 @@ async def _generate_next_block_for_athlete(
         # hysteresis input, so re-plans follow the athlete's current fitness.
         "athlete_tier": None,
         "previous_tier": plan.get("athlete_tier"),
+        "me_history": count_me_sessions(all_workouts, week_range_for_block(request.block_number)[0]),
         "readiness_summary": readiness_summary,
         "lang": request.lang or fresh_user.get("lang", "en"),
         "coach_notes": "\n".join(active_coach_notes) if active_coach_notes else None,

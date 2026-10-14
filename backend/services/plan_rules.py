@@ -156,9 +156,14 @@ def _performance_rules(profile: TierProfile, treadmill_max_incline: int = 15) ->
 
     me_periodization = (
         """4. Periodization Phases (Training for the Uphill Athlete):
-   - Short Runway Override (<= 10 weeks total plan): Skip extended base building and go straight to event-specific work. Start the Muscular Endurance (ME) block in Week 1 or Week 2, concluding 10-14 days before race day.
-   - Base Phase: Aerobic volume accumulation (Zone 1-2) + general strength (single-leg stability, hips, core) + weekly Hill Sprints and Strides for neuromuscular power (rule 14) + the Muscular Endurance (ME) block. For a MOUNTAIN RUNNER the ME block starts in the EARLY Base phase, as volume begins to build — 8-14 weeks, up to 16 when there is time, and at least 8 sessions to secure the benefit. Once a week when the rest of the training load is high; twice a week when it is otherwise low. ME is layered ON TOP of the Zone 1-2 volume, never in place of it. Heavy maximal-strength lifting first is the mountaineer/alpinist sequence, not the runner's: do NOT prescribe heavy low-rep max-strength blocks (e.g. 3-5 x 4-6) to this athlete.
-   - Build (Specific) Phase: After the ME block, the final ~8 weeks before the taper shift to traditional UPHILL and ROLLING intervals (Zone 3 sub-threshold first, Zone 4 layered in later) on top of continued aerobic volume. Doing ME first makes these intervals more effective. ME is no longer the focus; heavy slow barbell lifting is removed.
+   - ME Timing, keyed to the WEEKS LEFT before the ME cutoff (10-14 days before race day) stated in ME HISTORY, never to the plan's total length:
+     * 16 or more weeks left: for a MOUNTAIN RUNNER the ME block starts in the EARLY Base phase, as volume begins to build — 8-14 weeks, up to 16 when there is time, at least 8 sessions — then about 8 weeks of uphill and rolling intervals before the taper.
+     * Fewer than 16 weeks left: skip extended base building. Start a short ME block NOW — at least 6-8 sessions, once or twice a week, on top of the Zone 1-2 volume — then fill the weeks that remain with uphill and rolling intervals.
+     * Catch-up: if ME HISTORY shows fewer than 6 completed ME sessions and 3 or more weeks are left, schedule ME in THIS block even in the Build phase — twice a week when the runway is short, once a week when the rest of the training load is high.
+     * Fewer than 3 weeks left: do NOT start ME.
+     * In every case ME stops 10-14 days before race day.
+   - Base Phase: Aerobic volume accumulation (Zone 1-2) + general strength (single-leg stability, hips, core) + weekly Hill Sprints and Strides for neuromuscular power (rule 14) + the Muscular Endurance (ME) block. Once a week when the rest of the training load is high; twice a week when it is otherwise low. ME is layered ON TOP of the Zone 1-2 volume, never in place of it. Heavy maximal-strength lifting first is the mountaineer/alpinist sequence, not the runner's: do NOT prescribe heavy low-rep max-strength blocks (e.g. 3-5 x 4-6) to this athlete.
+   - Build (Specific) Phase: After the ME block, the final ~8 weeks before the taper shift to traditional UPHILL and ROLLING intervals (Zone 3 sub-threshold first, Zone 4 layered in later) on top of continued aerobic volume. Doing ME first makes these intervals more effective. Once the ME block is complete, ME is no longer the focus; heavy slow barbell lifting is removed. Until then the catch-up rule above applies.
    - Peak Phase: Race-specific terrain simulation and eccentric downhill repeats (quad conditioning). Back-to-back long days are an overreaching tool, not a weekly routine: at most 2-3 two-day blocks in the whole Specific period, each followed by several easy recovery days.
    - Taper Phase: Reduce weekly volume by 40-60% while maintaining neuromuscular sharpness (stop heavy ME 10-14 days out).
    - Race Week: Minimal volume, rest days before race day, race execution, post-race recovery.
@@ -182,6 +187,7 @@ def _performance_rules(profile: TierProfile, treadmill_max_incline: int = 15) ->
      * Steep Mountain Races (>=25-35m vert/km or sustained single climbs >500m D+): Prescribe Outdoor Weighted Uphill Carries — water jugs in a backpack (5-15% BW) on a 30%+ grade (ordinary trails rarely exceed 10-12%). Summit Water Dump protocol: dump the water at the top and descend unweighted by default; stronger athletes may carry the weight back down for extra benefit. No suitable hill: fire stairs in a tall building (even six stories works), a Stairmaster, or a Treadmill Incline Series. Last resort: standing on a bike in a very high gear.
    - Dose: total weighted climbing time 30 minutes the first time, building to no more than 60 minutes. On short hills or stairs run it as laps of at least 5 minutes each.
    - Treadmill Incline Hardware Realism: ME on a treadmill is done at 25% grade, which needs an incline trainer. This athlete's treadmill tops out at {treadmill_max_incline}%: below 25%, set its maximum and add a weighted vest/pack (5-15% BW) so local leg burn, not breathing, is the limiter, or use stair laps or weighted box step-ups instead. NEVER prescribe a treadmill incline above {treadmill_max_incline}%.
+   - Soft Start: the first 2 ME sessions of a block (or the athlete's first ever) use a reduced dose to limit soreness — about 4 sets of gym ME, or 20-30 minutes of weighted climbing at the low end of the 5-15% BW load — then progress.
    - The 48-Hour Buffer: NEVER schedule an ME session within 48 hours of a weekend Long Run, Zone 3/4 interval run, or heavy gym workout.
    - Double Session Sequencing: On double-session days with ME, the high-power ME session is ALWAYS in the morning (fresh CNS); the easy Zone 1/2 aerobic run is in the afternoon.
    - Load, Not Heart Rate: Disregard heart rate in ME sessions. The load must be heavy enough that local leg fatigue, not breathing, limits the athlete, with a distinct low-grade burn in the propelling muscles for the whole climb or set. Done correctly, heart rate stays below the athlete's unweighted AnT heart rate.
@@ -290,3 +296,42 @@ def build_rules_block(
         else _performance_rules(profile, treadmill_max_incline)
     )
     return header + body
+
+
+def is_me_session(w: dict) -> bool:
+    title = (w.get("title") or "").upper()
+    # Exact type match: a substring "ME" check also caught "Time Trial".
+    return (
+        (w.get("type") or "").upper() in ("ME", "MUSCULAR ENDURANCE")
+        or "MUSCULAR ENDURANCE" in title
+        or "CIRCUIT" in title
+    )
+
+
+def count_me_sessions(workouts: list[dict], before_week: int) -> dict[str, int]:
+    """Completed (`done`) and `scheduled` ME sessions in weeks before `before_week`."""
+    me = [w for w in workouts if (w.get("week_number") or 0) < before_week and is_me_session(w)]
+    return {"done": sum(w.get("is_completed") == 1 for w in me), "scheduled": len(me)}
+
+
+def me_runway(block_start_week: int, race_week_num: int) -> int:
+    """Weeks from the block start to the ME cutoff (race week - 2), inclusive."""
+    return max(0, race_week_num - 2 - block_start_week + 1)
+
+
+def me_status_block(
+    done: int | None,
+    scheduled: int | None,
+    weeks_left: int,
+    block_start_week: int,
+    tier_changed_from: str | None = None,
+) -> str:
+    lines = ["ME HISTORY:"]
+    if done is not None:
+        lines.append(f"- {done} ME sessions completed so far ({scheduled} scheduled) before week {block_start_week}.")
+    lines.append(f"- Weeks left before the ME cutoff (10-14 days before race day): {weeks_left}.")
+    if tier_changed_from:
+        lines.append(
+            f"- TIER CHANGE: the athlete moved up from {tier_changed_from} this block. ME starts from zero: apply the soft start."
+        )
+    return "\n".join(lines) + "\n"

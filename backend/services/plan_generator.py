@@ -6,8 +6,8 @@ from config import settings
 from db import block_number_for_week, week_range_for_block
 from log_utils import get_logger
 from services import observability, recovery_baseline
-from services.athlete_tier import MEASURED_THRESHOLD_SOURCES, get_profile, resolve_tier
-from services.plan_rules import build_rules_block
+from services.athlete_tier import MEASURED_THRESHOLD_SOURCES, TIER_PROFILES, get_profile, resolve_tier
+from services.plan_rules import build_rules_block, me_runway, me_status_block
 from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
 from services.training_venues import INCLINE_TRAINER_MIN, STANDARD_TREADMILL_MAX, Venues
 
@@ -1409,6 +1409,19 @@ class PlanGenerator:
                     f"Generate ONLY Block {block_number} of {total_blocks}: weeks {block_start_week} through {block_end_week}.\n"
                     f"CRITICAL: Every workout `week_number` MUST be between {block_start_week} and {block_end_week} (inclusive). Do NOT output week numbers outside this range.\n"
                 )
+            if tier_profile.allows_me_blocks:
+                _me_start = target_week or block_start_week
+                _me_hist = race_info.get("me_history") or {}
+                _prev = race_info.get("previous_tier")
+                block_scope_instruction += "\n" + me_status_block(
+                    _me_hist.get("done"),
+                    _me_hist.get("scheduled"),
+                    me_runway(_me_start, race_week_num),
+                    _me_start,
+                    tier_changed_from=_prev
+                    if _prev in TIER_PROFILES and not get_profile(_prev).allows_me_blocks
+                    else None,
+                )
             # Kept separate from block_scope_instruction and placed last in the final prompt
             # below: this is free-text athlete feedback of unbounded length, so the schema and
             # hard constraints stay ahead of it. Coach directives come first within this
@@ -1519,7 +1532,7 @@ class PlanGenerator:
             # that contradicts itself is worse than one that is uniformly wrong: the
             # model resolves the conflict however it likes, differently each run.
             me_format_spec = (
-                "     * Muscular Endurance (ME): this develops peripheral muscular fatigue resistance without cardiac strain. Heart rate is disregarded; the load must make local leg fatigue, not breathing, the limiter, with a low-grade burn in the quads and glutes. Format by terrain: (a) Flat/Rolling or Gym (the Gym ME progression): warm up 10-15 min easy aerobic building to Zone 3 for the final 2 min, then 10 get-ups from lying on the floor and 10 burpees. Then STRAIGHT SETS — complete every set of one exercise, with its rest between sets, before moving to the next exercise — at the stated tempo, never rushed. One → segment per exercise naming sets x reps, tempo and rest (e.g. 'Split Jump Squats: 6x10/leg at ~1 jump/s, 60s rest between sets → Squat Jumps: 6x10, 60s rest between sets → Box Step-Ups at 75% kneecap height: 6x10/leg (all right leg, then all left), ~1 rep/s, 30s rest between sets → Front Lunges: 6x10/leg, ~1 rep/s, 30s rest between sets'), with 60s between exercises, then a 10 min aerobic cool-down. First 2-3 sessions: bodyweight only, ~80% jump height and range of motion, and 4x10 for a new or soreness-prone athlete. Progress week to week by shortening the rest, then adding a weight vest (no more than 10% BW from workout 4, later 15% BW) — never raise load and volume in the same week. (b) Outdoor Weighted Carries: 30%+ grade (or fire stairs) with water jugs in a 5-15% bodyweight pack, climbing laps of at least 5 min, total climbing 30 min the first time and never more than 60 min, Summit Water Dump protocol by default: 'Dump water weight at summit; descend unweighted to preserve orthopedic integrity' (stronger athletes may carry it down). (c) Incline Treadmill or stairs: 25% grade on an incline trainer; on a standard gym treadmill set its maximum (usually 15%, see TRAINING VENUES) and add a 5-15% BW vest or pack; or stairs/Stairmaster laps with the pack — e.g. 6 x 5 min climbing with 60s rest, so leg burn rather than breathing limits the pace. Hill Sprints and hill bounding are NOT ME: they are neuromuscular power sessions (type 'Interval') — 8-12s max-effort reps on a 20%+ grade or steep stairs, 2-3 min full standing/walking rest, terminated at the first drop in power.\n"
+                "     * Muscular Endurance (ME): this develops peripheral muscular fatigue resistance without cardiac strain. Heart rate is disregarded; the load must make local leg fatigue, not breathing, the limiter, with a low-grade burn in the quads and glutes. Format by terrain: (a) Flat/Rolling or Gym (the Gym ME progression): warm up 10-15 min easy aerobic building to Zone 3 for the final 2 min, then 10 get-ups from lying on the floor and 10 burpees. Then STRAIGHT SETS — complete every set of one exercise, with its rest between sets, before moving to the next exercise — at the stated tempo, never rushed. One → segment per exercise naming sets x reps, tempo and rest (e.g. 'Split Jump Squats: 6x10/leg at ~1 jump/s, 60s rest between sets → Squat Jumps: 6x10, 60s rest between sets → Box Step-Ups at 75% kneecap height: 6x10/leg (all right leg, then all left), ~1 rep/s, 30s rest between sets → Front Lunges: 6x10/leg, ~1 rep/s, 30s rest between sets'), with 60s between exercises, then a 10 min aerobic cool-down. First 2 sessions (the soft start, rule 12): bodyweight only, ~80% jump height and range of motion, and 4x10 for a new or soreness-prone athlete. Progress week to week by shortening the rest, then adding a weight vest (no more than 10% BW from workout 4, later 15% BW) — never raise load and volume in the same week. (b) Outdoor Weighted Carries: 30%+ grade (or fire stairs) with water jugs in a 5-15% bodyweight pack, climbing laps of at least 5 min, total climbing 30 min the first time and never more than 60 min, Summit Water Dump protocol by default: 'Dump water weight at summit; descend unweighted to preserve orthopedic integrity' (stronger athletes may carry it down). (c) Incline Treadmill or stairs: 25% grade on an incline trainer; on a standard gym treadmill set its maximum (usually 15%, see TRAINING VENUES) and add a 5-15% BW vest or pack; or stairs/Stairmaster laps with the pack — e.g. 6 x 5 min climbing with 60s rest, so leg burn rather than breathing limits the pace. Hill Sprints and hill bounding are NOT ME: they are neuromuscular power sessions (type 'Interval') — 8-12s max-effort reps on a 20%+ grade or steep stairs, 2-3 min full standing/walking rest, terminated at the first drop in power.\n"
                 if tier_profile.allows_me_blocks
                 else ""
             )
@@ -1809,6 +1822,8 @@ class PlanGenerator:
             base_weekly_minutes = 180.0
 
         workouts: list[dict[str, Any]] = []
+        # ME sessions already done, so a late or promoted starter still gets the soft-start dose.
+        me_seen = (race_info.get("me_history") or {}).get("done") or 0
         W = total_weeks - 1
         num_peak_weeks = 2 if W >= 6 else (1 if W >= 2 else 0)
         remaining_weeks = W - 1 - num_peak_weeks
@@ -2096,7 +2111,8 @@ class PlanGenerator:
                     if phase == "Base" and me_ok:
                         title = "Muscular Endurance: Gym ME (Straight Sets)"
                         w_type = "Muscular Endurance"
-                        sets = 4 if week <= 2 else 6
+                        sets = 4 if me_seen < 2 else 6
+                        me_seen += 1
                         desc = (
                             f"Straight sets: finish every set of one exercise before the next. Split Jump Squats "
                             f"{sets}x10, 60s rest between sets → Squat Jumps {sets}x10, 60s rest between sets → Box "
@@ -2116,13 +2132,15 @@ class PlanGenerator:
                         fuel_tip = "Drink amino acids post-workout for protein synthesis."
                     elif phase == "Build" and me_ok:
                         w_type = "Muscular Endurance"
-                        steps = 400 + (100 * (week - num_base_weeks - 1))
-                        if course_elevation_gain_m and course_elevation_gain_m > 0:
+                        soft_start = me_seen < 2
+                        me_seen += 1
+                        steps = 400 if soft_start else 400 + (100 * (week - num_base_weeks - 1))
+                        if course_elevation_gain_m and course_elevation_gain_m > 0 and not soft_start:
                             steps += int(course_elevation_gain_m / 10)
                         steps = min(1200, steps)
                         if has_gym_access:
                             title = "Muscular Endurance: Weighted Step-Ups"
-                            weight_pct = 10 if week <= 6 else 15
+                            weight_pct = 10 if soft_start or week <= 6 else 15
                             desc = f"Execute {steps} step-ups holding {weight_pct}% of your body weight on a 30cm box. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
                             fuel_tip = "Consume electrolytes. Keep hydration nearby during strength efforts."
 
