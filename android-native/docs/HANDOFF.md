@@ -8,8 +8,8 @@ Plan: `docs/superpowers/plans/2026-10-14-android-native.md`.
 ## Current checkpoint — 2026-10-15
 
 The user requested PR/handoff at 15% remaining account allowance. Work resumed after
-the previous checkpoint. Latest allowance: 16% five-hour / 26% weekly remaining; feature work has stopped
-while release verification and the checkpoint finish.
+the previous checkpoint. Allowance reached 15% five-hour / 26% weekly remaining; feature work stopped.
+This handoff preserves the verified checkpoint.
 Health Connect stays deferred by explicit user decision. Google Android OAuth
 registration is complete; the physical phone upgrade test is deferred.
 
@@ -58,20 +58,23 @@ before the profile behavior can be fully verified there. No schema migration.
   requested language, and asserts translated Done before capturing the workout sheet.
   Logs: `/tmp/uphill-visual-localized-confirm.log`,
   `/tmp/uphill-accessible-localized-confirm.log`.
-- Signed-out minified release emulator smoke check is in progress.
+- Signed-out minified release emulator smoke passed: matching-signed APK installed,
+  cold MainActivity launch succeeded, UI hierarchy showed Uphill AI / Google / Sign in.
+  Evidence: `docs/screenshots/parity-2026-10-15/release-sign-in-en.png`.
+  No fictional-account writes to production. This does not validate authenticated
+  release flows or live OAuth.
 
 ## Remaining work, in order
 
-1. Finish the signed-out minified release smoke check and record the verified result.
-2. Complete a screen/feature parity inventory against current iOS source. Screenshot
+1. Complete a screen/feature parity inventory against current iOS source. Screenshot
    evidence covers major states, not every sheet/state, TalkBack or animation. Large-
    text confirmation shows awkward line wrapping of the workout pace metric; address
    it in the next scoped accessibility pass. Fixture titles/descriptions remain in
    their recorded language even when controls switch to Vietnamese.
-3. Verify live Google/COROS round trips and the deferred physical-phone upgrade.
-4. Deploy the two backend profile fixes when explicitly requested; current production
+2. Verify live Google/COROS round trips and the deferred physical-phone upgrade.
+3. Deploy the two backend profile fixes when explicitly requested; current production
    has not been changed by this work.
-5. Keep Health Connect/push/widgets/WearOS/Play Store/Apple/Facebook auth excluded.
+4. Keep Health Connect/push/widgets/WearOS/Play Store/Apple/Facebook auth excluded.
    ICS sharing remains; direct calendar writes were deferred in the approved plan.
    This consolidated draft does not fulfill the original one-PR-per-phase structure.
 

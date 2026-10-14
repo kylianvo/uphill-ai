@@ -4,6 +4,7 @@ These captures run the production Compose app shell on `uphill_test` (Android 14
 using recorded iOS API fixtures served through real HTTP requests. They contain
 fixture data, not a production account.
 
+- `release-sign-in-en.png`: signed-out minified release smoke capture.
 - `normal/`: sign-in, Plan, workout detail, Coach, Me, Goal, Gear, Nutrition, Pace,
   Knowledge and race history; signed-in screens are captured in English and Vietnamese.
 - `accessible/`: sign-in and the four main screens in both languages, with font scale
