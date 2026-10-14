@@ -32,8 +32,6 @@ prometheus-fastapi-instrumentator>=7.0.0
 qdrant-client>=1.10.0
 # Race course matching
 rapidfuzz>=3.0.0
-# Kafka clickstream pipeline
-confluent-kafka>=2.3,<3.0
 duckdb
 # duckdb doesn't declare this as a hard dependency, but its SQL engine
 # lazily imports it for timezone-aware operations (services/warehouse_extractor.py's

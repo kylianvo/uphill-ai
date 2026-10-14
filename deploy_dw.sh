@@ -4,7 +4,7 @@ set -e
 # Lean prod deploy for the Data Warehouse / Analytics layer (Postgres -> DuckDB
 # -> dbt -> Metabase). Prod's box is 1 CPU / ~2GB RAM and already runs close to
 # its memory limit -- it cannot carry docker-compose.yml's Airflow (webserver +
-# scheduler), Kafka, or Spark services, which are dev/future-work only. Instead
+# scheduler) or Spark services, which are dev/future-work only. Instead
 # this ships just the warehouse/ dbt project (dbt installed into its own venv,
 # not the backend image -- see step 2 below) and runs the pipeline via cron:
 # `docker compose exec -T backend python scripts/run_dw_elt.py`, mirroring

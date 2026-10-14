@@ -144,11 +144,6 @@ class Config:
         "QDRANT_URL", "http://qdrant:6333" if os.path.exists("/.dockerenv") else "http://localhost:6333"
     )
 
-    # Kafka clickstream pipeline
-    KAFKA_BOOTSTRAP_SERVERS: str = os.getenv(
-        "KAFKA_BOOTSTRAP_SERVERS", "kafka:9092" if os.path.exists("/.dockerenv") else "127.0.0.1:9092"
-    )
-
     # Single source of truth for training block size (weeks per block), used by
     # plan generation, the 70% completion gate, and block review/evaluation.
     # See db.py's week_range_for_block/block_number_for_week helpers.
