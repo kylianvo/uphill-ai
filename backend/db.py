@@ -3031,7 +3031,8 @@ def delete_session(session_token: str) -> bool:
 
 
 def create_password_reset_code(user_id: int, code_hash: str, ttl_minutes: int = 15) -> bool:
-    """Stores a new reset code and retires the user's earlier unused ones.
+    """Stores a new reset code. Earlier live codes stay valid, so someone else
+    requesting codes for this email can't invalidate the one the owner is typing.
 
     Returns False and stores nothing when the user is over the rate limit
     (1 code per 60 s, 5 per hour)."""
@@ -3048,10 +3049,6 @@ def create_password_reset_code(user_id: int, code_hash: str, ttl_minutes: int = 
         if recent.last_minute >= 1 or recent.last_hour >= 5:
             return False
         conn.execute(
-            text("UPDATE password_reset_codes SET used_at = NOW() WHERE user_id = :uid AND used_at IS NULL"),
-            {"uid": user_id},
-        )
-        conn.execute(
             text("""
             INSERT INTO password_reset_codes (user_id, code_hash, expires_at)
             VALUES (:uid, :h, NOW() + make_interval(mins => :ttl))
@@ -3063,29 +3060,35 @@ def create_password_reset_code(user_id: int, code_hash: str, ttl_minutes: int = 
 
 
 def consume_password_reset_code(user_id: int, code_hash: str, new_password_hash: str) -> bool:
-    """Checks code_hash against the user's newest live code.
+    """Checks code_hash against every live code of the user.
 
-    A miss counts an attempt (the 5th kills the code). A hit sets the password,
-    retires the code and deletes every session, all in one transaction."""
+    A miss counts an attempt on all of them, so the user has 5 guesses in total
+    however many codes were requested. A hit sets the password, retires every
+    code and deletes every session, all in one transaction."""
     with engine.begin() as conn:
-        row = conn.execute(
+        rows = conn.execute(
             text("""
             SELECT id, code_hash FROM password_reset_codes
             WHERE user_id = :uid AND used_at IS NULL AND expires_at > NOW() AND attempts < 5
-            ORDER BY created_at DESC LIMIT 1
             FOR UPDATE
         """),
             {"uid": user_id},
-        ).fetchone()
-        if not row:
+        ).fetchall()
+        if not rows:
             return False
-        if not hmac.compare_digest(row.code_hash, code_hash):
-            conn.execute(text("UPDATE password_reset_codes SET attempts = attempts + 1 WHERE id = :id"), {"id": row.id})
+        if not any(hmac.compare_digest(row.code_hash, code_hash) for row in rows):
+            conn.execute(
+                text("UPDATE password_reset_codes SET attempts = attempts + 1 WHERE id = ANY(:ids)"),
+                {"ids": [row.id for row in rows]},
+            )
             return False
         conn.execute(
             text("UPDATE users SET password_hash = :ph WHERE id = :uid"), {"ph": new_password_hash, "uid": user_id}
         )
-        conn.execute(text("UPDATE password_reset_codes SET used_at = NOW() WHERE id = :id"), {"id": row.id})
+        conn.execute(
+            text("UPDATE password_reset_codes SET used_at = NOW() WHERE user_id = :uid AND used_at IS NULL"),
+            {"uid": user_id},
+        )
         conn.execute(text("DELETE FROM sessions WHERE user_id = :uid"), {"uid": user_id})
     return True
 

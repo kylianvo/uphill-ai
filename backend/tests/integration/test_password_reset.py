@@ -77,17 +77,32 @@ def test_sixth_request_in_an_hour_sends_nothing(client, sent):
     assert len(sent) == 5
 
 
-def test_new_request_retires_the_old_code(client, sent):
+def test_new_request_keeps_the_earlier_code_valid(client, sent):
+    # A stranger requesting codes for this email must not invalidate the one the owner is typing.
     register(client, "twice@uphill.ai")
     client.post(FORGOT, json={"email": "twice@uphill.ai"})
     age_codes(2)
     client.post(FORGOT, json={"email": "twice@uphill.ai"})
     old, new = sent[0][1], sent[1][1]
-    if old != new:
-        bad = client.post(RESET, json={"email": "twice@uphill.ai", "code": old, "new_password": "newpassword1"})
-        assert bad.status_code == 400
-    good = client.post(RESET, json={"email": "twice@uphill.ai", "code": new, "new_password": "newpassword1"})
+    good = client.post(RESET, json={"email": "twice@uphill.ai", "code": old, "new_password": "newpassword1"})
     assert good.status_code == 200
+    if old != new:
+        used = client.post(RESET, json={"email": "twice@uphill.ai", "code": new, "new_password": "newpassword2"})
+        assert used.status_code == 400
+
+
+def test_wrong_guesses_count_across_all_live_codes(client, sent):
+    register(client, "budget@uphill.ai")
+    client.post(FORGOT, json={"email": "budget@uphill.ai"})
+    age_codes(2)
+    client.post(FORGOT, json={"email": "budget@uphill.ai"})
+    codes = {c for _, c, _ in sent}
+    wrong = next(w for w in ("000000", "111111", "222222") if w not in codes)
+    for _ in range(5):
+        client.post(RESET, json={"email": "budget@uphill.ai", "code": wrong, "new_password": "newpassword1"})
+    for code in codes:
+        r = client.post(RESET, json={"email": "budget@uphill.ai", "code": code, "new_password": "newpassword1"})
+        assert r.status_code == 400
 
 
 def test_reset_signs_in_and_kills_old_sessions(client, sent):

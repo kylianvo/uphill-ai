@@ -45,9 +45,8 @@ Body: `{email, lang}` (`lang` is `"en" | "vi"`, default `"en"`).
 Always returns `200 {"message": "If an account exists for this email, we sent a code."}`.
 
 When a user with that email exists and is under the rate limit:
-1. Set `used_at = now()` on the user's earlier unused codes.
-2. Insert a new code row.
-3. Queue the email with FastAPI `BackgroundTasks`, so response time doesn't show whether the account exists and a slow SMTP server never blocks the request.
+1. Insert a new code row. Earlier live codes stay valid (changed after security review: retiring them let anyone who knows the email invalidate the code the owner is typing).
+2. Queue the email with FastAPI `BackgroundTasks`, so response time doesn't show whether the account exists and a slow SMTP server never blocks the request.
 
 Rate limit, counted from `password_reset_codes.created_at`: at most 1 code per user per 60 s and 5 per hour. Requests over the limit get the same 200 and send no email.
 
@@ -56,9 +55,9 @@ Rate limit, counted from `password_reset_codes.created_at`: at most 1 code per u
 Body: `{email, code, new_password}`.
 
 1. `new_password` shorter than 8 characters → `400 "Password must be at least 8 characters."` (same rule as register).
-2. Look up the user's newest code where `used_at IS NULL AND expires_at > now() AND attempts < 5`. Missing user or missing code → `400 "Invalid or expired code."`
-3. Compare `sha256(code)` with `code_hash` using `hmac.compare_digest`. On a mismatch, increment `attempts` and return the same 400.
-4. On a match, in one transaction: set `password_hash` (via `hash_password`), set `used_at` on the code, and delete all of the user's `sessions` rows.
+2. Look up all of the user's live codes (`used_at IS NULL AND expires_at > now() AND attempts < 5`). Missing user or no live code → `400 "Invalid or expired code."`
+3. Compare `sha256(code)` with each `code_hash` using `hmac.compare_digest`. On a mismatch, increment `attempts` on every live code (5 guesses in total, however many codes exist) and return the same 400.
+4. On a match, in one transaction: set `password_hash` (via `hash_password`), set `used_at` on every live code, and delete all of the user's `sessions` rows.
 5. Create a new session and return the same shape as `/api/auth/login`: `{session_token, expires_at, user}`.
 
 ### `services/email_service.py`
@@ -104,7 +103,7 @@ Backend unit tests, with SMTP mocked:
 - the code expires after 15 min
 - 5 wrong guesses kill the code even when the 6th is correct
 - a code can't be reused
-- a new request invalidates the previous code
+- a new request keeps the earlier code valid; wrong guesses count across all live codes
 - a successful reset deletes old sessions and returns a working session
 - an OAuth-only user (no `password_hash`) can reset and then log in with email + password
 - a password under 8 characters is rejected without consuming the code
