@@ -120,7 +120,7 @@ Callers keep working because the new keys are additive. `get_latest_daily_metric
 - **Background delivery:** add an `HKObserverQuery` and `enableBackgroundDelivery` for `sleepAnalysis` (`.hourly`) and `restingHeartRate` (`.daily`). They share the existing background sync entry point, so a morning wake-up sends last night's sleep.
 - **Permission:**
   - New connections ask for all types in one sheet.
-  - Athletes already connected under A see an "Add recovery data" button in the Apple Health row on Me, shown until they tap it. It calls `requestAuthorization` again. HealthKit then shows the sheet with only the new types.
+  - Athletes already connected under A get the new types the next time they tap "Sync now": it re-runs connect, which calls `requestAuthorization` with every type, so HealthKit shows the sheet with only the new ones. No separate button.
   - The app never prompts unasked on launch.
   - Health never reports read denial, so the button hides after a single tap whatever the answer.
 - **Copy (EN and VI):**
@@ -138,7 +138,7 @@ Callers keep working because the new keys are additive. `get_latest_daily_metric
   - the readiness block text and the coach context rendering.
 - **Backend integration tests** (scratch DB): a sync with metrics stores rows and statuses; a re-sync overwrites the last 3 days; disconnect deletes them; the flag turns it off.
 - **iOS unit tests:** `HealthDailyMetricMapper` (overlap within a source; two sources where the larger wins; a nap at 15:00 excluded; the wake-date boundary), and the sync payload windows (35 days first, then 3).
-- **iOS UI test:** the "Add recovery data" button shows for an A-connected account and hides after a tap. Simulator screenshots go in `ios-native/docs/screenshots/apple-health/` (07–08).
+- **Screenshots:** the explainer's "turn them all on" step and the nothing-found state with Open Settings, in `ios-native/docs/screenshots/apple-health/` (07–08).
 - **Golden eval:** `scripts/golden_eval.py compare --service scheduler` and `--service coach`, with no regressions against main's baseline (the 2 known week-2 volume failures are pre-existing).
 - **By hand on a device:** wear the Watch overnight, open Uphill, and confirm that `daily_metrics` holds last night's `sleep_minutes`, today's resting HR and HRV, and that adapt week's prompt shows the sleep line.
 

@@ -54,27 +54,8 @@ final class AppModel {
     var appleHealthMessageIsError = false
     /// The last connect read nothing: most likely every Health switch was left off.
     var appleHealthNeedsAccess = false
-    /// Connected before recovery metrics existed and hasn't been asked for resting HR, HRV and
-    /// sleep yet: Me shows "Add recovery data" until the athlete taps it, whatever they answer
-    /// (HealthKit never reports a denied read).
-    var appleHealthNeedsRecoveryAccess = false
     private var appleHealthRecoveryEnabled = true
     private var lastAppleHealthSync: Date?
-
-    private static func recoveryAskedKey(_ userId: Int) -> String { "appleHealthRecoveryAsked_\(userId)" }
-
-    private func refreshRecoveryAccessPrompt() {
-        guard let id = session.user?.id, appleHealthConnected, appleHealthRecoveryEnabled else {
-            appleHealthNeedsRecoveryAccess = false
-            return
-        }
-        appleHealthNeedsRecoveryAccess = !UserDefaults.standard.bool(forKey: Self.recoveryAskedKey(id))
-    }
-
-    private func markRecoveryAsked(_ userId: Int) {
-        UserDefaults.standard.set(true, forKey: Self.recoveryAskedKey(userId))
-        appleHealthNeedsRecoveryAccess = false
-    }
 
     func loadAppleHealthStatus() async {
         if let status = try? await deviceConnectionService.fetchStatus() { await applyAppleHealthStatus(status.appleHealth) }
@@ -90,7 +71,6 @@ final class AppModel {
         appleHealthLastSync = status?.lastSyncAt
         appleHealthRecoveryEnabled = status?.recoveryEnabled ?? true
         await appleHealth.setRecoveryEnabled(appleHealthRecoveryEnabled)
-        refreshRecoveryAccessPrompt()
     }
 
     func connectAppleHealth() async {
@@ -100,8 +80,6 @@ final class AppModel {
         do {
             let outcome = try await appleHealth.connect(userId: userID)
             appleHealthConnected = true
-            // connect asked for every type, recovery included.
-            markRecoveryAsked(userID)
             lastAppleHealthSync = .now
             appleHealthMessageIsError = false
             appleHealthNeedsAccess = outcome.nothingFound
@@ -133,22 +111,6 @@ final class AppModel {
         if outcome.accepted > 0 || outcome.deleted > 0 { await plan.applyWatchMatches() }
     }
 
-    func addAppleHealthRecovery() async {
-        guard let userID = session.user?.id, !appleHealthSyncing else { return }
-        appleHealthSyncing = true
-        defer { appleHealthSyncing = false }
-        markRecoveryAsked(userID)
-        do {
-            _ = try await appleHealth.addRecoveryAccess(userId: userID)
-            lastAppleHealthSync = .now
-            appleHealthMessage = nil
-            await loadAppleHealthStatus()
-        } catch {
-            appleHealthMessageIsError = false
-            appleHealthMessage = L("Couldn't sync with Uphill. I'll try again next time you open the app.")
-        }
-    }
-
     func disconnectAppleHealth() async {
         guard let userID = session.user?.id, !appleHealthSyncing else { return }
         appleHealthSyncing = true
@@ -159,7 +121,6 @@ final class AppModel {
             appleHealthConnected = false
             appleHealthLastSync = nil
             appleHealthMessage = nil
-            appleHealthNeedsRecoveryAccess = false
         } catch {
             appleHealthMessageIsError = true
             appleHealthMessage = L("Couldn't disconnect. Check your connection and try again.")
@@ -288,7 +249,6 @@ final class AppModel {
             self?.lastAutoWatchSync = nil
             self?.lastAppleHealthSync = nil
             self?.appleHealthConnected = false
-            self?.appleHealthNeedsRecoveryAccess = false
             // stopObservingForSignOut also clears the recovery-metrics seeded flag.
             self?.appleHealthLastSync = nil
             self?.appleHealthMessage = nil

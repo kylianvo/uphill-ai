@@ -272,14 +272,4 @@ struct AppleHealthSyncServiceTests {
         await svc.stopObservingForSignOut()
         #expect(!anchors.metricsSeeded(for: 7))
     }
-
-    @Test func addRecoveryAccessAsksAgainAndResendsThirtyFiveDays() async throws {
-        anchors.setObservingUserId(7)
-        anchors.setMetricsSeeded(true, for: 7)
-        store.metricRows.withLock { $0 = [metricRow("2026-10-13")] }
-        _ = try await service().addRecoveryAccess(userId: 7)
-        #expect(store.authorizations.withLock { $0 } == 1)
-        #expect(requestedDays(0) == 35)
-        #expect(anchors.metricsSeeded(for: 7))
-    }
 }

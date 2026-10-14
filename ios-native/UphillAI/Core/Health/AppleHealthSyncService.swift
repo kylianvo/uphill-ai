@@ -53,15 +53,6 @@ actor AppleHealthSyncService {
 
     func setRecoveryEnabled(_ enabled: Bool) { recoveryEnabled = enabled }
 
-    /// "Add recovery data" for athletes who connected before recovery metrics: asks HealthKit
-    /// again (the sheet then lists only the new types) and re-sends the full 35 days.
-    func addRecoveryAccess(userId: Int) async throws -> AppleHealthSyncOutcome {
-        guard store.isAvailable else { throw AppleHealthSyncError.unavailable }
-        try await store.requestAuthorization()
-        anchors.setMetricsSeeded(false, for: userId)
-        return try await sync()
-    }
-
     func connect(userId: Int) async throws -> AppleHealthSyncOutcome {
         guard store.isAvailable else { throw AppleHealthSyncError.unavailable }
         try await store.requestAuthorization()

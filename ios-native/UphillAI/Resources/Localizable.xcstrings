@@ -13820,16 +13820,6 @@
           }
         }
       }
-    },
-    "Add recovery data": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Thêm dữ liệu hồi phục"
-          }
-        }
-      }
     }
   },
   "version": "1.0"

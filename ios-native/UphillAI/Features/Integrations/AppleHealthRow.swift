@@ -43,7 +43,6 @@ struct AppleHealthRow: View {
                     HStack(spacing: 8) { syncButton; Spacer(minLength: 0); disconnectButton }
                     VStack(alignment: .leading, spacing: 8) { syncButton; disconnectButton }
                 }
-                if app.appleHealthNeedsRecoveryAccess { addRecoveryButton }
             } else {
                 Button { showExplainer = true } label: {
                     Text("Connect Apple Health")
@@ -92,22 +91,6 @@ struct AppleHealthRow: View {
         .buttonStyle(.plain)
         .disabled(app.appleHealthSyncing)
         .accessibilityIdentifier("health.syncNow")
-    }
-
-    /// Athletes connected before recovery metrics: asks HealthKit for resting HR, HRV and sleep.
-    private var addRecoveryButton: some View {
-        Button { Task { await app.addAppleHealthRecovery() } } label: {
-            Label("Add recovery data", systemImage: "bed.double")
-                .font(UH.TextStyle.disclosure)
-                .foregroundStyle(UH.Palette.ink)
-                .padding(.horizontal, 10)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.control))
-                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
-        }
-        .buttonStyle(.plain)
-        .disabled(app.appleHealthSyncing)
-        .accessibilityIdentifier("appleHealth.addRecovery")
     }
 
     /// Apps can't turn Health access on themselves; this opens Uphill's Settings page, which links to Health.
