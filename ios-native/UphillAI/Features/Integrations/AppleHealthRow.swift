@@ -5,6 +5,8 @@ struct AppleHealthRow: View {
     let app: AppModel
     @State private var showExplainer = false
     @State private var showDisconnect = false
+    @State private var connectAfterExplainer = false
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
@@ -34,6 +36,7 @@ struct AppleHealthRow: View {
                 .background(isError ? UH.Palette.danger.opacity(0.1) : UH.Palette.warningFill, in: RoundedRectangle(cornerRadius: UH.Radius.control))
                 .accessibilityIdentifier("health.message")
             }
+            if app.appleHealthNeedsAccess { openSettingsButton }
             if app.appleHealthConnected {
                 Divider().overlay(UH.Palette.line.opacity(0.6))
                 ViewThatFits(in: .horizontal) {
@@ -57,8 +60,14 @@ struct AppleHealthRow: View {
             }
         }
         .trainingCard()
-        .sheet(isPresented: $showExplainer) {
-            AppleHealthExplainerSheet { Task { await app.connectAppleHealth() } }
+        // Connect only once the explainer is gone: HealthKit presents its permission sheet from the
+        // top view controller, and one presented mid-dismissal never appears, so the request never returns.
+        .sheet(isPresented: $showExplainer, onDismiss: {
+            guard connectAfterExplainer else { return }
+            connectAfterExplainer = false
+            Task { await app.connectAppleHealth() }
+        }) {
+            AppleHealthExplainerSheet { connectAfterExplainer = true }
         }
         .confirmationDialog("Disconnect Apple Health?", isPresented: $showDisconnect, titleVisibility: .visible) {
             Button("Disconnect", role: .destructive) { Task { await app.disconnectAppleHealth() } }
@@ -82,6 +91,23 @@ struct AppleHealthRow: View {
         .buttonStyle(.plain)
         .disabled(app.appleHealthSyncing)
         .accessibilityIdentifier("health.syncNow")
+    }
+
+    /// Apps can't turn Health access on themselves; this opens Uphill's Settings page, which links to Health.
+    private var openSettingsButton: some View {
+        Button {
+            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+        } label: {
+            Label("Open Settings", systemImage: "gear")
+                .font(UH.TextStyle.disclosure)
+                .foregroundStyle(UH.Palette.ink)
+                .padding(.horizontal, 10)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("health.openSettings")
     }
 
     private var disconnectButton: some View {

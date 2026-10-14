@@ -1,7 +1,7 @@
 """POST /apple-health/sync, DELETE /apple-health and GET /status -- no DB.
 Every db call the router makes is replaced by an in-memory fake."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi import FastAPI
@@ -185,3 +185,93 @@ def test_status_reports_apple_health(fake):
     assert body["apple_health"]["enabled"] is True
     assert body["apple_health"]["connected"] is True
     assert body["apple_health"]["last_sync_at"] is not None
+
+
+# --- daily recovery metrics (sub-project B) ----------------------------------
+
+
+@pytest.fixture
+def metrics(fake, monkeypatch):
+    fake["metrics"] = {}
+    fake["refreshed"] = []
+    monkeypatch.setattr(
+        integrations.db, "upsert_daily_metric", lambda uid, m: fake["metrics"].__setitem__(m.metric_date, m) or 1
+    )
+    monkeypatch.setattr(integrations.recovery_baseline, "refresh", lambda uid, dates: fake["refreshed"].extend(dates))
+    monkeypatch.setattr(settings, "APPLE_HEALTH_RECOVERY_ENABLED", True)
+    return fake
+
+
+def _metric(days_ago=0, **over):
+    row = {
+        "date": (date.today() - timedelta(days=days_ago)).isoformat(),
+        "resting_hr": 52,
+        "hrv_sdnn_ms": 61.4,
+        "sleep_minutes": 412,
+    }
+    row.update(over)
+    return row
+
+
+def test_daily_metrics_are_stored_as_apple_health(metrics):
+    body = client.post(SYNC, json={"workouts": [], "daily_metrics": [_metric(1), _metric(0)]}).json()
+    assert body["daily_metrics"] == {"accepted": 2, "rejected": []}
+    stored = metrics["metrics"][date.today()]
+    assert stored.provider == "apple_health"
+    assert stored.hrv_ms == 61.4
+    assert stored.sleep_minutes == 412
+    assert sorted(metrics["refreshed"]) == [date.today() - timedelta(days=1), date.today()]
+
+
+@pytest.mark.parametrize(
+    ("row", "reason"),
+    [
+        (_metric(resting_hr=None, hrv_sdnn_ms=None, sleep_minutes=None), "no values"),
+        (_metric(-2), "date out of range"),
+        (_metric(61), "date out of range"),
+        (_metric(resting_hr=20), "resting_hr out of range"),
+        (_metric(hrv_sdnn_ms=301), "hrv out of range"),
+        (_metric(sleep_minutes=1081), "sleep out of range"),
+        (_metric(resting_hr="fast"), "malformed"),
+    ],
+)
+def test_each_bad_metric_row_is_rejected_with_a_reason(metrics, row, reason):
+    body = client.post(SYNC, json={"workouts": [_row()], "daily_metrics": [row, _metric(3)]}).json()
+    assert body["daily_metrics"]["accepted"] == 1
+    assert [r["reason"] for r in body["daily_metrics"]["rejected"]] == [reason]
+    assert body["accepted"] == 1  # the workout is still stored
+    assert list(metrics["stored"]) == ["HK-1"]
+
+
+def test_duplicate_dates_last_one_wins(metrics):
+    rows = [_metric(0, resting_hr=50), _metric(0, resting_hr=55)]
+    body = client.post(SYNC, json={"daily_metrics": rows}).json()
+    assert body["daily_metrics"]["accepted"] == 1
+    assert metrics["metrics"][date.today()].resting_hr == 55
+
+
+def test_recovery_flag_off_stores_nothing(metrics, monkeypatch):
+    monkeypatch.setattr(settings, "APPLE_HEALTH_RECOVERY_ENABLED", False)
+    body = client.post(SYNC, json={"daily_metrics": [_metric()]}).json()
+    assert body["daily_metrics"] == {"accepted": 0, "rejected": [], "disabled": True}
+    assert metrics["metrics"] == {}
+    assert client.get("/api/integrations/status").json()["apple_health"]["recovery_enabled"] is False
+
+
+def test_metric_storage_failure_does_not_fail_the_sync(metrics, monkeypatch):
+    def boom(uid, dates):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(integrations.recovery_baseline, "refresh", boom)
+    resp = client.post(SYNC, json={"workouts": [_row()], "daily_metrics": [_metric()]})
+    assert resp.status_code == 200
+    assert resp.json()["accepted"] == 1
+
+
+def test_more_than_60_metric_rows_is_a_422(metrics):
+    rows = [_metric(i % 50) for i in range(61)]
+    assert client.post(SYNC, json={"daily_metrics": rows}).status_code == 422
+
+
+def test_status_reports_recovery_enabled(metrics):
+    assert client.get("/api/integrations/status").json()["apple_health"]["recovery_enabled"] is True

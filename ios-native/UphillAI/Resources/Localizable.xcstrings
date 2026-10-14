@@ -13661,6 +13661,36 @@
         }
       }
     },
+    "On the next screen": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ở màn hình tiếp theo"
+          }
+        }
+      }
+    },
+    "Apple starts with every switch off. Turn them all on and choose All Recorded Data, or I can't see your workouts.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple để mọi công tắc ở trạng thái tắt. Hãy bật tất cả và chọn Toàn bộ dữ liệu đã ghi (All Recorded Data), nếu không mình sẽ không thấy buổi tập của bạn."
+          }
+        }
+      }
+    },
+    "Open Settings": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Cài đặt"
+          }
+        }
+      }
+    },
     "Runs, hikes and strength sessions from your iPhone, Apple Watch or any app that saves to Health.": {
       "localizations": {
         "vi": {
@@ -13721,12 +13751,12 @@
         }
       }
     },
-    "Time, distance, climb, heart rate, calories and the app that recorded each workout. Your GPS routes stay on your phone.": {
+    "Time, distance, climb, heart rate, calories and the app that recorded each workout, plus one daily value each for resting HR, HRV and sleep. Your GPS routes, sleep stages and heart-rate streams stay on your phone.": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Thời gian, quãng đường, D+, nhịp tim, calo và app đã ghi lại mỗi buổi tập. Lộ trình GPS ở lại trên điện thoại của bạn."
+            "value": "Thời gian, quãng đường, D+, nhịp tim, calo và app đã ghi lại mỗi buổi tập, cùng một giá trị mỗi ngày cho Resting HR, HRV và giấc ngủ. Lộ trình GPS, các giai đoạn ngủ và chuỗi nhịp tim ở lại trên điện thoại của bạn."
           }
         }
       }
@@ -13777,6 +13807,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Các buổi tập nhận từ Apple Health sẽ bị xóa khỏi Uphill AI. Để dừng chia sẻ hoàn toàn, hãy tắt quyền truy cập trong Cài đặt → Sức khỏe → Truy cập dữ liệu & thiết bị."
+          }
+        }
+      }
+    },
+    "Resting heart rate, HRV and sleep, as daily totals, so your plan eases off when you're not recovering.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resting HR, HRV và giấc ngủ, dạng tổng theo ngày, để plan giảm tải khi bạn chưa hồi phục."
           }
         }
       }

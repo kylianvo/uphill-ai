@@ -49,3 +49,4 @@ class CanonicalDailyMetric:
     training_load_long: float | None = None
     load_ratio: float | None = None
     recovery_percent: int | None = None
+    sleep_minutes: int | None = None

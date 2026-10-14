@@ -173,7 +173,7 @@ async def _run_chat(fixture: dict) -> tuple[dict, str]:
         "call_id": uuid4(),
         "question": question,
         "lang": lang,
-        "context": {"user_profile": fixture.get("user_profile", {})},
+        "context": {"user_profile": fixture.get("user_profile", {}), "recovery": fixture.get("recovery")},
         "messages": [coach_model.ChatMessage(role="user", content=question)],
     }
 

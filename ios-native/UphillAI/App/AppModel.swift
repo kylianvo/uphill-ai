@@ -52,6 +52,9 @@ final class AppModel {
     var appleHealthMessage: String?
     /// Failures show in the danger tone; the nothing-found hint and retry notice don't.
     var appleHealthMessageIsError = false
+    /// The last connect read nothing: most likely every Health switch was left off.
+    var appleHealthNeedsAccess = false
+    private var appleHealthRecoveryEnabled = true
     private var lastAppleHealthSync: Date?
 
     func loadAppleHealthStatus() async {
@@ -66,6 +69,8 @@ final class AppModel {
         // server still says connected, but nothing syncs until the athlete taps Connect again.
         appleHealthConnected = observing
         appleHealthLastSync = status?.lastSyncAt
+        appleHealthRecoveryEnabled = status?.recoveryEnabled ?? true
+        await appleHealth.setRecoveryEnabled(appleHealthRecoveryEnabled)
     }
 
     func connectAppleHealth() async {
@@ -77,6 +82,7 @@ final class AppModel {
             appleHealthConnected = true
             lastAppleHealthSync = .now
             appleHealthMessageIsError = false
+            appleHealthNeedsAccess = outcome.nothingFound
             appleHealthMessage = outcome.nothingFound
                 ? L("No workouts found. Check Settings → Health → Data Access & Devices → Uphill AI.")
                 : nil
@@ -200,9 +206,11 @@ final class AppModel {
         cache: OfflineCache = .onDisk()
     ) {
         self.cache = cache
-        var onSignedOut: @MainActor () -> Void = {}
+        // A box rather than a captured `var`: the session's callback is Sendable, and the hook
+        // is only filled in once self exists, below.
+        let signOutHook = SignOutHook()
         let session = SessionStore(tokenStore: tokenStore) { user in
-            if let user { cache.save(user, as: .user) } else { cache.clearAll(); onSignedOut() }
+            if let user { cache.save(user, as: .user) } else { cache.clearAll(); signOutHook.run() }
         }
         self.session = session
         client = APIClient(
@@ -237,10 +245,11 @@ final class AppModel {
                              generation: generation, generationService: generationService)
         planIdBox.model = plan
         chat = ChatService(client: client)
-        onSignedOut = { [weak self] in
+        signOutHook.run = { [weak self] in
             self?.lastAutoWatchSync = nil
             self?.lastAppleHealthSync = nil
             self?.appleHealthConnected = false
+            // stopObservingForSignOut also clears the recovery-metrics seeded flag.
             self?.appleHealthLastSync = nil
             self?.appleHealthMessage = nil
             Task { [weak self] in await self?.appleHealth.stopObservingForSignOut() }
@@ -411,4 +420,12 @@ final class PlanIdBox: Sendable {
     weak var model: PlanViewModel?
     nonisolated init() {}
     func value() -> Int? { model?.snapshot?.plan.id }
+}
+
+/// Holds AppModel's sign-out work for SessionStore's callback, which is created before AppModel
+/// can capture itself. Only touched on the main actor.
+@MainActor
+final class SignOutHook: Sendable {
+    var run: () -> Void = {}
+    nonisolated init() {}
 }

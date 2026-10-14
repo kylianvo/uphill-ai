@@ -9,9 +9,22 @@ final class FakeHealthStore: HealthStoring {
     let requestedAnchors = Mutex<[Data?]>([])
     let observing = Mutex(false)
     let authorizeError = Mutex<Error?>(nil)
+    let authorizations = Mutex(0)
+    let metricRanges = Mutex<[(Date, Date)]>([])
+    let metricRows = Mutex<[AppleHealthDailyMetricUpload]>([])
+    let metricsError = Mutex<Error?>(nil)
     var isAvailable: Bool { true }
 
-    func requestAuthorization() async throws { if let e = authorizeError.withLock({ $0 }) { throw e } }
+    func dailyMetrics(from: Date, to: Date) async throws -> [AppleHealthDailyMetricUpload] {
+        metricRanges.withLock { $0.append((from, to)) }
+        if let e = metricsError.withLock({ $0 }) { throw e }
+        return metricRows.withLock { $0 }
+    }
+
+    func requestAuthorization() async throws {
+        authorizations.withLock { $0 += 1 }
+        if let e = authorizeError.withLock({ $0 }) { throw e }
+    }
     func workouts(after anchor: Data?, since start: Date) async throws -> HealthWorkoutPage {
         requestedAnchors.withLock { $0.append(anchor) }
         requestedSince.withLock { $0.append(start) }
@@ -45,6 +58,11 @@ final class MemoryAnchorStore: HealthAnchorStoring {
     func setAnchor(_ anchor: Data?, for userId: Int) { anchors.withLock { $0[userId] = anchor } }
     var observingUserId: Int? { observer.withLock { $0 } }
     func setObservingUserId(_ id: Int?) { observer.withLock { $0 = id } }
+    let seeded = Mutex<Set<Int>>([])
+    func metricsSeeded(for userId: Int) -> Bool { seeded.withLock { $0.contains(userId) } }
+    func setMetricsSeeded(_ value: Bool, for userId: Int) {
+        seeded.withLock { if value { $0.insert(userId) } else { $0.remove(userId) } }
+    }
 }
 
 private func run(_ n: Int) -> HealthWorkoutSample {
@@ -175,5 +193,83 @@ struct AppleHealthSyncServiceTests {
         store.pages.withLock { $0 = [HealthWorkoutPage(samples: [other, run(2)], deleted: [], anchor: Data([4]))] }
         _ = try await service().sync()
         #expect(api.bodies.withLock { $0.first?.workouts.count } == 1)
+    }
+
+    // MARK: Recovery metrics
+
+    private func metricRow(_ date: String) -> AppleHealthDailyMetricUpload {
+        AppleHealthDailyMetricUpload(date: date, restingHr: 52, hrvSdnnMs: 61.4, sleepMinutes: 412)
+    }
+
+    private func requestedDays(_ i: Int) -> Int {
+        let (from, to) = store.metricRanges.withLock { $0[i] }
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC")!
+        return (utc.dateComponents([.day], from: from, to: utc.startOfDay(for: to)).day ?? 0) + 1
+    }
+
+    @Test func firstSyncSendsThirtyFiveDaysThenThree() async throws {
+        anchors.setObservingUserId(7)
+        store.metricRows.withLock { $0 = [metricRow("2026-10-13")] }
+        let svc = service()
+        _ = try await svc.sync()
+        _ = try await svc.sync()
+        #expect(requestedDays(0) == 35)
+        #expect(requestedDays(1) == 3)
+        #expect(api.bodies.withLock { $0.map(\.dailyMetrics.count) } == [1, 1])
+    }
+
+    @Test func metricsRideOnTheFirstBatchOnly() async throws {
+        anchors.setObservingUserId(7)
+        store.metricRows.withLock { $0 = [metricRow("2026-10-13")] }
+        store.pages.withLock { $0 = [HealthWorkoutPage(samples: (0..<600).map(run), deleted: [], anchor: Data([2]))] }
+        _ = try await service().sync()
+        #expect(api.bodies.withLock { $0.map(\.dailyMetrics.count) } == [1, 0])
+    }
+
+    @Test func failedUploadLeavesTheSeedUnset() async throws {
+        anchors.setObservingUserId(7)
+        store.metricRows.withLock { $0 = [metricRow("2026-10-13")] }
+        api.failOnCall.withLock { $0 = 0 }
+        await #expect(throws: APIError.self) { try await service().sync() }
+        #expect(!anchors.metricsSeeded(for: 7))
+    }
+
+    @Test func emptyReadDoesNotSeed() async throws {
+        // Recovery types not granted yet: HealthKit reads nothing, so the next sync asks for 35 days again.
+        anchors.setObservingUserId(7)
+        let svc = service()
+        _ = try await svc.sync()
+        _ = try await svc.sync()
+        #expect(requestedDays(1) == 35)
+    }
+
+    @Test func recoveryDisabledReadsNothing() async throws {
+        anchors.setObservingUserId(7)
+        store.metricRows.withLock { $0 = [metricRow("2026-10-13")] }
+        let svc = service()
+        await svc.setRecoveryEnabled(false)
+        _ = try await svc.sync()
+        #expect(store.metricRanges.withLock { $0.isEmpty })
+        #expect(api.bodies.withLock { $0.first?.dailyMetrics } == [])
+    }
+
+    @Test func metricReadFailureStillSyncsWorkouts() async throws {
+        anchors.setObservingUserId(7)
+        store.metricsError.withLock { $0 = APIError.http(status: 500, message: "health", code: nil) }
+        store.pages.withLock { $0 = [HealthWorkoutPage(samples: [run(1)], deleted: [], anchor: Data([6]))] }
+        let outcome = try await service().sync()
+        #expect(outcome.accepted == 1)
+        #expect(api.bodies.withLock { $0.first?.dailyMetrics } == [])
+        #expect(anchors.anchor(for: 7) == Data([6]))
+    }
+
+    @Test func signOutClearsTheSeed() async throws {
+        store.metricRows.withLock { $0 = [metricRow("2026-10-13")] }
+        let svc = service()
+        _ = try await svc.connect(userId: 7)
+        #expect(anchors.metricsSeeded(for: 7))
+        await svc.stopObservingForSignOut()
+        #expect(!anchors.metricsSeeded(for: 7))
     }
 }

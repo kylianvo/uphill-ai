@@ -20,10 +20,12 @@ struct AppleHealthExplainerSheet: View {
                         .accessibilityAddTraits(.isHeader)
                     point("figure.run", "What I read",
                           "Runs, hikes, stair sessions and strength workouts from the last 12 weeks, then each new one as it's saved.")
+                    point("bed.double", "Recovery",
+                          "Resting heart rate, HRV and sleep, as daily totals, so your plan eases off when you're not recovering.")
                     point("checkmark.circle", "Why",
                           "To mark your planned sessions done and start your plan from your real weekly mileage.")
                     point("lock", "What I send to Uphill",
-                          "Time, distance, climb, heart rate, calories and the app that recorded each workout. Your GPS routes stay on your phone.")
+                          "Time, distance, climb, heart rate, calories and the app that recorded each workout, plus one daily value each for resting HR, HRV and sleep. Your GPS routes, sleep stages and heart-rate streams stay on your phone.")
                     point("square.and.pencil", "Nothing written", "I never write to Apple Health.")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -32,6 +34,12 @@ struct AppleHealthExplainerSheet: View {
             .background(UH.Palette.surface)
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: UH.Space.small) {
+                    // Apple's sheet opens with every switch off; Allow alone grants nothing.
+                    point("hand.tap", "On the next screen",
+                          "Apple starts with every switch off. Turn them all on and choose All Recorded Data, or I can't see your workouts.")
+                        .padding(UH.Space.regular)
+                        .background(UH.Palette.warningFill, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                        .accessibilityIdentifier("health.explainer.turnOnAll")
                     Button("Continue") { dismiss(); onContinue() }
                         .buttonStyle(.uhPrimary)
                         .accessibilityIdentifier("health.explainer.continue")
