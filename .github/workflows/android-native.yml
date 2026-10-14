@@ -28,6 +28,13 @@ jobs:
       - run: python3 scripts/test_xcstrings.py
       - run: ./gradlew lint testDebugUnitTest testReleaseUnitTest assembleDebug
       - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: android-test-reports
+          path: |
+            android-native/app/build/reports/tests/
+            android-native/app/build/test-results/
+      - uses: actions/upload-artifact@v4
         with:
           name: uphill-android-debug
           path: android-native/app/build/outputs/apk/debug/*.apk

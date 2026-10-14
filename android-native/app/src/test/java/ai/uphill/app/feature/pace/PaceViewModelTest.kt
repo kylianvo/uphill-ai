@@ -6,11 +6,13 @@ import ai.uphill.app.core.networking.MemoryTokenStore
 import ai.uphill.app.core.pace.PacedCheckpoint
 import ai.uphill.app.core.pace.PacingRequest
 import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.viewModelScope
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -53,7 +55,9 @@ class PaceViewModelTest {
             awaitTarget(vm, 360.0)
             assertEquals(listOf(360.0), requests.toList())
         } finally {
+            val job = store.get("pace")?.viewModelScope?.coroutineContext?.get(Job)
             store.clear()
+            job?.join()
             Dispatchers.resetMain()
         }
     }
@@ -91,7 +95,9 @@ class PaceViewModelTest {
             assertFalse(vm.state.value.busy)
         } finally {
             releaseFirst.countDown()
+            val job = store.get("pace")?.viewModelScope?.coroutineContext?.get(Job)
             store.clear()
+            job?.join()
             Dispatchers.resetMain()
         }
     }

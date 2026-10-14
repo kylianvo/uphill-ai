@@ -6,12 +6,14 @@ import ai.uphill.app.core.networking.APIClient
 import ai.uphill.app.core.networking.JSONCoding
 import ai.uphill.app.core.networking.MemoryTokenStore
 import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.viewModelScope
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -64,7 +66,9 @@ class GearViewModelTest {
             assertEquals(0, puts.get())
         } finally {
             releaseGet.countDown()
+            val job = store.get("gear")?.viewModelScope?.coroutineContext?.get(Job)
             store.clear()
+            job?.join()
             Dispatchers.resetMain()
         }
     }
@@ -118,7 +122,9 @@ class GearViewModelTest {
             assertEquals(existing.shoe("trail"), saved.get().shoe("trail"))
             assertEquals("Novablast", saved.get().shoe("daily")?.model)
         } finally {
+            val job = store.get("gear")?.viewModelScope?.coroutineContext?.get(Job)
             store.clear()
+            job?.join()
             Dispatchers.resetMain()
         }
     }
