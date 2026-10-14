@@ -5,6 +5,7 @@ All raw SQL uses %s-style placeholders via psycopg2 through SQLAlchemy.
 
 import datetime
 import hashlib
+import hmac
 import json
 import math
 import unicodedata
@@ -3024,6 +3025,69 @@ def delete_session(session_token: str) -> bool:
         result = conn.execute(text("DELETE FROM sessions WHERE session_token = :tok"), {"tok": session_token})
         conn.commit()
     return result.rowcount > 0
+
+
+# ─── Password reset codes ────────────────────────────────────────────────────
+
+
+def create_password_reset_code(user_id: int, code_hash: str, ttl_minutes: int = 15) -> bool:
+    """Stores a new reset code and retires the user's earlier unused ones.
+
+    Returns False and stores nothing when the user is over the rate limit
+    (1 code per 60 s, 5 per hour)."""
+    with engine.connect() as conn:
+        recent = conn.execute(
+            text("""
+            SELECT COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '60 seconds') AS last_minute,
+                   COUNT(*) AS last_hour
+            FROM password_reset_codes
+            WHERE user_id = :uid AND created_at > NOW() - INTERVAL '1 hour'
+        """),
+            {"uid": user_id},
+        ).fetchone()
+        if recent.last_minute >= 1 or recent.last_hour >= 5:
+            return False
+        conn.execute(
+            text("UPDATE password_reset_codes SET used_at = NOW() WHERE user_id = :uid AND used_at IS NULL"),
+            {"uid": user_id},
+        )
+        conn.execute(
+            text("""
+            INSERT INTO password_reset_codes (user_id, code_hash, expires_at)
+            VALUES (:uid, :h, NOW() + make_interval(mins => :ttl))
+        """),
+            {"uid": user_id, "h": code_hash, "ttl": ttl_minutes},
+        )
+        conn.commit()
+    return True
+
+
+def consume_password_reset_code(user_id: int, code_hash: str, new_password_hash: str) -> bool:
+    """Checks code_hash against the user's newest live code.
+
+    A miss counts an attempt (the 5th kills the code). A hit sets the password,
+    retires the code and deletes every session, all in one transaction."""
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("""
+            SELECT id, code_hash FROM password_reset_codes
+            WHERE user_id = :uid AND used_at IS NULL AND expires_at > NOW() AND attempts < 5
+            ORDER BY created_at DESC LIMIT 1
+            FOR UPDATE
+        """),
+            {"uid": user_id},
+        ).fetchone()
+        if not row:
+            return False
+        if not hmac.compare_digest(row.code_hash, code_hash):
+            conn.execute(text("UPDATE password_reset_codes SET attempts = attempts + 1 WHERE id = :id"), {"id": row.id})
+            return False
+        conn.execute(
+            text("UPDATE users SET password_hash = :ph WHERE id = :uid"), {"ph": new_password_hash, "uid": user_id}
+        )
+        conn.execute(text("UPDATE password_reset_codes SET used_at = NOW() WHERE id = :id"), {"id": row.id})
+        conn.execute(text("DELETE FROM sessions WHERE user_id = :uid"), {"uid": user_id})
+    return True
 
 
 # ─── Knowledge Cards ─────────────────────────────────────────────────────────
