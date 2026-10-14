@@ -52,6 +52,8 @@ final class AppModel {
     var appleHealthMessage: String?
     /// Failures show in the danger tone; the nothing-found hint and retry notice don't.
     var appleHealthMessageIsError = false
+    /// The last connect read nothing: most likely every Health switch was left off.
+    var appleHealthNeedsAccess = false
     /// Connected before recovery metrics existed and hasn't been asked for resting HR, HRV and
     /// sleep yet: Me shows "Add recovery data" until the athlete taps it, whatever they answer
     /// (HealthKit never reports a denied read).
@@ -102,6 +104,7 @@ final class AppModel {
             markRecoveryAsked(userID)
             lastAppleHealthSync = .now
             appleHealthMessageIsError = false
+            appleHealthNeedsAccess = outcome.nothingFound
             appleHealthMessage = outcome.nothingFound
                 ? L("No workouts found. Check Settings → Health → Data Access & Devices → Uphill AI.")
                 : nil
@@ -461,6 +464,8 @@ final class PlanIdBox: Sendable {
 
 /// Holds AppModel's sign-out work for SessionStore's callback, which is created before AppModel
 /// can capture itself. Only touched on the main actor.
-final class SignOutHook: @unchecked Sendable {
-    @MainActor var run: () -> Void = {}
+@MainActor
+final class SignOutHook: Sendable {
+    var run: () -> Void = {}
+    nonisolated init() {}
 }

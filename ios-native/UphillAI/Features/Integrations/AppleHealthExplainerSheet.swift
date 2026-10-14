@@ -27,6 +27,8 @@ struct AppleHealthExplainerSheet: View {
                     point("lock", "What I send to Uphill",
                           "Time, distance, climb, heart rate, calories and the app that recorded each workout, plus one daily value each for resting HR, HRV and sleep. Your GPS routes, sleep stages and heart-rate streams stay on your phone.")
                     point("square.and.pencil", "Nothing written", "I never write to Apple Health.")
+                    point("hand.tap", "On the next screen",
+                          "Apple starts with every switch off. Tap Turn On All, then Allow, or I can't see your workouts.")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(UH.Space.section)

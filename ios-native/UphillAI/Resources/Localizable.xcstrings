@@ -13661,6 +13661,36 @@
         }
       }
     },
+    "On the next screen": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ở màn hình tiếp theo"
+          }
+        }
+      }
+    },
+    "Apple starts with every switch off. Tap Turn On All, then Allow, or I can't see your workouts.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple để mọi công tắc ở trạng thái tắt. Bấm Bật tất cả (Turn On All), rồi Cho phép (Allow), nếu không mình sẽ không thấy buổi tập của bạn."
+          }
+        }
+      }
+    },
+    "Open Settings": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Cài đặt"
+          }
+        }
+      }
+    },
     "Runs, hikes and strength sessions from your iPhone, Apple Watch or any app that saves to Health.": {
       "localizations": {
         "vi": {
