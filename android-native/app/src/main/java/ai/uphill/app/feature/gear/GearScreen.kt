@@ -20,6 +20,7 @@ data class GearState(
     val plan: GearPlan? = null,
     val rotation: ShoeRotation = ShoeRotation(),
     val loaded: Boolean = false,
+    val loading: Boolean = false,
     val busy: Boolean = false,
     val saving: Boolean = false,
     val error: String? = null,
@@ -38,13 +39,21 @@ class GearViewModel(api: APIClient) : ViewModel() {
         viewModelScope.launch {
             val plan = plans.active()
             mutable.update { it.copy(activePlan = plan) }
+        }
+        loadRotation()
+    }
+
+    fun loadRotation() {
+        if (mutable.value.loaded || mutable.value.loading) return
+        mutable.update { it.copy(loading = true, error = null) }
+        viewModelScope.launch {
             try {
                 val rotation = service.rotation()
-                mutable.update { it.copy(rotation = rotation, loaded = true) }
+                mutable.update { it.copy(rotation = rotation, loaded = true, loading = false) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                mutable.update { it.copy(error = e.message) }
+                mutable.update { it.copy(loading = false, error = e.message) }
             }
         }
     }
@@ -64,13 +73,16 @@ class GearViewModel(api: APIClient) : ViewModel() {
     }
 
     fun rotation(value: ShoeRotation) {
+        if (!mutable.value.loaded) return
         mutable.update { it.copy(rotation = value, saving = true) }
         saveJob?.cancel()
         saveJob =
             viewModelScope.launch {
                 delay(600)
                 try {
+                    if (!mutable.value.loaded) return@launch
                     service.save(value)
+                    ensureActive()
                     mutable.update { it.copy(saving = false, error = null) }
                 } catch (e: CancellationException) {
                     throw e
@@ -110,6 +122,7 @@ fun GearScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
     var brands by rememberSaveable { mutableStateOf("") }
     var budget by rememberSaveable { mutableStateOf("") }
     var notes by rememberSaveable { mutableStateOf("") }
+    var assignDistance by rememberSaveable { mutableStateOf("0") }
     var assign by remember { mutableStateOf<ShoeRecommendation?>(null) }
     var slot by rememberSaveable { mutableStateOf("daily") }
     LaunchedEffect(state.activePlan) {
@@ -121,9 +134,26 @@ fun GearScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
     ToolPage("Gear Vault", onNavigate) {
         ToolOptions("Gear", listOf("Find shoes", "Shoe rotation"), setOf(tab)) { tab = it }
         ToolError(state.error)
+        if (!state.loaded)
+            ToolPanel("Shoe rotation") {
+                if (state.loading) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text(TT("Loading shoe rotation…"))
+                } else TextButton(onClick = vm::loadRotation) { Text(TT("Retry")) }
+            }
         if (tab == "Find shoes") {
             ToolPanel("Shoe preferences") {
                 RaceSearch(api, race, { race = it }) { distance = it.distanceKm.toString() }
+                state.activePlan?.let { plan ->
+                    TextButton(
+                        onClick = {
+                            race = plan.raceName
+                            distance = plan.courseDistanceKm?.toString().orEmpty()
+                        }
+                    ) {
+                        Text(TT("Use my plan's race"))
+                    }
+                }
                 ToolField("Race distance (km)", distance, { distance = it })
                 ToolOptions("Surface", listOf("trail", "road"), setOf(surface)) { surface = it }
                 if (surface == "trail")
@@ -137,7 +167,7 @@ fun GearScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
                 else
                     ToolOptions(
                         "Use case",
-                        listOf("daily training", "tempo", "race"),
+                        listOf("daily training", "race", "speed work"),
                         setOf(useCase),
                     ) {
                         useCase = it
@@ -150,6 +180,16 @@ fun GearScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
                 }
                 ToolOptions("Carbon Plate", listOf("yes", "no", "unknown"), setOf(carbon)) {
                     carbon = it
+                }
+                ToolOptions(
+                    "Preferred brands",
+                    listOf("Salomon", "Hoka", "Nike", "Saucony", "Altra", "Brooks", "Nnormal"),
+                    brands.split(',').map { it.trim() }.toSet(),
+                ) { brand ->
+                    val selected = brands.split(',').map { it.trim() }.filter { it.isNotBlank() }
+                    brands =
+                        (if (brand in selected) selected - brand else selected + brand)
+                            .joinToString(", ")
                 }
                 ToolField("Preferred brands", brands, { brands = it })
                 ToolField("Budget", budget, { budget = it })
@@ -187,7 +227,13 @@ fun GearScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
                         Text("${shoe.foamMaterial} · ${shoe.outsoleCompound}")
                         Text("${TT("Pros")}: ${shoe.pros}")
                         Text("${TT("Cons")}: ${shoe.cons}")
-                        OutlinedButton(onClick = { assign = shoe }) {
+                        OutlinedButton(
+                            onClick = {
+                                assign = shoe
+                                assignDistance = "0"
+                            },
+                            enabled = state.loaded,
+                        ) {
                             Text(TT("Assign to rotation"))
                         }
                     }
@@ -199,7 +245,7 @@ fun GearScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
                     }
                 }
             }
-        } else {
+        } else if (state.loaded) {
             Text(if (state.saving) TT("Saving rotation…") else TT("Shoe rotation"))
             listOf("daily", "tempo", "race", "trail").forEach { s ->
                 RotationSlot(s, state.rotation, { vm.rotation(it) })
@@ -213,6 +259,11 @@ fun GearScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
             text = {
                 Column {
                     Text("${shoe.brand} ${shoe.model}")
+                    ToolField(
+                        "Current distance logged (km)",
+                        assignDistance,
+                        { assignDistance = it },
+                    )
                     ToolOptions("Slot", listOf("daily", "tempo", "race", "trail"), setOf(slot)) {
                         slot = it
                     }
@@ -221,9 +272,17 @@ fun GearScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
             confirmButton = {
                 TextButton(
                     onClick = {
-                        vm.rotation(state.rotation.setShoe(ShoeItem(slot, shoe.brand, shoe.model)))
+                        vm.rotation(
+                            state.rotation.setShoe(
+                                ShoeItem(slot, shoe.brand, shoe.model, assignDistance.toDouble())
+                            )
+                        )
                         assign = null
-                    }
+                    },
+                    enabled =
+                        state.loaded &&
+                            assignDistance.toDoubleOrNull()?.let { it.isFinite() && it >= 0 } ==
+                                true,
                 ) {
                     Text(TT("Save"))
                 }
@@ -273,6 +332,52 @@ private fun RotationSlot(slot: String, rotation: ShoeRotation, onChange: (ShoeRo
         } else Text(TT("No shoe assigned to this slot"))
         TextButton(onClick = { editing = !editing }) { Text(TT("Configure shoe")) }
         if (editing) {
+            val presets =
+                when (slot) {
+                    "daily" ->
+                        listOf(
+                            "Nike" to "Pegasus 41",
+                            "Hoka" to "Clifton 10",
+                            "Asics" to "Novablast 5",
+                            "Brooks" to "Glycerin 23",
+                            "Saucony" to "Triumph 23",
+                        )
+                    "tempo" ->
+                        listOf(
+                            "Saucony" to "Endorphin Speed 4",
+                            "Hoka" to "Mach 7",
+                            "Adidas" to "Adizero Boston 13",
+                            "New Balance" to "FuelCell Rebel v5",
+                            "Asics" to "Superblast 3",
+                        )
+                    "race" ->
+                        listOf(
+                            "Nike" to "Vaporfly 3",
+                            "Nike" to "Alphafly 3",
+                            "Hoka" to "Rocket X 3",
+                            "Saucony" to "Endorphin Pro 5",
+                            "Asics" to "Metaspeed Sky Tokyo",
+                        )
+                    else ->
+                        listOf(
+                            "Salomon" to "S/Lab Genesis",
+                            "Hoka" to "Speedgoat 6",
+                            "Saucony" to "Peregrine 16",
+                            "Brooks" to "Cascadia 19",
+                            "Altra" to "Mont Blanc Carbon",
+                        )
+                }
+            presets.forEach { (presetBrand, presetModel) ->
+                TextButton(
+                    onClick = {
+                        brand = presetBrand
+                        model = presetModel
+                        distance = "0"
+                    }
+                ) {
+                    Text("$presetBrand $presetModel")
+                }
+            }
             ToolField("Brand", brand, { brand = it })
             ToolField("Model", model, { model = it })
             ToolField("Logged distance (km)", distance, { distance = it })

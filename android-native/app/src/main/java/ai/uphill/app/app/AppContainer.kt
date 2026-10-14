@@ -39,7 +39,7 @@ class AppContainer(context: Application) {
         )
     val api =
         APIClient(
-            { AppEnvironment.baseURL(BuildConfig.DEBUG, environment) },
+            { AppEnvironment.baseURL(BuildConfig.DEBUG, environment ?: BuildConfig.API_BASE_URL) },
             tokens,
             onUnauthorized = { session.signOut() },
         )

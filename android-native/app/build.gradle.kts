@@ -9,6 +9,7 @@ val signingProperties = Properties().apply {
     val file = rootProject.file("keystore.properties")
     if (file.exists()) file.inputStream().use { load(it) }
 }
+val debugLocalApiPort = providers.gradleProperty("uphillLocalApiPort").getOrElse("8000").toInt().also { require(it in 1..65535) }
 android {
     namespace = "ai.uphill.app"
     compileSdk = 36
@@ -30,7 +31,7 @@ android {
     }
     buildTypes {
         debug {
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:$debugLocalApiPort\"")
             if (providers.gradleProperty("uphillReleaseSigningForDebug").orNull == "true") {
                 signingConfig = signingConfigs.getByName("release")
             }

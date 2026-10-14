@@ -2,6 +2,7 @@ package ai.uphill.app.feature.knowledge
 
 import ai.uphill.app.core.auth.User
 import ai.uphill.app.core.knowledge.*
+import ai.uphill.app.core.localization.L
 import ai.uphill.app.core.networking.APIClient
 import ai.uphill.app.designsystem.*
 import android.content.Intent
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -80,15 +82,30 @@ fun KnowledgeScreen(api: APIClient, user: User, lang: String, onNavigate: (Strin
     var topic by rememberSaveable { mutableStateOf("All") }
     var search by rememberSaveable { mutableStateOf("") }
     var sources by rememberSaveable { mutableStateOf(false) }
+    var dailyCardId by rememberSaveable { mutableStateOf<Int?>(null) }
     var link by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(lang) { vm.load(lang) }
+    LaunchedEffect(state.cards) {
+        if (state.cards.none { it.id == dailyCardId }) dailyCardId = state.cards.randomOrNull()?.id
+    }
     ToolPage("Knowledge Hub", onNavigate) {
         ToolField("Search knowledge", search, { search = it })
         ToolError(state.error)
         if (state.busy)
             LinearProgressIndicator(modifier = androidx.compose.ui.Modifier.fillMaxWidth())
         if (search.isBlank() && topic == "All")
-            state.cards.firstOrNull()?.let { ToolPanel("Daily insight") { KnowledgeCardBody(it) } }
+            state.cards
+                .firstOrNull { it.id == dailyCardId }
+                ?.let { featured ->
+                    ToolPanel("Daily insight") {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            TextButton(onClick = { dailyCardId = state.cards.randomOrNull()?.id }) {
+                                Text(L("Shuffle"))
+                            }
+                        }
+                        KnowledgeCardBody(featured)
+                    }
+                }
         ToolOptions("Topics", state.topics, setOf(topic)) { topic = it }
         val filtered =
             state.cards.filter {

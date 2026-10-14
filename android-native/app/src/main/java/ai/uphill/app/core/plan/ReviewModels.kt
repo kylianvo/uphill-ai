@@ -142,6 +142,7 @@ data class WatchActivity(
     val startTime: String? = null,
     val deviceModel: String? = null,
     val matchMethod: String? = null,
+    val sourceProvider: String? = null,
 ) {
     val settled
         get() = workoutId != null && matchMethod in listOf("auto", "manual")

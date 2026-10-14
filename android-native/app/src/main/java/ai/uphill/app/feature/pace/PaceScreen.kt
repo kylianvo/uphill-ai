@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
@@ -35,6 +36,7 @@ class PaceViewModel(api: APIClient) : ViewModel() {
     private val mutable = MutableStateFlow(PaceState())
     val state = mutable.asStateFlow()
     private var bytes: ByteArray? = null
+    private var calculationJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -69,19 +71,34 @@ class PaceViewModel(api: APIClient) : ViewModel() {
         mutable.update { it.copy(gpx = null) }
     }
 
-    fun calculate(request: PacingRequest, name: String, distance: Double) {
-        viewModelScope.launch {
-            mutable.update { it.copy(busy = true, error = null) }
-            try {
-                val paced = service.calculate(request)
-                val benchmarks = service.benchmarks(name, distance)
-                mutable.update { it.copy(paced = paced, benchmarks = benchmarks, busy = false) }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                mutable.update { it.copy(error = e.message, busy = false) }
+    fun calculate(
+        request: PacingRequest,
+        name: String,
+        distance: Double,
+        debounce: Boolean = false,
+    ) {
+        calculationJob?.cancel()
+        calculationJob =
+            viewModelScope.launch {
+                if (debounce) delay(350)
+                mutable.update { it.copy(busy = true, error = null) }
+                try {
+                    val paced = service.calculate(request)
+                    val benchmarks = service.benchmarks(name, distance)
+                    ensureActive()
+                    mutable.update { it.copy(paced = paced, benchmarks = benchmarks, busy = false) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    ensureActive()
+                    mutable.update { it.copy(error = e.message, busy = false) }
+                }
             }
-        }
+    }
+
+    fun cancelCalculation() {
+        calculationJob?.cancel()
+        mutable.update { it.copy(busy = false) }
     }
 
     fun error(message: String) {
@@ -95,11 +112,13 @@ fun PaceScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
     val state by vm.state.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val incomingTarget by rememberSaveable { mutableStateOf(ToolHandoff.pacingTargetMinutes) }
+    var planDefaultsApplied by rememberSaveable { mutableStateOf(false) }
     var name by rememberSaveable { mutableStateOf("") }
     var distance by rememberSaveable { mutableStateOf("50") }
     var gain by rememberSaveable { mutableStateOf("2200") }
     var interval by rememberSaveable { mutableStateOf("5") }
-    var target by rememberSaveable { mutableStateOf("330") }
+    var target by rememberSaveable { mutableStateOf(incomingTarget?.toString() ?: "330") }
     var weight by rememberSaveable { mutableStateOf((user.weightKg ?: 68.0).toString()) }
     var clock by rememberSaveable { mutableStateOf("05:00") }
     var bias by rememberSaveable { mutableFloatStateOf(0f) }
@@ -137,23 +156,61 @@ fun PaceScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
                     }
                 }
         }
-    LaunchedEffect(state.activePlan) {
-        state.activePlan?.let { p ->
-            name = p.raceName
-            distance = (p.courseDistanceKm ?: 50.0).toString()
-            gain = (p.courseElevationGainM ?: 2200.0).toString()
-            p.targetMinutes?.let { target = it.toString() }
-        }
-        ToolHandoff.pacingTargetMinutes?.let {
-            target = it.toString()
+    LaunchedEffect(Unit) {
+        if (ToolHandoff.pacingTargetMinutes == incomingTarget)
             ToolHandoff.pacingTargetMinutes = null
-        }
+    }
+    LaunchedEffect(state.activePlan) {
+        state.activePlan
+            ?.takeUnless { planDefaultsApplied }
+            ?.let { p ->
+                name = p.raceName
+                distance = (p.courseDistanceKm ?: 50.0).toString()
+                gain = (p.courseElevationGainM ?: 2200.0).toString()
+                if (incomingTarget == null) p.targetMinutes?.let { target = it.toString() }
+                planDefaultsApplied = true
+            }
     }
     LaunchedEffect(state.gpx) {
         state.gpx?.let {
             distance = it.totalDistanceKm.toString()
             gain = it.totalElevationGainM.toString()
             if (name.isBlank()) name = it.fileName.removeSuffix(".gpx").replace('_', ' ')
+        }
+    }
+    fun pacingRequest(): Pair<PacingRequest, Double>? {
+        val d = state.gpx?.totalDistanceKm ?: distance.toDoubleOrNull() ?: return null
+        val g = state.gpx?.totalElevationGainM ?: gain.toDoubleOrNull() ?: return null
+        val minutes = target.toDoubleOrNull() ?: return null
+        val kg = weight.toDoubleOrNull() ?: return null
+        val step = interval.toDoubleOrNull() ?: return null
+        if (
+            !d.isFinite() ||
+                d <= 0 ||
+                !g.isFinite() ||
+                g < 0 ||
+                !minutes.isFinite() ||
+                minutes <= 0 ||
+                !kg.isFinite() ||
+                kg <= 0 ||
+                !step.isFinite() ||
+                step <= 0
+        )
+            return null
+        val checkpoints =
+            state.gpx?.checkpoints ?: PacingCalculator.synthesizeCourse(d, g, intervalKm = step)
+        return PacingRequest(
+            checkpoints,
+            minutes,
+            splitBias = bias.toDouble(),
+            runnerWeightKg = kg,
+        ) to d
+    }
+    LaunchedEffect(target, bias, distance, gain, weight, interval, state.gpx) {
+        if (state.paced.isNotEmpty()) {
+            val request = pacingRequest()
+            if (request == null) vm.cancelCalculation()
+            else vm.calculate(request.first, name, request.second, debounce = true)
         }
     }
     ToolPage("Pace strategy", onNavigate) {
@@ -192,7 +249,9 @@ fun PaceScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
             }
         }
         ToolPanel("Pacing controls") {
-            ToolField("Target time (minutes)", target, { target = it })
+            Box(Modifier.testTag("pace.target")) {
+                ToolField("Target time (minutes)", target, { target = it })
+            }
             ToolField("Runner weight (kg)", weight, { weight = it })
             ToolField("Start time (HH:MM)", clock, { clock = it })
             ToolOptions(
@@ -227,30 +286,10 @@ fun PaceScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
             }
         }
         ToolError(state.error)
-        ToolSubmit(
-            "Calculate pacing",
-            state.busy,
-            (distance.toDoubleOrNull() ?: 0.0) > 0 &&
-                (gain.toDoubleOrNull() ?: -1.0) >= 0 &&
-                (target.toDoubleOrNull() ?: 0.0) > 0 &&
-                (weight.toDoubleOrNull() ?: 0.0) > 0,
-        ) {
-            val d = state.gpx?.totalDistanceKm ?: distance.toDouble()
-            val g = state.gpx?.totalElevationGainM ?: gain.toDouble()
-            val checkpoints =
-                state.gpx?.checkpoints
-                    ?: PacingCalculator.synthesizeCourse(d, g, intervalKm = interval.toDouble())
-            vm.calculate(
-                PacingRequest(
-                    checkpoints,
-                    target.toDouble(),
-                    splitBias = bias.toDouble(),
-                    runnerWeightKg = weight.toDouble(),
-                ),
-                name,
-                d,
-            )
+        ToolSubmit("Calculate pacing", state.busy, pacingRequest() != null) {
+            pacingRequest()?.let { (request, d) -> vm.calculate(request, name, d) }
         }
+
         if (state.benchmarks.isNotEmpty())
             ToolPanel("Past results") {
                 ToolOptions(
@@ -300,7 +339,7 @@ fun PaceScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
                     if (i > 0 && i < state.paced.lastIndex)
                         ToolOptions(
                             "Rest (minutes)",
-                            listOf("0", "5", "10", "15"),
+                            listOf("0", "2", "5", "10", "15", "20"),
                             setOf((rests[i] ?: 0).toString()),
                         ) {
                             rests = rests + (i to it.toInt())

@@ -15,7 +15,7 @@ python3 scripts/test_xcstrings.py
 ```
 
 Debug defaults to `http://10.0.2.2:8000` (Android emulator → development host).
-Run the backend on host port 8000. For a physical device use `adb reverse tcp:8000 tcp:8000`
+Run the backend on host port 8000. Use `-PuphillLocalApiPort=8016` for another local port; this changes only the debug build default. For a physical device use `adb reverse tcp:8000 tcp:8000`
 and select localhost from the developer environment menu. Long-press the version
 in Me to change the debug environment. Release always uses the production URL.
 

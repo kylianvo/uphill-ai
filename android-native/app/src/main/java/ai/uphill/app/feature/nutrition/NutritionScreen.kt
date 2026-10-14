@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
@@ -76,7 +78,9 @@ class NutritionViewModel(api: APIClient) : ViewModel() {
 fun NutritionScreen(api: APIClient, user: User, lang: String, onNavigate: (String) -> Unit) {
     val vm = toolViewModel("nutrition-${user.id}") { NutritionViewModel(api) }
     val state by vm.state.collectAsState()
-    var duration by rememberSaveable { mutableStateOf("4") }
+    val incomingDuration by rememberSaveable { mutableStateOf(ToolHandoff.fuelingHours) }
+    var planDefaultsApplied by rememberSaveable { mutableStateOf(false) }
+    var duration by rememberSaveable { mutableStateOf(incomingDuration?.toString() ?: "4") }
     var distance by rememberSaveable { mutableStateOf("") }
     var gain by rememberSaveable { mutableStateOf("") }
     var temp by rememberSaveable { mutableStateOf("moderate") }
@@ -89,20 +93,24 @@ fun NutritionScreen(api: APIClient, user: User, lang: String, onNavigate: (Strin
     var tab by rememberSaveable { mutableStateOf("Timeline") }
     var catalog by rememberSaveable { mutableStateOf(false) }
     var filter by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        if (ToolHandoff.fuelingHours == incomingDuration) ToolHandoff.fuelingHours = null
+    }
     LaunchedEffect(state.activePlan) {
-        state.activePlan?.let { p ->
-            distance = p.courseDistanceKm?.toString() ?: ""
-            gain = p.courseElevationGainM?.toString() ?: ""
-            p.targetTimeHours?.let { duration = it.toString() }
-        }
-        ToolHandoff.fuelingHours?.let {
-            duration = it.toString()
-            ToolHandoff.fuelingHours = null
-        }
+        state.activePlan
+            ?.takeUnless { planDefaultsApplied }
+            ?.let { p ->
+                distance = p.courseDistanceKm?.toString() ?: ""
+                gain = p.courseElevationGainM?.toString() ?: ""
+                if (incomingDuration == null) p.targetTimeHours?.let { duration = it.toString() }
+                planDefaultsApplied = true
+            }
     }
     ToolPage("Nutrition Lab", onNavigate) {
         ToolPanel("Fueling setup") {
-            ToolField("Duration (hours)", duration, { duration = it })
+            Box(Modifier.testTag("nutrition.duration")) {
+                ToolField("Duration (hours)", duration, { duration = it })
+            }
             ToolField("Distance (km)", distance, { distance = it })
             ToolField("Elevation Gain (m)", gain, { gain = it })
             ToolOptions("Temperature", listOf("cool", "moderate", "hot"), setOf(temp)) { temp = it }
@@ -111,7 +119,7 @@ fun NutritionScreen(api: APIClient, user: User, lang: String, onNavigate: (Strin
             }
             ToolOptions(
                 "Athlete level",
-                listOf("Recreational", "Intermediate", "Advanced"),
+                listOf("Recreational", "Competitive", "Elite"),
                 setOf(level),
             ) {
                 level = it

@@ -6,10 +6,16 @@ import ai.uphill.app.core.gear.GearPlan
 import ai.uphill.app.core.localization.*
 import ai.uphill.app.core.networking.*
 import ai.uphill.app.core.nutrition.NutritionPlan
+import ai.uphill.app.core.plan.*
 import ai.uphill.app.designsystem.UH
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ThumbDown
+import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -68,21 +74,50 @@ fun ChatScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
                     ) {
                         if (message.content.isNotEmpty()) Text(message.content)
                         message.tools.forEach { tool ->
-                            RichCard(tool, state.proposals, model, onNavigate)
+                            RichCard(
+                                tool,
+                                state.proposals,
+                                model,
+                                onNavigate,
+                                state.pendingProposals,
+                            )
                         }
                         if (message.interrupted)
                             Text(L("Response interrupted"), color = UH.warningInk)
                         if (message.role == "assistant" && message.numericId != null)
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                if (message.citations.isNotEmpty())
+                                if (message.role == "assistant")
                                     TextButton(onClick = { model.sources(message.numericId) }) {
                                         Text(L("Sources"))
                                     }
-                                TextButton(onClick = { model.feedback(message.numericId, 1) }) {
-                                    Text(if (message.feedback == 1) "✓ +" else "+")
+                                TextButton(
+                                    onClick = {
+                                        model.feedback(
+                                            message.numericId,
+                                            if (message.feedback == 1) 0 else 1,
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.ThumbUp,
+                                        L("Helpful response"),
+                                        tint = if (message.feedback == 1) UH.accentInk else UH.muted,
+                                    )
                                 }
-                                TextButton(onClick = { model.feedback(message.numericId, -1) }) {
-                                    Text(if (message.feedback == -1) "✓ −" else "−")
+                                TextButton(
+                                    onClick = {
+                                        model.feedback(
+                                            message.numericId,
+                                            if (message.feedback == -1) 0 else -1,
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.ThumbDown,
+                                        L("Unhelpful response"),
+                                        tint =
+                                            if (message.feedback == -1) UH.accentInk else UH.muted,
+                                    )
                                 }
                             }
                     }
@@ -101,16 +136,21 @@ fun ChatScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
         if (!state.busy && state.retryOf != null)
             TextButton(onClick = { model.send("", lang, state.retryOf) }) { Text(L("Retry")) }
         if (state.clarify.isNotEmpty())
-            Row(
+            LazyRow(
                 Modifier.fillMaxWidth().padding(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                state.clarify.forEach { option ->
+                items(state.clarify) { option ->
                     SuggestionChip(
                         onClick = { model.send(option, lang) },
                         label = { Text(option) },
                         enabled = !state.busy,
                     )
+                }
+                item {
+                    TextButton(onClick = model::dismissSuggestions) {
+                        Text(L("Dismiss suggestions"))
+                    }
                 }
             }
         Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -158,7 +198,10 @@ fun ChatScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
             onDismissRequest = model::closeSources,
             title = { Text(L("Sources")) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(
+                    Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     (sources["citations"] as? JsonArray).orEmpty().forEach { element ->
                         val o = element.jsonObject
                         Text(
@@ -175,7 +218,15 @@ fun ChatScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
                         if (url.startsWith("https://"))
                             TextButton(onClick = { uri.openUri(url) }) { Text(L("Open source")) }
                     }
-                    if ((sources["citations"] as? JsonArray).isNullOrEmpty())
+                    (sources["evidence"] as? JsonArray).orEmpty().forEach { element ->
+                        val evidence = element as? JsonObject ?: return@forEach
+                        Text(evidence.s("title"), style = MaterialTheme.typography.titleSmall)
+                        Text(evidence.s("content"))
+                    }
+                    if (
+                        (sources["citations"] as? JsonArray).isNullOrEmpty() &&
+                            (sources["evidence"] as? JsonArray).isNullOrEmpty()
+                    )
                         Text(L("No sources available."))
                 }
             },
@@ -190,9 +241,16 @@ private fun RichCard(
     proposals: Map<Int, JsonObject>,
     model: ChatViewModel,
     navigate: (String) -> Unit,
+    pending: Set<Int>,
 ) {
+    val context = LocalContext.current
     val data = tool.data ?: return
-    Card(colors = CardDefaults.cardColors(containerColor = UH.surface)) {
+    OutlinedCard(
+        colors =
+            CardDefaults.outlinedCardColors(
+                containerColor = androidx.compose.ui.graphics.Color.White
+            )
+    ) {
         Column(
             Modifier.fillMaxWidth().padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -210,7 +268,9 @@ private fun RichCard(
                         if (tool.cardType == "schedule_rebuild") model.refreshProposal(id)
                     }
                     Text(
-                        L("Proposed schedule change"),
+                        if (tool.cardType == "schedule_rebuild")
+                            L("Proposed rebuild · Week %lld", data.s("week").toIntOrNull() ?: 0)
+                        else L("Proposed schedule change"),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(data.s("rationale"))
@@ -246,25 +306,52 @@ private fun RichCard(
                         workouts("before")
                             .takeIf { it.isNotBlank() }
                             ?.let { Text(L("was: %@", it), color = UH.muted) }
-                        workouts("after").takeIf { it.isNotBlank() }?.let { Text(it) }
+                        val after = workouts("after")
+                        if (after.isNotBlank()) Text(after)
+                        else if (!(day["before"] as? JsonArray).isNullOrEmpty()) Text(L("Rest"))
                     }
-                    (current["warnings"] as? JsonArray).orEmpty().forEach { warning ->
-                        val o = warning as? JsonObject
+                    if (status == "proposed")
+                        ((current["warnings"] ?: data["warnings"]) as? JsonArray)
+                            .orEmpty()
+                            .forEach { element ->
+                                val warning =
+                                    runCatching {
+                                            JSONCoding.json.decodeFromJsonElement<ScheduleWarning>(
+                                                element
+                                            )
+                                        }
+                                        .getOrNull()
+                                warning?.let {
+                                    Text(
+                                        ScheduleMessages.warningText(it) { key ->
+                                            localizedText(context, key)
+                                        },
+                                        color = UH.warningInk,
+                                    )
+                                }
+                            }
+                    Text(L(status))
+                    if (status == "generating") LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (status in listOf("stale", "failed"))
                         Text(
-                            o?.s("message").orEmpty().ifBlank { warning.toString() },
+                            L(ScheduleMessages.guardText(current.s("stale_reason"))),
                             color = UH.warningInk,
                         )
-                    }
-                    Text(L(status))
                     if (
                         status == "proposed" &&
                             (tool.cardType != "schedule_rebuild" || rebuild != null)
                     )
                         Row {
-                            TextButton(onClick = { model.actProposal(id, true) }) {
+                            TextButton(
+                                onClick = { model.actProposal(id, true) },
+                                enabled = id !in pending,
+                            ) {
                                 Text(L("Apply"))
                             }
-                            TextButton(onClick = { model.actProposal(id, false) }) {
+                            TextButton(
+                                onClick = { model.actProposal(id, false) },
+                                enabled = id !in pending,
+                            ) {
                                 Text(L("Discard"))
                             }
                         }
@@ -276,6 +363,7 @@ private fun RichCard(
                     val plan =
                         runCatching { JSONCoding.json.decodeFromJsonElement<GearPlan>(data) }
                             .getOrNull()
+                    plan?.let { Text(L("%lld recommendations", it.recommendations.size)) }
                     plan?.recommendations?.take(3)?.forEach { shoe ->
                         Text(
                             "${shoe.brand} ${shoe.model}",
@@ -298,7 +386,10 @@ private fun RichCard(
                             "${it.avgCarbsPerHour.toInt()}g carbs/h · ${it.totalCarbs.toInt()}g carbs · ${it.totalSodium.toInt()}mg sodium"
                         )
                     }
-                    plan?.products?.take(3)?.forEach { Text("${it.name} × ${it.totalQuantity}") }
+                    plan?.let { Text("${it.hourlyPlan.size} h") }
+                    plan?.products?.take(3)?.forEach {
+                        Text("${it.name} × ${it.totalQuantity} · ${it.carbsPerUnit.toInt()}g carbs")
+                    }
                     plan?.tips?.firstOrNull()?.let { Text(it) }
                     TextButton(onClick = { navigate("nutrition") }) { Text(L("Nutrition Lab")) }
                 }
@@ -307,6 +398,21 @@ private fun RichCard(
                         data.s("race_name").ifBlank { L("Race Goal Estimate") },
                         style = MaterialTheme.typography.titleMedium,
                     )
+                    data["distance_km"]?.let {
+                        Text("${(it as? JsonPrimitive)?.content.orEmpty()} km")
+                    }
+                    (data["benchmarks"] as? JsonArray)?.firstOrNull()?.let { element ->
+                        (element as? JsonObject)?.let {
+                            Text(
+                                L(
+                                    "Calibrated against %lld field (%lld finishers)",
+                                    it.s("year").toIntOrNull() ?: 0,
+                                    it.s("finishers").toIntOrNull() ?: 0,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
                     val goals = data["goals"] as? JsonObject
                     listOf(
                             "ambitious" to "A: Ambitious",
@@ -333,35 +439,86 @@ private fun RichCard(
                 }
                 "week_schedule" -> {
                     Text(L("Week schedule"), style = MaterialTheme.typography.titleMedium)
-                    (data["workouts"] as? JsonArray).orEmpty().forEach { element ->
-                        val workout = element.jsonObject
+                    val rows =
+                        (data["workouts"] as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }
+                    val week = data.s("week_number").ifBlank { data.s("week") }
+                    if (week.isNotBlank()) Text("${L("Week")} $week")
+                    Text(
+                        "%.1f km · %.0f m D+"
+                            .format(
+                                rows.sumOf { it.s("distance_km").toDoubleOrNull() ?: 0.0 },
+                                rows.sumOf { it.s("elevation_gain_m").toDoubleOrNull() ?: 0.0 },
+                            )
+                    )
+                    rows.forEach { workout ->
+                        val rest =
+                            workout.s("type").equals("rest", true) ||
+                                workout.s("title").equals("Rest Day", true)
                         TextButton(
+                            enabled = !rest,
                             onClick = {
                                 val id = workout["id"]?.jsonPrimitive?.intOrNull
                                 navigate(if (id != null) "workout/$id" else "plan")
-                            }
+                            },
                         ) {
-                            Text(
-                                "${workout.s("day_of_week")} · ${workout.s("title")} · ${workout.s("duration_minutes")} min"
-                            )
+                            Column(Modifier.fillMaxWidth()) {
+                                Text("${L(workout.s("day_of_week"))} · ${workout.s("title")}")
+                                Text(
+                                    "${workout.s("type")} · ${workout.s("duration_minutes")} min · ${workout.s("target_zone")}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                if (workout.s("is_completed") in listOf("1", "true"))
+                                    Text(L("Done"))
+                                if (workout.s("is_priority") in listOf("1", "true"))
+                                    Text(L("Priority session"))
+                            }
                         }
                     }
                 }
                 "week_review" -> {
                     Text(L("Week review"), style = MaterialTheme.typography.titleMedium)
-                    listOf("summary", "headline", "coach_note", "recommendation").forEach { key ->
-                        if (data.s(key).isNotBlank()) Text(data.s(key))
-                    }
-                    (data["highlights"] as? JsonArray).orEmpty().forEach {
-                        Text(it.jsonPrimitive.content)
+                    val review =
+                        runCatching { JSONCoding.json.decodeFromJsonElement<WeekReview>(data) }
+                            .getOrNull()
+                    if (review != null) {
+                        Text(
+                            "${L("Week")} ${review.weekNumber} · ${L("%@%% Done", "%.0f".format(review.completionPct))}"
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                            review.planned?.distanceKm?.let {
+                                Text("${L("Planned")}: %.1f km".format(it))
+                            }
+                            review.actual?.totalActualKm?.let {
+                                Text("${L("Actual")}: %.1f km".format(it))
+                            }
+                        }
+                        review.narrative?.let { narrative ->
+                            narrative.summary?.let { Text(it) }
+                            narrative.highlights.forEach { Text(it) }
+                            narrative.watch.forEach { Text(it, color = UH.warningInk) }
+                        }
+                    } else {
+                        listOf("summary", "headline", "coach_note", "recommendation").forEach { key
+                            ->
+                            if (data.s(key).isNotBlank()) Text(data.s(key))
+                        }
+                        (data["highlights"] as? JsonArray).orEmpty().forEach {
+                            Text((it as? JsonPrimitive)?.content.orEmpty())
+                        }
                     }
                 }
                 "pacing_splits" -> {
-                    Text(L("Pace Strategy"), style = MaterialTheme.typography.titleMedium)
-                    (data["splits"] as? JsonArray).orEmpty().take(8).forEach { element ->
+                    Text(
+                        data.s("race_name").ifBlank { L("Pace Strategy") },
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    data["total_distance_km"]?.let {
+                        Text("${(it as? JsonPrimitive)?.content.orEmpty()} km")
+                    }
+                    (data["splits"] as? JsonArray).orEmpty().forEach { element ->
                         val split = element.jsonObject
                         Text(
-                            "${split.s("distance_km")} km · ${split.s("target_pace")} · ${split.s("split_time")}"
+                            "${split.s("name")} · ${split.s("distance_km")} km · ${split.s("target_pace")} · ${split.s("split_time")}"
                         )
                     }
                     TextButton(onClick = { navigate("pace") }) { Text(L("View strategy")) }
@@ -371,5 +528,4 @@ private fun RichCard(
     }
 }
 
-private fun formatMinutes(value: Double): String =
-    "%d:%02d".format(value.toInt() / 60, value.toInt() % 60)
+private fun formatMinutes(value: Double): String = minutesText(value)

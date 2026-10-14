@@ -1,13 +1,16 @@
 package ai.uphill.app
 
 import ai.uphill.app.core.auth.*
+import ai.uphill.app.core.goal.ToolHandoff
 import ai.uphill.app.core.networking.*
 import ai.uphill.app.core.persistence.*
 import ai.uphill.app.designsystem.UphillTheme
 import ai.uphill.app.feature.auth.*
 import ai.uphill.app.feature.chat.ChatScreen
 import ai.uphill.app.feature.gear.GearScreen
+import ai.uphill.app.feature.nutrition.NutritionScreen
 import ai.uphill.app.feature.onboarding.OnboardingScreen
+import ai.uphill.app.feature.pace.PaceScreen
 import ai.uphill.app.feature.plan.PlanScreen
 import ai.uphill.app.feature.racehistory.RaceHistoryScreen
 import androidx.compose.ui.test.*
@@ -76,6 +79,8 @@ class NativeFlowTest {
 
     @After
     fun stop() {
+        ToolHandoff.pacingTargetMinutes = null
+        ToolHandoff.fuelingHours = null
         server.shutdown()
     }
 
@@ -112,7 +117,8 @@ class NativeFlowTest {
     fun planOpensWorkoutDetailFromRecordedSchedule() {
         ui.setContent { UphillTheme { PlanScreen(api, user, "en", {}) } }
         waitText("Vietnam Mountain Marathon 42K")
-        ui.onNodeWithText("Hill Repeats").performScrollTo().performClick()
+        ui.onNodeWithTag("plan.list").performScrollToNode(hasText("Hill Repeats"))
+        ui.onNodeWithText("Hill Repeats").performClick()
         waitText("Mark missed")
     }
 
@@ -174,11 +180,48 @@ class NativeFlowTest {
     }
 
     @Test
+    fun chatWeekReviewRendersLiveNestedNarrative() {
+        server.dispatcher =
+            object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val body =
+                        when (request.requestUrl!!.encodedPath) {
+                            "/api/coach/active-plan" -> fixture("active_plan.json")
+                            "/api/coach/chat/thread" ->
+                                """{"messages":[{"id":601,"role":"assistant","content":"Weekly reflection","tool_calls":[{"tool_call_id":"review","card_type":"week_review","card_data":{"week_number":2,"completion_pct":80,"planned":{"distance_km":42},"actual":{"total_actual_km":40},"narrative":{"summary":"Stable aerobic week.","highlights":["Completed the long run."],"watch":["Keep recovery easy."]}}}]}]}"""
+                            else -> "{}"
+                        }
+                    return MockResponse().setBody(body)
+                }
+            }
+        ui.setContent { UphillTheme { ChatScreen(api, user, "en", {}) } }
+        waitText("Stable aerobic week.")
+        ui.onNodeWithText("Completed the long run.").assertExists()
+        ui.onNodeWithText("Keep recovery easy.").assertExists()
+    }
+
+    @Test
     fun raceHistoryOpensManualResultForm() {
         ui.setContent { UphillTheme { RaceHistoryScreen(api, user, "en", {}) } }
         waitText("Race history")
         ui.onNodeWithText("Add race").performClick()
         waitText("Race name")
+    }
+
+    @Test
+    fun paceKeepsSelectedGoalWhenPlanLoads() {
+        ToolHandoff.pacingTargetMinutes = 360.0
+        ui.setContent { UphillTheme { PaceScreen(api, user, "en", {}) } }
+        waitText("42.0")
+        ui.onNodeWithTag("pace.target").assert(hasAnyDescendant(hasText("360.0")))
+    }
+
+    @Test
+    fun nutritionKeepsPacingDurationWhenPlanLoads() {
+        ToolHandoff.fuelingHours = 6.0
+        ui.setContent { UphillTheme { NutritionScreen(api, user, "en", {}) } }
+        waitText("42.0")
+        ui.onNodeWithTag("nutrition.duration").assert(hasAnyDescendant(hasText("6.0")))
     }
 
     @Test

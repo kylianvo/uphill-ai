@@ -18,7 +18,7 @@ object ScheduleMessages {
             else -> "That change couldn't be made."
         }
 
-    fun warningText(warning: ScheduleWarning): String {
+    fun warningText(warning: ScheduleWarning, translate: (String) -> String = { it }): String {
         val params = warning.values.toMutableMap()
         val text =
             when (warning.code) {
@@ -36,6 +36,9 @@ object ScheduleMessages {
                 "W3_pending_draft" -> "“{title}” is still pending coach review."
                 else -> return warning.code
             }
-        return params.entries.fold(text) { value, (key, param) -> value.replace("{$key}", param) }
+        params["day"]?.let { params["day"] = translate(it) }
+        return params.entries.fold(translate(text)) { value, (key, param) ->
+            value.replace("{$key}", param)
+        }
     }
 }

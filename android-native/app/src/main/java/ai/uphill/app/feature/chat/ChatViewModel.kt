@@ -18,6 +18,7 @@ data class ChatState(
     val hasMore: Boolean = false,
     val clarify: List<String> = emptyList(),
     val proposals: Map<Int, JsonObject> = emptyMap(),
+    val pendingProposals: Set<Int> = emptySet(),
     val sources: JsonObject? = null,
     val retryOf: String? = null,
 )
@@ -148,6 +149,10 @@ class ChatViewModel(
             }
     }
 
+    fun dismissSuggestions() {
+        mutable.update { it.copy(clarify = emptyList()) }
+    }
+
     fun stop() {
         stream?.cancel()
     }
@@ -235,6 +240,8 @@ class ChatViewModel(
     }
 
     fun actProposal(id: Int, apply: Boolean) {
+        if (id in mutable.value.pendingProposals) return
+        mutable.update { it.copy(pendingProposals = it.pendingProposals + id) }
         viewModelScope.launch {
             try {
                 if (apply) service.apply(id) else service.discard(id)
@@ -244,7 +251,10 @@ class ChatViewModel(
                 if (e.status == 409) refreshProposal(id)
                 mutable.update { it.copy(error = e) }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 mutable.update { it.copy(error = e) }
+            } finally {
+                mutable.update { it.copy(pendingProposals = it.pendingProposals - id) }
             }
         }
     }

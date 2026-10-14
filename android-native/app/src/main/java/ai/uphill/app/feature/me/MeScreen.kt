@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -49,6 +53,7 @@ fun MeScreen(
     var devMenu by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<Throwable?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var savedFields by remember(editor) { mutableStateOf<Map<String, String>?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val service = remember(api) { ProfileService(api) }
@@ -163,11 +168,8 @@ fun MeScreen(
                         }
                     }
             }
-            ProfileGroup("Connected accounts") {
-                ProfileLink("Connected accounts") { onNavigate("integrations") }
-                HorizontalDivider(color = UH.line)
-                ProfileLink("Your coach") { onNavigate("athletes") }
-            }
+            ProfileConnectedAccounts(api, user.id) { onNavigate("integrations") }
+            ProfileGroup("Your coach") { ProfileLink("Your coach") { onNavigate("athletes") } }
             ProfilePanel {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(L("Language"), Modifier.weight(1f))
@@ -271,6 +273,7 @@ fun MeScreen(
             service,
             busy,
             error?.let { localizedError(context, it) },
+            savedFields,
             onGuide = { guide = true },
             onDismiss = {
                 editor = null
@@ -278,11 +281,13 @@ fun MeScreen(
             },
         ) { fields ->
             busy = true
+            error = null
+            savedFields = null
             scope.launch {
                 try {
                     if (section == "password") service.password(fields.getValue("password"))
                     else onUser(service.update(user, fields))
-                    editor = null
+                    savedFields = if (section == "password") emptyMap() else fields
                 } catch (e: Exception) {
                     error = e
                 } finally {
@@ -300,6 +305,7 @@ private fun ProfileEditor(
     service: ProfileService,
     busy: Boolean,
     error: String?,
+    savedFields: Map<String, String>?,
     onGuide: () -> Unit,
     onDismiss: () -> Unit,
     save: (Map<String, String>) -> Unit,
@@ -353,6 +359,17 @@ private fun ProfileEditor(
                 labels.forEach { put(it.first, original[it.first].orEmpty()) }
             }
         }
+    LaunchedEffect(savedFields) {
+        if (section == "password" && savedFields != null) {
+            fields["password"] = ""
+            fields["confirmation"] = ""
+        }
+    }
+    val saved =
+        savedFields != null &&
+            if (section == "password")
+                fields["password"].isNullOrEmpty() && fields["confirmation"].isNullOrEmpty()
+            else fields.toMap() == savedFields
     val valid =
         when (section) {
             "password" ->
@@ -394,7 +411,7 @@ private fun ProfileEditor(
     var zoneError by remember { mutableStateOf<Throwable?>(null) }
     var retry by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
-    LaunchedEffect(zoneEditor, fields["pace_zone_model"], retry) {
+    LaunchedEffect(zoneEditor, fields["pace_zone_model"], savedFields, retry) {
         if (zoneEditor) {
             zones = null
             zoneError = null
@@ -718,6 +735,28 @@ private fun ProfileEditor(
                     }
             }
             error?.let { Text(it, color = UH.danger) }
+            if (saved)
+                Row(
+                    Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+                    horizontalArrangement =
+                        Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = UH.accentInk,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        L(
+                            if (section == "password") "Password updated successfully."
+                            else "Saved. Your next week will use these."
+                        ),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = UH.accentInk,
+                    )
+                }
             ai.uphill.app.designsystem.PrimaryButton(
                 onClick = { save(fields.filterKeys { it != "confirmation" }) },
                 enabled = valid && !busy,

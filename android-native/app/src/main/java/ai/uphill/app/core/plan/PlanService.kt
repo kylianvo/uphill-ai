@@ -42,6 +42,7 @@ class PlanService(val api: APIClient, val athleteId: Int? = null) {
                             matchedDistanceKm = a.distanceKm,
                             matchedDurationSeconds = a.durationSeconds,
                             matchedAvgHr = a.avgHr?.roundToInt(),
+                            matchedSourceProvider = a.sourceProvider,
                         )
                     } ?: workout
                 }

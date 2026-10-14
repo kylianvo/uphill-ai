@@ -87,12 +87,19 @@ data class Workout(
     val matchedDistanceKm: Double? = null,
     val matchedDurationSeconds: Double? = null,
     val matchedAvgHr: Int? = null,
+    val matchedSourceProvider: String? = null,
 ) {
     val weekday
         get() = Weekday.parse(dayOfWeek)
 
     val isRest
         get() = type == "Rest" || durationMinutes == 0.0
+
+    val matchedFromAppleHealth
+        get() = matchedSourceProvider == "apple_health"
+
+    val matchedSourceName
+        get() = if (matchedFromAppleHealth) "Apple Health" else "COROS"
 
     val isMatched
         get() = matchedActivityId != null || (matchedDistanceKm ?: 0.0) > 0

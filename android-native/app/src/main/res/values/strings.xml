@@ -41,6 +41,7 @@
   <string name="lld_of_lld_completed">%1$d of %2$d completed</string>
   <string name="lld_of_lld_sessions_completed">%1$d of %2$d sessions completed</string>
   <string name="lld_of_lld_workouts_completed">%1$d of %2$d workouts completed</string>
+  <string name="lld_recommendations">%1$d recommendations</string>
   <string name="lld_runners">%1$d runners</string>
   <string name="lld_runs_a_week_long_run_on">%1$d runs a week, long run on %2$s</string>
   <string name="lld_runs_from_your_watch_marked_done">%1$d runs from your watch marked done</string>
@@ -86,6 +87,7 @@
   <string name="a_ambitious" formatted="false">A: Ambitious</string>
   <string name="about_this_session" formatted="false">ABOUT THIS SESSION</string>
   <string name="active" formatted="false">ACTIVE</string>
+  <string name="ai_workout_duration_must_be_positive" formatted="false">AI workout duration must be positive.</string>
   <string name="assign_to_rotation_slot" formatted="false">ASSIGN TO ROTATION SLOT</string>
   <string name="auto_updating_calendar_subscription" formatted="false">AUTO-UPDATING CALENDAR SUBSCRIPTION</string>
   <string name="avg_hr" formatted="false">AVG HR</string>
@@ -265,6 +267,7 @@
   <string name="choose_field_test_or_lab_test_only_when_both_thresholds_were_measured_that_way" formatted="false">Choose Field test or Lab test only when both thresholds were measured that way.</string>
   <string name="choose_a_long_run_day_from_your_run_days" formatted="false">Choose a long run day from your run days.</string>
   <string name="choose_a_password_with_at_least_8_characters" formatted="false">Choose a password with at least 8 characters.</string>
+  <string name="choose_a_valid_week_and_day" formatted="false">Choose a valid week and day.</string>
   <string name="choose_the_effort_that_best_matches_how_it_felt" formatted="false">Choose the effort that best matches how it felt.</string>
   <string name="choose_what_you_re_training_for" formatted="false">Choose what you\'re training for.</string>
   <string name="clear" formatted="false">Clear</string>
@@ -341,6 +344,7 @@
   <string name="course_profile_59c90ab34f" formatted="false">Course profile</string>
   <string name="create_account" formatted="false">Create account</string>
   <string name="curated_endurance_physiology_gut_training_protocol_uphill_biomechanics_and_menta" formatted="false">Curated endurance physiology, gut training protocol, uphill biomechanics, and mental models from verified sport science.</string>
+  <string name="current_distance_logged_km" formatted="false">Current distance logged (km)</string>
   <string name="cushioning" formatted="false">Cushioning</string>
   <string name="daily_insight" formatted="false">DAILY INSIGHT</string>
   <string name="danger_zone" formatted="false">DANGER ZONE</string>
@@ -430,9 +434,11 @@
   <string name="effortless_recovery" formatted="false">Effortless recovery</string>
   <string name="effortless_recovery_or_peak_freshness_coach_will_maintain_or_slightly_increase_v" formatted="false">Effortless recovery or peak freshness — coach will maintain or slightly increase volume to capitalize.</string>
   <string name="elapsed_lld_minutes_lld_seconds">Elapsed %1$d minutes %2$d seconds</string>
+  <string name="elevation_gain" formatted="false">Elevation Gain</string>
   <string name="elevation_gain_d" formatted="false">Elevation Gain (D+)</string>
   <string name="elevation_gain_m" formatted="false">Elevation Gain (m)</string>
   <string name="elevation_gain_m_6e74158895" formatted="false">Elevation gain (m)</string>
+  <string name="elite" formatted="false">Elite</string>
   <string name="email" formatted="false">Email</string>
   <string name="enter_0_to_120_minutes" formatted="false">Enter 0 to 120 minutes.</string>
   <string name="enter_0_to_250_km" formatted="false">Enter 0 to 250 km.</string>
@@ -441,6 +447,9 @@
   <string name="enter_max_hr_between_120_and_240_bpm" formatted="false">Enter Max HR between 120 and 240 bpm.</string>
   <string name="enter_resting_hr_between_30_and_120_bpm" formatted="false">Enter Resting HR between 30 and 120 bpm.</string>
   <string name="enter_a_distance_between_1_and_400_km" formatted="false">Enter a distance between 1 and 400 km.</string>
+  <string name="enter_a_positive_distance" formatted="false">Enter a positive distance.</string>
+  <string name="enter_a_title" formatted="false">Enter a title.</string>
+  <string name="enter_duration_between_0_and_1_440_minutes" formatted="false">Enter duration between 0 and 1,440 minutes.</string>
   <string name="enter_pace_as_m_ss_per_km_for_example_6_30" formatted="false">Enter pace as m:ss per km, for example 6:30.</string>
   <string name="enter_runner_full_name_as_on_bib" formatted="false">Enter runner full name (as on bib)</string>
   <string name="entered_by_athlete" formatted="false">Entered by athlete</string>
@@ -670,6 +679,7 @@
   <string name="load_older_messages" formatted="false">Load older messages</string>
   <string name="loading_plans" formatted="false">Loading plans…</string>
   <string name="loading_race_history" formatted="false">Loading race history…</string>
+  <string name="loading_shoe_rotation" formatted="false">Loading shoe rotation…</string>
   <string name="loading_week_summary_and_performance_metrics_from_coach_uphill" formatted="false">Loading week summary and performance metrics from Coach Uphill…</string>
   <string name="loading_your_training" formatted="false">Loading your training</string>
   <string name="local" formatted="false">Local</string>
@@ -829,7 +839,8 @@
   <string name="pacing_splits_aid_station_plan" formatted="false">PACING SPLITS &amp; AID STATION PLAN</string>
   <string name="packing_list_products" formatted="false">PACKING LIST &amp; PRODUCTS</string>
   <string name="pb_recorded" formatted="false">PB Recorded</string>
-  <string name="phase_brief">PHASE BRIEF · %1$s</string>
+  <string name="phase_brief" formatted="false">PHASE BRIEF</string>
+  <string name="phase_brief_208c079973">PHASE BRIEF · %1$s</string>
   <string name="plan_actions" formatted="false">PLAN ACTIONS</string>
   <string name="plan_blueprint" formatted="false">PLAN BLUEPRINT</string>
   <string name="podium_top_times" formatted="false">PODIUM &amp; TOP TIMES</string>
@@ -870,6 +881,7 @@
   <string name="pick_the_run_you_did_for">Pick the run you did for %1$s.</string>
   <string name="pick_today_or_any_day_in_the_next_two_weeks" formatted="false">Pick today or any day in the next two weeks.</string>
   <string name="pick_up_to_2_run_days_for_double_sessions" formatted="false">Pick up to 2 run days for double sessions.</string>
+  <string name="pick" formatted="false">Pick:</string>
   <string name="plan_fueling" formatted="false">Plan Fueling</string>
   <string name="plan_pacing" formatted="false">Plan Pacing</string>
   <string name="plan_settings" formatted="false">Plan Settings</string>
@@ -1094,6 +1106,7 @@
   <string name="surface" formatted="false">Surface</string>
   <string name="suunto_suunto_app_profile_watch_settings_intensity_zones" formatted="false">Suunto: Suunto App &gt; Profile &gt; Watch Settings &gt; Intensity Zones.</string>
   <string name="swap_6ec282d40a" formatted="false">Swap</string>
+  <string name="sync_evolab" formatted="false">Sync EvoLab</string>
   <string name="sync_vo2max_from_your_watch" formatted="false">Sync VO2max from your watch</string>
   <string name="sync_watch_activities" formatted="false">Sync Watch Activities</string>
   <string name="sync_failed_please_try_again" formatted="false">Sync failed. Please try again.</string>
@@ -1410,6 +1423,7 @@
   <string name="retrieving_23572fdd15" formatted="false">retrieving</string>
   <string name="run_day" formatted="false">run day</string>
   <string name="runs_week" formatted="false">runs / week</string>
+  <string name="speed_work" formatted="false">speed work</string>
   <string name="the_upcoming_weeks" formatted="false">the upcoming weeks</string>
   <string name="top_d865b56ea0">top %1$s%%</string>
   <string name="was">was: %1$s</string>
@@ -1420,7 +1434,7 @@
   <string name="years" formatted="false">years</string>
   <string name="lld_weeks_to_go">· %1$d weeks to go</string>
   <string name="lld_wear">· %1$d%% wear</string>
-  <string name="pick">· Pick: %1$s</string>
+  <string name="pick_4925500573">· Pick: %1$s</string>
   <string name="coach_uphill_24df6ca740" formatted="false">— Coach Uphill</string>
   <string name="solid_volume_progression_remember_recovery_is_where_adaptation_happens_do_not_cu" formatted="false">“Solid volume progression. Remember: recovery is where adaptation happens. Do not cut rest short on heavy training blocks.”</string>
   <string name="title_is_still_pending_coach_review" formatted="false">“{title}” is still pending coach review.</string>

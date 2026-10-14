@@ -58,6 +58,7 @@ def generate(source, output):
         target = output / folder / 'strings.xml'
         target.parent.mkdir(parents=True, exist_ok=True)
         ET.ElementTree(root).write(target, encoding='utf-8', xml_declaration=True)
+        with target.open('ab') as file: file.write(b'\n')
     (output.parent / 'assets').mkdir(exist_ok=True)
     (output.parent / 'assets' / 'string_keys.json').write_text(json.dumps(mapping, ensure_ascii=False, indent=2) + '\n')
     print(f'Generated {len(mapping)} strings in EN and VI')

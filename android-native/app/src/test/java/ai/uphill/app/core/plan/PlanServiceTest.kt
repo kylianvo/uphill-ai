@@ -50,6 +50,39 @@ class PlanServiceTest {
     }
 
     @Test
+    fun matchedActivityRetainsSourceProvider() = runTest {
+        val raw = javaClass.classLoader!!.getResource("active_plan.json")!!.readText()
+        val workoutId =
+            JSONCoding.json
+                .parseToJsonElement(raw)
+                .jsonObject["workouts"]!!
+                .jsonArray
+                .first()
+                .jsonObject["id"]!!
+                .jsonPrimitive
+                .int
+        val server = MockWebServer()
+        server.start()
+        try {
+            server.enqueue(MockResponse().setBody(raw))
+            server.enqueue(
+                MockResponse()
+                    .setBody(
+                        """{"activities":[{"activity_id":123,"workout_id":$workoutId,"distance_km":5,"source_provider":"apple_health"}]}"""
+                    )
+            )
+            val snapshot =
+                PlanService(APIClient({ server.url("/").toString() }, MemoryTokenStore("token")))
+                    .activePlan()!!
+            val workout = snapshot.workouts.first()
+            assertEquals("Apple Health", workout.matchedSourceName)
+            assertTrue(workout.matchedFromAppleHealth)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun fixturePlanAndReviewsDecode() {
         fun fixture(name: String) =
             requireNotNull(javaClass.classLoader?.getResource(name)) { name }.readText()

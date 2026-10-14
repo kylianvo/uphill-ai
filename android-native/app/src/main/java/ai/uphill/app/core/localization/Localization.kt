@@ -24,8 +24,7 @@ fun L(key: String, vararg args: Any): String {
     return if (id != 0) context.getString(id, *args) else key
 }
 
-fun localizedError(context: Context, error: Throwable): String {
-    val key = error.message ?: "Something went wrong. Please try again."
+fun localizedText(context: Context, key: String, vararg args: Any): String {
     val keys =
         JSONCoding.json
             .parseToJsonElement(
@@ -34,5 +33,8 @@ fun localizedError(context: Context, error: Throwable): String {
             .jsonObject
     val name = keys[key]?.jsonPrimitive?.content ?: return key
     val id = context.resources.getIdentifier(name, "string", context.packageName)
-    return if (id != 0) context.getString(id) else key
+    return if (id != 0) context.getString(id, *args) else key
 }
+
+fun localizedError(context: Context, error: Throwable): String =
+    localizedText(context, error.message ?: "Something went wrong. Please try again.")

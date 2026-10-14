@@ -1,6 +1,7 @@
 package ai.uphill.app.designsystem
 
 import ai.uphill.app.core.goal.*
+import ai.uphill.app.core.localization.L
 import ai.uphill.app.core.networking.APIClient
 import ai.uphill.app.designsystem.PrimaryButton as Button
 import ai.uphill.app.designsystem.SecondaryButton as OutlinedButton
@@ -31,7 +32,7 @@ fun TT(key: String): String {
     val context = LocalContext.current
     val name = "tools_" + key.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
     val id = context.resources.getIdentifier(name, "string", context.packageName)
-    return if (id == 0) key else context.getString(id)
+    return if (id == 0) L(key) else context.getString(id)
 }
 
 @Composable

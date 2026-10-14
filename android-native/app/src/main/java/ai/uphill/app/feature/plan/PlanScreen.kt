@@ -3,6 +3,7 @@ package ai.uphill.app.feature.plan
 import ai.uphill.app.core.auth.User
 import ai.uphill.app.core.generation.*
 import ai.uphill.app.core.integrations.DeviceConnectionService
+import ai.uphill.app.core.localization.L
 import ai.uphill.app.core.models.*
 import ai.uphill.app.core.networking.APIClient
 import ai.uphill.app.core.plan.*
@@ -39,6 +40,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -97,7 +99,7 @@ fun PlanScreen(
         }
     }
     LazyColumn(
-        Modifier.fillMaxSize().background(UH.surface),
+        Modifier.fillMaxSize().background(UH.surface).testTag("plan.list"),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -108,6 +110,13 @@ fun PlanScreen(
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
+                if (athleteId != null)
+                    IconButton(
+                        onClick = { sheet = "addWorkout" },
+                        enabled = snapshot != null && state.cachedAt == null && !state.busy,
+                    ) {
+                        Icon(Icons.Default.Add, L("Add Workout"), tint = UH.accentInk)
+                    }
                 IconButton(onClick = model::load) {
                     Icon(Icons.Default.Refresh, P("Refresh"), tint = UH.accentInk)
                 }
@@ -188,15 +197,17 @@ fun PlanScreen(
                             }
                         }
                     }
-                    TextButton(onClick = { sheet = "goal" }) {
-                        Text(
-                            P(goalStatus(state)),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color =
-                                if (state.goal?.status?.state == "behind") UH.danger
-                                else UH.accentInk,
-                        )
+                    planGoalPill(snapshot.plan, state.goal)?.let { pill ->
+                        TextButton(onClick = { sheet = "goal" }) {
+                            Text(
+                                goalPresentationText(pill),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color =
+                                    if (state.goal?.status?.state == "behind") UH.danger
+                                    else UH.accentInk,
+                            )
+                        }
                     }
                 }
             }
@@ -380,6 +391,19 @@ fun PlanScreen(
             ) {
                 state.error?.let { Text(P(it), color = UH.danger) }
                 when (sheet) {
+                    "addWorkout" ->
+                        if (athleteId != null)
+                            CoachAddWorkoutSheet(
+                                api,
+                                athleteId,
+                                snapshot.plan.id,
+                                state.week,
+                                onAdded = {
+                                    model.load()
+                                    sheet = null
+                                },
+                                onClose = { sheet = null },
+                            )
                     "workout" ->
                         selected?.let {
                             WorkoutDetail(
@@ -433,13 +457,17 @@ fun PlanScreen(
         }
 }
 
-private fun goalStatus(state: PlanState): String =
-    when (state.goal?.status?.state) {
-        "on_track" -> "On track"
-        "ahead" -> "Ahead of target"
-        "behind" -> "Behind target"
-        "no_target" -> "No target"
-        else -> "Not assessed yet"
+@Composable
+private fun goalPresentationText(presentation: PlanGoalPresentation): String =
+    when (presentation.key) {
+        "Suggested %@" -> L("Suggested %@", minutesText(presentation.minutes!!.toDouble()))
+        "Goal %lldh %@m" ->
+            L(
+                "Goal %lldh %@m",
+                presentation.minutes!! / 60,
+                (presentation.minutes % 60).toString().padStart(2, '0'),
+            )
+        else -> L(presentation.key)
     }
 
 @Composable
@@ -648,9 +676,25 @@ private fun SummaryCarousel(
                                     color = UH.accentInk,
                                 )
                                 Spacer(Modifier.weight(1f))
-                                TextButton(onClick = onGoal) {
-                                    Text(P(goalStatus(state)), fontSize = 11.sp)
-                                }
+                                val pill = planGoalPill(snapshot.plan, state.goal)
+                                if (pill != null)
+                                    TextButton(onClick = onGoal) {
+                                        Text(
+                                            goalPresentationText(pill),
+                                            fontSize = 11.sp,
+                                            color =
+                                                if (state.goal?.status?.state == "behind") UH.danger
+                                                else UH.accentInk,
+                                        )
+                                    }
+                                else
+                                    planGoalText(snapshot.plan)?.let {
+                                        Text(
+                                            goalPresentationText(it),
+                                            fontSize = 12.sp,
+                                            color = UH.secondary,
+                                        )
+                                    }
                             }
                         }
                         else -> {
@@ -718,12 +762,22 @@ private fun CoachReview(model: PlanViewModel, state: PlanState, onReview: () -> 
             ) {
                 Icon(Icons.Default.FormatQuote, null, Modifier.size(26.dp), tint = UH.accentInk)
                 Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                    Text(
-                        P("COACH'S REVIEW"),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = UH.accentInk,
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            P("COACH'S REVIEW"),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = UH.accentInk,
+                        )
+                        if (!expanded && priority != null)
+                            Text(
+                                "· ${P("Pick:")} ${priority.title}",
+                                fontSize = 12.sp,
+                                color = UH.secondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                    }
                     if (!expanded)
                         Text(
                             block?.aiThisWeekDescription?.ifBlank { null }
@@ -755,36 +809,130 @@ private fun CoachReview(model: PlanViewModel, state: PlanState, onReview: () -> 
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     HorizontalDivider(color = UH.line)
-                    Text(
-                        P("Training phase") +
-                            " · " +
-                            P(model.weekWorkouts().firstOrNull()?.phase.orEmpty()),
-                        fontSize = 10.sp,
-                        color = UH.muted,
-                    )
-                    block
-                        ?.aiLastWeekReview
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let {
-                            Text(P("LAST WEEK REVIEW"), fontSize = 10.sp, color = UH.secondary)
-                            Text(it, fontSize = 13.sp)
-                        }
-                    block
-                        ?.aiThisWeekDescription
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let {
-                            Text(P("THIS WEEK FOCUS"), fontSize = 10.sp, color = UH.accentInk)
-                            Text(it, fontSize = 13.sp)
-                        }
-                    priority?.let {
-                        Text(P("COACH'S PICK THIS WEEK"), fontSize = 10.sp, color = UH.accentInk)
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .background(UH.surface, RoundedCornerShape(8.dp))
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        val phase =
+                            model.weekWorkouts().let { rows ->
+                                (rows.firstOrNull { !it.isRest } ?: rows.firstOrNull())?.phase
+                            } ?: "BASE"
                         Text(
-                            "${it.title} (${it.durationMinutes.toInt()} min)",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            "${P("PHASE BRIEF")} · ${P(phase).uppercase()}",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = UH.muted,
+                        )
+                        Text(
+                            L(
+                                "Focus on building steady aerobic durability and consistent rhythm. Keep easy runs conversational to maximize mitochondrial adaptation."
+                            ),
+                            fontSize = 12.5.sp,
+                            lineHeight = 17.sp,
+                            color = UH.ink,
                         )
                     }
-                    TextButton(onClick = onReview) { Text(P("Read complete weekly review")) }
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .background(UH.surface, RoundedCornerShape(8.dp))
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            L("KEY COACH TAKEAWAYS"),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = UH.muted,
+                        )
+                        val lastWeek = block?.aiLastWeekReview?.takeIf { it.isNotEmpty() }
+                        val thisWeek = block?.aiThisWeekDescription?.takeIf { it.isNotEmpty() }
+                        if (lastWeek != null) {
+                            Text(
+                                P("LAST WEEK REVIEW"),
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = UH.secondary,
+                            )
+                            Text(lastWeek, fontSize = 12.5.sp, lineHeight = 17.sp, color = UH.ink)
+                        }
+                        if (thisWeek != null) {
+                            Text(
+                                P("THIS WEEK FOCUS"),
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = UH.accentInk,
+                            )
+                            Text(thisWeek, fontSize = 12.5.sp, lineHeight = 17.sp, color = UH.ink)
+                        }
+                        if (lastWeek == null && thisWeek == null)
+                            Text(
+                                L(
+                                    "“Solid volume progression. Remember: recovery is where adaptation happens. Do not cut rest short on heavy training blocks.”"
+                                ),
+                                fontSize = 12.5.sp,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                lineHeight = 17.sp,
+                                color = UH.ink,
+                            )
+                    }
+                    priority?.let {
+                        Column(
+                            Modifier.fillMaxWidth()
+                                .background(UH.hover, RoundedCornerShape(8.dp))
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Star,
+                                    null,
+                                    Modifier.size(12.dp),
+                                    tint = UH.accentInk,
+                                )
+                                Text(
+                                    P("COACH'S PICK THIS WEEK"),
+                                    Modifier.weight(1f).padding(start = 5.dp),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = UH.accentInk,
+                                )
+                                Text(
+                                    P("PRIORITY"),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = UH.accentInk,
+                                )
+                            }
+                            Text(
+                                "${it.title} (${it.durationMinutes.toInt()} min)",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = UH.ink,
+                            )
+                            Text(
+                                L(
+                                    "This session drives your primary training stimulus this week. Stay disciplined on the target zone."
+                                ),
+                                fontSize = 12.sp,
+                                color = UH.secondary,
+                            )
+                        }
+                    }
+                    TextButton(
+                        onClick = onReview,
+                        modifier =
+                            Modifier.fillMaxWidth().background(UH.hover, RoundedCornerShape(8.dp)),
+                    ) {
+                        Icon(Icons.Default.Description, null, Modifier.size(14.dp))
+                        Text(
+                            P("Read complete weekly review"),
+                            Modifier.weight(1f).padding(start = 6.dp),
+                            fontSize = 12.5.sp,
+                        )
+                        Icon(Icons.Default.ChevronRight, null, Modifier.size(14.dp))
+                    }
                 }
             }
         }
@@ -931,13 +1079,14 @@ private fun DayRow(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Icon(
-                                    Icons.Default.Watch,
+                                    if (workout.matchedFromAppleHealth) Icons.Default.Favorite
+                                    else Icons.Default.Watch,
                                     null,
                                     Modifier.size(13.dp),
                                     tint = UH.accentInk,
                                 )
                                 Text(
-                                    " COROS · ${workout.matchedDistanceKm ?: 0} km · ${((workout.matchedDurationSeconds ?: 0.0) / 60).toInt()} min",
+                                    " ${workout.matchedSourceName} · ${workout.matchedDistanceKm ?: 0} km · ${((workout.matchedDurationSeconds ?: 0.0) / 60).toInt()} min",
                                     fontSize = 11.sp,
                                     color = UH.secondary,
                                 )

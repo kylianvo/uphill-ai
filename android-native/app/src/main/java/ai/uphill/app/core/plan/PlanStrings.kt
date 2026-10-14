@@ -3,6 +3,7 @@ package ai.uphill.app.core.plan
 import ai.uphill.app.core.localization.L
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import kotlin.math.roundToInt
 
 @Composable
 fun P(key: String): String {
@@ -18,6 +19,6 @@ fun P(key: String): String {
 }
 
 fun minutesText(minutes: Double): String {
-    val value = kotlin.math.round(minutes).toInt()
+    val value = minutes.roundToInt()
     return "${value/60}:${(value%60).toString().padStart(2,'0')}"
 }
