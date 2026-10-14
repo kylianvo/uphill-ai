@@ -311,6 +311,18 @@ final class PlanViewModel {
 
     var days: [PlanDay] { days(for: selectedWeek) }
 
+    func calendarMonth(_ month: Date) -> CalendarMonth {
+        CalendarMonth.make(month: month, plan: snapshot?.plan, workouts: snapshot?.workouts ?? [], now: now(), calendar: calendar)
+    }
+
+    /// Month the calendar grid opens on.
+    var calendarFocusDate: Date {
+        guard let snapshot else { return now() }
+        return PlanCalendar.focusDate(week: selectedWeek, plan: snapshot.plan, workouts: snapshot.workouts, now: now(), calendar: calendar)
+    }
+
+    var calendarToday: Date { now() }
+
     var selectedVolume: WeekVolume { PlanSummary.volume(week: selectedWeek, workouts: snapshot?.workouts ?? []) }
 
     var weekComparison: WeekVolumeComparison {
