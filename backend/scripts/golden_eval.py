@@ -36,6 +36,9 @@ from config import settings  # noqa: E402
 GOLDEN_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tests", "golden")
 
 
+ONLY: str | None = None  # --only: substring filter on fixture file names, to keep paid runs small
+
+
 def _fixtures(service: str) -> list[str]:
     # "fixture_*.json" also matches this script's own output: a captured baseline is
     # named "<fixture>.ref.json", which itself starts with "fixture_" and ends in
@@ -44,7 +47,9 @@ def _fixtures(service: str) -> list[str]:
     # keys a real fixture has, and crashes with KeyError. Excluding *.ref.json makes a
     # second capture over the same directory safe.
     paths = sorted(
-        p for p in glob.glob(os.path.join(GOLDEN_DIR, service, "fixture_*.json")) if not p.endswith(".ref.json")
+        p
+        for p in glob.glob(os.path.join(GOLDEN_DIR, service, "fixture_*.json"))
+        if not p.endswith(".ref.json") and (not ONLY or any(o in os.path.basename(p) for o in ONLY.split(",")))
     )
     if not paths:
         sys.exit(f"No fixtures in tests/golden/{service}/ — add fixture_*.json files first.")
@@ -128,7 +133,7 @@ async def _run_scheduler(fixture: dict) -> tuple[list[dict], str]:
         race_info=race_info,
         total_weeks=fixture.get("total_weeks", 8),
         api_key=settings.GEMINI_API_KEY,
-        block_number=1,
+        block_number=fixture.get("block_number", 1),
         # Snapshot gates score the first full week. Production currently generates
         # one-week blocks, so these offline cases must explicitly include week 2.
         weeks_per_block=(
@@ -485,6 +490,12 @@ def compare(
                 "week2_km": week2,
                 "week2_in_range": (lo <= week2 <= hi) if lo is not None else None,
                 "venue_violations": len(venue_violations),
+                "me_sessions": summary["me_sessions"],
+                "me_in_range": (
+                    expect.get("me_sessions_min", 0) <= summary["me_sessions"] <= expect.get("me_sessions_max", 999)
+                )
+                if ("me_sessions_min" in expect or "me_sessions_max" in expect)
+                else None,
                 "long_runs_on_hill_days": long_runs_on_hills,
             }
         elif service == "chat":
@@ -625,6 +636,8 @@ def gate_failures(service: str, items: list[dict], scores: list[dict]) -> list[s
             failures.append(f"{item['id']}: tier {s.get('tier')} differs from the expected tier")
         if service == "scheduler" and s.get("week2_in_range") is False:
             failures.append(f"{item['id']}: week-2 volume {s.get('week2_km')} km outside the expected range")
+        if service == "scheduler" and s.get("me_in_range") is False:
+            failures.append(f"{item['id']}: {s.get('me_sessions')} ME session(s) outside the expected range")
         if service == "scheduler" and s.get("venue_violations"):
             failures.append(f"{item['id']}: {s['venue_violations']} session(s) the athlete has no venue for")
         if service in ("gear", "nutrition") and s.get("catalog_membership_valid") is False:
@@ -678,7 +691,10 @@ def main():
         default=False,
         help="Publish precomputed experiment results to Langfuse (requires synthetic fixtures)",
     )
+    parser.add_argument("--only", default=None, help="Comma-separated substrings; run only matching fixture files")
     args = parser.parse_args()
+    global ONLY
+    ONLY = args.only
     variant_parts = []
     if args.prompt_label:
         settings.COACH_CHAT_PROMPT_LABEL = args.prompt_label
