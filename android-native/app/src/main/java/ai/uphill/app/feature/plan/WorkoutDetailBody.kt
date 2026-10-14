@@ -4,6 +4,7 @@ import ai.uphill.app.core.localization.L
 import ai.uphill.app.core.models.*
 import ai.uphill.app.core.plan.*
 import ai.uphill.app.designsystem.UH
+import ai.uphill.app.designsystem.workoutEffortColor
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -30,14 +31,7 @@ import java.time.format.DateTimeFormatter
 internal fun WorkoutDetailBody(workout: Workout, snapshot: PlanSnapshot?, onClose: () -> Unit) {
     var treadmill by remember(workout.id) { mutableStateOf(false) }
     val content = remember(workout, treadmill) { WorkoutDetailContent.make(workout, treadmill) }
-    val zoneColor =
-        when {
-            workout.isStrengthOrME -> Color(0xFF8B5CF6)
-            workout.targetZone.contains('5') -> Color(0xFFEF4444)
-            workout.targetZone.contains('4') -> Color(0xFFF43F5E)
-            workout.targetZone.contains('3') -> Color(0xFFF59E0B)
-            else -> Color(0xFF3B82F6)
-        }
+    val zoneColor = workoutEffortColor(workout)
     TextButton(onClick = onClose) { Text(L("Done")) }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Surface(
@@ -46,7 +40,7 @@ internal fun WorkoutDetailBody(workout: Workout, snapshot: PlanSnapshot?, onClos
             border = BorderStroke(1.dp, zoneColor.copy(alpha = .3f)),
         ) {
             Text(
-                P(workout.type),
+                workoutChipLabel(workout),
                 Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                 color = zoneColor,
                 fontSize = 11.sp,
@@ -89,7 +83,7 @@ internal fun WorkoutDetailBody(workout: Workout, snapshot: PlanSnapshot?, onClos
         DetailMetric(
             L("PACE (/KM)"),
             if (workout.isStrengthOrME) "—"
-            else workout.targetPace?.takeIf(String::isNotBlank) ?: "—",
+            else paceTileValue(workout.targetPace).replace("–", "–\u200B"),
             Modifier.weight(1f),
         )
     }

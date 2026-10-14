@@ -2,33 +2,52 @@ package ai.uphill.app.feature.coaching
 
 import ai.uphill.app.core.auth.User
 import ai.uphill.app.core.coaching.*
+import ai.uphill.app.core.localization.L
 import ai.uphill.app.core.networking.APIClient
 import ai.uphill.app.designsystem.*
 import ai.uphill.app.designsystem.PrimaryButton as Button
 import ai.uphill.app.designsystem.UH
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun AthletesScreen(api: APIClient, user: User, lang: String, onNavigate: (String) -> Unit) {
     val service = remember(api) { CoachingService(api) }
     val vm: CoachingViewModel =
-        viewModel(key = "roster-${user.id}") { CoachingViewModel(service, user.isCoach) }
+        viewModel(key = "roster-${user.id}-${user.isCoach}") {
+            CoachingViewModel(service, user.isCoach)
+        }
     val state by vm.state.collectAsState()
     var invite by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var remove by remember { mutableStateOf<CoachedAthleteRow?>(null) }
-    var days by remember { mutableIntStateOf(14) }
-    var level by remember { mutableStateOf("all") }
+    var days by rememberSaveable { mutableIntStateOf(14) }
+    var level by rememberSaveable { mutableStateOf("all") }
+    var section by rememberSaveable { mutableStateOf("Overview") }
+    var search by rememberSaveable { mutableStateOf("") }
+    val scroll = rememberScrollState()
+    LaunchedEffect(section) { scroll.scrollTo(0) }
     LaunchedEffect(vm, days, level) { vm.load(days, level) }
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
@@ -60,145 +79,188 @@ fun AthletesScreen(api: APIClient, user: User, lang: String, onNavigate: (String
             }
         }
         if (user.isCoach) {
-            Button(onClick = { invite = true }, enabled = !state.busy) {
-                Text(P6("invite_athlete"))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                P6Choice("period", "$days", listOf("7", "14", "28")) { days = it.toInt() }
-                P6Choice(
-                    "runner_level",
-                    level,
-                    listOf("all", "beginner", "intermediate", "advanced"),
-                ) {
-                    level = it
-                }
-            }
-            state.overview?.let { overview ->
-                overview.rosterTotals?.let { totals ->
-                    P6Card {
-                        Text(P6("roster_totals"), style = MaterialTheme.typography.titleMedium)
+            Row(
+                Modifier.fillMaxWidth()
+                    .background(UH.hover, RoundedCornerShape(8.dp))
+                    .padding(3.dp)
+                    .selectableGroup(),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                listOf("Overview", "Roster").forEach { item ->
+                    Box(
+                        Modifier.weight(1f)
+                            .background(
+                                if (section == item) Color.White else Color.Transparent,
+                                RoundedCornerShape(6.dp),
+                            )
+                            .selectable(
+                                section == item,
+                                role = Role.Tab,
+                                onClick = { section = item },
+                            )
+                            .testTag("coach.section.${item.lowercase()}")
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Text(
-                            P6(
-                                "roster_stats",
-                                totals.distanceKm ?: 0.0,
-                                totals.durationHours ?: 0.0,
-                                totals.workoutCount ?: 0,
-                            )
+                            L(item),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = UH.ink,
                         )
-                        totals.elevationGainM?.let { Text("D+ ${it.toInt()} m") }
                     }
                 }
-                if (
-                    overview.actionItems.draftPlans.isNotEmpty() ||
-                        overview.actionItems.pendingWorkoutApprovals.isNotEmpty()
-                )
-                    P6Card {
-                        Text(P6("needs_review"), style = MaterialTheme.typography.titleMedium)
-                        overview.actionItems.draftPlans.forEach { draft ->
-                            TextButton(onClick = { onNavigate("athlete/${draft.athleteId}") }) {
-                                Text(P6("draft_plan", draft.athleteName, draft.raceName))
-                            }
-                        }
-                        overview.actionItems.pendingWorkoutApprovals.forEach { w ->
-                            Text(w.athleteName + " · " + w.title)
-                            Row {
-                                Button(
-                                    onClick = {
-                                        vm.action(days, level) {
-                                            service.approve(w.athleteId, w.planId, w.workoutId)
-                                        }
-                                    },
-                                    enabled = !state.busy,
-                                ) {
-                                    Text(P6("approve"))
-                                }
-                                TextButton(onClick = { onNavigate("athlete/${w.athleteId}") }) {
-                                    Text(P6("view_plan"))
-                                }
+            }
+            if (section == "Overview") {
+                P6Card {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(L("Window:"), color = UH.secondary, fontSize = 13.sp)
+                        listOf(7, 14, 30).forEach { value ->
+                            CoachFilterChip("${value}d", value == days, !state.busy) {
+                                days = value
                             }
                         }
                     }
-                overview.phaseAlerts.forEach { alert ->
-                    P6Card {
-                        Text(P6("phase_alert", alert.athleteName, alert.phase, alert.starts))
-                        TextButton(onClick = { onNavigate("athlete/${alert.athleteId}") }) {
-                            Text(P6("view_plan"))
+                    Text(L("Level:"), color = UH.secondary, fontSize = 13.sp)
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        listOf("all", "beginner", "intermediate", "advanced", "elite").forEach {
+                            value ->
+                            CoachFilterChip(
+                                L(value.replaceFirstChar { it.uppercase() }),
+                                value == level,
+                                !state.busy,
+                            ) {
+                                level = value
+                            }
                         }
                     }
                 }
-                if (overview.workoutTypeMix.isNotEmpty())
-                    P6Card {
-                        Text(P6("workout_mix"), style = MaterialTheme.typography.titleMedium)
-                        overview.workoutTypeMix.forEach { mix ->
-                            Text("${mix.type} · ${coachPercent(mix.pct)}")
-                            LinearProgressIndicator(
-                                progress = { mix.pct.toFloat().coerceIn(0f, 1f) },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-                if (overview.adherenceTrend.isNotEmpty())
-                    P6Card {
-                        Text(P6("adherence_trend"), style = MaterialTheme.typography.titleMedium)
-                        overview.adherenceTrend.forEach { week ->
+                state.overview?.let { overview ->
+                    overview.rosterTotals?.let { totals ->
+                        P6Card {
+                            Text(P6("roster_totals"), style = MaterialTheme.typography.titleMedium)
                             Text(
                                 P6(
-                                    "week_adherence",
-                                    week.weekNumber,
-                                    coachPercent(week.adherencePct),
+                                    "roster_stats",
+                                    totals.distanceKm ?: 0.0,
+                                    totals.durationHours ?: 0.0,
+                                    totals.workoutCount ?: 0,
                                 )
                             )
-                            LinearProgressIndicator(
-                                progress = { week.adherencePct.toFloat().coerceIn(0f, 1f) },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                            totals.elevationGainM?.let { Text("D+ ${it.toInt()} m") }
                         }
                     }
-                if (overview.missedByDay.isNotEmpty())
-                    P6Card {
-                        Text(P6("missed_by_day"), style = MaterialTheme.typography.titleMedium)
-                        overview.missedByDay.forEach { Text("${it.dayOfWeek} · ${it.count}") }
-                    }
-                if (overview.races.isNotEmpty())
-                    P6Card {
-                        Text(P6("upcoming_races"), style = MaterialTheme.typography.titleMedium)
-                        overview.races.forEach { race ->
-                            Text("${race.raceName} · ${race.raceDate.orEmpty()}")
-                            race.athletes.forEach { a ->
-                                TextButton(onClick = { onNavigate("athlete/${a.athleteId}") }) {
-                                    Text(a.name)
+                    if (
+                        overview.actionItems.draftPlans.isNotEmpty() ||
+                            overview.actionItems.pendingWorkoutApprovals.isNotEmpty()
+                    )
+                        P6Card {
+                            Text(P6("needs_review"), style = MaterialTheme.typography.titleMedium)
+                            overview.actionItems.draftPlans.forEach { draft ->
+                                TextButton(onClick = { onNavigate("athlete/${draft.athleteId}") }) {
+                                    Text(P6("draft_plan", draft.athleteName, draft.raceName))
+                                }
+                            }
+                            overview.actionItems.pendingWorkoutApprovals.forEach { w ->
+                                Text(w.athleteName + " · " + w.title)
+                                Row {
+                                    Button(
+                                        onClick = {
+                                            vm.action(days, level) {
+                                                service.approve(w.athleteId, w.planId, w.workoutId)
+                                            }
+                                        },
+                                        enabled = !state.busy,
+                                    ) {
+                                        Text(P6("approve"))
+                                    }
+                                    TextButton(onClick = { onNavigate("athlete/${w.athleteId}") }) {
+                                        Text(P6("view_plan"))
+                                    }
                                 }
                             }
                         }
-                    }
-            }
-            Text(P6("roster"), style = MaterialTheme.typography.titleLarge)
-            if (state.roster.isEmpty() && !state.busy) P6Card { Text(P6("empty_roster")) }
-            state.roster.forEach { athlete ->
-                val stats =
-                    state.overview?.athletes?.firstOrNull { it.athleteId == athlete.athleteId }
-                P6Card {
-                    Text(athlete.displayName, style = MaterialTheme.typography.titleMedium)
-                    Text(athlete.athleteEmail, color = UH.secondary)
-                    Text(
-                        P6(if (athlete.status == "active") "active" else "invited"),
-                        color = UH.accentInk,
-                    )
-                    stats?.adherencePct?.let { Text(P6("adherence", coachPercent(it))) }
-                    if (stats?.needsAttention == true)
-                        Text(P6("needs_attention"), color = UH.warningInk)
-                    stats?.activePlan?.let {
-                        Text(P6("plan_progress", it.raceName, it.currentWeek, it.totalWeeks))
-                    }
-                    Row {
-                        TextButton(
-                            onClick = { onNavigate("athlete/${athlete.athleteId}") },
-                            enabled = athlete.status == "active",
-                        ) {
-                            Text(P6("view_athlete"))
+                    overview.phaseAlerts.forEach { alert ->
+                        P6Card {
+                            Text(P6("phase_alert", alert.athleteName, alert.phase, alert.starts))
+                            TextButton(onClick = { onNavigate("athlete/${alert.athleteId}") }) {
+                                Text(P6("view_plan"))
+                            }
                         }
-                        TextButton(onClick = { remove = athlete }, enabled = !state.busy) {
-                            Text(P6("remove"), color = UH.danger)
+                    }
+                    CoachCharts(overview)
+                    if (overview.races.isNotEmpty())
+                        P6Card {
+                            Text(P6("upcoming_races"), style = MaterialTheme.typography.titleMedium)
+                            overview.races.forEach { race ->
+                                Text("${race.raceName} · ${race.raceDate.orEmpty()}")
+                                race.athletes.forEach { a ->
+                                    TextButton(onClick = { onNavigate("athlete/${a.athleteId}") }) {
+                                        Text(a.name)
+                                    }
+                                }
+                            }
+                        }
+                }
+            } else {
+                Button(onClick = { invite = true }, enabled = !state.busy) {
+                    Text(P6("invite_athlete"))
+                }
+                OutlinedTextField(
+                    search,
+                    { search = it },
+                    placeholder = { Text(L("Search athletes by name or email...")) },
+                    modifier = Modifier.fillMaxWidth().testTag("coach.roster.search"),
+                    singleLine = true,
+                )
+                Text(P6("roster"), style = MaterialTheme.typography.titleLarge)
+                if (state.roster.isEmpty() && !state.busy) P6Card { Text(P6("empty_roster")) }
+                val filtered =
+                    state.roster.filter { athlete ->
+                        val race =
+                            state.overview
+                                ?.athletes
+                                ?.firstOrNull { it.athleteId == athlete.athleteId }
+                                ?.activePlan
+                                ?.raceName
+                                .orEmpty()
+                        search.isBlank() ||
+                            listOf(athlete.displayName, athlete.athleteEmail, race).any {
+                                it.contains(search.trim(), ignoreCase = true)
+                            }
+                    }
+                filtered.forEach { athlete ->
+                    val stats =
+                        state.overview?.athletes?.firstOrNull { it.athleteId == athlete.athleteId }
+                    P6Card {
+                        Text(athlete.displayName, style = MaterialTheme.typography.titleMedium)
+                        Text(athlete.athleteEmail, color = UH.secondary)
+                        Text(
+                            P6(if (athlete.status == "active") "active" else "invited"),
+                            color = UH.accentInk,
+                        )
+                        stats?.adherencePct?.let { Text(P6("adherence", coachPercent(it))) }
+                        if (stats?.needsAttention == true)
+                            Text(P6("needs_attention"), color = UH.warningInk)
+                        stats?.activePlan?.let {
+                            Text(P6("plan_progress", it.raceName, it.currentWeek, it.totalWeeks))
+                        }
+                        Row {
+                            TextButton(
+                                onClick = { onNavigate("athlete/${athlete.athleteId}") },
+                                enabled = athlete.status == "active",
+                            ) {
+                                Text(P6("view_athlete"))
+                            }
+                            TextButton(onClick = { remove = athlete }, enabled = !state.busy) {
+                                Text(P6("remove"), color = UH.danger)
+                            }
                         }
                     }
                 }
@@ -244,4 +306,25 @@ fun AthletesScreen(api: APIClient, user: User, lang: String, onNavigate: (String
             dismissButton = { TextButton(onClick = { remove = null }) { Text(P6("cancel")) } },
         )
     }
+}
+
+@Composable
+private fun CoachFilterChip(
+    label: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Text(
+        label,
+        Modifier.background(
+                if (selected) UH.accent.copy(alpha = .18f) else UH.hover,
+                RoundedCornerShape(50),
+            )
+            .selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        fontSize = 12.sp,
+        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+        color = if (selected) UH.accentInk else UH.secondary,
+    )
 }

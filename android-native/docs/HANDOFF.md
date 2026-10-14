@@ -8,8 +8,8 @@ Plan: `docs/superpowers/plans/2026-10-14-android-native.md`.
 ## Current checkpoint — 2026-10-15
 
 The user requested PR/handoff at 15% remaining account allowance. Work resumed after
-the previous checkpoint. Allowance reached 15% five-hour / 26% weekly remaining; feature work stopped.
-This handoff preserves the verified checkpoint.
+the previous checkpoint. Latest allowance check: 47% five-hour / 18% weekly remaining.
+Checkpoint again when either account window reaches 15% remaining.
 Health Connect stays deferred by explicit user decision. Google Android OAuth
 registration is complete; the physical phone upgrade test is deferred.
 
@@ -18,7 +18,7 @@ Goal/Gear/Nutrition/Pace/Knowledge, race history, COROS and coaching.
 Package `ai.uphill.app`, version 2.0.0/code10, min26/target36, existing signing key.
 Full feature and visual parity are not yet established. Keep PR #127 draft.
 
-The current pass adds:
+The earlier pass adds:
 - Scoped coach workout detail Edit/Approve/Remove and coach/athlete note threads.
 - Source-based workout metrics, execution timeline, treadmill ranges, reason/benefit,
   warnings, coach note and the five-level feeling selector. Save Log keeps the detail
@@ -38,40 +38,51 @@ now expose saved `athlete_notes`; profile edits preserve an omitted `gemini_api_
 while explicit empty string still clears it. Production needs these fixes deployed
 before the profile behavior can be fully verified there. No schema migration.
 
+The latest parity pass adds the iOS #134 month calendar with weekly distance bars,
+month totals, day preview, Next/Today/swipe navigation and selection haptics. It also
+adds coach adherence/weekday/mix charts, Overview/Roster sections, 7/14/30-day and
+Elite filters, roster search, shared iOS workout colors and pace range formatting.
+A localization fix prevents raw percent labels from being treated as format strings.
+The pace metric now wraps between complete times at font scale 1.3.
+See `docs/PARITY.md` for the area-by-area inventory against iOS main `5597527`.
+
 ## Verification
 
-- 84 debug JVM tests and 84 release JVM tests passed; lint passed. Minified signed
-  release build passed in 4m48s, verifying certificate/package/versionCode >6.
-  APK: `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk`; log: `/tmp/uphill-final-release.log`.
-- All 16 emulator flows passed (15 recorded HTTP/native UI flows plus one live local
-  backend flow). Log: `/tmp/uphill-final-emulator-check.log`.
+- 90 debug JVM tests and 90 release JVM tests passed; lint passed. Minified signed
+  release build passed in 3m44s, verifying certificate/package/versionCode >6.
+  APK: `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk`; log: `/tmp/uphill-parity-release.log`.
+- Final direct instrumentation passed all 21 tests: 19 recorded HTTP/native UI flows,
+  one isolated live local-backend flow and one opt-in screenshot capture test.
+  Log: `/tmp/uphill-parity-device-check.log` (192.509 seconds).
 - All 1,265 backend unit tests passed; targeted native-auth tests: 10 passed.
   Logs: `/tmp/uphill-backend-final-unit.log`, `/tmp/uphill-profile-response-green.log`.
 - Final fresh-context review found two Important defects, both fixed as above. No
   Critical findings. One fix pass; tests verify it, without a repeated review loop.
-- Translation converter previously passed four tests; catalog has 1,454 EN/VI entries.
+- Translation converter previously passed four tests; catalog has 1,461 EN/VI entries.
 - Earlier exact Capacitor1.0.5/code6 → matching-signed native debug code10 upgrade
   passed on emulator without uninstall; app-private marker survived.
-- Screenshot confirmation passed: 21 normal EN/VI captures plus nine font1.3/zero-
-  animation captures under `docs/screenshots/parity-2026-10-15/`. Device settings were
-  restored. The harness sets the host activity locale so dialog resources match the
-  requested language, and asserts translated Done before capturing the workout sheet.
-  Logs: `/tmp/uphill-visual-localized-confirm.log`,
-  `/tmp/uphill-accessible-localized-confirm.log`.
+- Screenshot capture passed: 29 normal EN/VI captures and 17 font1.3/zero-animation
+  captures under `docs/screenshots/parity-2026-10-15/`. Device settings were restored.
+  Batched Impeccable inspection compared calendar/day views with current iOS references
+  and checked coach charts/roster and complete pace times at larger text.
+  Logs: `/tmp/uphill-coach-evidence.log`, `/tmp/uphill-current-accessible-evidence.log`.
 - Signed-out minified release emulator smoke passed: matching-signed APK installed,
   cold MainActivity launch succeeded, UI hierarchy showed Uphill AI / Google / Sign in.
-  Evidence: `docs/screenshots/parity-2026-10-15/release-sign-in-en.png`.
+  Existing `release-sign-in-en.png` records the previous 6208d6d smoke. The updated
+  signed release installed and cold-launched successfully for the live OAuth checks.
   No fictional-account writes to production. This does not validate authenticated
   release flows or live OAuth.
 
 ## Remaining work, in order
 
-1. Complete a screen/feature parity inventory against current iOS source. Screenshot
-   evidence covers major states, not every sheet/state, TalkBack or animation. Large-
-   text confirmation shows awkward line wrapping of the workout pace metric; address
-   it in the next scoped accessibility pass. Fixture titles/descriptions remain in
-   their recorded language even when controls switch to Vietnamese.
-2. Verify live Google/COROS round trips and the deferred physical-phone upgrade.
+1. Continue the inventory in `docs/PARITY.md`: every sheet/state, TalkBack and motion
+   still need comparison. Coach inline invite and race-to-roster filtering remain.
+   Calendar weekly-column label is `km` rather than iOS `km/wk` / `km/tuần`; day preview's
+   Open Week button styling also differs. Fixture descriptions keep their recorded language.
+2. Live Google/COROS round trips are in progress with the user. Credential Manager
+   returned “No credentials available”; Android account settings are open for the user
+   to add Google. Do not clear/uninstall app data or run instrumentation after sign-in.
+   Physical-phone upgrade remains explicitly deferred.
 3. Deploy the two backend profile fixes when explicitly requested; current production
    has not been changed by this work.
 4. Keep Health Connect/push/widgets/WearOS/Play Store/Apple/Facebook auth excluded.

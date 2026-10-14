@@ -33,6 +33,7 @@
   <string name="lld_h">%1$d giờ</string>
   <string name="lld_hours">%1$d giờ</string>
   <string name="lld_km_expected_life">Tuổi thọ dự kiến %1$d km</string>
+  <string name="lld_km_h_lld_of_lld_sessions_done">%1$d km · %2$s h · xong %3$d/%4$d buổi</string>
   <string name="lld_km_week">%1$d km/tuần</string>
   <string name="lld_min">%1$d phút</string>
   <string name="lld_min_km_lld_m">%1$d phút · %2$s km · +%3$d m</string>
@@ -795,6 +796,7 @@
   <string name="no_race_yet_like_your_first_21_km_or_50_km" formatted="false">Chưa có Race, ví dụ lần đầu chạy 21 km hoặc 50 km.</string>
   <string name="no_races_logged_yet" formatted="false">Chưa có Race nào</string>
   <string name="no_running_yet" formatted="false">Chưa chạy bộ</string>
+  <string name="no_sessions_planned_this_month" formatted="false">Tháng này chưa có buổi tập</string>
   <string name="no_shoe_assigned_to_this_slot" formatted="false">Chưa gán giày cho vị trí này</string>
   <string name="no_sources_available" formatted="false">Chưa có nguồn.</string>
   <string name="no_target_races_configured_yet" formatted="false">Chưa đặt Race mục tiêu</string>
@@ -835,6 +837,7 @@
   <string name="open_source" formatted="false">Mở nguồn</string>
   <string name="open_the_apple_watch_app_on_your_iphone" formatted="false">Mở app Apple Watch trên iPhone.</string>
   <string name="open_the_coros_app_on_your_phone" formatted="false">Mở app COROS trên điện thoại.</string>
+  <string name="open_week_lld_in_list">Mở tuần %1$d trong danh sách</string>
   <string name="optional" formatted="false">Không bắt buộc</string>
   <string name="optional_meters" formatted="false">Không bắt buộc (mét)</string>
   <string name="optional_add_values_you_know_leave_the_rest_blank_you_can_update_them_in_profile" formatted="false">Không bắt buộc. Nhập các giá trị bạn biết, để trống phần còn lại. Bạn có thể cập nhật trong Hồ sơ sau.</string>
@@ -844,6 +847,7 @@
   <string name="overall" formatted="false">Chung</string>
   <string name="overall_rank" formatted="false">Hạng chung</string>
   <string name="overall_effort" formatted="false">Mức gắng sức</string>
+  <string name="overview" formatted="false">Tổng quan</string>
   <string name="pace_km" formatted="false">PACE (/KM)</string>
   <string name="pacing_splits_aid_station_plan" formatted="false">SPLIT &amp; KẾ HOẠCH TRẠM TIẾP TẾ</string>
   <string name="packing_list_products" formatted="false">ĐỒ CẦN MANG &amp; SẢN PHẨM</string>
@@ -933,6 +937,7 @@
   <string name="race_history" formatted="false">Lịch sử Race</string>
   <string name="race_target" formatted="false">Race mục tiêu</string>
   <string name="race_date_11162b91c2" formatted="false">Ngày Race</string>
+  <string name="race_day" formatted="false">Ngày race</string>
   <string name="race_history_b0cee90cda" formatted="false">Lịch sử Race</string>
   <string name="race_name" formatted="false">Tên Race</string>
   <string name="race_name_e_g_dalat_ultra_trail_50k" formatted="false">Tên Race (vd. Dalat Ultra Trail 50K)</string>
@@ -989,6 +994,7 @@
   <string name="review_values" formatted="false">Kiểm tra lại giá trị</string>
   <string name="road_use_case" formatted="false">Dùng cho Road</string>
   <string name="road_personal_bests" formatted="false">PR Road</string>
+  <string name="roster" formatted="false">Danh sách VĐV</string>
   <string name="roster_progress" formatted="false">Tiến độ học viên</string>
   <string name="run" formatted="false">Chạy</string>
   <string name="run_days" formatted="false">Ngày chạy</string>
@@ -1307,6 +1313,7 @@
   <string name="week_lld_is_ready_to_generate">Tuần %1$d đã sẵn sàng để tạo</string>
   <string name="week_lld_of_lld">Tuần %1$d / %2$d</string>
   <string name="week_lld_a537df6ee2">Tuần %1$d · %2$s</string>
+  <string name="week_lld_lld_km">Tuần %1$d, %2$d km</string>
   <string name="week_days_volume" formatted="false">Khối lượng các ngày</string>
   <string name="week_review" formatted="false">Đánh giá tuần</string>
   <string name="week_schedule" formatted="false">Lịch tuần</string>

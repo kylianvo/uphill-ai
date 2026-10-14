@@ -62,7 +62,9 @@ class VisualEvidenceTest {
                             "/api/knowledge/topics" -> "[]"
                             "/api/coach/nutrition-catalog" -> "[]"
                             "/api/coach/pace-strategy/benchmarks" -> """{"matched":false}"""
-                            "/api/coaching/my-invites" -> """{"invites":[]}"""
+                            "/api/coaching/my-invites" -> "[]"
+                            "/api/coaching/overview" -> fixture("coaching_overview.json")
+                            "/api/coaching/roster" -> fixture("coaching_roster.json")
                             else -> "{}"
                         }
                     return MockResponse()
@@ -96,12 +98,22 @@ class VisualEvidenceTest {
                     }
             }
         }
-        fun localized(key: String, lang: String): String {
+        fun localized(key: String, lang: String, vararg args: Any): String {
             val configuration =
                 Configuration(context.resources.configuration).apply {
                     setLocale(Locale.forLanguageTag(lang))
                 }
-            return localizedText(context.createConfigurationContext(configuration), key)
+            return localizedText(context.createConfigurationContext(configuration), key, *args)
+        }
+        fun planLabel(key: String, lang: String): String {
+            val configuration =
+                Configuration(context.resources.configuration).apply {
+                    setLocale(Locale.forLanguageTag(lang))
+                }
+            val resources = context.createConfigurationContext(configuration).resources
+            val id =
+                resources.getIdentifier("planui_${key.lowercase()}", "string", context.packageName)
+            return if (id != 0) resources.getString(id) else localized(key, lang)
         }
         fun waitText(text: String) {
             ui.waitUntil(15000) {
@@ -145,7 +157,7 @@ class VisualEvidenceTest {
                     UphillTheme { RootNav(container) }
                 }
             }
-            capture("sign-in", "en")
+            if (variant != "coaching") capture("sign-in", "en")
             val user =
                 JSONCoding.json
                     .decodeFromString<User>(fixture("auth_me.json"))
@@ -155,65 +167,111 @@ class VisualEvidenceTest {
                 runBlocking { container.settings.language(lang) }
                 ui.waitUntil(10000) { container.language.value == lang }
                 configureActivityLanguage(lang)
-                tab("Plan", lang)
-                ui.waitUntil(15000) {
-                    ui.onAllNodesWithTag("plan.list").fetchSemanticsNodes().isNotEmpty()
-                }
-                ui.onNodeWithTag("plan.list").performScrollToIndex(0)
-                waitText("Vietnam Mountain Marathon 42K")
-                capture("plan", lang)
-                ui.onNodeWithTag("plan.list").performScrollToNode(hasText("Hill Repeats"))
-                ui.onNodeWithText("Hill Repeats").performClick()
-                waitText(localized("Done", lang))
-                capture("workout", lang)
-                instrumentation.uiAutomation.executeShellCommand("input keyevent 4").use {
-                    java.io.FileInputStream(it.fileDescriptor).readBytes()
-                }
-                tab("Coach", lang)
-                waitText("Can we move tomorrow's tempo run")
-                capture("chat", lang)
-                tab("Me", lang)
-                waitText(user.name)
-                ui.onNode(hasText(localized("Me", lang)) and !hasClickAction()).performScrollTo()
-                capture("me", lang)
-                if (variant == "normal") {
-                    for ((name, label) in
-                        listOf(
-                            "pace" to "Pace Strategy",
-                            "goal" to "Goal Determiner",
-                            "nutrition" to "Nutrition Lab",
-                            "gear" to "Gear Vault",
-                            "knowledge" to "Knowledge Hub",
-                            "race-history" to "Race history",
-                        )) {
-                        tab("Me", lang)
-                        waitText(localized(label, lang))
-                        ui.onNodeWithText(localized(label, lang)).performScrollTo().performClick()
-                        val configuration =
-                            Configuration(context.resources.configuration).apply {
-                                setLocale(Locale.forLanguageTag(lang))
-                            }
-                        val resources = context.createConfigurationContext(configuration).resources
-                        val resourceName =
-                            if (name == "race-history") "p6_race_history"
-                            else
-                                "tools_" +
-                                    label.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
-                        val headingId =
-                            resources.getIdentifier(resourceName, "string", context.packageName)
-                        waitText(
-                            if (headingId != 0) resources.getString(headingId)
-                            else localized(label, lang)
-                        )
-                        capture(name, lang)
-                        val backId =
-                            resources.getIdentifier("tools_back", "string", context.packageName)
-                        val backLabel =
-                            if (name != "race-history" && backId != 0) resources.getString(backId)
-                            else localized("Back", lang)
-                        ui.onNodeWithText(backLabel).performClick()
-                        waitText(localized("Tools & Labs", lang))
+                if (variant != "coaching") {
+                    tab("Plan", lang)
+                    ui.waitUntil(15000) {
+                        ui.onAllNodesWithTag("plan.list").fetchSemanticsNodes().isNotEmpty()
                     }
+                    ui.onNodeWithTag("plan.list").performScrollToIndex(0)
+                    waitText("Vietnam Mountain Marathon 42K")
+                    ui.onNodeWithTag("plan.list")
+                        .performScrollToNode(hasContentDescription(planLabel("List", lang)))
+                    ui.onNodeWithContentDescription(planLabel("List", lang)).performClick()
+                    ui.onNodeWithTag("plan.list").performScrollToIndex(0)
+                    capture("plan", lang)
+                    ui.onNodeWithTag("plan.list").performScrollToNode(hasText("Hill Repeats"))
+                    ui.onNodeWithText("Hill Repeats").performClick()
+                    waitText(localized("Done", lang))
+                    capture("workout", lang)
+                    instrumentation.uiAutomation.executeShellCommand("input keyevent 4").use {
+                        java.io.FileInputStream(it.fileDescriptor).readBytes()
+                    }
+                    ui.onNodeWithTag("plan.list")
+                        .performScrollToNode(hasContentDescription(planLabel("Calendar", lang)))
+                    ui.onNodeWithContentDescription(planLabel("Calendar", lang)).performClick()
+                    ui.onNodeWithTag("plan.list").performScrollToNode(hasTestTag("calendar.card"))
+                    ui.onNodeWithTag("calendar.card").performScrollTo()
+                    capture("calendar", lang)
+                    ui.onNodeWithTag("calendar.day.2026-10-06").performClick()
+                    waitText(localized("Open week %lld in list", lang, 3))
+                    capture("calendar-day", lang)
+                    instrumentation.uiAutomation.executeShellCommand("input keyevent 4").use {
+                        java.io.FileInputStream(it.fileDescriptor).readBytes()
+                    }
+                    tab("Coach", lang)
+                    waitText("Can we move tomorrow's tempo run")
+                    capture("chat", lang)
+                    tab("Me", lang)
+                    waitText(user.name)
+                    ui.onNode(hasText(localized("Me", lang)) and !hasClickAction())
+                        .performScrollTo()
+                    capture("me", lang)
+                    if (variant == "normal") {
+                        for ((name, label) in
+                            listOf(
+                                "pace" to "Pace Strategy",
+                                "goal" to "Goal Determiner",
+                                "nutrition" to "Nutrition Lab",
+                                "gear" to "Gear Vault",
+                                "knowledge" to "Knowledge Hub",
+                                "race-history" to "Race history",
+                            )) {
+                            tab("Me", lang)
+                            waitText(localized(label, lang))
+                            ui.onNodeWithText(localized(label, lang))
+                                .performScrollTo()
+                                .performClick()
+                            val configuration =
+                                Configuration(context.resources.configuration).apply {
+                                    setLocale(Locale.forLanguageTag(lang))
+                                }
+                            val resources =
+                                context.createConfigurationContext(configuration).resources
+                            val resourceName =
+                                if (name == "race-history") "p6_race_history"
+                                else
+                                    "tools_" +
+                                        label
+                                            .lowercase()
+                                            .replace(Regex("[^a-z0-9]+"), "_")
+                                            .trim('_')
+                            val headingId =
+                                resources.getIdentifier(resourceName, "string", context.packageName)
+                            waitText(
+                                if (headingId != 0) resources.getString(headingId)
+                                else localized(label, lang)
+                            )
+                            capture(name, lang)
+                            val backId =
+                                resources.getIdentifier("tools_back", "string", context.packageName)
+                            val backLabel =
+                                if (name != "race-history" && backId != 0)
+                                    resources.getString(backId)
+                                else localized("Back", lang)
+                            ui.onNodeWithText(backLabel).performClick()
+                            waitText(localized("Tools & Labs", lang))
+                        }
+                    }
+                }
+                val coach =
+                    JSONCoding.json
+                        .decodeFromString<User>(fixture("coaching_coach_me.json"))
+                        .copy(onboardingComplete = true)
+                ui.runOnIdle {
+                    container.session.signIn(AuthResponse("fixture-coach-evidence-only", coach))
+                }
+                tab("Athletes", lang)
+                ui.onNodeWithTag("coach.section.overview").performScrollTo().performClick()
+                ui.waitUntil(15000) {
+                    ui.onAllNodesWithTag("coach.charts").fetchSemanticsNodes().isNotEmpty()
+                }
+                ui.onNodeWithTag("coach.charts").performScrollTo()
+                capture("coach-charts", lang)
+                ui.onNodeWithTag("coach.section.roster").performScrollTo().performClick()
+                ui.onNodeWithTag("coach.roster.search").performScrollTo()
+                capture("coach-roster", lang)
+                ui.runOnIdle {
+                    container.session.signIn(AuthResponse("fixture-evidence-only", user))
                 }
             }
         } finally {

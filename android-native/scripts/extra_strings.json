@@ -100,5 +100,16 @@
   "easy jog between intervals": "Chạy nhẹ giữa các Interval",
   "Adapting your week…": "Đang điều chỉnh tuần tập…",
   "Building the next block…": "Đang tạo Block tiếp theo…",
-  "Building your plan…": "Đang tạo plan…"
+  "Building your plan…": "Đang tạo plan…",
+  "No sessions planned this month": "Tháng này chưa có buổi tập",
+  "%lld km · %@ h · %lld of %lld sessions done": "%lld km · %@ h · xong %lld/%lld buổi",
+  "Previous month": "Tháng trước",
+  "Next month": "Tháng sau",
+  "Week %lld, %lld km": "Tuần %lld, %lld km",
+  "Open week %lld in list": "Mở tuần %lld trong danh sách",
+  "Planned": "Theo plan",
+  "Missed": "Bị lỡ",
+  "Race day": "Ngày race",
+  "Overview": "Tổng quan",
+  "Roster": "Danh sách VĐV"
 }

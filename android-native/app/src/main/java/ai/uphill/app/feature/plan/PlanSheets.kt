@@ -6,8 +6,6 @@ import ai.uphill.app.designsystem.PrimaryButton as Button
 import ai.uphill.app.designsystem.SecondaryButton as OutlinedButton
 import ai.uphill.app.designsystem.UH
 import android.content.Intent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -606,64 +604,6 @@ internal fun ManagePlanSheet(
             },
             dismissButton = { TextButton(onClick = { delete = null }) { Text(P("Cancel")) } },
         )
-    }
-}
-
-@Composable
-internal fun CalendarGrid(
-    snapshot: PlanSnapshot,
-    onWorkout: (Workout) -> Unit,
-    onWeek: (Int) -> Unit,
-) {
-    var month by remember { mutableStateOf(YearMonth.now()) }
-    val cells = remember(month, snapshot) { PlanCalendar.monthGrid(month, snapshot) }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        TextButton(onClick = { month = month.minusMonths(1) }) {
-            Text("‹", style = MaterialTheme.typography.headlineSmall)
-        }
-        Text(month.toString(), style = MaterialTheme.typography.titleLarge)
-        TextButton(onClick = { month = month.plusMonths(1) }) {
-            Text("›", style = MaterialTheme.typography.headlineSmall)
-        }
-    }
-    Row {
-        Weekday.entries.forEach {
-            Text(P(it.short), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
-        }
-    }
-    cells.chunked(7).forEach { week ->
-        Row(Modifier.fillMaxWidth()) {
-            week.forEach { cell ->
-                Column(
-                    Modifier.weight(1f)
-                        .heightIn(min = 62.dp)
-                        .background(
-                            if (cell.isToday) UH.hover else MaterialTheme.colorScheme.surface
-                        )
-                        .clickable {
-                            cell.workouts.firstOrNull { !it.isRest }?.let(onWorkout)
-                                ?: cell.weekNumber?.let(onWeek)
-                        }
-                        .padding(3.dp)
-                ) {
-                    Text(
-                        cell.date.dayOfMonth.toString(),
-                        color = if (cell.isCurrentMonth) UH.ink else UH.muted,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    if (cell.isRaceDay) Text("⚑", color = UH.accentInk)
-                    cell.workouts
-                        .filter { !it.isRest }
-                        .take(2)
-                        .forEach {
-                            Text(
-                                if (it.isDone) "✓" else "●",
-                                color = if (it.isMissedFlag) UH.danger else UH.accentInk,
-                            )
-                        }
-                }
-            }
-        }
     }
 }
 

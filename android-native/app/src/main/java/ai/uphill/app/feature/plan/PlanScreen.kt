@@ -11,6 +11,7 @@ import ai.uphill.app.core.racehistory.RaceHistoryService
 import ai.uphill.app.designsystem.LocalReduceMotion
 import ai.uphill.app.designsystem.PrimaryButton as Button
 import ai.uphill.app.designsystem.UH
+import ai.uphill.app.designsystem.workoutEffortColor
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -83,6 +84,7 @@ fun PlanScreen(
     var sheet by remember { mutableStateOf<String?>(null) }
     var calendarMode by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<Workout?>(null) }
+    var calendarDay by remember { mutableStateOf<CalendarDayCell?>(null) }
     val snapshot = state.snapshot
     val requestedWorkout by TrainingNavigation.workoutId.collectAsState()
     LaunchedEffect(snapshot, requestedWorkout) {
@@ -319,9 +321,10 @@ fun PlanScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         CalendarGrid(
                             snapshot,
-                            onWorkout = {
-                                selected = it
-                                sheet = "workout"
+                            week = state.week,
+                            onDay = {
+                                calendarDay = it
+                                sheet = "calendarDay"
                             },
                             onWeek = {
                                 model.selectWeek(it)
@@ -471,15 +474,34 @@ fun PlanScreen(
                     "calendar" ->
                         CalendarGrid(
                             snapshot,
-                            onWorkout = {
-                                selected = it
-                                sheet = "workout"
+                            week = state.week,
+                            onDay = {
+                                calendarDay = it
+                                sheet = "calendarDay"
                             },
                             onWeek = {
                                 model.selectWeek(it)
                                 sheet = null
                             },
                         )
+                    "calendarDay" ->
+                        calendarDay?.let { day ->
+                            CalendarDayContent(
+                                model,
+                                day,
+                                state,
+                                onWorkout = {
+                                    selected = it
+                                    sheet = "workout"
+                                },
+                                onWeek = {
+                                    model.selectWeek(it)
+                                    calendarMode = false
+                                    sheet = null
+                                },
+                                onClose = { sheet = null },
+                            )
+                        }
                     "watch" -> WatchMatchSheet(model, selected, onClose = { sheet = null })
                     "export" -> ExportCalendarSheet(model, snapshot)
                 }
@@ -970,7 +992,7 @@ private fun CoachReview(model: PlanViewModel, state: PlanState, onReview: () -> 
 }
 
 @Composable
-private fun DayRow(
+internal fun DayRow(
     day: Weekday,
     date: LocalDate?,
     workouts: List<Workout>,
@@ -979,14 +1001,7 @@ private fun DayRow(
 ) {
     val rest = workouts.isEmpty() || workouts.all { it.isRest && !it.isDone && !it.isMissedFlag }
     val today = date == LocalDate.now()
-    val color =
-        when {
-            workouts.any { it.targetZone.contains("4") || it.targetZone.contains("5") } ->
-                Color(0xFFBD514C)
-            workouts.any { it.targetZone.contains("3") } -> Color(0xFFC07C25)
-            workouts.any { it.type.contains("strength", true) } -> Color(0xFF8765AF)
-            else -> UH.accentInk
-        }
+    val color = workouts.firstOrNull { !it.isRest }?.let(::workoutEffortColor) ?: UH.muted
     val dateText = "${P(day.short)} ${date?.format(DateTimeFormatter.ofPattern("dd/MM")) ?: ""}"
     OutlinedCard(
         Modifier.fillMaxWidth(),

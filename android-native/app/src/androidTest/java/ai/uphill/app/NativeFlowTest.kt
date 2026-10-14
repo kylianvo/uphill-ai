@@ -13,8 +13,10 @@ import ai.uphill.app.feature.onboarding.OnboardingScreen
 import ai.uphill.app.feature.pace.PaceScreen
 import ai.uphill.app.feature.plan.PlanScreen
 import ai.uphill.app.feature.racehistory.RaceHistoryScreen
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import okhttp3.mockwebserver.*
 import org.junit.*
@@ -182,7 +184,9 @@ class NativeFlowTest {
                 }
             }
         ui.setContent {
-            UphillTheme { PlanScreen(api, user.copy(role = "coach"), "en", {}, athleteId = 7) }
+            UphillTheme {
+                PlanScreen(api, user.copy(role = "coach", isCoach = true), "en", {}, athleteId = 7)
+            }
         }
         waitText("Vietnam Mountain Marathon 42K")
         ui.onNodeWithTag("plan.list").performScrollToNode(hasText("Hill Repeats"))
@@ -225,6 +229,181 @@ class NativeFlowTest {
         assertTrue(edited)
         assertTrue(posted)
         assertTrue(removed)
+    }
+
+    @Test
+    fun monthCalendarOpensADayBeforeItsWorkoutAndCanReturnToWeekList() {
+        val haptics = java.util.concurrent.atomic.AtomicInteger()
+        ui.setContent {
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalHapticFeedback provides
+                    object : androidx.compose.ui.hapticfeedback.HapticFeedback {
+                        override fun performHapticFeedback(
+                            hapticFeedbackType:
+                                androidx.compose.ui.hapticfeedback.HapticFeedbackType
+                        ) {
+                            haptics.incrementAndGet()
+                        }
+                    }
+            ) {
+                UphillTheme { PlanScreen(api, user, "en", {}) }
+            }
+        }
+        waitText("Vietnam Mountain Marathon 42K")
+        ui.onNodeWithTag("plan.list").performScrollToNode(hasContentDescription("Calendar"))
+        ui.onNodeWithContentDescription("Calendar").performClick()
+        ui.onNodeWithTag("calendar.next").performScrollTo().performClick()
+        ui.onNodeWithTag("calendar.today").performScrollTo().performClick()
+        ui.onNodeWithTag("calendar.grid").performScrollTo().performTouchInput { swipeLeft() }
+        ui.onNodeWithTag("calendar.today").performScrollTo().performClick()
+        ui.onAllNodesWithText("6", useUnmergedTree = false)
+            .onFirst()
+            .performScrollTo()
+            .performClick()
+        waitText("Open week 3 in list")
+        ui.onNodeWithText("Hill Repeats").assertExists()
+        ui.onNodeWithText("Open week 3 in list").performClick()
+        ui.onNodeWithContentDescription("Calendar").assertExists()
+        ui.onNodeWithTag("plan.list").performScrollToNode(hasText("Hill Repeats"))
+        ui.onNodeWithText("Hill Repeats").assertIsDisplayed()
+        assertEquals("One selection haptic for each month change", 4, haptics.get())
+    }
+
+    @Test
+    fun coachCanChooseThirtyDaysEliteAndSearchTheRoster() {
+        val original = server.dispatcher
+        val queries = java.util.concurrent.CopyOnWriteArrayList<Pair<String?, String?>>()
+        server.dispatcher =
+            object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val url = request.requestUrl!!
+                    val name =
+                        when (url.encodedPath) {
+                            "/api/coaching/overview" -> {
+                                queries.add(
+                                    url.queryParameter("days") to url.queryParameter("level")
+                                )
+                                "coaching_overview.json"
+                            }
+                            "/api/coaching/roster" -> "coaching_roster.json"
+                            "/api/coaching/my-invites" -> "coaching_my_invites.json"
+                            else -> return original.dispatch(request)
+                        }
+                    return MockResponse()
+                        .setHeader("Content-Type", "application/json")
+                        .setBody(fixture(name))
+                }
+            }
+        ui.setContent {
+            UphillTheme {
+                ai.uphill.app.feature.coaching.AthletesScreen(
+                    api,
+                    user.copy(isCoach = true),
+                    "en",
+                    {},
+                )
+            }
+        }
+        waitText("Target: 80%")
+        ui.onNodeWithText("30d").performScrollTo().performClick()
+        ui.waitUntil(15000) { queries.any { it.first == "30" } }
+        ui.waitUntil(15000) {
+            ui.onAllNodes(hasText("Elite") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        ui.onNodeWithText("Elite").performScrollTo().performClick()
+        ui.waitUntil(15000) { queries.any { it.first == "30" && it.second == "elite" } }
+        ui.onNodeWithTag("coach.section.roster").performScrollTo().performClick()
+        ui.onNodeWithTag("coach.roster.search").performScrollTo().performTextInput("Preview")
+        ui.onNodeWithText("Preview Runner").assertExists()
+        ui.onNodeWithText("Pending Invitee").assertDoesNotExist()
+    }
+
+    @Test
+    fun coachDashboardShowsChartsWithTargetAndAllWeekdays() {
+        val original = server.dispatcher
+        server.dispatcher =
+            object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val name =
+                        when (request.requestUrl!!.encodedPath) {
+                            "/api/coaching/overview" -> "coaching_overview.json"
+                            "/api/coaching/roster" -> "coaching_roster.json"
+                            "/api/coaching/my-invites" -> "coaching_my_invites.json"
+                            else -> return original.dispatch(request)
+                        }
+                    return MockResponse()
+                        .setHeader("Content-Type", "application/json")
+                        .setBody(fixture(name))
+                }
+            }
+        ui.setContent {
+            UphillTheme {
+                ai.uphill.app.feature.coaching.AthletesScreen(
+                    api,
+                    user.copy(role = "coach", isCoach = true),
+                    "en",
+                    {},
+                )
+            }
+        }
+        waitText("Target: 80%")
+        ui.onNodeWithTag("coach.adherence.chart").performScrollTo().assertExists()
+        ui.onNodeWithTag("coach.missed.chart").performScrollTo().assertExists()
+        ui.onNodeWithTag("coach.missed.chart")
+            .assertContentDescriptionEquals(
+                "Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 1, Sat: 0, Sun: 0"
+            )
+    }
+
+    @Test
+    fun largeTextWorkoutPaceKeepsEachTimeIntact() {
+        ui.setContent {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides
+                    androidx.compose.ui.unit.Density(density.density, 1.3f)
+            ) {
+                UphillTheme {
+                    androidx.compose.foundation.layout.Column(
+                        androidx.compose.ui.Modifier.width(371.dp)
+                    ) {
+                        ai.uphill.app.feature.plan.WorkoutDetailBody(
+                            ai.uphill.app.core.models.Workout(
+                                1,
+                                93,
+                                2,
+                                title = "Hill Repeats",
+                                type = "Interval",
+                                durationMinutes = 60.0,
+                                targetPace = "6:10-6:50 /km",
+                            ),
+                            null,
+                            {},
+                        )
+                    }
+                }
+            }
+        }
+        val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        ui.onAllNodesWithText("6:10", substring = true, useUnmergedTree = true)
+            .onFirst()
+            .performSemanticsAction(
+                androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult
+            ) {
+                it(results)
+            }
+        val layout = results.single()
+        val lines =
+            (0 until layout.lineCount).map {
+                layout.layoutInput.text.text.substring(
+                    layout.getLineStart(it),
+                    layout.getLineEnd(it),
+                )
+            }
+        assertTrue(
+            "Pace split across lines: $lines",
+            lines.any { it.contains("6:10") } && lines.any { it.contains("6:50") },
+        )
     }
 
     @Test

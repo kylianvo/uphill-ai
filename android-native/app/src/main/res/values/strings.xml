@@ -33,6 +33,7 @@
   <string name="lld_h">%1$d h</string>
   <string name="lld_hours">%1$d hours</string>
   <string name="lld_km_expected_life">%1$d km expected life</string>
+  <string name="lld_km_h_lld_of_lld_sessions_done">%1$d km · %2$s h · %3$d of %4$d sessions done</string>
   <string name="lld_km_week">%1$d km/week</string>
   <string name="lld_min">%1$d min</string>
   <string name="lld_min_km_lld_m">%1$d min · %2$s km · +%3$d m</string>
@@ -795,6 +796,7 @@
   <string name="no_race_yet_like_your_first_21_km_or_50_km" formatted="false">No race yet, like your first 21 km or 50 km.</string>
   <string name="no_races_logged_yet" formatted="false">No races logged yet</string>
   <string name="no_running_yet" formatted="false">No running yet</string>
+  <string name="no_sessions_planned_this_month" formatted="false">No sessions planned this month</string>
   <string name="no_shoe_assigned_to_this_slot" formatted="false">No shoe assigned to this slot</string>
   <string name="no_sources_available" formatted="false">No sources available.</string>
   <string name="no_target_races_configured_yet" formatted="false">No target races configured yet</string>
@@ -835,6 +837,7 @@
   <string name="open_source" formatted="false">Open source</string>
   <string name="open_the_apple_watch_app_on_your_iphone" formatted="false">Open the Apple Watch app on your iPhone.</string>
   <string name="open_the_coros_app_on_your_phone" formatted="false">Open the COROS app on your phone.</string>
+  <string name="open_week_lld_in_list">Open week %1$d in list</string>
   <string name="optional" formatted="false">Optional</string>
   <string name="optional_meters" formatted="false">Optional (meters)</string>
   <string name="optional_add_values_you_know_leave_the_rest_blank_you_can_update_them_in_profile" formatted="false">Optional. Add values you know; leave the rest blank. You can update them in Profile later.</string>
@@ -844,6 +847,7 @@
   <string name="overall" formatted="false">Overall</string>
   <string name="overall_rank" formatted="false">Overall Rank</string>
   <string name="overall_effort" formatted="false">Overall effort</string>
+  <string name="overview" formatted="false">Overview</string>
   <string name="pace_km" formatted="false">PACE (/KM)</string>
   <string name="pacing_splits_aid_station_plan" formatted="false">PACING SPLITS &amp; AID STATION PLAN</string>
   <string name="packing_list_products" formatted="false">PACKING LIST &amp; PRODUCTS</string>
@@ -933,6 +937,7 @@
   <string name="race_history" formatted="false">Race History</string>
   <string name="race_target" formatted="false">Race Target</string>
   <string name="race_date_11162b91c2" formatted="false">Race date</string>
+  <string name="race_day" formatted="false">Race day</string>
   <string name="race_history_b0cee90cda" formatted="false">Race history</string>
   <string name="race_name" formatted="false">Race name</string>
   <string name="race_name_e_g_dalat_ultra_trail_50k" formatted="false">Race name (e.g. Dalat Ultra Trail 50K)</string>
@@ -989,6 +994,7 @@
   <string name="review_values" formatted="false">Review values</string>
   <string name="road_use_case" formatted="false">Road Use Case</string>
   <string name="road_personal_bests" formatted="false">Road personal bests</string>
+  <string name="roster" formatted="false">Roster</string>
   <string name="roster_progress" formatted="false">Roster Progress</string>
   <string name="run" formatted="false">Run</string>
   <string name="run_days" formatted="false">Run days</string>
@@ -1307,6 +1313,7 @@
   <string name="week_lld_is_ready_to_generate">Week %1$d is ready to generate</string>
   <string name="week_lld_of_lld">Week %1$d of %2$d</string>
   <string name="week_lld_a537df6ee2">Week %1$d · %2$s</string>
+  <string name="week_lld_lld_km">Week %1$d, %2$d km</string>
   <string name="week_days_volume" formatted="false">Week days volume</string>
   <string name="week_review" formatted="false">Week review</string>
   <string name="week_schedule" formatted="false">Week schedule</string>

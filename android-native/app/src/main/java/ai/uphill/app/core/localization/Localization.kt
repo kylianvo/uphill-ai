@@ -21,7 +21,8 @@ fun L(key: String, vararg args: Any): String {
         }
     val name = keys[key]?.jsonPrimitive?.content ?: return key
     val id = context.resources.getIdentifier(name, "string", context.packageName)
-    return if (id != 0) context.getString(id, *args) else key
+    return if (id == 0) key
+    else if (args.isEmpty()) context.getString(id) else context.getString(id, *args)
 }
 
 fun localizedText(context: Context, key: String, vararg args: Any): String {
@@ -33,7 +34,8 @@ fun localizedText(context: Context, key: String, vararg args: Any): String {
             .jsonObject
     val name = keys[key]?.jsonPrimitive?.content ?: return key
     val id = context.resources.getIdentifier(name, "string", context.packageName)
-    return if (id != 0) context.getString(id, *args) else key
+    return if (id == 0) key
+    else if (args.isEmpty()) context.getString(id) else context.getString(id, *args)
 }
 
 fun localizedError(context: Context, error: Throwable): String =
