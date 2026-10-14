@@ -1,6 +1,6 @@
 """Generates realistic synthetic clickstream traffic and sends it through the
 real POST /api/analytics/track_batch endpoint (exercises the actual
-producer -> Kafka -> consumer -> Postgres path, not a shortcut). See
+endpoint -> Postgres write path, not a shortcut). See
 docs/superpowers/specs/2026-08-02-warehouse-dashboards-design.md for the full design.
 
 Usage (from backend/, with the backend running):

@@ -58,7 +58,7 @@ else
 
   export DATABASE_URL="postgresql://uphill:uphill_secret@localhost:5433/uphill_ai_test"
   export ENVIRONMENT="development"
-  if ! (cd "$SCRIPT_DIR/backend" && .venv/bin/pytest tests/unit tests/integration -q -m "not kafka"); then
+  if ! (cd "$SCRIPT_DIR/backend" && .venv/bin/pytest tests/unit tests/integration -q); then
     echo "ERROR: backend test suite failed. Aborting deploy. Re-run with --skip-tests to force (not recommended)." >&2
     exit 1
   fi
@@ -96,7 +96,7 @@ fi
 
 # 5. Start/update the services this script actually deploys.
 # Explicitly scoped, not the whole compose file -- docker-compose.yml also
-# declares Kafka/Airflow/Spark services (dev/local-only so far) and
+# declares Airflow/Spark services (dev/local-only so far) and
 # Metabase, none of which this script rsyncs a build context or env for; an
 # unscoped `up -d --remove-orphans` would otherwise try to create/rebuild
 # them on every routine deploy and fail (confirmed: Metabase has no `image:`
