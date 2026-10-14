@@ -131,6 +131,7 @@ Backend reads from `backend/.env`. Key variables:
 - `ALLOWED_ORIGINS` — comma-separated CORS origins
 - `NOTEBOOKLM_NOTEBOOK_ID`, `NOTEBOOKLM_NUTRITION_ID`, `NOTEBOOKLM_AUTH_JSON` — read **only** by `backend/scripts/distill_principles.py`. No request path touches them; leave them unset in normal deployments and set them only when running that script
 - `TAVILY_API_KEY` — search API key for gear's and nutrition's web-discovery KB distillation (`services/kb_distiller.py`'s `discover_gear_web`/`discover_nutrition_web`); without it `sweep_domain` raises
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` — outbound email for password reset codes (`services/email_service.py`, implicit TLS via `smtplib.SMTP_SSL`). Prod sends from the domain mailbox `viet.vo@uphill-ai.io.vn` through `cp02hn.emailserver.net.vn:465`. Empty `SMTP_HOST` logs and skips sending (local dev, tests); failures count in `password_reset_email_failures_total`
 - `GOAL_LLM_ENABLED` — Gemini tier of goal estimation (default `false` = anchors-median rules tier); `GOAL_ASSESS_ON_PLAN_CREATE` — assess a new plan's goal in a background thread (default `true`, off in tests)
 - `QDRANT_URL` — defaults to `http://qdrant:6333` in Docker, `http://localhost:6333` otherwise
 - `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` — enable Langfuse tracing (EU cloud, `LANGFUSE_BASE_URL`); empty disables it. `services/observability.py` is the only module importing `langfuse`/`openinference`/`opentelemetry`
