@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -113,6 +114,10 @@ fun RootNav(container: AppContainer) {
                         ) +
                             if (user.isCoach) listOf("athletes" to Icons.Outlined.Groups)
                             else emptyList()
+                    var selectedTab by rememberSaveable { mutableStateOf("plan") }
+                    LaunchedEffect(route) {
+                        if (tabs.any { it.first == route }) selectedTab = route
+                    }
                     val navigate: (String) -> Unit = { target ->
                         if (target == "back") nav.popBackStack()
                         else {
@@ -156,7 +161,7 @@ fun RootNav(container: AppContainer) {
                                                 unselectedIconColor = UH.secondary,
                                                 unselectedTextColor = UH.secondary,
                                             ),
-                                        selected = route == tab,
+                                        selected = selectedTab == tab,
                                         onClick = {
                                             nav.navigate(tab) {
                                                 popUpTo(nav.graph.startDestinationId) {

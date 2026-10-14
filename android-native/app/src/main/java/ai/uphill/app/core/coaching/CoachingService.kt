@@ -230,6 +230,7 @@ data class CoachWorkoutAiCreatePayload(
     val dayOfWeek: String,
     val workoutType: String,
     val durationMinutes: Double,
+    val intent: String? = null,
 )
 
 /** Editing sends only changed nonblank fields, matching iOS and the PATCH contract. */
@@ -340,9 +341,9 @@ class CoachingService(private val api: APIClient) {
     suspend fun invites(): List<CoachingInvite> =
         api.send(Endpoint("GET", "/api/coaching/my-invites"))
 
-    suspend fun invite(email: String): CoachedAthleteRow {
+    suspend fun invite(email: String) {
         require(email.trim().contains('@')) { "Enter an email address." }
-        return api.send(
+        api.text(
             Endpoint(
                 "POST",
                 "/api/coaching/invite",

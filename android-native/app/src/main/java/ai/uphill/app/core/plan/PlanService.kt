@@ -30,7 +30,7 @@ class PlanService(val api: APIClient, val athleteId: Int? = null) {
         val matches =
             runCatching { watchActivities(snapshot.plan.id) }
                 .getOrDefault(emptyList())
-                .filter { it.workoutId != null }
+                .filter { it.settled }
                 .groupBy { it.workoutId }
         return snapshot.copy(
             workouts =

@@ -22,11 +22,13 @@ class CoachWorkoutDraftTest {
     @Test
     fun aiPayloadUsesTypeDurationAndSelectedDayWithoutManualTitle() {
         val payload =
-            CoachWorkoutDraft(4, day = "Friday", type = "Threshold", duration = "40").aiPayload()
+            CoachWorkoutDraft(4, day = "Friday", type = "Threshold", duration = "40")
+                .aiPayload("  Hill intervals, steady cadence  ")
         assertEquals(4, payload.weekNumber)
         assertEquals("Friday", payload.dayOfWeek)
         assertEquals("Threshold", payload.workoutType)
         assertEquals(40.0, payload.durationMinutes, 0.0)
+        assertEquals("Hill intervals, steady cadence", payload.intent)
     }
 
     @Test

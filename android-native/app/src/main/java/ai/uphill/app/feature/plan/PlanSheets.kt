@@ -28,86 +28,52 @@ internal fun WorkoutDetail(
     onMove: () -> Unit,
     onMatch: () -> Unit,
     onClose: () -> Unit,
+    currentUserId: Int,
 ) {
     val current = state.snapshot?.workouts?.firstOrNull { it.id == workout.id } ?: workout
     var rpe by remember(current.id) { mutableStateOf(current.rpe) }
     var notes by remember(current.id) { mutableStateOf(current.notes.orEmpty()) }
-    Text(current.title, style = MaterialTheme.typography.headlineSmall)
-    Text(
-        "${P(current.dayOfWeek)} · ${P("Week")} ${current.weekNumber} · ${current.phase}",
-        color = UH.secondary,
-    )
-    Text(
-        "${current.durationMinutes.toInt()} min · ${current.distanceKm ?: 0} km · ${current.elevationGainM ?: 0} m D+",
-        style = MaterialTheme.typography.titleMedium,
-    )
-    Text(
-        "${current.targetZone} · ${current.targetHrRange.orEmpty()} · ${current.targetPace.orEmpty()}",
-        color = UH.accentInk,
-    )
-    if (!current.treadmillSpeed.isNullOrBlank() && current.treadmillSpeed != "0")
+    var saved by remember(current.id) { mutableStateOf(false) }
+    LaunchedEffect(rpe, notes) { saved = false }
+    WorkoutDetailBody(current, state.snapshot, onClose)
+    if (model.athleteId != null) {
+        CoachWorkoutControls(model, current, onClose)
+    } else if (current.approvedAt == null) {
         Text(
-            "${P("Treadmill")}: ${current.treadmillSpeed} km/h · ${current.treadmillIncline.orEmpty()}%"
-        )
-    if (current.intervalReps != null)
-        Text(
-            "${current.intervalReps} × ${current.intervalRepValue ?: 0} ${current.intervalRepUnit.orEmpty()}"
-        )
-    current.walkIntervalValue?.let { Text("${P("Recovery")} · $it min") }
-    current.description?.let { Text(it) }
-    current.fuelingTip?.let {
-        Text(P("Fueling"), style = MaterialTheme.typography.titleMedium)
-        Text(it)
-    }
-    current.source?.let {
-        Text("${P("Source")}: $it", color = UH.muted, style = MaterialTheme.typography.bodySmall)
-    }
-    if (current.isPriority) Text(P("Priority session"), color = UH.accentInk)
-    if (current.isMatched)
-        Text(
-            "${P("Watch activity")} · ${current.matchedDistanceKm ?: 0} km · ${((current.matchedDurationSeconds ?: 0.0)/60).toInt()} min · ${current.matchedAvgHr ?: 0} bpm",
+            ai.uphill.app.core.localization.L("Waiting for your coach's approval"),
             color = UH.secondary,
         )
-    if (model.athleteId == null) {
-        Text(P("Effort (RPE)"))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            (1..10).forEach { value ->
-                FilterChip(
-                    selected = rpe == value,
-                    onClick = { rpe = if (rpe == value) null else value },
-                    label = { Text(value.toString()) },
-                )
-            }
-        }
+    } else {
+        WorkoutFeelingSelector(rpe) { rpe = it }
         OutlinedTextField(
             value = notes,
             onValueChange = { notes = it },
-            label = { Text(P("Workout notes")) },
+            label = {
+                Text(
+                    ai.uphill.app.core.localization.L("Add session notes (legs, terrain, weather)…")
+                )
+            },
             modifier = Modifier.fillMaxWidth(),
         )
         val enabled = state.cachedAt == null && !state.busy
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
-                onClick = {
-                    model.log(current, if (current.isDone) 0 else 1, 0, rpe, notes, onClose)
-                },
+                onClick = { model.log(current, if (current.isDone) 0 else 1, 0, rpe, notes) },
                 enabled = enabled,
             ) {
                 Text(P(if (current.isDone) "Undo done" else "Mark done"))
             }
             OutlinedButton(
-                onClick = {
-                    model.log(current, 0, if (current.isMissedFlag) 0 else 1, rpe, notes, onClose)
-                },
+                onClick = { model.log(current, 0, if (current.isMissedFlag) 0 else 1, rpe, notes) },
                 enabled = enabled,
             ) {
                 Text(P(if (current.isMissedFlag) "Undo missed" else "Mark missed"))
             }
             OutlinedButton(
-                onClick = { model.log(current, null, null, rpe, notes, onClose) },
-                enabled = enabled,
+                onClick = { model.log(current, null, null, rpe, notes) { saved = true } },
+                enabled = enabled && (rpe != current.rpe || notes != current.notes.orEmpty()),
             ) {
-                Text(P("Save notes"))
+                Text(ai.uphill.app.core.localization.L(if (saved) "Saved" else "Save Log"))
             }
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -123,6 +89,13 @@ internal fun WorkoutDetail(
             }
         }
     }
+    val coaching = remember(model.api) { ai.uphill.app.core.coaching.CoachingService(model.api) }
+    WorkoutCoachNotes(
+        coaching,
+        model.athleteId ?: currentUserId,
+        current.id,
+        model.athleteId != null,
+    )
 }
 
 @Composable

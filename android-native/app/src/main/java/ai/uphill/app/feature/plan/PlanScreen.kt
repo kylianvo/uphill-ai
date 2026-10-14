@@ -128,19 +128,38 @@ fun PlanScreen(
                 }
             }
         }
-        if (generation.running != null)
+        generation.running?.let { running ->
             item {
-                OutlinedCard {
-                    Column(
-                        Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(P("Building your plan"))
-                        LinearProgressIndicator(Modifier.fillMaxWidth())
-                        Text(P("You can leave this screen. Your plan will keep building."))
+                val elapsed by
+                    produceState(0L, running.jobId) {
+                        while (true) {
+                            value =
+                                ((System.currentTimeMillis() - running.startedAt) / 1000)
+                                    .coerceAtLeast(0)
+                            kotlinx.coroutines.delay(1000)
+                        }
                     }
+                val title =
+                    when (running.kind) {
+                        "adaptWeek" -> L("Adapting your week…")
+                        "nextWeek" -> L("Building the next block…")
+                        else -> L("Building your plan…")
+                    }
+                Row(
+                    Modifier.fillMaxWidth()
+                        .background(UH.hover, RoundedCornerShape(8.dp))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Text(
+                        "$title ${elapsed / 60}:${(elapsed % 60).toString().padStart(2, '0')}",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
             }
+        }
         (generation.outcome as? JobOutcome.Failed)?.let { failure ->
             item { Text(P(failure.message), color = UH.danger) }
         }
@@ -179,7 +198,7 @@ fun PlanScreen(
                             snapshot.plan.raceName.ifBlank { P(snapshot.plan.goalType) },
                             fontSize = 19.sp,
                             fontWeight = FontWeight.Bold,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -372,7 +391,14 @@ fun PlanScreen(
                                 onClick = { sheet = "next" },
                                 enabled = offer.unlocked && generation.running == null,
                             ) {
-                                Text(P("Build next week"))
+                                if (generation.running?.kind == "nextWeek") {
+                                    CircularProgressIndicator(
+                                        Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(L("Building the next block…"))
+                                } else Text(P("Build next week"))
                             }
                         }
                     }
@@ -381,7 +407,10 @@ fun PlanScreen(
         }
     }
     if (sheet != null && snapshot != null)
-        ModalBottomSheet(onDismissRequest = { sheet = null }) {
+        ModalBottomSheet(
+            onDismissRequest = { sheet = null },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = sheet == "workout"),
+        ) {
             Column(
                 Modifier.fillMaxWidth()
                     .verticalScroll(rememberScrollState())
@@ -412,6 +441,7 @@ fun PlanScreen(
                                 state,
                                 onMove = { sheet = "move" },
                                 onMatch = { sheet = "watch" },
+                                currentUserId = user.id,
                                 onClose = { sheet = null },
                             )
                         }
@@ -1083,7 +1113,9 @@ private fun DayRow(
                                     else Icons.Default.Watch,
                                     null,
                                     Modifier.size(13.dp),
-                                    tint = UH.accentInk,
+                                    tint =
+                                        if (workout.matchedFromAppleHealth) UH.healthPink
+                                        else UH.accentInk,
                                 )
                                 Text(
                                     " ${workout.matchedSourceName} · ${workout.matchedDistanceKm ?: 0} km · ${((workout.matchedDurationSeconds ?: 0.0) / 60).toInt()} min",

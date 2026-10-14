@@ -5,73 +5,86 @@ Branch: `codex/android-native`; approved iOS reference base: `afa2893`.
 Checkout: `/Users/vietvo/.codex/worktrees/android-native/uphill-ai`.
 Plan: `docs/superpowers/plans/2026-10-14-android-native.md`.
 
-## Current checkpoint — 2026-10-14
+## Current checkpoint — 2026-10-15
 
-The user requested PR/handoff at 15% remaining account allowance. The latest check
-showed 13% remaining in the five-hour window (40% weekly). Feature work stopped;
-this checkpoint completes verification and preserves the remaining work.
+The user requested PR/handoff at 15% remaining account allowance. Work resumed after
+the previous checkpoint. Latest allowance: 16% five-hour / 26% weekly remaining; feature work has stopped
+while release verification and the checkpoint finish.
 Health Connect stays deferred by explicit user decision. Google Android OAuth
 registration is complete; the physical phone upgrade test is deferred.
 
-The initial Kotlin/Compose port covers auth, onboarding/generation, Plan, coach chat,
-Goal/Gear/Nutrition/Pace/Knowledge, race history, COROS and coaching. Backend unchanged.
+The Kotlin/Compose port covers auth, onboarding/generation, Plan, coach chat,
+Goal/Gear/Nutrition/Pace/Knowledge, race history, COROS and coaching.
 Package `ai.uphill.app`, version 2.0.0/code10, min26/target36, existing signing key.
-Full feature and visual parity are not yet verified. Keep this PR draft.
+Full feature and visual parity are not yet established. Keep PR #127 draft.
 
-This pass adds:
-- Formatted goal-time pill, complete coach narrative/fallback, scoped coach Add Workout.
-- Embedded COROS controls and inline profile saved confirmation.
-- Nested chat week-review payloads, evidence sources, localized warning fallback,
-  dismissible suggestions, retractable feedback, pacing checkpoints, proposal guards
-  and richer card metadata.
-- Rotation load guards/retry to prevent overwriting unloaded shoes; mileage assignment,
-  presets/brands, race reset, nutrition levels, rest choices and debounced Pace requests.
-- Persistent cross-tool targets, Goal pace strategy/context, Knowledge local shuffle
-  and correct source labels for matched Apple Health activities.
-- Explicit SDK packages in CI; configurable debug local API port; generated-resource
-  newlines compatible with repository hooks; locale lookup through LocalConfiguration.
+The current pass adds:
+- Scoped coach workout detail Edit/Approve/Remove and coach/athlete note threads.
+- Source-based workout metrics, execution timeline, treadmill ranges, reason/benefit,
+  warnings, coach note and the five-level feeling selector. Save Log keeps the detail
+  open with confirmation; pending coach approval hides athlete completion actions.
+- Wrapping Plan titles, compact generation progress, pink Health match icon and
+  active bottom-tab selection retained through nested tools.
+- Opt-in EN/VI emulator screenshot capture, including larger text and reduced motion.
+- Isolated live local-backend flow covering registration, plan generation, profile,
+  workout logging, rotation, coach invite/accept, scoped actions and note visibility.
+- Final review fixes: suggested watch matches cannot mark workouts complete; confirmed
+  matches also respect date/rest/already-completed guards. AI workout requests now
+  include the typed `intent`. Both defects have regression tests.
+- Coaching invite consumes the actual backend response without decoding unused fields.
+
+Two additive backend fixes are included and **not deployed**: auth/profile responses
+now expose saved `athlete_notes`; profile edits preserve an omitted `gemini_api_key`
+while explicit empty string still clears it. Production needs these fixes deployed
+before the profile behavior can be fully verified there. No schema migration.
 
 ## Verification
 
-- 74 debug JVM tests and 74 release JVM tests passed.
-- All 11 emulator UI flows passed, including nested week review, proposal rebuild/apply,
-  schedule confirmation and Pace/Nutrition handoff persistence.
-- Combined check log: `/tmp/uphill-complete-parity-check.log`. Its only failure was a
-  lint locale-lookup error in ProfileConnectedAccounts, subsequently corrected.
-- Final lint, 74 release JVM tests and minified signed APK build passed (6m18s).
-  Script verified certificate/package/version and copied
-  `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk`. Log: `/tmp/uphill-latest-release.log`.
-- Translation converter previously passed four tests; current generated catalog has
-  1,440 EN/VI entries.
-- Earlier independent contract review found five defects, all corrected/rechecked.
+- 84 debug JVM tests and 84 release JVM tests passed; lint passed. Minified signed
+  release build passed in 4m48s, verifying certificate/package/versionCode >6.
+  APK: `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk`; log: `/tmp/uphill-final-release.log`.
+- All 16 emulator flows passed (15 recorded HTTP/native UI flows plus one live local
+  backend flow). Log: `/tmp/uphill-final-emulator-check.log`.
+- All 1,265 backend unit tests passed; targeted native-auth tests: 10 passed.
+  Logs: `/tmp/uphill-backend-final-unit.log`, `/tmp/uphill-profile-response-green.log`.
+- Final fresh-context review found two Important defects, both fixed as above. No
+  Critical findings. One fix pass; tests verify it, without a repeated review loop.
+- Translation converter previously passed four tests; catalog has 1,454 EN/VI entries.
 - Earlier exact Capacitor1.0.5/code6 → matching-signed native debug code10 upgrade
   passed on emulator without uninstall; app-private marker survived.
-- Committed screenshots precede current changes; plan-en.png captures loading. They
-  are not final parity evidence. Fresh screenshots remain outstanding.
+- Screenshot confirmation passed: 21 normal EN/VI captures plus nine font1.3/zero-
+  animation captures under `docs/screenshots/parity-2026-10-15/`. Device settings were
+  restored. The harness sets the host activity locale so dialog resources match the
+  requested language, and asserts translated Done before capturing the workout sheet.
+  Logs: `/tmp/uphill-visual-localized-confirm.log`,
+  `/tmp/uphill-accessible-localized-confirm.log`.
+- Signed-out minified release emulator smoke check is in progress.
 
 ## Remaining work, in order
 
-1. Add scoped coach workout detail Edit/Remove/Approve and notes entry flow, using
-   existing CoachingService contracts. Add Workout is already implemented.
-2. Capture current major screens/states in EN/VI, font scale1.3 and animator scale0;
-   restore settings. Compare with iOS source/screenshots using Impeccable's batched
-   inspection and one correction round. Android uses its system face in place of
-   iOS SF Pro; the launch title shares bundled Plus Jakarta Sans. Do not claim exact
-   font rendering. Check Apple Health match-icon tint against iOS.
-3. Verify against an isolated live local backend and smoke-test the minified release.
-   Release always points to production: avoid fictional-account writes there.
-4. Verify live Google/COROS round trips and the deferred physical-phone upgrade.
+1. Finish the signed-out minified release smoke check and record the verified result.
+2. Complete a screen/feature parity inventory against current iOS source. Screenshot
+   evidence covers major states, not every sheet/state, TalkBack or animation. Large-
+   text confirmation shows awkward line wrapping of the workout pace metric; address
+   it in the next scoped accessibility pass. Fixture titles/descriptions remain in
+   their recorded language even when controls switch to Vietnamese.
+3. Verify live Google/COROS round trips and the deferred physical-phone upgrade.
+4. Deploy the two backend profile fixes when explicitly requested; current production
+   has not been changed by this work.
 5. Keep Health Connect/push/widgets/WearOS/Play Store/Apple/Facebook auth excluded.
+   ICS sharing remains; direct calendar writes were deferred in the approved plan.
    This consolidated draft does not fulfill the original one-PR-per-phase structure.
 
 ## Commands and environment
 
 SDK: `/opt/homebrew/share/android-commandlinetools`; JDK17/21.
 Emulator: `uphill_test` / `emulator-5554`, cold host-GPU boot in this chat.
-Boot log: `/tmp/uphill-emulator-resume.log`. UI runner uninstalls main/test APKs;
-reinstall before screenshots. Older temporary helpers/logs were cleared during an
-interruption. Do not assume old servers or scripts still exist. Port8000 was occupied
-by task-creator; inspect listeners before starting an isolated backend.
+UI runner uninstalls main/test APKs; reinstall before standalone smoke checks.
+The owned live backend runs on port8016, isolated database `uphill_android_native_oct15`
+on the local PostgreSQL container at port5433. Source is this worktree; runtime is
+main checkout's backend virtualenv. No real Gemini key is configured. Launch helper:
+`/tmp/uphill-native-local-backend.py`; log: `/tmp/uphill-native-local-backend.log`.
+Port8000 belongs to unrelated work; do not stop or reuse it.
 
 From the checkout:
 ```sh

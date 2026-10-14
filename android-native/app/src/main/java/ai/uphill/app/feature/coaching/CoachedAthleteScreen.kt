@@ -411,7 +411,17 @@ private fun WorkoutDialog(
                 }
                 if (ai) {
                     require(minutes!! > 0) { "AI workout duration must be positive." }
-                    onSave(null, null, CoachWorkoutAiCreatePayload(week, day, type, minutes))
+                    onSave(
+                        null,
+                        null,
+                        CoachWorkoutAiCreatePayload(
+                            week,
+                            day,
+                            type,
+                            minutes,
+                            description.trim().ifEmpty { null },
+                        ),
+                    )
                 } else {
                     require(title.isNotBlank()) { "Enter a title." }
                     if (workout != null)

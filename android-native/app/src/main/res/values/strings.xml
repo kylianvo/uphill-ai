@@ -60,10 +60,13 @@
   <string name="interrupted" formatted="false">(Interrupted)</string>
   <string name="add_a_result_that_isn_t_linked" formatted="false">+ Add a result that isn\'t linked</string>
   <string name="lld_m_elevation_gain">+%1$d m elevation gain</string>
+  <string name="text_0_grade_easy_walk_to_lower_hr" formatted="false">0% grade easy walk to lower HR</string>
   <string name="text_1_run_from_your_watch_marked_done" formatted="false">1 run from your watch marked done</string>
+  <string name="text_10_min_easy_jog_to_build_into_effort" formatted="false">10 min easy jog to build into effort</string>
   <string name="text_10_finished" formatted="false">10% finished</string>
   <string name="text_100_miles_161_km" formatted="false">100 MILES (161 KM)</string>
   <string name="text_100_miles" formatted="false">100 Miles</string>
+  <string name="text_15_min_easy_zone_1_2_jog_4_dynamic_drills" formatted="false">15 min easy Zone 1/2 jog + 4 dynamic drills</string>
   <string name="text_1_3_months" formatted="false">1–3 months</string>
   <string name="text_2_sessions" formatted="false">2 SESSIONS</string>
   <string name="text_2_6_weeks" formatted="false">2–6 weeks</string>
@@ -71,6 +74,7 @@
   <string name="text_4_slots_active" formatted="false">4 SLOTS ACTIVE</string>
   <string name="text_4_zones" formatted="false">4 zones</string>
   <string name="text_5_zones" formatted="false">5 zones</string>
+  <string name="text_5_10_min_easy_jog_and_light_mobility" formatted="false">5–10 min easy jog and light mobility</string>
   <string name="text_6_months" formatted="false">6+ months</string>
   <string name="text_90_finish" formatted="false">90% Finish</string>
   <string name="text_90_finished" formatted="false">90% finished</string>
@@ -105,6 +109,7 @@
   <string name="active_shoe_rotation_wear" formatted="false">Active shoe rotation &amp; wear</string>
   <string name="adapt_week_lld">Adapt Week %1$d</string>
   <string name="adapt_week_lld_327ece43bb">Adapt week %1$d</string>
+  <string name="adapting_your_week" formatted="false">Adapting your week…</string>
   <string name="add" formatted="false">Add</string>
   <string name="add_other_custom_model" formatted="false">Add Other Custom Model...</string>
   <string name="add_race_result" formatted="false">Add Race Result</string>
@@ -216,6 +221,7 @@
   <string name="build_weeks_lld_lld">Build weeks %1$d–%2$d</string>
   <string name="building_the_next_block" formatted="false">Building the next block…</string>
   <string name="building_your_plan" formatted="false">Building your plan</string>
+  <string name="building_your_plan_f45043e97d" formatted="false">Building your plan…</string>
   <string name="building_your_plan_lld">Building your plan… %1$d:%2$s</string>
   <string name="c_safe" formatted="false">C: Safe</string>
   <string name="caution" formatted="false">CAUTION</string>
@@ -226,6 +232,7 @@
   <string name="coach_s_pick_this_week" formatted="false">COACH\'S PICK THIS WEEK</string>
   <string name="coach_s_review" formatted="false">COACH\'S REVIEW</string>
   <string name="coaching_mode" formatted="false">COACHING MODE</string>
+  <string name="common_mistake" formatted="false">COMMON MISTAKE</string>
   <string name="connected_accounts" formatted="false">CONNECTED ACCOUNTS</string>
   <string name="cons_trade_offs" formatted="false">CONS / TRADE-OFFS</string>
   <string name="coros" formatted="false">COROS</string>
@@ -693,6 +700,7 @@
   <string name="look_for_running_lactate_threshold_pace_in_garmin_connect_or_threshold_pace_in_c" formatted="false">Look for running Lactate Threshold pace in Garmin Connect or Threshold Pace in COROS EvoLab, if available. Use easy runs on flat ground for your easy pace range. Convert min/mile values to min/km before entering them.</string>
   <string name="max_hr" formatted="false">MAX HR</string>
   <string name="move_to_a_day_this_week_or_next_week" formatted="false">MOVE TO A DAY THIS WEEK OR NEXT WEEK</string>
+  <string name="maintain_stable_uphill_cadence" formatted="false">Maintain stable uphill cadence</string>
   <string name="makes_workouts_more_accurate" formatted="false">Makes workouts more accurate</string>
   <string name="male" formatted="false">Male</string>
   <string name="manage" formatted="false">Manage</string>
@@ -836,6 +844,7 @@
   <string name="overall" formatted="false">Overall</string>
   <string name="overall_rank" formatted="false">Overall Rank</string>
   <string name="overall_effort" formatted="false">Overall effort</string>
+  <string name="pace_km" formatted="false">PACE (/KM)</string>
   <string name="pacing_splits_aid_station_plan" formatted="false">PACING SPLITS &amp; AID STATION PLAN</string>
   <string name="packing_list_products" formatted="false">PACKING LIST &amp; PRODUCTS</string>
   <string name="pb_recorded" formatted="false">PB Recorded</string>
@@ -1144,6 +1153,7 @@
   <string name="target_race_9c2d892cb7" formatted="false">Target Race</string>
   <string name="target_time" formatted="false">Target Time</string>
   <string name="target_finish_time_0f880e077b" formatted="false">Target finish time</string>
+  <string name="target_pace" formatted="false">Target pace:</string>
   <string name="target_time_d1c1f472a3">Target time %1$s</string>
   <string name="target_time_field_percentile" formatted="false">Target time &amp; field percentile</string>
   <string name="target_1a7b0ab461">Target: %1$s</string>
@@ -1210,8 +1220,10 @@
   <string name="training_zones_guide" formatted="false">Training zones guide</string>
   <string name="transition" formatted="false">Transition</string>
   <string name="travel_work_shifts_a_training_camp_a_niggle" formatted="false">Travel, work shifts, a training camp, a niggle…</string>
+  <string name="treadmill" formatted="false">Treadmill</string>
   <string name="treadmill_max_incline" formatted="false">Treadmill max incline</string>
   <string name="treadmill_up_to_lld">Treadmill up to %1$d%%</string>
+  <string name="treadmill_warm_up_at_easy_jog_0_grade" formatted="false">Treadmill warm-up at easy jog (0% grade)</string>
   <string name="trend" formatted="false">Trend</string>
   <string name="try_again" formatted="false">Try again</string>
   <string name="try_searching_for_terms_like_aerobic_carbs_sodium_sleep_or_poles" formatted="false">Try searching for terms like aerobic, carbs, sodium, sleep, or poles.</string>
@@ -1412,6 +1424,8 @@
   <string name="e_g_aerobic_base_run_strides" formatted="false">e.g. Aerobic Base Run + Strides</string>
   <string name="e_g_travel_illness_race_postponed_sore_calf" formatted="false">e.g. Travel, illness, race postponed, sore calf...</string>
   <string name="e_g_runner_s_knee_it_band_tightness_recent_ankle_sprain" formatted="false">e.g. runner\'s knee, IT band tightness, recent ankle sprain...</string>
+  <string name="easy_jog_between_intervals" formatted="false">easy jog between intervals</string>
+  <string name="elevation_gain_156dc4497b" formatted="false">elevation gain</string>
   <string name="failed_5d28a90f44" formatted="false">failed</string>
   <string name="generating_941ee53e40" formatted="false">generating</string>
   <string name="kept" formatted="false">kept</string>

@@ -67,8 +67,14 @@ internal data class CoachWorkoutDraft(
         )
     }
 
-    fun aiPayload(): CoachWorkoutAiCreatePayload =
-        CoachWorkoutAiCreatePayload(week, day, type, minutes(true))
+    fun aiPayload(intent: String? = null): CoachWorkoutAiCreatePayload =
+        CoachWorkoutAiCreatePayload(
+            week,
+            day,
+            type,
+            minutes(true),
+            intent?.trim()?.takeIf { it.isNotEmpty() },
+        )
 }
 
 @Composable
@@ -100,7 +106,7 @@ internal fun CoachAddWorkoutSheet(
         val generated =
             if (!ai) null
             else
-                runCatching { draft.aiPayload() }
+                runCatching { draft.aiPayload(aiPrompt) }
                     .getOrElse {
                         error = it.message
                         return
@@ -258,7 +264,7 @@ internal fun CoachAddWorkoutSheet(
 }
 
 @Composable
-private fun CoachChoice(
+internal fun CoachChoice(
     label: String,
     value: String,
     choices: List<String>,

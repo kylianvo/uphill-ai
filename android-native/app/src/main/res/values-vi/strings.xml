@@ -60,10 +60,13 @@
   <string name="interrupted" formatted="false">(Bị gián đoạn)</string>
   <string name="add_a_result_that_isn_t_linked" formatted="false">+ Thêm kết quả chưa liên kết</string>
   <string name="lld_m_elevation_gain">+%1$d m D+</string>
+  <string name="text_0_grade_easy_walk_to_lower_hr" formatted="false">Đi bộ nhẹ ở dốc 0% để hạ HR</string>
   <string name="text_1_run_from_your_watch_marked_done" formatted="false">Đã đánh dấu xong 1 buổi đồng hồ</string>
+  <string name="text_10_min_easy_jog_to_build_into_effort" formatted="false">Chạy nhẹ 10 phút rồi tăng dần mức gắng sức</string>
   <string name="text_10_finished" formatted="false">10% về đích</string>
   <string name="text_100_miles_161_km" formatted="false">100 DẶM (161 KM)</string>
   <string name="text_100_miles" formatted="false">100 dặm</string>
+  <string name="text_15_min_easy_zone_1_2_jog_4_dynamic_drills" formatted="false">Chạy nhẹ 15 phút Zone 1/2 + 4 động tác linh hoạt</string>
   <string name="text_1_3_months" formatted="false">1–3 tháng</string>
   <string name="text_2_sessions" formatted="false">2 BUỔI</string>
   <string name="text_2_6_weeks" formatted="false">2–6 tuần</string>
@@ -71,6 +74,7 @@
   <string name="text_4_slots_active" formatted="false">4 VỊ TRÍ ĐANG DÙNG</string>
   <string name="text_4_zones" formatted="false">4 zone</string>
   <string name="text_5_zones" formatted="false">5 zone</string>
+  <string name="text_5_10_min_easy_jog_and_light_mobility" formatted="false">Chạy nhẹ 5–10 phút và vận động khớp nhẹ</string>
   <string name="text_6_months" formatted="false">6+ tháng</string>
   <string name="text_90_finish" formatted="false">90% về đích</string>
   <string name="text_90_finished" formatted="false">90% về đích</string>
@@ -105,6 +109,7 @@
   <string name="active_shoe_rotation_wear" formatted="false">Giày đang dùng &amp; độ mòn</string>
   <string name="adapt_week_lld">Điều chỉnh tuần %1$d</string>
   <string name="adapt_week_lld_327ece43bb">Điều chỉnh tuần %1$d</string>
+  <string name="adapting_your_week" formatted="false">Đang điều chỉnh tuần tập…</string>
   <string name="add" formatted="false">Thêm</string>
   <string name="add_other_custom_model" formatted="false">Thêm mẫu khác...</string>
   <string name="add_race_result" formatted="false">Thêm kết quả Race</string>
@@ -216,6 +221,7 @@
   <string name="build_weeks_lld_lld">Tạo tuần %1$d–%2$d</string>
   <string name="building_the_next_block" formatted="false">Đang tạo Block tiếp theo…</string>
   <string name="building_your_plan" formatted="false">Đang tạo plan</string>
+  <string name="building_your_plan_f45043e97d" formatted="false">Đang tạo plan…</string>
   <string name="building_your_plan_lld">Đang tạo plan… %1$d:%2$s</string>
   <string name="c_safe" formatted="false">C: An toàn</string>
   <string name="caution" formatted="false">LƯU Ý</string>
@@ -226,6 +232,7 @@
   <string name="coach_s_pick_this_week" formatted="false">COACH CHỌN TUẦN NÀY</string>
   <string name="coach_s_review" formatted="false">ĐÁNH GIÁ CỦA COACH</string>
   <string name="coaching_mode" formatted="false">CHẾ ĐỘ HUẤN LUYỆN</string>
+  <string name="common_mistake" formatted="false">LỖI THƯỜNG GẶP</string>
   <string name="connected_accounts" formatted="false">TÀI KHOẢN ĐÃ KẾT NỐI</string>
   <string name="cons_trade_offs" formatted="false">NHƯỢC ĐIỂM</string>
   <string name="coros" formatted="false">COROS</string>
@@ -693,6 +700,7 @@
   <string name="look_for_running_lactate_threshold_pace_in_garmin_connect_or_threshold_pace_in_c" formatted="false">Tìm Lactate Threshold Pace chạy trong Garmin Connect hoặc Threshold Pace trong COROS EvoLab nếu có. Lấy khoảng Pace từ các buổi chạy nhẹ trên đường bằng. Đổi phút/mile sang phút/km trước khi nhập.</string>
   <string name="max_hr" formatted="false">Max HR</string>
   <string name="move_to_a_day_this_week_or_next_week" formatted="false">CHUYỂN SANG NGÀY TRONG TUẦN NÀY HOẶC TUẦN SAU</string>
+  <string name="maintain_stable_uphill_cadence" formatted="false">Giữ cadence ổn định khi chạy dốc</string>
   <string name="makes_workouts_more_accurate" formatted="false">Giúp buổi tập chính xác hơn</string>
   <string name="male" formatted="false">Nam</string>
   <string name="manage" formatted="false">Quản lý</string>
@@ -836,6 +844,7 @@
   <string name="overall" formatted="false">Chung</string>
   <string name="overall_rank" formatted="false">Hạng chung</string>
   <string name="overall_effort" formatted="false">Mức gắng sức</string>
+  <string name="pace_km" formatted="false">PACE (/KM)</string>
   <string name="pacing_splits_aid_station_plan" formatted="false">SPLIT &amp; KẾ HOẠCH TRẠM TIẾP TẾ</string>
   <string name="packing_list_products" formatted="false">ĐỒ CẦN MANG &amp; SẢN PHẨM</string>
   <string name="pb_recorded" formatted="false">Đã ghi PB</string>
@@ -1144,6 +1153,7 @@
   <string name="target_race_9c2d892cb7" formatted="false">Race mục tiêu</string>
   <string name="target_time" formatted="false">Thời gian mục tiêu</string>
   <string name="target_finish_time_0f880e077b" formatted="false">Thời gian mục tiêu</string>
+  <string name="target_pace" formatted="false">Pace mục tiêu:</string>
   <string name="target_time_d1c1f472a3">Thời gian mục tiêu %1$s</string>
   <string name="target_time_field_percentile" formatted="false">Thời gian mục tiêu &amp; bách phân vị</string>
   <string name="target_1a7b0ab461">Mục tiêu: %1$s</string>
@@ -1210,8 +1220,10 @@
   <string name="training_zones_guide" formatted="false">Hướng dẫn Zone tập luyện</string>
   <string name="transition" formatted="false">Chuyển tiếp</string>
   <string name="travel_work_shifts_a_training_camp_a_niggle" formatted="false">Đi xa, ca làm, tập huấn, đau nhẹ…</string>
+  <string name="treadmill" formatted="false">Treadmill</string>
   <string name="treadmill_max_incline" formatted="false">Độ dốc tối đa Treadmill</string>
   <string name="treadmill_up_to_lld">Treadmill tối đa %1$d%%</string>
+  <string name="treadmill_warm_up_at_easy_jog_0_grade" formatted="false">Warm-up chạy nhẹ trên Treadmill (dốc 0%)</string>
   <string name="trend" formatted="false">Xu hướng</string>
   <string name="try_again" formatted="false">Thử lại</string>
   <string name="try_searching_for_terms_like_aerobic_carbs_sodium_sleep_or_poles" formatted="false">Thử tìm aerobic, carbs, sodium, ngủ hoặc gậy.</string>
@@ -1412,6 +1424,8 @@
   <string name="e_g_aerobic_base_run_strides" formatted="false">vd. Aerobic Base Run + Strides</string>
   <string name="e_g_travel_illness_race_postponed_sore_calf" formatted="false">vd. Đi xa, ốm, Race hoãn, đau bắp chân...</string>
   <string name="e_g_runner_s_knee_it_band_tightness_recent_ankle_sprain" formatted="false">vd. đau gối, căng dải IT, mới lật cổ chân...</string>
+  <string name="easy_jog_between_intervals" formatted="false">Chạy nhẹ giữa các Interval</string>
+  <string name="elevation_gain_156dc4497b" formatted="false">D+</string>
   <string name="failed_5d28a90f44" formatted="false">chưa hoàn tất</string>
   <string name="generating_941ee53e40" formatted="false">đang tạo</string>
   <string name="kept" formatted="false">giữ nguyên</string>

@@ -56,17 +56,56 @@ class CoachingTest {
             service.aiCreateWorkout(
                 7,
                 169,
-                CoachWorkoutAiCreatePayload(2, "Tuesday", "Threshold", 40.0),
+                CoachWorkoutAiCreatePayload(
+                    2,
+                    "Tuesday",
+                    "Threshold",
+                    40.0,
+                    "Control the downhill cadence.",
+                ),
             )
             val req = server.takeRequest()
             assertEquals("/api/coaching/athletes/7/plans/169/workouts/ai-create", req.path)
             val body = JSONCoding.json.parseToJsonElement(req.body.readUtf8()).jsonObject
             assertEquals("Threshold", body["workout_type"]!!.jsonPrimitive.content)
             assertEquals(40.0, body["duration_minutes"]!!.jsonPrimitive.double, 0.001)
+            assertEquals("Control the downhill cadence.", body["intent"]!!.jsonPrimitive.content)
             service.notes(7, "workout", 1806)
             val notesReq = server.takeRequest()
             assertEquals("workout", notesReq.requestUrl!!.queryParameter("target_type"))
             assertEquals("1806", notesReq.requestUrl!!.queryParameter("target_id"))
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun inviteAcceptsTheLinkResponseWithoutRosterEmailDecoration() = runTest {
+        val server = MockWebServer()
+        server.start()
+        try {
+            server.enqueue(
+                MockResponse()
+                    .setBody(
+                        """{"id":10,"coach_id":5,"athlete_id":7,"status":"invited","invited_at":"2026-10-15T00:00:00Z","responded_at":null}"""
+                    )
+            )
+            val service =
+                CoachingService(
+                    APIClient({ server.url("/").toString() }, MemoryTokenStore("token"))
+                )
+            service.invite("  runner@example.test  ")
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/coaching/invite", request.path)
+            assertEquals(
+                "runner@example.test",
+                JSONCoding.json
+                    .parseToJsonElement(request.body.readUtf8())
+                    .jsonObject["athlete_email"]!!
+                    .jsonPrimitive
+                    .content,
+            )
         } finally {
             server.shutdown()
         }

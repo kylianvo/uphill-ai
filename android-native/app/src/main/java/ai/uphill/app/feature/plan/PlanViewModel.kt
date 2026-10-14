@@ -400,10 +400,11 @@ class PlanViewModel(
             val id = requireNotNull(mutable.value.snapshot).plan.id
             val count = service.syncWatch(id)
             refresh()
-            mutable.value.snapshot
-                ?.workouts
-                ?.filter { it.isMatched && it.isCompleted != 1 }
-                ?.forEach { service.log(it.id, completed = 1, missed = 0) }
+            mutable.value.snapshot?.let { snapshot ->
+                pendingWatchCompletions(snapshot, service.watchActivities(id)).forEach {
+                    service.log(it.id, completed = 1, missed = 0)
+                }
+            }
             refresh()
             mutable.value = mutable.value.copy(notice = "COROS · $count")
         }

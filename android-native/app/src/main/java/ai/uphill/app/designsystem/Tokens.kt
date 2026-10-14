@@ -23,6 +23,7 @@ object UH {
     val warningInk = Color(0xFF92400E)
     val warningFill = Color(0x1FF59E0B)
     val danger = Color(0xFFB42318)
+    val healthPink = Color(0xFFFF2D55)
 
     object Space {
         val compact = 8.dp

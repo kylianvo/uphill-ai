@@ -123,6 +123,211 @@ class NativeFlowTest {
     }
 
     @Test
+    fun coachCanApproveEditDiscussAndRemoveAScopedWorkout() {
+        val originalDispatcher = server.dispatcher
+        val plan = org.json.JSONObject(fixture("active_plan.json"))
+        plan
+            .getJSONObject("plan")
+            .put("start_date", java.time.LocalDate.now().minusWeeks(1).toString())
+        val workouts = plan.getJSONArray("workouts")
+        val workout =
+            (0 until workouts.length())
+                .map { workouts.getJSONObject(it) }
+                .first { it.getString("title") == "Hill Repeats" && it.getInt("week_number") == 2 }
+        val workoutId = workout.getInt("id")
+        workout.put("approved_at", org.json.JSONObject.NULL)
+        val prefix = "/api/coaching/athletes/7"
+        val workoutPath = "$prefix/plans/93/workouts/$workoutId"
+        var edited = false
+        var removed = false
+        var posted = false
+        server.dispatcher =
+            object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val path = request.requestUrl!!.encodedPath
+                    val body =
+                        when (path) {
+                            "$prefix/active-plan" -> plan.toString()
+                            "$workoutPath/approve" -> {
+                                workout.put("approved_at", "2026-10-14T09:00:00Z")
+                                workout.toString()
+                            }
+                            workoutPath -> {
+                                val payload = org.json.JSONObject(request.body.readUtf8())
+                                assertEquals("PUT", request.method)
+                                assertEquals("Updated hill session", payload.getString("title"))
+                                assertTrue(payload.isNull("day_of_week"))
+                                workout.put("title", payload.getString("title"))
+                                workout.put("approved_at", org.json.JSONObject.NULL)
+                                edited = true
+                                workout.toString()
+                            }
+                            "$workoutPath/remove" -> {
+                                removed = true
+                                workout.toString()
+                            }
+                            "$prefix/notes" ->
+                                if (request.method == "POST") {
+                                    val payload = org.json.JSONObject(request.body.readUtf8())
+                                    assertEquals("workout", payload.getString("target_type"))
+                                    assertEquals(workoutId, payload.getInt("target_id"))
+                                    posted = true
+                                    """{"id":10,"coach_id":19,"athlete_id":7,"target_type":"workout","target_id":$workoutId,"note":"Keep the climb controlled."}"""
+                                } else """{"notes":[]}"""
+                            else -> return originalDispatcher.dispatch(request)
+                        }
+                    return MockResponse()
+                        .setHeader("Content-Type", "application/json")
+                        .setBody(body)
+                }
+            }
+        ui.setContent {
+            UphillTheme { PlanScreen(api, user.copy(role = "coach"), "en", {}, athleteId = 7) }
+        }
+        waitText("Vietnam Mountain Marathon 42K")
+        ui.onNodeWithTag("plan.list").performScrollToNode(hasText("Hill Repeats"))
+        ui.onNodeWithText("Hill Repeats").performClick()
+        ui.waitUntil(15000) {
+            ui.onAllNodesWithTag("detail.coach.approveWorkout").fetchSemanticsNodes().isNotEmpty()
+        }
+        ui.onNodeWithTag("detail.coach.approveWorkout").performScrollTo().performClick()
+        ui.waitUntil(15000) {
+            ui.onAllNodesWithTag("detail.coach.approveWorkout").fetchSemanticsNodes().isEmpty()
+        }
+        ui.waitUntil(15000) {
+            ui.onAllNodes(hasTestTag("detail.coach.editWorkout") and isEnabled())
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        ui.onNodeWithTag("detail.coach.editWorkout").performScrollTo().performClick()
+        ui.waitUntil(15000) {
+            ui.onAllNodesWithTag("coach.edit.title").fetchSemanticsNodes().isNotEmpty()
+        }
+        ui.onNodeWithTag("coach.edit.title")
+            .performScrollTo()
+            .performTextReplacement("Updated hill session")
+        ui.onNodeWithTag("coach.edit.save").performScrollTo().performClick()
+        ui.waitUntil(15000) {
+            ui.onAllNodesWithTag("detail.coach.editWorkout").fetchSemanticsNodes().isNotEmpty()
+        }
+        waitText("Updated hill session")
+        ui.onNodeWithTag("coach.note.input")
+            .performScrollTo()
+            .performTextInput("Keep the climb controlled.")
+        ui.onNodeWithTag("coach.note.post").performScrollTo().performClick()
+        waitText("Keep the climb controlled.")
+        ui.onNodeWithTag("detail.coach.removeWorkout").performScrollTo().performClick()
+        waitText("This will permanently remove the workout")
+        ui.onNodeWithTag("coach.remove.confirm").performClick()
+        ui.waitUntil(15000) {
+            ui.onAllNodesWithTag("coach.remove.confirm").fetchSemanticsNodes().isEmpty()
+        }
+        assertTrue(edited)
+        assertTrue(posted)
+        assertTrue(removed)
+    }
+
+    @Test
+    fun savingWorkoutFeelingKeepsTheDetailOpenWithConfirmation() {
+        val originalDispatcher = server.dispatcher
+        val plan = org.json.JSONObject(fixture("active_plan.json"))
+        val workouts = plan.getJSONArray("workouts")
+        val workout =
+            (0 until workouts.length())
+                .map { workouts.getJSONObject(it) }
+                .first { it.getString("title") == "Hill Repeats" }
+        ai.uphill.app.core.plan.TrainingNavigation.workoutId.value = workout.getInt("id")
+        server.dispatcher =
+            object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val body =
+                        when (request.requestUrl!!.encodedPath) {
+                            "/api/coach/active-plan" -> plan.toString()
+                            "/api/coach/workouts/log" -> {
+                                val payload = org.json.JSONObject(request.body.readUtf8())
+                                assertEquals(6, payload.getInt("rpe"))
+                                workout.put("rpe", payload.getInt("rpe"))
+                                """{"workouts":$workouts}"""
+                            }
+                            else -> return originalDispatcher.dispatch(request)
+                        }
+                    return MockResponse()
+                        .setBody(body)
+                        .setHeader("Content-Type", "application/json")
+                }
+            }
+        ui.setContent { UphillTheme { PlanScreen(api, user, "en", {}) } }
+        waitText("HOW DID IT FEEL?")
+        ui.onNodeWithTag("detail.feeling.6").performScrollTo().performClick()
+        ui.onNodeWithText("Save Log").performScrollTo().performClick()
+        waitText("Saved")
+        ui.onNodeWithTag("detail.feeling.6").assertExists()
+    }
+
+    @Test
+    fun aToolKeepsItsOriginatingTabSelected() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val container =
+            (context.applicationContext as ai.uphill.app.app.UphillApplication).container
+        val previous = container.api.baseURL()
+        val url = server.url("/").toString()
+        try {
+            kotlinx.coroutines.runBlocking { container.settings.environment(url) }
+            ui.waitUntil(10000) { container.api.baseURL() == url }
+            container.session.signOut()
+            ui.setContent { UphillTheme { ai.uphill.app.app.RootNav(container) } }
+            ui.runOnIdle { container.session.signIn(AuthResponse("fixture-session-only", user)) }
+            waitText("Vietnam Mountain Marathon 42K")
+            ui.onNode(hasText("Me") and hasClickAction()).performClick()
+            waitText("Pace Strategy")
+            ui.onNodeWithText("Pace Strategy").performScrollTo().performClick()
+            waitText("Pace strategy")
+            ui.onNode(hasText("Me") and hasClickAction()).assertIsSelected()
+        } finally {
+            container.session.signOut()
+            kotlinx.coroutines.runBlocking { container.settings.environment(previous) }
+        }
+    }
+
+    @Test
+    fun syncingSuggestedWatchMatchDoesNotCompleteTheWorkout() {
+        val originalDispatcher = server.dispatcher
+        val plan = org.json.JSONObject(fixture("active_plan.json"))
+        val workout = plan.getJSONArray("workouts").getJSONObject(0)
+        workout.put("is_completed", 0)
+        workout.put("is_missed", 1)
+        val patches = java.util.concurrent.atomic.AtomicInteger()
+        server.dispatcher =
+            object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val body =
+                        when (request.requestUrl!!.encodedPath) {
+                            "/api/coach/active-plan" -> plan.toString()
+                            "/api/integrations/matching" ->
+                                """{"activities":[{"activity_id":123,"workout_id":${workout.getInt("id")},"distance_km":5,"match_method":"suggest"}]}"""
+                            "/api/integrations/coros/sync" -> """{"activities":1}"""
+                            "/api/integrations/matching/run" -> "{}"
+                            "/api/coach/workouts/log" -> {
+                                patches.incrementAndGet()
+                                """{"workouts":${plan.getJSONArray("workouts")}}"""
+                            }
+                            else -> return originalDispatcher.dispatch(request)
+                        }
+                    return MockResponse()
+                        .setBody(body)
+                        .setHeader("Content-Type", "application/json")
+                }
+            }
+        ui.setContent { UphillTheme { PlanScreen(api, user, "en", {}) } }
+        waitText("Vietnam Mountain Marathon 42K")
+        ui.onNodeWithText("Manage").performClick()
+        waitText("Sync watch")
+        ui.onNodeWithText("Sync watch").performScrollTo().performClick()
+        waitText("COROS · 1")
+        assertEquals(0, patches.get())
+    }
+
+    @Test
     fun scheduleChangeEnablesRebuildAndAsksForConfirmation() {
         ui.setContent { UphillTheme { PlanScreen(api, user, "en", {}) } }
         waitText("Vietnam Mountain Marathon 42K")

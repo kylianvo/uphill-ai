@@ -68,7 +68,7 @@ class PlanServiceTest {
             server.enqueue(
                 MockResponse()
                     .setBody(
-                        """{"activities":[{"activity_id":123,"workout_id":$workoutId,"distance_km":5,"source_provider":"apple_health"}]}"""
+                        """{"activities":[{"activity_id":123,"workout_id":$workoutId,"distance_km":5,"source_provider":"apple_health","match_method":"manual"}]}"""
                     )
             )
             val snapshot =
