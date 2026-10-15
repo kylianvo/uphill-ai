@@ -7,9 +7,11 @@ Plan: `docs/superpowers/plans/2026-10-14-android-native.md`.
 
 ## Current checkpoint — 2026-10-15
 
-The user extended the allowance checkpoint to around 5%, then explicitly requested
-stopping and updating this handoff/PR. Feature work and the in-progress release build
-were stopped at that request. No deployment or merge was performed.
+The user resumed work toward around 3% **weekly allowance remaining**. The previous
+stop checkpoint was committed as `dea06bb`. This continuation fixes its CI lint issue,
+completes the interrupted UI confirmation and adds the onboarding/rotation work below.
+The user subsequently removed the usage stop threshold and authorized continued work.
+No deployment or merge has been performed.
 Health Connect stays deferred by explicit user decision. Google Android OAuth
 registration is complete; the physical phone upgrade test is deferred.
 
@@ -61,53 +63,63 @@ See `docs/PARITY.md` for the area-by-area inventory against iOS main `5597527`.
 - One batched screenshot comparison found large-text VI header wrapping, scrolling
   Profile navigation and wrapping placeholders. The final correction uses text auto-size
   for the column caption, a fixed Profile header, single-line placeholders, an inline
-  physiology Edit header and a wrapping status/email row. Confirmation is pending below.
+  physiology Edit header and a wrapping status/email row. The bounded confirmation passed.
+
+## Resumed onboarding and rotation pass
+
+- iOS's four goal cards: Trail race, Road race, Distance and Getting started. Race
+  selection carries its terrain into details; the old Return/Recovery model cases
+  remain, as in iOS, but are not exposed on this first page. Current SwiftUI source
+  wins over the obsolete five-choice Phase2b screenshot.
+- Coaching guidance banner on each setup step; source-based page titles. The setup
+  header has Back/progress/Close, hides the unused Goal footer and resets the form
+  scroll on step changes. Close returns an onboarding user to Welcome.
+- Graphical race/start calendars replace typed dates. Race dates start at today+14;
+  start dates respect today through the existing latest-start rule. UTC day conversion
+  avoids timezone shifts; a device regression checks both bounds and selection.
+- Empty shoe slots display a neutral licensed sneaker vector instead of a product
+  photo. Assigned-shoe imagery stays; wear percentage and bar share warning/danger
+  colors. Slot action regression passes. Icon licensing: `android-native/licenses/`.
 
 ## Verification and artifact freshness
 
-- **91 debug JVM tests + 91 release JVM tests passed**, zero failures. Includes the
-  failed-save/retry and general-note request regression. Translation converter: four
-  tests passed; generated catalog has 1,469 EN/VI entries. `git diff --check` passed.
-- **23 instrumentation tests passed** before the final visual correction: 21 native UI
-  flows, one isolated live local-backend flow and one normal screenshot capture test.
-  Log: `/tmp/uphill-hub-device-check.log` (86.836s).
-- New inline-invite/race-navigation and Profile edit/general-note flows each failed
-  against their missing baseline and passed after implementation. Profile flow: 9.231s.
-  Logs: `/tmp/uphill-coach-inline-red.log`, `/tmp/uphill-coach-inline-green.log`,
-  `/tmp/uphill-coach-profile-red.log`, `/tmp/uphill-coach-profile-green.log`.
-- **39 normal + 27 font1.3/zero-animation fixture captures** were produced and inspected
-  with iOS Phase6/calendar references. They precede the final visual correction; do not
-  present them as confirmation of the sticky header or single-line VI caption.
-  Accessible log: `/tmp/uphill-hub-accessible-evidence.log`; device settings restored.
-- Final correction compiled; debug unit tests passed. The **24-test confirmation run
-  was interrupted after 15 native tests when the emulator processes exited**. It has no
-  pass/fail result for the full run. Play Store emulator process exited137; both devices
-  disappeared from adb. No app data was cleared. Log: `/tmp/uphill-hub-confirm-device.log`.
-- Latest release unit tests passed, but signed build/lint completion is **unverified**.
-  Build was stopped during R8 on the user's request. Log: `/tmp/uphill-hub-release.log`.
-  Desktop `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk` remains the **earlier verified
-  release**, before this Coach Hub/Profile pass. Rebuild before sharing the latest UI.
-- Earlier checkpoint: signed/minified release build, certificate/package/code10 checks,
-  90 debug/release tests, and 21 instrumentation tests passed. Google sign-in and existing
-  COROS Sync now then passed live with the user on `uphill_playstore`; no production
-  credentials, account details, health counts or screenshots are committed.
-- Backend unchanged in this pass: prior 1,265 unit tests and ten targeted auth/profile
-  tests passed. The two included profile fixes remain **not deployed**.
-- Earlier emulator Capacitor1.0.5/code6 → matching-signed native debug code10 upgrade
-  preserved an app-private marker. Physical-phone upgrade remains deferred.
-- Fresh-context whole-branch review was completed at the earlier checkpoint; suggested
-  watch completion and omitted AI intent defects were fixed with regressions. No new
-  repeated whole-branch review was run for this scoped pass.
+- **Lint, all 91 debug and 91 release JVM tests passed.** Converter four tests passed; catalog has
+  1,469 EN/VI entries. `git diff --check` passed.
+- **26 instrumentation tests passed**: 25 native UI flows and normal screenshot
+  capture. Log: `/tmp/uphill-latest-device-confirm.log` (161.128s).
+  Includes Profile editor/general notes, inline invite/race filtering, Road selection,
+  empty slots, calendar caption and date-window regression.
+- **49 normal +37 font1.3/zero-animation fixture captures** refreshed and visually
+  confirmed. Profile navigation remains visible, VI `km/tuần` stays on one line, and
+  onboarding/calendar controls fit the inspected states. Accessible capture passed in
+  32.306s: `/tmp/uphill-latest-accessible-confirm.log`; settings restored.
+- The CI lint error was a test reading configuration through LocalContext. It now
+  reads LocalConfiguration; local lint passes. The fixed Profile header also required
+  removing an obsolete scroll action from the screenshot helper.
+- Latest signed/minified release build passed in 1m22s after closing the fixture
+  emulator. Log: `/tmp/uphill-latest-signed-release.log`. Certificate, package and
+  version verified; `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk` includes this pass.
+- The cold-boot/replacement smoke on5556 opened signed out. This does not establish
+  session preservation; the cause is not yet known. Earlier live Google login passed.
+  The user is signing in again for a controlled force-stop/replacement check.
+- Earlier isolated live-backend flow passed; Docker and port8016 are now stopped, so
+  this continuation used fixtures. No backend/service contract changes were made.
+  Earlier backend tests: 1,265 passed plus ten targeted profile/auth tests. The two
+  included backend profile fixes remain **not deployed**.
+- Earlier signed release passed live Google sign-in and existing COROS Sync now with
+  the user. No production credentials, health counts, account details or screenshots
+  are committed. Fresh COROS OAuth and physical-phone upgrade remain unverified.
+- Earlier Capacitor1.0.5/code6 → matching-signed native debug code10 upgrade preserved
+  an app-private marker. Whole-branch final review at the earlier checkpoint fixed
+  suggested watch completion and omitted AI intent with regression coverage.
 
 ## Remaining work, in order
 
-1. Boot **only the fixture emulator `uphill_test` (5554)** first. Rerun final 24-test
-   instrumentation and the bounded normal/accessible confirmation captures. Confirm
-   the VI weekly caption has one line and Profile Done stays visible while scrolling.
-   Then build the signed APK sequentially to limit host memory pressure. Do not claim
-   this Coach Hub/Profile pass complete until these checks finish.
-   Continue the inventory in `docs/PARITY.md` afterward: remaining sheets/states,
-   TalkBack, all motion, onboarding and tools still need comparison.
+1. Finish the controlled authenticated session-restore smoke on `uphill_playstore`
+   (5556). Preserve its real session: no instrumentation, uninstall or data clear.
+   Then continue `docs/PARITY.md`: all setup/result/sheet/error
+   states, TalkBack, full motion and other OS versions still need comparison. The
+   pictured states establish bounded evidence, not complete iOS parity.
 2. Live Google sign-in passed on the signed minified release in `uphill_playstore`
    (emulator-5556). User selected their account; authenticated Plan/Coach/Me/Athletes
    tabs were confirmed. Google Play services updated to 26.39.33 during setup.
@@ -128,10 +140,11 @@ See `docs/PARITY.md` for the area-by-area inventory against iOS main `5597527`.
 
 SDK: `/opt/homebrew/share/android-commandlinetools`; JDK17/21.
 Emulators: `uphill_test` /5554 for fixtures; `uphill_playstore` /5556 holds the live
-user session. Both processes exited during confirmation; userdata remains on disk.
-Do not wipe either AVD. Boot/test5554 first; boot5556 only for read-only release smoke.
+user session. Earlier processes exited during a concurrent build; userdata remained on disk.
+This continuation cold-booted/tested5554 successfully, restored settings and closed it
+before R8. Do not wipe either AVD; boot 5556 only for read-only release smoke.
 UI runner uninstalls main/test APKs; reinstall before standalone smoke checks.
-The owned live backend runs on port8016, isolated database `uphill_android_native_oct15`
+The owned live backend is now stopped. It used port8016 and isolated database `uphill_android_native_oct15`
 on the local PostgreSQL container at port5433. Source is this worktree; runtime is
 main checkout's backend virtualenv. No real Gemini key is configured. Launch helper:
 `/tmp/uphill-native-local-backend.py`; log: `/tmp/uphill-native-local-backend.log`.

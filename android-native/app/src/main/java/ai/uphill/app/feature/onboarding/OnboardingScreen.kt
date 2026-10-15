@@ -2,19 +2,28 @@ package ai.uphill.app.feature.onboarding
 
 import ai.uphill.app.core.auth.User
 import ai.uphill.app.core.generation.*
+import ai.uphill.app.core.localization.L
 import ai.uphill.app.core.models.Weekday
 import ai.uphill.app.core.networking.APIClient
 import ai.uphill.app.core.plan.*
 import ai.uphill.app.designsystem.PrimaryButton as Button
 import ai.uphill.app.designsystem.SecondaryButton as OutlinedButton
 import ai.uphill.app.designsystem.UH
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -29,6 +38,7 @@ fun OnboardingScreen(
     onComplete: () -> Unit,
     onNavigate: (String) -> Unit = {},
     newPlan: Boolean = false,
+    onClose: () -> Unit = onComplete,
 ) {
     val context = LocalContext.current
     val center = remember(api, user.id) { GenerationCenter.get(context, api, user.id) }
@@ -74,38 +84,51 @@ fun OnboardingScreen(
     }
     val draft = state.draft
     val step = model.step()
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            if (state.index > 0) TextButton(onClick = model::back) { Text(P("Back")) }
-            Text(
-                "${state.index+1} / ${model.steps().size}",
-                Modifier.padding(12.dp),
-                color = UH.muted,
-            )
+    val formScroll = rememberScrollState()
+    LaunchedEffect(step) { formScroll.scrollTo(0) }
+    Column(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = model::back, enabled = state.index > 0) {
+                if (state.index > 0) Icon(Icons.Default.ChevronLeft, P("Back"))
+            }
+            val progress = (state.index + 1f) / model.steps().size
+            val progressLabel =
+                L("Setup progress") +
+                    ": " +
+                    L("Step %lld of %lld", state.index + 1, model.steps().size)
+            Box(
+                Modifier.weight(1f)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(UH.line)
+                    .semantics {
+                        contentDescription = progressLabel
+                        progressBarRangeInfo = ProgressBarRangeInfo(progress, 0f..1f)
+                    }
+            ) {
+                Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(UH.accent))
+            }
+            IconButton(onClick = onClose, enabled = !state.submitting) {
+                Icon(Icons.Default.Close, L("Close"))
+            }
         }
-        LinearProgressIndicator(
-            progress = { (state.index + 1f) / model.steps().size },
-            modifier = Modifier.fillMaxWidth(),
-        )
         Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(vertical = 20.dp),
+            Modifier.weight(1f).verticalScroll(formScroll).padding(vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(P(step.title), style = MaterialTheme.typography.headlineMedium)
+            SetupCoachBanner(step, draft.goal)
+            val title =
+                when (step) {
+                    SetupStep.Details ->
+                        if (draft.goal == SetupGoal.Race) "Which race?"
+                        else if (draft.goal == SetupGoal.Distance) "What distance?" else step.title
+                    SetupStep.RaceDate -> "When is it?"
+                    SetupStep.StartDate -> "When do you want to start?"
+                    else -> step.title
+                }
+            Text(P(title), style = MaterialTheme.typography.headlineMedium)
             when (step) {
-                SetupStep.Goal ->
-                    SetupGoal.entries.forEach { goal ->
-                        OutlinedCard(
-                            onClick = { model.selectGoal(goal) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                P(goal.title),
-                                Modifier.padding(20.dp),
-                                style = MaterialTheme.typography.titleMedium,
-                            )
-                        }
-                    }
+                SetupStep.Goal -> SetupGoalOptions(draft, model::selectGoal)
                 SetupStep.Details ->
                     when (draft.goal) {
                         SetupGoal.Race,
@@ -180,10 +203,20 @@ fun OnboardingScreen(
                             }
                         else -> Unit
                     }
-                SetupStep.RaceDate ->
-                    Field("Race date (YYYY-MM-DD)", draft.raceDate?.toString().orEmpty()) {
-                        model.edit { d -> d.raceDate = PlanCalendar.day(it) }
+                SetupStep.RaceDate -> {
+                    SetupDatePicker(draft.raceDate, LocalDate.now().plusDays(14)) { date ->
+                        model.edit { it.raceDate = date }
                     }
+                    draft.raceDate?.let {
+                        Text(
+                            L(
+                                "That's %lld weeks away",
+                                java.time.temporal.ChronoUnit.WEEKS.between(LocalDate.now(), it),
+                            ),
+                            color = UH.accentInk,
+                        )
+                    }
+                }
                 SetupStep.RaceGoal -> {
                     Options(
                         listOf(
@@ -394,13 +427,13 @@ fun OnboardingScreen(
                     }
                 }
                 SetupStep.StartDate -> {
-                    Field("Start date (YYYY-MM-DD)", draft.startDate.toString()) {
-                        model.edit { d -> d.startDate = PlanCalendar.day(it) ?: LocalDate.MIN }
+                    SetupDatePicker(
+                        draft.startDate,
+                        LocalDate.now(),
+                        draft.latestStart(LocalDate.now()),
+                    ) { date ->
+                        model.edit { it.startDate = date }
                     }
-                    Text(
-                        "${LocalDate.now()} – ${draft.latestStart(LocalDate.now())}",
-                        color = UH.muted,
-                    )
                 }
                 SetupStep.Review -> {
                     Text(
@@ -429,14 +462,15 @@ fun OnboardingScreen(
             state.issues.forEach { Text(P(it), color = UH.danger) }
             state.error?.let { Text(P(it), color = UH.danger) }
         }
-        Button(
-            onClick = { if (step == SetupStep.Review) model.submit() else model.next() },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            enabled = !state.submitting && step != SetupStep.Goal,
-        ) {
-            if (state.submitting) CircularProgressIndicator(Modifier.size(20.dp))
-            Text(P(if (step == SetupStep.Review) "Build my plan" else "Next"))
-        }
+        if (step != SetupStep.Goal)
+            Button(
+                onClick = { if (step == SetupStep.Review) model.submit() else model.next() },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                enabled = !state.submitting,
+            ) {
+                if (state.submitting) CircularProgressIndicator(Modifier.size(20.dp))
+                Text(P(if (step == SetupStep.Review) "Build my plan" else "Next"))
+            }
     }
     if (state.zoneWarning)
         AlertDialog(

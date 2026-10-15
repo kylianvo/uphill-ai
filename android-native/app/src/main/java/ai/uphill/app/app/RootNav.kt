@@ -81,6 +81,7 @@ fun RootNav(container: AppContainer) {
                             lang,
                             ::finishOnboarding,
                             onNavigate = { child = it },
+                            onClose = { startedSetup = false },
                         )
                     else
                         Column {

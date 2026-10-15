@@ -8,26 +8,25 @@ service or a passing fixture test does not establish matching layout or animatio
 | Area | Android implementation / evidence | Remaining parity work |
 | --- | --- | --- |
 | Auth, launch, shell | Email/register, Credential Manager, secure session restore, video launch, Plan/Coach/Me/Athletes routing; sign-in and nested-tab evidence | Live signed-release Google round trip passed; compare launch/video timing and every auth/error state |
-| Onboarding and generation | Setup steps, persisted job polling, resumed generation, inline Plan progress; onboarding flow tests | Compare all EN/VI steps and failure/resume states with iOS; inspect newer iOS setup changes |
+| Onboarding and generation | Four source-based goal cards, guidance, Back/Close/progress, bounded UTC-day date pickers, persisted job polling and generation; Road/Close/date-window tests | Compare all EN/VI steps and failure/resume states with iOS; inspect newer iOS setup changes |
 | Plan summary and day list | Carousel, weeks, goal pill, coach review, sharpen checklist, workout actions; EN/VI normal/large-text captures | Compare all chart/data variants, row types, transitions and empty/offline states |
 | Workout detail | Metrics, execution timeline, treadmill ranges, reasons/warnings, feeling/log confirmation, scoped coach actions/notes | Pace range formatting and font1.3 rendering check pass; remaining type/interval/rest/coach variants need evidence |
 | Plan management | Move/swap, adapt/next, schedule, review, goal, select/delete, ICS sharing; mutation flow tests | Sheet-by-sheet UI/state comparison; direct calendar writes deferred, token-bearing webcal removed |
-| Month calendar | Latest iOS #134 month model and weekly bars/day preview ported; day-to-week emulator flow passes | Next/Today/swipe/day-to-week and haptic checks pass; refreshed EN/VI/larger-text evidence inspected; weekly-column label and Open Week button styling ported; final VI single-line caption confirmation pending |
+| Month calendar | Latest iOS #134 month model and weekly bars/day preview ported; day-to-week emulator flow passes | Next/Today/swipe/day-to-week and haptic checks pass; refreshed EN/VI/larger-text evidence inspected; weekly-column label, Open Week styling and VI single-line caption confirmed |
 | Coach chat | SSE, proposals/rebuild/apply, rich cards, clarification, citations, feedback, persistent history; contract/UI tests | Compare every rich-card/source/proposal/error/streaming state and motion |
 | Me/profile | Grouped profile, PBs/badges/rotation, settings, language, COROS, developer menu | Authenticated release round trip; backend notes/key-preservation fixes need deployment; compare every editor |
 | Goal | Assessment/context toggles, race search, field curve, tiers, pacing handoff | Result-state chart/layout and every context card comparison |
-| Gear | Recommendation packshots, preferences, rotation assignment/edit/mileage/retire, debounced saves | Compare recommendation/rotation/detail layouts and latest iOS rotation changes |
+| Gear | Recommendation packshots, preferences, rotation assignment/edit/mileage/retire, debounced saves; neutral empty slots and wear colors tested/captured | Compare recommendation/rotation/detail layouts and latest iOS rotation changes |
 | Nutrition | Fueling preferences, catalog/results and feedback | Result-state composition and product/copy comparison |
 | Pace | GPX picker/parser, course profile, splits/checkpoints, debounced calculation, target handoff | Real file import/device checks and result/chart/table comparison |
 | Knowledge | Search/topics/cards, local shuffle, source attribution | Card/result/source sheets and empty/error UI comparison |
 | Race history | Search/claims/bib verification, manual results/edit/delete, detail/PBs/badges; fixture/UI tests | Compare every link/claim/detail/course state against iOS |
-| Coaching | Roster/invites, overview/actions, athlete physiology/provenance, scoped plan/actions/notes; live backend flow | Adherence chart, seven-day bars, workout mix, Overview/Roster sections, 7/14/30-day and Elite filters, roster search ported and tested. Inline invite, action counts, roster progress, race-to-roster search and separate Profile sheet now ported with flow tests. Final visual correction confirmation and remaining state/motion comparison pending |
+| Coaching | Roster/invites, overview/actions, athlete physiology/provenance, scoped plan/actions/notes; live backend flow | Adherence chart, seven-day bars, workout mix, Overview/Roster sections, 7/14/30-day and Elite filters, roster search ported and tested. Inline invite, action counts, roster progress, race-to-roster search and separate Profile sheet ported, tested and visually confirmed. Remaining state/motion comparison pending |
 | COROS | Custom Tab callback/state, sync/push/status, foreground sync and manual matching | Existing live COROS sync passed; fresh OAuth/push and cancellation/error flows unverified; Health import excluded |
 | Accessibility/motion/fonts | Font1.3 and zero-animation captures, shared tokens and launch font, native system body font | TalkBack and all focus/error states; full motion audit; Android system font differs from SF Pro |
-| Release | Matching certificate/code10, earlier emulator upgrade preservation, minified signed-out smoke, CI green at842a7c0; latest Coach Hub signed build stopped during R8 | Signed minified Google sign-in and existing COROS sync passed; physical phone upgrade, fresh COROS OAuth and all remaining release flows unverified |
+| Release | Matching certificate/code10, earlier emulator upgrade preservation, minified signed-out smoke, earlier CI green at842a7c0; dea06bb test-lint error fixed locally, fresh signed build verified | Signed minified Google sign-in and existing COROS sync passed; physical phone upgrade, fresh COROS OAuth and all remaining release flows unverified |
 
-Current verified batch: workout pace wrap, coach dashboard charts, latest month calendar.
-91 debug + 91 release JVM tests passed. Before the final visual correction, 23
-instrumentation tests and 66 fixture screenshots passed. The final 24-test run was
-interrupted by emulator exits; screenshot confirmation and latest signed build remain.
-No claim of complete feature, layout, font-rendering or animation parity is made.
+Current verified batch includes Coach Hub/Profile confirmation, onboarding goal/navigation/date
+controls and rotation placeholders. Lint, 91 debug +91 release JVM tests and 26 instrumentation
+tests pass; 86 EN/VI fixture screenshots are confirmed. Latest signed release builds and verifies; cold-boot session preservation is under
+investigation (opened signed out). See HANDOFF.md. Full feature/layout/font-rendering/motion parity is not established.

@@ -82,9 +82,10 @@ class PlanSetupViewModel(
         mutable.value = mutable.value.copy(draft = draft, issues = emptyList())
     }
 
-    fun selectGoal(goal: SetupGoal) {
+    fun selectGoal(goal: SetupGoal, terrain: String = "trail") {
         edit {
             it.goal = goal
+            it.terrain = terrain
             if (goal.isEvent && it.raceDate == null)
                 it.raceDate = java.time.LocalDate.now().plusDays(14)
         }

@@ -1,5 +1,6 @@
 package ai.uphill.app.feature.me
 
+import ai.uphill.app.R
 import ai.uphill.app.core.gear.ShoeRotation
 import ai.uphill.app.core.localization.L
 import ai.uphill.app.core.racehistory.*
@@ -21,6 +22,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -275,7 +278,10 @@ internal fun ProfileAchievements(history: RaceHistoryResponse?, onSelect: (Int) 
 
 @Composable
 internal fun ProfileShoeRotation(rotation: ShoeRotation, onSelect: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(
+        Modifier.testTag("profile.rotation"),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         Row(Modifier.fillMaxWidth()) {
             Text(
                 L("SHOE ROTATION"),
@@ -293,8 +299,14 @@ internal fun ProfileShoeRotation(rotation: ShoeRotation, onSelect: (String) -> U
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { slot ->
                     val shoe = rotation.shoe(slot)
+                    val wearColor =
+                        if ((shoe?.wearRatio ?: 0.0) >= .85) UH.danger
+                        else if ((shoe?.wearRatio ?: 0.0) >= .6) UH.warningInk else UH.accentInk
                     Surface(
-                        modifier = Modifier.weight(1f).clickable { onSelect(slot) },
+                        modifier =
+                            Modifier.weight(1f)
+                                .clickable { onSelect(slot) }
+                                .testTag("profile.rotation.$slot"),
                         color = MaterialTheme.colorScheme.surface,
                         shape = RoundedCornerShape(12.dp),
                         border = BorderStroke(1.dp, UH.line),
@@ -318,12 +330,19 @@ internal fun ProfileShoeRotation(rotation: ShoeRotation, onSelect: (String) -> U
                                     Modifier.fillMaxWidth().height(72.dp).padding(8.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    Packshot(
-                                        "shoe",
-                                        shoe?.brand.orEmpty(),
-                                        shoe?.model.orEmpty(),
-                                        slot,
-                                    )
+                                    if (shoe != null) {
+                                        Box(Modifier.testTag("profile.rotation.$slot.image")) {
+                                            Packshot("shoe", shoe.brand, shoe.model, slot)
+                                        }
+                                    } else {
+                                        Icon(
+                                            painterResource(R.drawable.ic_shoe_placeholder),
+                                            null,
+                                            Modifier.size(28.dp)
+                                                .testTag("profile.rotation.$slot.empty"),
+                                            tint = UH.muted,
+                                        )
+                                    }
                                 }
                             }
                             if (shoe != null) {
@@ -345,17 +364,16 @@ internal fun ProfileShoeRotation(rotation: ShoeRotation, onSelect: (String) -> U
                                     Text(
                                         "${(shoe.wearRatio * 100).toInt()}%",
                                         fontSize = 10.sp,
-                                        color = UH.accentInk,
+                                        color = wearColor,
                                     )
                                 }
                                 LinearProgressIndicator(
                                     progress = { shoe.wearRatio.toFloat() },
                                     modifier = Modifier.fillMaxWidth().height(4.dp),
-                                    color =
-                                        if (shoe.wearRatio >= .85) UH.danger
-                                        else if (shoe.wearRatio >= .6) UH.warningInk
-                                        else UH.accentInk,
+                                    color = wearColor,
                                     trackColor = UH.line,
+                                    gapSize = 0.dp,
+                                    drawStopIndicator = {},
                                 )
                             } else {
                                 Text(L("EMPTY SLOT"), fontSize = 10.sp, color = UH.muted)

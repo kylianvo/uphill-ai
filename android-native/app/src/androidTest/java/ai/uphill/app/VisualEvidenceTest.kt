@@ -55,7 +55,8 @@ class VisualEvidenceTest {
                             "/api/auth/pace-zones" -> fixture("pace_zones.json")
                             "/api/auth/fitness-snapshot" -> "{}"
                             "/api/race-history" -> """{"results":[],"claims":[],"road_pbs":{}}"""
-                            "/api/shoe-rotation" -> """{"shoes":[]}"""
+                            "/api/shoe-rotation" ->
+                                """{"shoes":[{"slot":"daily","brand":"Nike","model":"Pegasus 41","distance_km":630,"max_distance_km":700}]}"""
                             "/api/integrations/matching" -> """{"activities":[]}"""
                             "/api/integrations/status" -> """{"coros":{"connected":false}}"""
                             "/api/knowledge/cards" -> """{"cards":[]}"""
@@ -171,6 +172,41 @@ class VisualEvidenceTest {
                 ui.waitUntil(10000) { container.language.value == lang }
                 configureActivityLanguage(lang)
                 if (variant != "coaching") {
+                    ui.runOnIdle {
+                        container.session.signIn(
+                            AuthResponse(
+                                "fixture-onboarding-evidence-only",
+                                user.copy(
+                                    id = if (lang == "en") 7007 else 7008,
+                                    onboardingComplete = false,
+                                ),
+                            )
+                        )
+                    }
+                    waitText(localized("Get started", lang))
+                    capture("onboarding-welcome", lang)
+                    ui.onNodeWithText(localized("Get started", lang))
+                        .performScrollTo()
+                        .performClick()
+                    waitText(localized("A road race", lang))
+                    capture("onboarding-goal", lang)
+                    ui.onNodeWithText(localized("A road race", lang))
+                        .performScrollTo()
+                        .performClick()
+                    waitText(planLabel("Race name", lang))
+                    capture("onboarding-road", lang)
+                    ui.onNode(hasText(planLabel("Race name", lang)) and hasSetTextAction())
+                        .performTextReplacement("Local Road 10K")
+                    ui.onNode(hasText(planLabel("Distance (km)", lang)) and hasSetTextAction())
+                        .performTextReplacement("10")
+                    ui.onNodeWithText(planLabel("Next", lang)).performClick()
+                    waitText(localized("When is it?", lang))
+                    capture("onboarding-date", lang)
+                    ui.onNodeWithContentDescription(localized("Close", lang)).performClick()
+                    waitText(localized("Get started", lang))
+                    ui.runOnIdle {
+                        container.session.signIn(AuthResponse("fixture-evidence-only", user))
+                    }
                     tab("Plan", lang)
                     ui.waitUntil(15000) {
                         ui.onAllNodesWithTag("plan.list").fetchSemanticsNodes().isNotEmpty()
@@ -209,6 +245,8 @@ class VisualEvidenceTest {
                     ui.onNode(hasText(localized("Me", lang)) and !hasClickAction())
                         .performScrollTo()
                     capture("me", lang)
+                    ui.onNodeWithTag("profile.rotation").performScrollTo()
+                    capture("shoe-rotation", lang)
                     if (variant == "normal") {
                         for ((name, label) in
                             listOf(
@@ -289,7 +327,7 @@ class VisualEvidenceTest {
                 capture("coach-profile", lang)
                 ui.onNodeWithTag("coach.profile.preferences").performScrollTo()
                 capture("coach-preferences", lang)
-                ui.onNodeWithText(localized("Done", lang)).performScrollTo().performClick()
+                ui.onNodeWithText(localized("Done", lang)).assertIsDisplayed().performClick()
                 ui.runOnIdle {
                     container.session.signIn(AuthResponse("fixture-evidence-only", user))
                 }

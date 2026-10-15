@@ -109,10 +109,29 @@ class NativeFlowTest {
         ui.setContent {
             UphillTheme { OnboardingScreen(api, user.copy(onboardingComplete = false), "en", {}) }
         }
-        ui.onNodeWithText("Start running").performClick()
+        ui.onNodeWithText("Getting started").performClick()
         waitText("Connect your watch")
         ui.onNodeWithText("Next").performClick()
         waitText("Your training week")
+    }
+
+    @Test
+    fun onboardingSeparatesTrailAndRoadGoalsAndCarriesTerrainIntoDetails() {
+        ui.setContent {
+            UphillTheme { OnboardingScreen(api, user.copy(onboardingComplete = false), "en", {}) }
+        }
+        ui.onNodeWithText("This sets the shape of your whole plan.").assertExists()
+        ui.onNodeWithText("A trail race").assertExists()
+        ui.onNodeWithText("A road race").assertExists()
+        ui.onNodeWithText("A distance").assertExists()
+        ui.onNodeWithText("Getting started").assertExists()
+        ui.onNodeWithText("A specific race").assertDoesNotExist()
+        ui.onNodeWithText("Next").assertDoesNotExist()
+        ui.onNodeWithContentDescription("Close").assertIsDisplayed()
+        ui.onNodeWithText("A road race").performClick()
+        waitText("Race name")
+        ui.onNodeWithText("Road").assertIsSelected()
+        ui.onNodeWithText("If I know the race, I know its distance and climbing.").assertExists()
     }
 
     @Test
@@ -498,13 +517,68 @@ class NativeFlowTest {
     }
 
     @Test
+    fun setupCalendarEnforcesItsDateWindowAndPreservesTheSelectedDay() {
+        var selected: java.time.LocalDate? = null
+        ui.setContent {
+            UphillTheme {
+                ai.uphill.app.feature.onboarding.SetupDatePicker(
+                    java.time.LocalDate.of(2026, 10, 17),
+                    java.time.LocalDate.of(2026, 10, 16),
+                    java.time.LocalDate.of(2026, 10, 20),
+                ) {
+                    selected = it
+                }
+            }
+        }
+        fun day(number: Int) =
+            ui.onNodeWithText(
+                java.time.LocalDate.of(2026, 10, number)
+                    .format(
+                        java.time.format.DateTimeFormatter.ofPattern(
+                            "EEEE, MMMM d, yyyy",
+                            java.util.Locale.US,
+                        )
+                    ),
+                substring = true,
+            )
+        day(15).assertIsNotEnabled()
+        day(16).assertIsEnabled()
+        day(20).assertIsEnabled()
+        day(21).assertIsNotEnabled()
+        day(19).performClick()
+        ui.waitUntil { selected == java.time.LocalDate.of(2026, 10, 19) }
+        assertEquals(java.time.LocalDate.of(2026, 10, 19), selected)
+    }
+
+    @Test
+    fun profileShoeRotationUsesNeutralEmptySlotsAndKeepsSlotActions() {
+        var selected: String? = null
+        val rotation =
+            ai.uphill.app.core.gear.ShoeRotation(
+                listOf(
+                    ai.uphill.app.core.gear.ShoeItem("daily", "Nike", "Pegasus 41", 630.0, 700.0)
+                )
+            )
+        ui.setContent {
+            UphillTheme { ai.uphill.app.feature.me.ProfileShoeRotation(rotation) { selected = it } }
+        }
+        ui.onNodeWithTag("profile.rotation.daily.image", useUnmergedTree = true).assertExists()
+        ui.onNodeWithTag("profile.rotation.tempo.empty", useUnmergedTree = true).assertExists()
+        ui.onNodeWithTag("profile.rotation.tempo.image", useUnmergedTree = true)
+            .assertDoesNotExist()
+        ui.onNodeWithText("90%").assertExists()
+        ui.onNodeWithTag("profile.rotation.tempo").performClick()
+        assertEquals("tempo", selected)
+    }
+
+    @Test
     fun vietnameseCalendarWeeklyHeaderKeepsOneLineAtLargeText() {
         ui.setContent {
             val context = androidx.compose.ui.platform.LocalContext.current
             val configuration =
-                android.content.res.Configuration(context.resources.configuration).apply {
-                    setLocale(java.util.Locale.forLanguageTag("vi"))
-                }
+                android.content.res
+                    .Configuration(androidx.compose.ui.platform.LocalConfiguration.current)
+                    .apply { setLocale(java.util.Locale.forLanguageTag("vi")) }
             val density = androidx.compose.ui.platform.LocalDensity.current
             androidx.compose.runtime.CompositionLocalProvider(
                 androidx.compose.ui.platform.LocalContext provides
