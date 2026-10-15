@@ -386,14 +386,14 @@ struct GoalDeterminerSheet: View {
                 } label: {
                     HStack {
                         if isLoading {
-                            ProgressView().tint(Color.white)
+                            ProgressView().tint(UH.Palette.onSolid)
                         } else {
                             Image(systemName: "speedometer")
                             Text("Estimate Race Goal")
                         }
                     }
                     .font(UH.TextStyle.label)
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(UH.Palette.onSolid)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(UH.Palette.ink, in: RoundedRectangle(cornerRadius: UH.Radius.panel))

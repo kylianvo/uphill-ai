@@ -128,7 +128,7 @@ struct WorkoutDetailSheet: View {
                                                 Text("Approve Workout")
                                             }
                                             .font(UH.TextStyle.label)
-                                            .foregroundStyle(Color.white)
+                                            .foregroundStyle(UH.Palette.onSolid)
                                             .frame(maxWidth: .infinity)
                                             .frame(height: 48)
                                             .background(UH.Palette.accentInk, in: RoundedRectangle(cornerRadius: UH.Radius.control))

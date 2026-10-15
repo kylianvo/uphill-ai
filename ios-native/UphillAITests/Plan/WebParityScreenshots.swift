@@ -26,6 +26,8 @@ struct WebParityScreenshots {
     private func save<V: View>(_ view: V, name: String, height: CGFloat = 874) async throws {
         let size = CGSize(width: 402, height: height)
         let controller = UIHostingController(rootView: view.frame(width: size.width, height: size.height))
+        // SCREENSHOT_DARK=1 renders the same screens in dark mode.
+        if ProcessInfo.processInfo.environment["SCREENSHOT_DARK"] != nil { controller.overrideUserInterfaceStyle = .dark }
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
         window.rootViewController = controller
         window.makeKeyAndVisible()

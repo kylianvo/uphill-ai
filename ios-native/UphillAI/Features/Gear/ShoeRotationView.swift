@@ -46,7 +46,7 @@ struct ShoeRotationView: View {
                 // Shoe graphic container (Studio light-base packshot aesthetic)
                 ZStack {
                     RoundedRectangle(cornerRadius: UH.Radius.control)
-                        .fill(UH.Palette.surface)
+                        .fill(UH.Palette.packshot)
                         .frame(height: 72)
                         .overlay(
                             RoundedRectangle(cornerRadius: UH.Radius.control)

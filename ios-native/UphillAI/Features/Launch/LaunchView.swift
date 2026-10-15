@@ -8,6 +8,7 @@ struct LaunchView: View {
     let error: String?
     let onRetry: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var scheme
     @State private var shown = false
 
     var body: some View {
@@ -16,7 +17,7 @@ struct LaunchView: View {
 
             LoopingVideo(name: "launch_bg", playing: !reduceMotion)
                 .ignoresSafeArea()
-                .opacity(shown ? 1 : 0)
+                .opacity(shown && scheme == .light ? 1 : 0)  // the fog video is a daylight scene; dark shows the plain surface
                 .accessibilityHidden(true)
 
             // Keeps the text readable when the fog thins mid-loop.

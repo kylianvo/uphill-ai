@@ -61,13 +61,13 @@ struct LinkProfileSheet: View {
                 } label: {
                     HStack {
                         if isSearching {
-                            ProgressView().tint(Color.white)
+                            ProgressView().tint(UH.Palette.onSolid)
                         } else {
                             Text("Search Athletes")
                         }
                     }
                     .font(UH.TextStyle.label)
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(UH.Palette.onSolid)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(UH.Palette.ink, in: RoundedRectangle(cornerRadius: UH.Radius.control))

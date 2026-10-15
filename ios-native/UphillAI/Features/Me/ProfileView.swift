@@ -4,6 +4,7 @@ struct ProfileView: View {
     @Bindable var app: AppModel
     @State private var showDeveloperMenu = false
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.en
+    @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
     @State private var path: [TrainingDestination] = []
     @State private var showSchedule = false
     @State private var selectedShoeSlot: ShoeRotationSlot? = nil
@@ -103,6 +104,10 @@ struct ProfileView: View {
                         ForEach(AppLanguage.allCases) { Text(verbatim: $0.nativeName).tag($0) }
                     }
                     .accessibilityIdentifier("me.language")
+                    Picker("Appearance", selection: $appearance) {
+                        ForEach(AppAppearance.allCases) { Text($0.label).tag($0) }
+                    }
+                    .accessibilityIdentifier("me.appearance")
                 }
 
                 Section("Account") {

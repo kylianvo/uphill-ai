@@ -475,7 +475,7 @@ struct ProfileSettingsScreen: View {
                 Task { await model.save() }
             } label: {
                 if model.isSaving {
-                    ProgressView().tint(.white)
+                    ProgressView().tint(UH.Palette.onSolid)
                 } else {
                     Text("Save")
                 }
@@ -661,7 +661,7 @@ struct ChangePasswordScreen: View {
                     Button {
                         Task { await save() }
                     } label: {
-                        if saving { ProgressView().tint(.white) } else { Text("Change password") }
+                        if saving { ProgressView().tint(UH.Palette.onSolid) } else { Text("Change password") }
                     }
                     .buttonStyle(.uhPrimary)
                     .disabled(saving)

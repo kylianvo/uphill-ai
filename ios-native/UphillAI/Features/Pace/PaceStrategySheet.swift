@@ -172,7 +172,7 @@ struct PaceStrategySheet: View {
                                 Text(isVietnamese ? "Kế hoạch Fueling" : "Plan Fueling")
                             }
                             .font(UH.TextStyle.label)
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(UH.Palette.onSolid)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .background(UH.Palette.ink, in: RoundedRectangle(cornerRadius: UH.Radius.control))
@@ -307,7 +307,7 @@ struct PaceStrategySheet: View {
                         } label: {
                             Text("\(Int(interval)) km")
                                 .font(UH.TextStyle.caption.weight(splitIntervalKm == interval ? .bold : .medium))
-                                .foregroundStyle(splitIntervalKm == interval ? Color.white : UH.Palette.ink)
+                                .foregroundStyle(splitIntervalKm == interval ? UH.Palette.onSolid : UH.Palette.ink)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
                                 .background(splitIntervalKm == interval ? UH.Palette.ink : UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))

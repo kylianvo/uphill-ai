@@ -930,7 +930,7 @@ private struct SetupOption: View {
                             .frame(width: 44, height: 44)
                         Image(systemName: symbol)
                             .font(.title3.weight(.semibold))
-                            .foregroundStyle(selected ? Color.white : UH.Palette.accentInk)
+                            .foregroundStyle(selected ? UH.Palette.onSolid : UH.Palette.accentInk)
                     }
                 }
                 VStack(alignment: .leading, spacing: 3) {

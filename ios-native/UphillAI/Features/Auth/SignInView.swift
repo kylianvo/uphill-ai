@@ -7,6 +7,7 @@ struct SignInView: View {
     @FocusState private var focused: Field?
     typealias Field = SignInViewModel.Field
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -49,7 +50,7 @@ struct SignInView: View {
                 } onCompletion: { result in
                     Task { await handleApple(result) }
                 }
-                .signInWithAppleButtonStyle(.black)
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                 .frame(height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: UH.Radius.control))
 

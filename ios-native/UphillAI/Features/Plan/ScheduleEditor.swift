@@ -224,7 +224,7 @@ struct ScheduleChangeSheet: View {
                         Button {
                             confirm = true
                         } label: {
-                            if saving { ProgressView().tint(.white) } else { Text("Rebuild week") }
+                            if saving { ProgressView().tint(UH.Palette.onSolid) } else { Text("Rebuild week") }
                         }
                         .buttonStyle(.uhPrimary)
                         .disabled(saving || !draft.hasChanges)

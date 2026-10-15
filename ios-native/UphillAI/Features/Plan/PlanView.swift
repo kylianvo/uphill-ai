@@ -489,7 +489,7 @@ struct PlanView: View {
             } label: {
                 HStack(spacing: 6) {
                     if generation.running?.kind == .nextWeek {
-                        ProgressView().tint(.white)
+                        ProgressView().tint(UH.Palette.onSolid)
                         Text("Building the next block…")
                     } else {
                         Image(systemName: "sparkles")
@@ -499,7 +499,7 @@ struct PlanView: View {
                 .font(.system(size: 14, weight: .bold))
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
-                .foregroundStyle(Color.white)
+                .foregroundStyle(UH.Palette.onSolid)
                 .background(UH.Palette.accentInk, in: RoundedRectangle(cornerRadius: UH.Radius.control))
             }
             .buttonStyle(.plain)

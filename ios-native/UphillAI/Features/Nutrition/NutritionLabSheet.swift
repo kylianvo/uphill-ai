@@ -447,7 +447,7 @@ struct NutritionLabSheet: View {
                                             .padding(.horizontal, 10)
                                             .padding(.vertical, 6)
                                             .background(isSelected ? UH.Palette.accentInk : UH.Palette.surface, in: Capsule())
-                                            .foregroundStyle(isSelected ? Color.white : UH.Palette.ink)
+                                            .foregroundStyle(isSelected ? UH.Palette.onSolid : UH.Palette.ink)
                                             .overlay(Capsule().stroke(isSelected ? Color.clear : UH.Palette.line))
                                     }
                                     .buttonStyle(.plain)
@@ -477,14 +477,14 @@ struct NutritionLabSheet: View {
                     HStack {
                         if isLoading {
                             ProgressView()
-                                .tint(Color.white)
+                                .tint(UH.Palette.onSolid)
                         } else {
                             Image(systemName: "bolt.batteryblock.fill")
                             Text("Calculate Fueling Plan")
                         }
                     }
                     .font(UH.TextStyle.label)
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(UH.Palette.onSolid)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(UH.Palette.ink, in: RoundedRectangle(cornerRadius: UH.Radius.panel))
@@ -573,7 +573,7 @@ struct NutritionLabSheet: View {
                                 .frame(width: 32, height: 32)
                             Text("H\(entry.hour)")
                                 .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                .foregroundStyle(Color.white)
+                                .foregroundStyle(UH.Palette.onSolid)
                         }
 
                         if entry.hour != plan.hourlyPlan.last?.hour {
@@ -635,7 +635,7 @@ struct NutritionLabSheet: View {
             // Product image preview (Clean light-base studio presentation)
             ZStack {
                 RoundedRectangle(cornerRadius: UH.Radius.control)
-                    .fill(UH.Palette.surface)
+                    .fill(UH.Palette.packshot)
                     .frame(width: 68, height: 68)
                     .overlay(
                         RoundedRectangle(cornerRadius: UH.Radius.control)

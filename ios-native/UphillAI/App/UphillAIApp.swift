@@ -5,6 +5,7 @@ import SwiftUI
 struct UphillAIApp: App {
     @State private var app = AppModel(tokenStore: Self.makeTokenStore())
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.en
+    @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
 
     @MainActor private static func makeTokenStore() -> any TokenStore {
         #if DEBUG
@@ -19,7 +20,7 @@ struct UphillAIApp: App {
         WindowGroup {
             RootView(app: app)
                 .environment(\.locale, language.locale)
-                .preferredColorScheme(.light)
+                .preferredColorScheme(appearance.colorScheme)
                 .tint(UH.Palette.accentInk)
                 .onAppear { KeyboardDismissal.install() }
                 .onOpenURL { url in
