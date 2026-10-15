@@ -31,8 +31,10 @@ struct ExportCalendarSheet: View {
 
     private var exportURLString: String {
         guard let plan else { return "" }
-        let base = "https://app.uphill.ai"
-        return "\(base)/api/coach/export-ics?plan_id=\(plan.id)&race_date=\(plan.raceDate)&time_pref=\(timePref)"
+        let base = AppEnvironment.current().baseURL.absoluteString
+        // The feed is fetched by Calendar without our headers, so the endpoint takes the session as ?token=.
+        let token = KeychainTokenStore().read() ?? ""
+        return "\(base)/api/coach/export-ics?plan_id=\(plan.id)&race_date=\(plan.raceDate)&time_pref=\(timePref)&token=\(token)"
     }
 
     private var webcalURLString: String {
