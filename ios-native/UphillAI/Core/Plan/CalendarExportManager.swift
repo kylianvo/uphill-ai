@@ -203,7 +203,8 @@ final class CalendarExportManager: CalendarExporting, @unchecked Sendable {
         // Request calendar write access
         let granted: Bool
         if #available(iOS 17.0, *) {
-            granted = try await eventStore.requestWriteOnlyAccessToEvents()
+            // Write-only access can't read calendars, so we couldn't find/reuse ours or fall back to another.
+            granted = try await eventStore.requestFullAccessToEvents()
         } else {
             granted = try await eventStore.requestAccess(to: .event)
         }
@@ -221,24 +222,16 @@ final class CalendarExportManager: CalendarExporting, @unchecked Sendable {
         var isNewCalendar = false
 
         if targetCalendar == nil {
-            let newCal = EKCalendar(for: .event, eventStore: eventStore)
-            newCal.title = calendarName
-            newCal.cgColor = CGColor(red: 16.0 / 255.0, green: 185.0 / 255.0, blue: 129.0 / 255.0, alpha: 1.0)
+            targetCalendar = createTrainingCalendar(named: calendarName)
+            isNewCalendar = targetCalendar != nil
+        }
 
-            let sources = eventStore.sources
-            if let defaultSource = eventStore.defaultCalendarForNewEvents?.source {
-                newCal.source = defaultSource
-            } else if let calDav = sources.first(where: { $0.sourceType == .calDAV }) {
-                newCal.source = calDav
-            } else if let local = sources.first(where: { $0.sourceType == .local }) {
-                newCal.source = local
-            } else if let first = sources.first {
-                newCal.source = first
-            }
-
-            try eventStore.saveCalendar(newCal, commit: true)
-            targetCalendar = newCal
-            isNewCalendar = true
+        // Some accounts (Exchange, Google, shared/managed) forbid new calendars; use a writable one instead.
+        if targetCalendar == nil {
+            let fallback = eventStore.defaultCalendarForNewEvents
+            targetCalendar = fallback?.allowsContentModifications == true
+                ? fallback
+                : existingCalendars.first { $0.allowsContentModifications }
         }
 
         guard let targetCalendar else {
@@ -325,5 +318,32 @@ final class CalendarExportManager: CalendarExporting, @unchecked Sendable {
             calendarTitle: targetCalendar.title,
             isNewCalendar: isNewCalendar
         )
+    }
+
+    /// Tries each source that can host calendars (preferred first) until one accepts the save.
+    private func createTrainingCalendar(named name: String) -> EKCalendar? {
+        let preferred = eventStore.defaultCalendarForNewEvents?.source
+        let sources = eventStore.sources
+            .filter { $0.sourceType != .subscribed && $0.sourceType != .birthdays }
+            .sorted { lhs, rhs in
+                func rank(_ s: EKSource) -> Int {
+                    if s == preferred { return 0 }
+                    if s.sourceType == .calDAV { return 1 }
+                    if s.sourceType == .local { return 2 }
+                    return 3
+                }
+                return rank(lhs) < rank(rhs)
+            }
+
+        for source in sources {
+            let cal = EKCalendar(for: .event, eventStore: eventStore)
+            cal.title = name
+            cal.cgColor = CGColor(red: 16.0 / 255.0, green: 185.0 / 255.0, blue: 129.0 / 255.0, alpha: 1.0)
+            cal.source = source
+            if (try? eventStore.saveCalendar(cal, commit: true)) != nil {
+                return cal
+            }
+        }
+        return nil
     }
 }
