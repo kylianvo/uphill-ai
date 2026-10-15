@@ -1,3 +1,5 @@
+import SwiftUI
+import UIKit
 import Testing
 @testable import UphillAI
 
@@ -25,5 +27,27 @@ struct WorkoutPresentationTextTests {
         #expect(WorkoutTypePresentation.paceTileValue("6:24–5:42/KM") == "6:24–5:42")
         #expect(WorkoutTypePresentation.paceTileValue(nil) == "—")
         #expect(WorkoutTypePresentation.paceTileValue("") == "—")
+    }
+}
+
+@MainActor
+struct WorkoutColorTests {
+    private func rgb(_ type: String, zone: String) -> [CGFloat] {
+        let w = TestData.workout(["type": type, "target_zone": zone])
+        let ui = UIColor(WorkoutTypePresentation.zoneColor(for: w)).resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
+        var (r, g, b, a): (CGFloat, CGFloat, CGFloat, CGFloat) = (0, 0, 0, 0)
+        ui.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return [r, g, b, a]
+    }
+
+    @Test func easyKeepsOneColourWhateverTheZoneRange() {
+        let base = rgb("Easy Run", zone: "Z2")
+        #expect(rgb("Easy Run", zone: "Z1-Z2") == base)
+        #expect(rgb("Easy Run", zone: "Zone 2-3") == base)
+        #expect(rgb("Aerobic Base Building", zone: "Z1-Z2") == base)
+    }
+
+    @Test func recoveryStaysDistinctFromEasy() {
+        #expect(rgb("Recovery Run", zone: "Z1") != rgb("Easy Run", zone: "Z2"))
     }
 }
