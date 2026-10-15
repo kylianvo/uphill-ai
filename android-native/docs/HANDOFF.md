@@ -8,7 +8,7 @@ Plan: `docs/superpowers/plans/2026-10-14-android-native.md`.
 ## Current checkpoint — 2026-10-15
 
 The user requested PR/handoff at 15% remaining account allowance. Work resumed after
-the previous checkpoint. Latest allowance check: 47% five-hour / 18% weekly remaining.
+the previous checkpoint. Latest allowance check: 35% five-hour / 16% weekly remaining.
 Checkpoint again when either account window reaches 15% remaining.
 Health Connect stays deferred by explicit user decision. Google Android OAuth
 registration is complete; the physical phone upgrade test is deferred.
@@ -70,8 +70,8 @@ See `docs/PARITY.md` for the area-by-area inventory against iOS main `5597527`.
   cold MainActivity launch succeeded, UI hierarchy showed Uphill AI / Google / Sign in.
   Existing `release-sign-in-en.png` records the previous 6208d6d smoke. The updated
   signed release installed and cold-launched successfully for the live OAuth checks.
-  No fictional-account writes to production. This does not validate authenticated
-  release flows or live OAuth.
+  No fictional-account writes to production. Subsequent live Google sign-in and
+  existing COROS sync passed with the user; this does not cover all release flows.
 
 ## Remaining work, in order
 
@@ -79,11 +79,15 @@ See `docs/PARITY.md` for the area-by-area inventory against iOS main `5597527`.
    still need comparison. Coach inline invite and race-to-roster filtering remain.
    Calendar weekly-column label is `km` rather than iOS `km/wk` / `km/tuần`; day preview's
    Open Week button styling also differs. Fixture descriptions keep their recorded language.
-2. Live Google/COROS round trips are in progress with the user. Original `uphill_test`
-   has old Play services 23.18.18; logs report failure to parse the button request.
-   Switched OAuth checks to installed `uphill_playstore` on emulator-5556, with Play
-   services 26.33.32. The actual Google account sign-in page is open for the user.
-   Updated release APK is installed on both emulators; no live round trip yet. Do not clear/uninstall app data or run instrumentation after sign-in.
+2. Live Google sign-in passed on the signed minified release in `uphill_playstore`
+   (emulator-5556). User selected their account; authenticated Plan/Coach/Me/Athletes
+   tabs were confirmed. Google Play services updated to 26.39.33 during setup.
+   Original `uphill_test` has old Play services 23.18.18 and a request-parsing failure.
+   Existing production COROS connection loaded; “Sync now” returned a success notice.
+   Fresh COROS OAuth is unverified: disconnecting would delete received COROS data,
+   so the existing connection was preserved. No credentials, tokens, health counts,
+   profile data or production screenshots are committed. Do not clear/uninstall app
+   data or run instrumentation on emulator-5556: it now holds the user's session.
    Physical-phone upgrade remains explicitly deferred.
 3. Deploy the two backend profile fixes when explicitly requested; current production
    has not been changed by this work.

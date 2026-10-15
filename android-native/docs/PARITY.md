@@ -7,7 +7,7 @@ service or a passing fixture test does not establish matching layout or animatio
 
 | Area | Android implementation / evidence | Remaining parity work |
 | --- | --- | --- |
-| Auth, launch, shell | Email/register, Credential Manager, secure session restore, video launch, Plan/Coach/Me/Athletes routing; sign-in and nested-tab evidence | Live Google round trip; compare launch/video timing and every auth/error state |
+| Auth, launch, shell | Email/register, Credential Manager, secure session restore, video launch, Plan/Coach/Me/Athletes routing; sign-in and nested-tab evidence | Live signed-release Google round trip passed; compare launch/video timing and every auth/error state |
 | Onboarding and generation | Setup steps, persisted job polling, resumed generation, inline Plan progress; onboarding flow tests | Compare all EN/VI steps and failure/resume states with iOS; inspect newer iOS setup changes |
 | Plan summary and day list | Carousel, weeks, goal pill, coach review, sharpen checklist, workout actions; EN/VI normal/large-text captures | Compare all chart/data variants, row types, transitions and empty/offline states |
 | Workout detail | Metrics, execution timeline, treadmill ranges, reasons/warnings, feeling/log confirmation, scoped coach actions/notes | Pace range formatting and font1.3 rendering check pass; remaining type/interval/rest/coach variants need evidence |
@@ -22,9 +22,9 @@ service or a passing fixture test does not establish matching layout or animatio
 | Knowledge | Search/topics/cards, local shuffle, source attribution | Card/result/source sheets and empty/error UI comparison |
 | Race history | Search/claims/bib verification, manual results/edit/delete, detail/PBs/badges; fixture/UI tests | Compare every link/claim/detail/course state against iOS |
 | Coaching | Roster/invites, overview/actions, athlete physiology/provenance, scoped plan/actions/notes; live backend flow | Adherence chart, seven-day bars, workout mix, Overview/Roster sections, 7/14/30-day and Elite filters, roster search ported and tested. Inline invite form and remaining dashboard/athlete editor layouts still need comparison |
-| COROS | Custom Tab callback/state, sync/push/status, foreground sync and manual matching | Live OAuth/sync/push, cancellation/error flows; Health import excluded |
+| COROS | Custom Tab callback/state, sync/push/status, foreground sync and manual matching | Existing live COROS sync passed; fresh OAuth/push and cancellation/error flows unverified; Health import excluded |
 | Accessibility/motion/fonts | Font1.3 and zero-animation captures, shared tokens and launch font, native system body font | TalkBack and all focus/error states; full motion audit; Android system font differs from SF Pro |
-| Release | Matching certificate/code10, earlier emulator upgrade preservation, minified signed-out smoke, CI green at6208d6d | Authenticated minified release, physical phone upgrade, live OAuth, current signed artifact built and installed; Google account setup in progress |
+| Release | Matching certificate/code10, earlier emulator upgrade preservation, minified signed-out smoke, CI green at6208d6d | Signed minified Google sign-in and existing COROS sync passed; physical phone upgrade, fresh COROS OAuth and all remaining release flows unverified |
 
 Current verified batch: workout pace wrap, coach dashboard charts, latest month calendar.
 90 debug + 90 release JVM tests, 21 instrumentation tests and 46 fixture screenshots pass.
