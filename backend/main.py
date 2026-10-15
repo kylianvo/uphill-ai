@@ -23,11 +23,13 @@ from db import (
     block_number_for_week,
     coach_update_workout,
     compute_current_week,
+    consume_password_reset_code,
     create_beta_signup,
     create_coach_invite,
     create_coach_note,
     create_coach_workout,
     create_or_get_user,
+    create_password_reset_code,
     create_plan,
     create_session,
     create_user_with_password,
@@ -112,10 +114,11 @@ from services import (
     race_review,
     week_rebuild,
 )
-from services.auth_service import hash_password, verify_password
+from services.auth_service import generate_reset_code, hash_password, hash_reset_code, verify_password
 from services.calendar_rules import GuardViolation, is_upcoming, resolve_today, start_monday, upcoming_note
 from services.calendar_service import CalendarService
 from services.course_match import resolve_course_match as _resolve_course_match
+from services.email_service import send_password_reset_code
 from services.gear_planner import GearParams, gear_planner
 from services.matching.block_evaluator import evaluate_block_performance
 from services.nutrition_planner import NutritionParams, nutrition_planner
@@ -411,6 +414,17 @@ class LoginRequest(BaseModel):
 
 class SetPasswordRequest(BaseModel):
     password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+    lang: str = "en"
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    code: str
+    new_password: str
 
 
 ONBOARDING_HR_RANGES = {"aet_hr": (80, 220), "ant_hr": (90, 225), "max_hr": (120, 240), "resting_hr": (30, 120)}
@@ -1049,6 +1063,39 @@ async def auth_set_password(request: SetPasswordRequest, user: dict[str, Any] = 
     if not success:
         raise HTTPException(status_code=500, detail="Failed to set password.")
     return {"message": "Password set successfully."}
+
+
+FORGOT_PASSWORD_MESSAGE = "If an account exists for this email, we sent a code."
+INVALID_RESET_CODE = "Invalid or expired code."
+
+
+@app.post("/api/auth/forgot-password")
+async def auth_forgot_password(request: ForgotPasswordRequest, background_tasks: BackgroundTasks):
+    """Emails a 6-digit reset code. Same answer whether or not the account exists."""
+    user = get_user_by_email(request.email)
+    if user:
+        code = generate_reset_code()
+        if create_password_reset_code(user["id"], hash_reset_code(code)):
+            # Background, so response time doesn't reveal the account and slow SMTP never blocks.
+            background_tasks.add_task(send_password_reset_code, user["email"], code, request.lang)
+    return {"message": FORGOT_PASSWORD_MESSAGE}
+
+
+@app.post("/api/auth/reset-password")
+async def auth_reset_password(request: ResetPasswordRequest):
+    """Sets a new password from an emailed code, signs out every device, and logs in."""
+    if len(request.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
+    pw_hash = hash_password(request.new_password)
+    user = get_user_by_email(request.email)
+    if not user or not consume_password_reset_code(user["id"], hash_reset_code(request.code.strip()), pw_hash):
+        raise HTTPException(status_code=400, detail=INVALID_RESET_CODE)
+    session = create_session(user["id"])
+    return {
+        "session_token": session["session_token"],
+        "expires_at": session["expires_at"],
+        "user": format_user_response(get_user_by_email(request.email)),
+    }
 
 
 # mock-login is only registered in non-production environments.

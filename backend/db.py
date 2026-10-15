@@ -5,6 +5,7 @@ All raw SQL uses %s-style placeholders via psycopg2 through SQLAlchemy.
 
 import datetime
 import hashlib
+import hmac
 import json
 import math
 import unicodedata
@@ -105,6 +106,26 @@ def init_db():
             expires_at      TIMESTAMPTZ NOT NULL
         )
         """)
+        )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS password_reset_codes (
+            id          SERIAL PRIMARY KEY,
+            user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            code_hash   TEXT NOT NULL,
+            expires_at  TIMESTAMPTZ NOT NULL,
+            attempts    INTEGER NOT NULL DEFAULT 0,
+            used_at     TIMESTAMPTZ,
+            created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """)
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_password_reset_codes_user_created "
+                "ON password_reset_codes (user_id, created_at)"
+            )
         )
 
         conn.execute(
@@ -3004,6 +3025,72 @@ def delete_session(session_token: str) -> bool:
         result = conn.execute(text("DELETE FROM sessions WHERE session_token = :tok"), {"tok": session_token})
         conn.commit()
     return result.rowcount > 0
+
+
+# ─── Password reset codes ────────────────────────────────────────────────────
+
+
+def create_password_reset_code(user_id: int, code_hash: str, ttl_minutes: int = 15) -> bool:
+    """Stores a new reset code. Earlier live codes stay valid, so someone else
+    requesting codes for this email can't invalidate the one the owner is typing.
+
+    Returns False and stores nothing when the user is over the rate limit
+    (1 code per 60 s, 5 per hour)."""
+    with engine.connect() as conn:
+        recent = conn.execute(
+            text("""
+            SELECT COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '60 seconds') AS last_minute,
+                   COUNT(*) AS last_hour
+            FROM password_reset_codes
+            WHERE user_id = :uid AND created_at > NOW() - INTERVAL '1 hour'
+        """),
+            {"uid": user_id},
+        ).fetchone()
+        if recent.last_minute >= 1 or recent.last_hour >= 5:
+            return False
+        conn.execute(
+            text("""
+            INSERT INTO password_reset_codes (user_id, code_hash, expires_at)
+            VALUES (:uid, :h, NOW() + make_interval(mins => :ttl))
+        """),
+            {"uid": user_id, "h": code_hash, "ttl": ttl_minutes},
+        )
+        conn.commit()
+    return True
+
+
+def consume_password_reset_code(user_id: int, code_hash: str, new_password_hash: str) -> bool:
+    """Checks code_hash against every live code of the user.
+
+    A miss counts an attempt on all of them, so the user has 5 guesses in total
+    however many codes were requested. A hit sets the password, retires every
+    code and deletes every session, all in one transaction."""
+    with engine.begin() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT id, code_hash FROM password_reset_codes
+            WHERE user_id = :uid AND used_at IS NULL AND expires_at > NOW() AND attempts < 5
+            FOR UPDATE
+        """),
+            {"uid": user_id},
+        ).fetchall()
+        if not rows:
+            return False
+        if not any(hmac.compare_digest(row.code_hash, code_hash) for row in rows):
+            conn.execute(
+                text("UPDATE password_reset_codes SET attempts = attempts + 1 WHERE id = ANY(:ids)"),
+                {"ids": [row.id for row in rows]},
+            )
+            return False
+        conn.execute(
+            text("UPDATE users SET password_hash = :ph WHERE id = :uid"), {"ph": new_password_hash, "uid": user_id}
+        )
+        conn.execute(
+            text("UPDATE password_reset_codes SET used_at = NOW() WHERE user_id = :uid AND used_at IS NULL"),
+            {"uid": user_id},
+        )
+        conn.execute(text("DELETE FROM sessions WHERE user_id = :uid"), {"uid": user_id})
+    return True
 
 
 # ─── Knowledge Cards ─────────────────────────────────────────────────────────

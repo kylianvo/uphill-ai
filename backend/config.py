@@ -74,6 +74,12 @@ class Config:
     API_PORT: int = int(os.getenv("PORT", "8000"))
     API_HOST: str = os.getenv("HOST", "0.0.0.0")
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    # Outbound email (password reset codes). Empty SMTP_HOST = log and skip sending.
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "465"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    MAIL_FROM: str = os.getenv("MAIL_FROM", "")
     # Public OAuth IDs for the web/Android and native iOS clients.
     GOOGLE_CLIENT_IDS: list[str] = [
         c.strip()

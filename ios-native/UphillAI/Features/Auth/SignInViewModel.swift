@@ -63,6 +63,10 @@ final class SignInViewModel {
         errorMessage = message
     }
 
+    func makeForgotPasswordModel() -> ForgotPasswordViewModel {
+        ForgotPasswordViewModel(auth: auth, session: session, email: trimmedEmail)
+    }
+
     private func run(_ operation: () async throws -> AuthResponse) async {
         isBusy = true
         errorMessage = nil

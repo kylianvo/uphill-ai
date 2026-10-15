@@ -1,3 +1,6 @@
+import hashlib
+import secrets
+
 import bcrypt
 
 
@@ -17,3 +20,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return bcrypt.checkpw(passwd, hashed)
     except Exception:
         return False
+
+
+def generate_reset_code() -> str:
+    return f"{secrets.randbelow(10**6):06d}"
+
+
+def hash_reset_code(code: str) -> str:
+    return hashlib.sha256(code.encode("utf-8")).hexdigest()

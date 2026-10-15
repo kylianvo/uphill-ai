@@ -71,4 +71,29 @@ struct AuthServiceTests {
         let service = AuthService(client: makeStubClient { _ in (500, Data()) })
         await service.logout()
     }
+
+    @Test func forgotPasswordPostsEmailAndLangWithoutToken() async throws {
+        let service = AuthService(client: makeStubClient(token: "stale") { request in
+            #expect(request.url?.path() == "/api/auth/forgot-password")
+            #expect(request.httpMethod == "POST")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+            let sent = try body(request)
+            #expect(sent == ["email": "a@b.c", "lang": "vi"])
+            return (200, Data(#"{"message":"If an account exists for this email, we sent a code."}"#.utf8))
+        })
+        try await service.requestPasswordReset(email: "a@b.c", lang: "vi")
+    }
+
+    @Test func resetPasswordPostsCodeAndNewPassword() async throws {
+        let fixture = try Fixture.data("auth_login.json")
+        let service = AuthService(client: makeStubClient(token: "stale") { request in
+            #expect(request.url?.path() == "/api/auth/reset-password")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+            let sent = try body(request)
+            #expect(sent == ["email": "a@b.c", "code": "012345", "new_password": "secret123"])
+            return (200, fixture)
+        })
+        let response = try await service.resetPassword(email: "a@b.c", code: "012345", newPassword: "secret123")
+        #expect(response.sessionToken == "fixture-session-token")
+    }
 }

@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { useAppAuth } from "../hooks/useAppAuth";
+import ForgotPasswordForm from "../components/ForgotPasswordForm";
 import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
 import { X, XCircle, Warning, Eye, EyeSlash } from '@phosphor-icons/react';
@@ -18,7 +19,8 @@ export default function AuthModal() {
     authTab, setAuthTab,
     showPassword, setShowPassword,
     authLoading, setAuthLoading,
-    handleRegister, handleEmailLogin, handleNativeGoogleSignIn
+    handleRegister, handleEmailLogin, handleNativeGoogleSignIn,
+    requestPasswordReset, resetPassword
   } = useAppAuth();
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
 
@@ -235,6 +237,7 @@ export default function AuthModal() {
 
 
           {/* Tab switcher */}
+          {authTab !== "forgot" && (
 
 
 
@@ -267,6 +270,7 @@ export default function AuthModal() {
 
 
           </div>
+          )}
 
 
 
@@ -274,7 +278,15 @@ export default function AuthModal() {
 
 
 
-          {authTab === "login" ? (
+          {authTab === "forgot" ? (
+            <ForgotPasswordForm
+              lang={lang}
+              initialEmail={emailInput}
+              onRequestCode={requestPasswordReset}
+              onReset={resetPassword}
+              onBack={() => { setAuthTab("login"); setAuthErrorMsg(""); }}
+            />
+          ) : authTab === "login" ? (
 
 
 
@@ -347,6 +359,13 @@ export default function AuthModal() {
 
 
 
+              <button
+                type="button"
+                onClick={() => { setAuthTab("forgot"); setAuthErrorMsg(""); }}
+                style={{ alignSelf: "flex-end", background: "none", border: "none", color: "var(--accent-primary)", fontSize: "12px", fontWeight: 600, cursor: "pointer", minHeight: "44px", padding: 0, marginTop: "-8px" }}
+              >
+                {t("auth_forgot_link")}
+              </button>
               <button type="submit" className="btn btn-primary" style={{ width: "100%", height: "40px", fontSize: "13.5px", marginTop: "4px" }} disabled={authLoading}>
 
 

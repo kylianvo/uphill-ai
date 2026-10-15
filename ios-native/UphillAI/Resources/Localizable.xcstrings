@@ -561,6 +561,16 @@
         }
       }
     },
+    "6-digit code": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã 6 chữ số"
+          }
+        }
+      }
+    },
     "90% Finish": {
       "localizations": {
         "vi": {
@@ -2701,6 +2711,16 @@
         }
       }
     },
+    "Couldn't send the code. Check your connection and try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không gửi được mã. Hãy kiểm tra kết nối rồi thử lại."
+          }
+        }
+      }
+    },
     "Couldn't start adapting this week. Try again.": {
       "localizations": {
         "vi": {
@@ -4021,6 +4041,16 @@
         }
       }
     },
+    "Forgot password?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quên mật khẩu?"
+          }
+        }
+      }
+    },
     "Fresh": {
       "localizations": {
         "vi": {
@@ -4917,6 +4947,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Biết Race thì tôi biết cự ly và độ leo."
+          }
+        }
+      }
+    },
+    "If an account exists for this email, we sent a code. It expires in 15 minutes.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nếu email này có tài khoản, chúng tôi đã gửi mã. Mã hết hạn sau 15 phút."
           }
         }
       }
@@ -6017,6 +6057,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Plan mới"
+          }
+        }
+      }
+    },
+    "New password (8+ characters)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mật khẩu mới (từ 8 ký tự)"
           }
         }
       }
@@ -7601,6 +7651,36 @@
         }
       }
     },
+    "Resend code": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi lại mã"
+          }
+        }
+      }
+    },
+    "Reset and sign in": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đặt lại và đăng nhập"
+          }
+        }
+      }
+    },
+    "Reset password": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đặt lại mật khẩu"
+          }
+        }
+      }
+    },
     "Rest": {
       "localizations": {
         "vi": {
@@ -8147,6 +8227,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chọn mức gắng sức cho Block (1 đến 10)"
+          }
+        }
+      }
+    },
+    "Send code": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi mã"
           }
         }
       }
@@ -9277,6 +9367,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Thay đổi này không hợp lệ."
+          }
+        }
+      }
+    },
+    "That code is wrong or has expired. Request a new one.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã không đúng hoặc đã hết hạn. Hãy yêu cầu mã mới."
           }
         }
       }
@@ -11537,6 +11637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "VĐV · không rõ cách đo"
+          }
+        }
+      }
+    },
+    "Enter your account email and we'll send you a 6-digit code.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập email tài khoản, chúng tôi sẽ gửi cho bạn mã 6 chữ số."
           }
         }
       }
