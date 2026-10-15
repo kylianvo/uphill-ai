@@ -1077,7 +1077,15 @@ class NativeFlowTest {
         ToolHandoff.pacingTargetMinutes = 360.0
         ui.setContent { AppFixture { PaceScreen(api, user, "en", {}) } }
         waitText("42")
-        ui.onNodeWithTag("pace.target").assert(hasAnyDescendant(hasText("360.0")))
+        assertEquals(360f, ui.onNodeWithTag("pace.target").fetchSemanticsNode()
+            .config[androidx.compose.ui.semantics.SemanticsProperties.ProgressBarRangeInfo].current, .01f)
+        val strategy = ui.onNodeWithTag("pace.bias").performScrollTo()
+        strategy.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(-.03f) }
+        ui.onNodeWithText("Conservative Start (Negative Split)").assertExists()
+        strategy.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(.03f) }
+        ui.onNodeWithText("Aggressive Start (Positive Split)").assertExists()
+        strategy.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(.01f) }
+        ui.onNodeWithText("Even Effort (Optimal Economy)").assertExists()
     }
 
     @Test

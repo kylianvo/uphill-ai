@@ -181,9 +181,29 @@ No full simulator matrix or new live-account run was repeated for this small cha
 simulator/screenshot token use. Compare source first, use targeted regressions and a
 small changed-state evidence batch; reuse unchanged captures. No repeated full sweeps.
 
+## Continued Pace controls
+
+The controls now follow the source's target-time/strategy grouping: formatted target
+with a five-minute slider, source bounds, split-bias slider/labels, and weight/start
+fields side by side. Duplicate target entry and strategy chips are removed. The
+course and control cards share the source16dp radius. Existing request, GPX target
+initialization, edited-target preservation and Goal handoff behavior are retained.
+New strategy descriptions have EN/VI resources; VI uses plain energy-economy wording.
+
+Only three targeted device flows were run at font1.3/zero animation: Goal handoff and
+strategy thresholds (1.800s), plus real EN/VI GPX picker/target preservation (6.927s).
+Logs: `/tmp/uphill-pace-controls-{goal,gpx}.log`. Two controls captures were inspected
+in one batch and added. One copy correction replaces generic VI captions with the
+source-specific Thận trọng/Đều/Tấn công. Only the VI GPX flow was repeated (3.917s,
+`/tmp/uphill-pace-copy-confirm.log`) and its control card confirmed. No broader
+retest sweep was run. Device settings restored.
+Benchmark placement/lookup, automatic initial calculation, summary/chart/split results
+and broader error/state parity remain. Do not call the entire Pace feature visually complete.
+
 ## Verification and artifact freshness
 
-The broad baseline below is font checkpoint `39dfca4` (all three CI jobs green).
+The broad test baseline below is font checkpoint `39dfca4` (all three CI jobs green).
+Artifact/evidence entries include the subsequent focused changes described above.
 The subsequent keyboard/shutter change uses the focused checks above. Release lint
 and release unit tests are also run by the packaging script.
 
@@ -199,7 +219,7 @@ and release unit tests are also run by the packaging script.
   passed in each variant afterward (`/tmp/uphill-font-confirm-*.log`).
   The main flow wait was updated from42.0 to42 for source-based integer formatting;
   the selected 360-minute target assertion is retained.
-- **68 normal +58 font1.3/zero-animation fixture captures** refreshed and visually
+- **68 normal +60 font1.3/zero-animation fixture captures** refreshed and visually
   confirmed. Profile navigation remains visible, VI `km/tuần` stays on one line, and
   onboarding/calendar controls fit the inspected states. Accessible capture passed in
   32.306s: `/tmp/uphill-latest-accessible-confirm.log`; settings restored.
@@ -207,16 +227,17 @@ and release unit tests are also run by the packaging script.
   reads LocalConfiguration; local lint passes. The fixed Profile header also required
   removing an obsolete scroll action from the screenshot helper.
 - The latest signed/minified release includes Knowledge presentation, the requested
-  variable body font and keyboard/shutter hardening. Certificate/package/version are checked by the release script;
+  variable body font, keyboard/shutter hardening and Pace controls. Certificate/package/version are checked by the release script;
   `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk` is refreshed after the font confirmation.
   Font checkpoint release passed in2m12s: `/tmp/uphill-font-published-release.log`.
-  Latest hardening release passed in1m18s: `/tmp/uphill-keyboard-release.log`. The font OFL notice is
+  Keyboard/shutter release passed in1m18s: `/tmp/uphill-keyboard-release.log`.
+  Latest Pace release passed in1m2s: `/tmp/uphill-pace-controls-copy-release.log`. The font OFL notice is
   packaged as an asset so resource shrinking retains it. Preserve5556's data when
   installing over it; only the static authenticated-shell result is recorded.
   At font checkpoint39dfca4, install-over and explicit cold launch on5556 restored the authenticated
   shell. The monkey shortcut returned251; explicit `am start -W` succeeded in871ms.
   No account data was cleared or production screenshot saved.
-  The keyboard/shutter APK is refreshed on Desktop but is not reinstalled on5556;
+  The latest APK is refreshed on Desktop but is not reinstalled on5556;
   the change does not touch session storage or networking.
 - The first cold boot opened signed out for an unknown reason. After a fresh Google
   login on the latest APK, controlled force-stop/relaunch, matching-signed APK

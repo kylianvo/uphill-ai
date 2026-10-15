@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
@@ -254,43 +253,15 @@ fun PaceScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
             },
             onRemove = { vm.removeGpx() },
         )
-        ToolPanel("Pacing controls") {
-            Box(Modifier.testTag("pace.target")) {
-                ToolField("Target time (minutes)", target, { target = it })
-            }
-            ToolField("Runner weight (kg)", weight, { weight = it })
-            ToolField("Start time (HH:MM)", clock, { clock = it })
-            ToolOptions(
-                "Split strategy",
-                listOf("Even", "Negative", "Positive"),
-                setOf(if (bias < 0) "Negative" else if (bias > 0) "Positive" else "Even"),
-            ) {
-                bias =
-                    when (it) {
-                        "Negative" -> -.05f
-                        "Positive" -> .05f
-                        else -> 0f
-                    }
-            }
-            Slider(bias, { bias = it }, valueRange = -0.05f..0.05f)
-            Text("${TT("Split bias")}: ${"%.1f".format(bias*100)}%")
-            val d = state.gpx?.totalDistanceKm ?: distance.toDoubleOrNull() ?: 0.0
-            val g = state.gpx?.totalElevationGainM ?: gain.toDoubleOrNull() ?: 0.0
-            if (d > 0) {
-                val bounds = PacingCalculator.sliderBoundsMins(d, g)
-                Text(
-                    "${TT("Suggested range")}: ${GoalTime.format(bounds.first)} – ${GoalTime.format(bounds.second)}"
-                )
-                Slider(
-                    (target.toFloatOrNull() ?: 330f).coerceIn(
-                        bounds.first.toFloat(),
-                        bounds.second.toFloat(),
-                    ),
-                    { target = it.toInt().toString() },
-                    valueRange = bounds.first.toFloat()..bounds.second.toFloat(),
-                )
-            }
-        }
+        val courseDistance = (state.gpx?.totalDistanceKm ?: distance.toDoubleOrNull())?.takeIf { it.isFinite() && it > 0 } ?: 0.0
+        val courseGain = (state.gpx?.totalElevationGainM ?: gain.toDoubleOrNull())?.takeIf { it.isFinite() && it >= 0 } ?: 0.0
+        PaceControlsCard(
+            target = target.toDoubleOrNull()?.takeIf { it.isFinite() } ?: 330.0,
+            bounds = PacingCalculator.sliderBoundsMins(courseDistance, courseGain),
+            bias = bias, weight = weight, clock = clock,
+            onTarget = { target = it.toString() }, onBias = { bias = it },
+            onWeight = { weight = it }, onClock = { clock = it },
+        )
         ToolError(state.error)
         ToolSubmit("Calculate pacing", state.busy, pacingRequest() != null) {
             pacingRequest()?.let { (request, d) -> vm.calculate(request, name, d) }

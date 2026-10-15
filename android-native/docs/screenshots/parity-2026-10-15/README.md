@@ -20,7 +20,7 @@ mono uses FontFamily.Monospace. This differs from the iOS system body face. The 
 now wraps between complete times, verified through rendered text layout. Titles and descriptions from the recorded
 English backend fixtures retain their original language.
 
-Current evidence contains **68 normal and 58 accessible captures**, including welcome,
+Current evidence contains **68 normal and 60 accessible captures**, including welcome,
 goal selection, Road details, race date, shoe rotation, Coach Hub and athlete Profile.
 The final bounded confirmation passed after correcting fixed Profile navigation,
 placeholder/status layout and VI weekly-caption auto-size. New goal/date, rotation and Pace course/imported-GPX
@@ -82,3 +82,12 @@ Latest focused update: six accessible expansion/empty/retry captures reflect the
 keyboard/shutter fix. Unchanged captures, including normal/, remain font baseline
 39dfca4. Four targeted flows passed in43.204s (`/tmp/uphill-keyboard-focused.log`);
 only the expanded-card and retry captures were inspected in this pass.
+
+`accessible/pace-controls-en/vi.png` shows the source-based target/strategy card with
+five-minute target steps, split bias and side-by-side weight/start fields. Only three
+related device flows were run for this update; two captures were inspected once.
+Pace results/charts/benchmark layout remain outside this pass.
+
+The Pace pass used one copy correction and one VI-only confirmation: source-specific
+Thận trọng/Đều/Tấn công captions replace ambiguous shared translations. The GPX
+confirmation passed in3.917s; other screens and flows were not recaptured.

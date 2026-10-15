@@ -52,7 +52,7 @@ internal fun PaceCourseCard(
 ) {
     val haptic = LocalHapticFeedback.current
     val removeLabel = L("Remove GPX file")
-    ToolPanel {
+    ToolPanel(radius = UH.Radius.landing) {
         Text(
             L("COURSE CONFIGURATION"),
             color = UH.muted,

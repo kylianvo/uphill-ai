@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="paceui_conservative_start">Khởi đầu an toàn (Negative Split)</string>
+    <string name="paceui_aggressive_start">Khởi đầu nhanh (Positive Split)</string>
+    <string name="paceui_even_effort">Giữ đều sức (tiết kiệm năng lượng)</string>
+    <string name="paceui_conservative">Thận trọng</string>
+    <string name="paceui_aggressive">Tấn công</string>
+</resources>
