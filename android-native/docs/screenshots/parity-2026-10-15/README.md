@@ -27,18 +27,25 @@ placeholder/status layout and VI weekly-caption auto-size. New goal/date, rotati
 states were inspected against current SwiftUI source. The old Phase2b goal screenshot
 has obsolete choices; the current source's four choices are authoritative.
 
-Reproduce the normal captures from the repository root:
+Reproduce captures on the fixture emulator **5554 only**. Preserve5556's real account.
+Build and install explicitly, then run each class separately; avoid external
+`uiautomator dump` commands while instrumentation owns the accessibility connection.
 
 ```sh
-./android-native/gradlew -p android-native connectedDebugAndroidTest \
-  -PuphillReleaseSigningForDebug=true \
-  -Pandroid.testInstrumentationRunnerArguments.class=ai.uphill.app.VisualEvidenceTest \
-  -Pandroid.testInstrumentationRunnerArguments.captureEvidence=true
+./android-native/gradlew -p android-native assembleDebug assembleDebugAndroidTest \
+  -PuphillReleaseSigningForDebug=true
+adb -s emulator-5554 install -r android-native/app/build/outputs/apk/debug/app-debug.apk
+adb -s emulator-5554 install -r android-native/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+for evidence_test in NativeFlowTest GpxImportFlowTest VisualEvidenceTest; do
+  adb -s emulator-5554 shell am instrument -w \
+    -e class ai.uphill.app.$evidence_test -e captureEvidence true \
+    ai.uphill.app.test/androidx.test.runner.AndroidJUnitRunner
+done
 ```
 
 PNG files are saved under `/sdcard/Download/uphill-evidence/normal/` on the emulator.
 For accessible captures, set font scale 1.3 and animator/window/transition scales zero,
-then add `-Pandroid.testInstrumentationRunnerArguments.captureVariant=accessible`;
+then add `-e captureVariant accessible` to the instrumentation call;
 restore the previous settings afterward.
 
 The `pace-course-*` and `pace-gpx-*` captures exercise the real Downloads document
