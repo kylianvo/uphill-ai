@@ -15,9 +15,10 @@ struct LaunchView: View {
         ZStack(alignment: .top) {
             UH.Palette.surface.ignoresSafeArea()
 
-            LoopingVideo(name: "launch_bg", playing: !reduceMotion)
+            LoopingVideo(name: scheme == .dark ? "launch_bg_dark" : "launch_bg", playing: !reduceMotion)
+                .id(scheme)
                 .ignoresSafeArea()
-                .opacity(shown && scheme == .light ? 1 : 0)  // the fog video is a daylight scene; dark shows the plain surface
+                .opacity(shown ? 1 : 0)
                 .accessibilityHidden(true)
 
             // Keeps the text readable when the fog thins mid-loop.
