@@ -167,6 +167,7 @@ internal fun CalendarGrid(
                                 Modifier.width(44.dp).testTag("calendar.weekHeader"),
                                 style =
                                     androidx.compose.ui.text.TextStyle(
+                                        fontFamily = ai.uphill.app.designsystem.UphillBodyFont,
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                         fontSize = 11.sp,
                                         color = UH.muted,

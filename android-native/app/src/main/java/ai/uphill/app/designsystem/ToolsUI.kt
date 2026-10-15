@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.*
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -71,10 +72,15 @@ fun ToolPage(
 }
 
 @Composable
-fun ToolPanel(title: String? = null, content: @Composable ColumnScope.() -> Unit) {
+fun ToolPanel(
+    title: String? = null,
+    radius: Dp = UH.Radius.panel,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     OutlinedCard(
-        Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(radius),
         colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

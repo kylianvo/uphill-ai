@@ -82,59 +82,71 @@ fun UphillTheme(content: @Composable () -> Unit) {
                 ),
             typography =
                 Typography(
+                    displayLarge = Typography().displayLarge.copy(fontFamily = UphillBodyFont),
+                    displayMedium = Typography().displayMedium.copy(fontFamily = UphillBodyFont),
+                    displaySmall = Typography().displaySmall.copy(fontFamily = UphillBodyFont),
                     headlineLarge =
                         TextStyle(
+                            fontFamily = UphillBodyFont,
                             fontSize = 28.sp,
                             lineHeight = 34.sp,
                             fontWeight = FontWeight.Bold,
                         ),
                     headlineMedium =
                         TextStyle(
+                            fontFamily = UphillBodyFont,
                             fontSize = 28.sp,
                             lineHeight = 34.sp,
                             fontWeight = FontWeight.Bold,
                         ),
                     headlineSmall =
                         TextStyle(
+                            fontFamily = UphillBodyFont,
                             fontSize = 20.sp,
                             lineHeight = 26.sp,
                             fontWeight = FontWeight.SemiBold,
                         ),
                     titleLarge =
                         TextStyle(
+                            fontFamily = UphillBodyFont,
                             fontSize = 20.sp,
                             lineHeight = 26.sp,
                             fontWeight = FontWeight.SemiBold,
                         ),
                     titleMedium =
                         TextStyle(
+                            fontFamily = UphillBodyFont,
                             fontSize = 17.sp,
                             lineHeight = 22.sp,
                             fontWeight = FontWeight.SemiBold,
                         ),
                     titleSmall =
                         TextStyle(
+                            fontFamily = UphillBodyFont,
                             fontSize = 15.sp,
                             lineHeight = 20.sp,
                             fontWeight = FontWeight.SemiBold,
                         ),
-                    bodyLarge = TextStyle(fontSize = 17.sp, lineHeight = 22.sp),
-                    bodyMedium = TextStyle(fontSize = 15.sp, lineHeight = 20.sp),
-                    bodySmall = TextStyle(fontSize = 13.sp, lineHeight = 18.sp),
+                    bodyLarge = TextStyle(fontFamily = UphillBodyFont, fontSize = 17.sp, lineHeight = 22.sp),
+                    bodyMedium = TextStyle(fontFamily = UphillBodyFont, fontSize = 15.sp, lineHeight = 20.sp),
+                    bodySmall = TextStyle(fontFamily = UphillBodyFont, fontSize = 13.sp, lineHeight = 18.sp),
                     labelLarge =
                         TextStyle(
+                            fontFamily = UphillBodyFont,
                             fontSize = 15.sp,
                             lineHeight = 20.sp,
                             fontWeight = FontWeight.SemiBold,
                         ),
                     labelMedium =
                         TextStyle(
+                            fontFamily = UphillBodyFont,
                             fontSize = 13.sp,
                             lineHeight = 18.sp,
                             fontWeight = FontWeight.SemiBold,
                         ),
                     labelSmall =
                         TextStyle(
+                            fontFamily = UphillBodyFont,
                             fontSize = 12.sp,
                             lineHeight = 16.sp,
                             fontWeight = FontWeight.Bold,

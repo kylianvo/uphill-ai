@@ -15,12 +15,12 @@ retain their originating tab selection. The pictured states passed the bounded I
 SwiftUI code where older iOS screenshots differ.
 
 This evidence covers the pictured states. It does not establish complete screen,
-TalkBack, animation or device parity. Android uses its system font in place of SF Pro;
-the launch title shares bundled Plus Jakarta Sans. The large-text workout pace value
+TalkBack, animation or device parity. The user chose bundled variable Plus Jakarta Sans for body and launch text;
+mono uses FontFamily.Monospace. This differs from the iOS system body face. The large-text workout pace value
 now wraps between complete times, verified through rendered text layout. Titles and descriptions from the recorded
 English backend fixtures retain their original language.
 
-Current evidence contains **56 normal and 43 accessible captures**, including welcome,
+Current evidence contains **68 normal and 58 accessible captures**, including welcome,
 goal selection, Road details, race date, shoe rotation, Coach Hub and athlete Profile.
 The final bounded confirmation passed after correcting fixed Profile navigation,
 placeholder/status layout and VI weekly-caption auto-size. New goal/date, rotation and Pace course/imported-GPX
@@ -62,3 +62,18 @@ preserves the token and restores the user; fixture responses contain no real acc
 
 The photo-heavy launch video captures are exported as quality95 JPEG at the original
 1080×2400 size to meet the repository file-size limit; other captures remain PNG.
+
+Knowledge captures include full-card expansion/tags, empty search, source503 retry,
+success and a reader-only attribution list. Admin-only ingestion matches backend
+authorization. Normal and larger-text captures use the same Surface/inset wrapper
+as MainActivity. At font1.3, expanded/empty search content can still extend beneath
+the open keyboard; tests establish the state transition, not full-line visibility.
+This remains an accessibility/state follow-up.
+
+The latest captures use the user-selected Plus Jakarta Sans variable body face
+(weights200–800), including chart and calendar labels. System mono remains explicit.
+
+Font confirmation passed after constraining the search hint to one line with an
+ellipsis. Logs: `/tmp/uphill-font-confirm-{normal,accessible}-{NativeFlowTest,VisualEvidenceTest}.log`.
+The normal launch retry evidence caught a dark loading frame; video-shutter/overlay
+contrast remains an open state check alongside the keyboard issue above.

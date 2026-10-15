@@ -4,7 +4,6 @@ import ai.uphill.app.core.auth.*
 import ai.uphill.app.core.goal.ToolHandoff
 import ai.uphill.app.core.networking.*
 import ai.uphill.app.core.persistence.*
-import ai.uphill.app.designsystem.UphillTheme
 import ai.uphill.app.feature.auth.*
 import ai.uphill.app.feature.chat.ChatScreen
 import ai.uphill.app.feature.gear.GearScreen
@@ -100,7 +99,7 @@ class NativeFlowTest {
     fun signInShowsCredentialFailureWithoutSessionExpiry() {
         val session = SessionStore(MemoryTokenStore(), { null }, {}, {})
         val model = SignInViewModel(AuthService(api), session)
-        ui.setContent { UphillTheme { SignInScreen(model) } }
+        ui.setContent { AppFixture { SignInScreen(model) } }
         ui.onNodeWithTag("signin.email").performTextInput("runner@example.com")
         ui.onNodeWithTag("signin.password").performTextInput("incorrect-password")
         ui.onNodeWithTag("signin.submit").performClick()
@@ -111,7 +110,7 @@ class NativeFlowTest {
     @Test
     fun onboardingSelectsGoalAndReachesTrainingSchedule() {
         ui.setContent {
-            UphillTheme { OnboardingScreen(api, user.copy(onboardingComplete = false), "en", {}) }
+            AppFixture { OnboardingScreen(api, user.copy(onboardingComplete = false), "en", {}) }
         }
         ui.onNodeWithText("Getting started").performClick()
         waitText("Connect your watch")
@@ -122,7 +121,7 @@ class NativeFlowTest {
     @Test
     fun onboardingSeparatesTrailAndRoadGoalsAndCarriesTerrainIntoDetails() {
         ui.setContent {
-            UphillTheme { OnboardingScreen(api, user.copy(onboardingComplete = false), "en", {}) }
+            AppFixture { OnboardingScreen(api, user.copy(onboardingComplete = false), "en", {}) }
         }
         ui.onNodeWithText("This sets the shape of your whole plan.").assertExists()
         ui.onNodeWithText("A trail race").assertExists()
@@ -140,7 +139,7 @@ class NativeFlowTest {
 
     @Test
     fun planOpensWorkoutDetailFromRecordedSchedule() {
-        ui.setContent { UphillTheme { PlanScreen(api, user, "en", {}) } }
+        ui.setContent { AppFixture { PlanScreen(api, user, "en", {}) } }
         waitText("Vietnam Mountain Marathon 42K")
         ui.onNodeWithTag("plan.list").performScrollToNode(hasText("Hill Repeats"))
         ui.onNodeWithText("Hill Repeats").performClick()
@@ -207,7 +206,7 @@ class NativeFlowTest {
                 }
             }
         ui.setContent {
-            UphillTheme {
+            AppFixture {
                 PlanScreen(api, user.copy(role = "coach", isCoach = true), "en", {}, athleteId = 7)
             }
         }
@@ -269,7 +268,7 @@ class NativeFlowTest {
                         }
                     }
             ) {
-                UphillTheme { PlanScreen(api, user, "en", {}) }
+                AppFixture { PlanScreen(api, user, "en", {}) }
             }
         }
         waitText("Vietnam Mountain Marathon 42K")
@@ -318,7 +317,7 @@ class NativeFlowTest {
                 }
             }
         ui.setContent {
-            UphillTheme {
+            AppFixture {
                 ai.uphill.app.feature.coaching.AthletesScreen(
                     api,
                     user.copy(isCoach = true),
@@ -367,7 +366,7 @@ class NativeFlowTest {
                 }
             }
         ui.setContent {
-            UphillTheme {
+            AppFixture {
                 ai.uphill.app.feature.coaching.AthletesScreen(
                     api,
                     user.copy(isCoach = true),
@@ -447,7 +446,7 @@ class NativeFlowTest {
                 }
             }
         ui.setContent {
-            UphillTheme {
+            AppFixture {
                 ai.uphill.app.feature.coaching.AthletesScreen(
                     api,
                     user.copy(isCoach = true),
@@ -502,7 +501,7 @@ class NativeFlowTest {
                 }
             }
         ui.setContent {
-            UphillTheme {
+            AppFixture {
                 ai.uphill.app.feature.coaching.AthletesScreen(
                     api,
                     user.copy(role = "coach", isCoach = true),
@@ -524,7 +523,7 @@ class NativeFlowTest {
     fun setupCalendarEnforcesItsDateWindowAndPreservesTheSelectedDay() {
         var selected: java.time.LocalDate? = null
         ui.setContent {
-            UphillTheme {
+            AppFixture {
                 ai.uphill.app.feature.onboarding.SetupDatePicker(
                     java.time.LocalDate.of(2026, 10, 17),
                     java.time.LocalDate.of(2026, 10, 16),
@@ -564,7 +563,7 @@ class NativeFlowTest {
                 )
             )
         ui.setContent {
-            UphillTheme { ai.uphill.app.feature.me.ProfileShoeRotation(rotation) { selected = it } }
+            AppFixture { ai.uphill.app.feature.me.ProfileShoeRotation(rotation) { selected = it } }
         }
         ui.onNodeWithTag("profile.rotation.daily.image", useUnmergedTree = true).assertExists()
         ui.onNodeWithTag("profile.rotation.tempo.empty", useUnmergedTree = true).assertExists()
@@ -591,7 +590,7 @@ class NativeFlowTest {
                 androidx.compose.ui.platform.LocalDensity provides
                     androidx.compose.ui.unit.Density(density.density, 1.3f),
             ) {
-                UphillTheme { PlanScreen(api, user, "vi", {}) }
+                AppFixture { PlanScreen(api, user, "vi", {}) }
             }
         }
         waitText("Vietnam Mountain Marathon 42K")
@@ -617,7 +616,7 @@ class NativeFlowTest {
                 androidx.compose.ui.platform.LocalDensity provides
                     androidx.compose.ui.unit.Density(density.density, 1.3f)
             ) {
-                UphillTheme {
+                AppFixture {
                     androidx.compose.foundation.layout.Column(
                         androidx.compose.ui.Modifier.width(371.dp)
                     ) {
@@ -689,7 +688,7 @@ class NativeFlowTest {
                         .setHeader("Content-Type", "application/json")
                 }
             }
-        ui.setContent { UphillTheme { PlanScreen(api, user, "en", {}) } }
+        ui.setContent { AppFixture { PlanScreen(api, user, "en", {}) } }
         waitText("HOW DID IT FEEL?")
         ui.onNodeWithTag("detail.feeling.6").performScrollTo().performClick()
         ui.onNodeWithText("Save Log").performScrollTo().performClick()
@@ -708,7 +707,7 @@ class NativeFlowTest {
             kotlinx.coroutines.runBlocking { container.settings.environment(url) }
             ui.waitUntil(10000) { container.api.baseURL() == url }
             container.session.signOut()
-            ui.setContent { UphillTheme { ai.uphill.app.app.RootNav(container) } }
+            ui.setContent { AppFixture { ai.uphill.app.app.RootNav(container) } }
             ui.runOnIdle { container.session.signIn(AuthResponse("fixture-session-only", user)) }
             waitText("Vietnam Mountain Marathon 42K")
             ui.onNode(hasText("Me") and hasClickAction()).performClick()
@@ -751,7 +750,7 @@ class NativeFlowTest {
                         .setHeader("Content-Type", "application/json")
                 }
             }
-        ui.setContent { UphillTheme { PlanScreen(api, user, "en", {}) } }
+        ui.setContent { AppFixture { PlanScreen(api, user, "en", {}) } }
         waitText("Vietnam Mountain Marathon 42K")
         ui.onNodeWithText("Manage").performClick()
         waitText("Sync watch")
@@ -762,7 +761,7 @@ class NativeFlowTest {
 
     @Test
     fun scheduleChangeEnablesRebuildAndAsksForConfirmation() {
-        ui.setContent { UphillTheme { PlanScreen(api, user, "en", {}) } }
+        ui.setContent { AppFixture { PlanScreen(api, user, "en", {}) } }
         waitText("Vietnam Mountain Marathon 42K")
         ui.onNodeWithText("Manage").performClick()
         waitText("Edit schedule and training venues")
@@ -776,7 +775,7 @@ class NativeFlowTest {
 
     @Test
     fun chatStreamsReplyAfterSendingTurn() {
-        ui.setContent { UphillTheme { ChatScreen(api, user, "en", {}) } }
+        ui.setContent { AppFixture { ChatScreen(api, user, "en", {}) } }
         waitText("Can we move tomorrow's tempo run")
         ui.onNodeWithTag("chat.input").performTextInput("How easy should this run be?")
         ui.onNodeWithTag("chat.send").performClick()
@@ -810,7 +809,7 @@ class NativeFlowTest {
                         .setHeader("Content-Type", "application/json")
                 }
             }
-        ui.setContent { UphillTheme { ChatScreen(api, user, "en", {}) } }
+        ui.setContent { AppFixture { ChatScreen(api, user, "en", {}) } }
         waitText("Easy recovery")
         ui.onNodeWithText("Apply").performScrollTo().performClick()
         waitText("applied")
@@ -832,42 +831,143 @@ class NativeFlowTest {
                     return MockResponse().setBody(body)
                 }
             }
-        ui.setContent { UphillTheme { ChatScreen(api, user, "en", {}) } }
+        ui.setContent { AppFixture { ChatScreen(api, user, "en", {}) } }
         waitText("Stable aerobic week.")
         ui.onNodeWithText("Completed the long run.").assertExists()
         ui.onNodeWithText("Keep recovery easy.").assertExists()
     }
 
     @Test
-    fun knowledgeSearchFindsKeyPointsAndWhitespaceKeepsTheLibrary() {
+    fun knowledgeSearchFindsKeyPointsAndWhitespaceKeepsTheLibrary() = verifyKnowledgeLibrary("en")
+
+    @Test
+    fun knowledgeLibraryWorksInVietnamese() = verifyKnowledgeLibrary("vi")
+
+    private fun verifyKnowledgeLibrary(lang: String) {
         val original = server.dispatcher
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 if (request.requestUrl!!.encodedPath == "/api/knowledge/cards") {
                     return MockResponse().setHeader("Content-Type", "application/json").setBody(
-                        """{"cards":[{"id":801,"chapter_title":"Fueling on long runs","summary":"Practise your race plan.","key_points":["Check your sodium budget."],"topic":"Nutrition"},{"id":802,"chapter_title":"Aerobic base","summary":"Keep easy work easy.","key_points":["Build consistency."],"topic":"Training"}]}"""
+                        """{"cards":[{"id":801,"chapter_title":"Fueling on long runs","summary":"Practise your race plan.","key_points":["Check your sodium budget."],"tags":["electrolytes","race-day-fueling"],"topic":"Nutrition"},{"id":802,"chapter_title":"Aerobic base","summary":"Keep easy work easy.","key_points":["Build consistency."],"topic":"Training"}]}"""
                     )
                 }
                 return original.dispatch(request)
             }
         }
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val configuration = android.content.res.Configuration(context.resources.configuration).apply {
+            setLocale(java.util.Locale.forLanguageTag(lang))
+        }
+        val localizedContext = context.createConfigurationContext(configuration)
         ui.setContent {
-            UphillTheme {
-                ai.uphill.app.feature.knowledge.KnowledgeScreen(api, user, "en", {})
+            CompositionLocalProvider(LocalContext provides localizedContext, LocalConfiguration provides configuration) {
+                AppFixture { ai.uphill.app.feature.knowledge.KnowledgeScreen(api, user, lang, {}) }
             }
         }
         waitText("Fueling on long runs")
-        val search = ui.onNode(hasText("Search knowledge") and hasSetTextAction())
+        captureFixtureScreenshot("knowledge-library-$lang")
+        val search = ui.onNodeWithTag("knowledge.search")
         search.performTextInput("SoDiUm")
         ui.onNodeWithText("Fueling on long runs").assertExists()
         ui.onNodeWithText("Aerobic base").assertDoesNotExist()
-        captureFixtureScreenshot("knowledge-keypoint-search-en")
+        ui.onNodeWithText("Check your sodium budget.").assertDoesNotExist()
+        ui.onNodeWithText("Fueling on long runs").performClick()
+        ui.onNodeWithText("Check your sodium budget.").assertExists()
+        ui.onNodeWithText("#electrolytes").performScrollTo().assertIsDisplayed()
+        captureFixtureScreenshot("knowledge-expanded-$lang")
+        ui.onNodeWithText("Fueling on long runs").performClick()
+        ui.onNodeWithText("Check your sodium budget.").assertDoesNotExist()
+        ui.onNodeWithText("#electrolytes").assertDoesNotExist()
+        captureFixtureScreenshot("knowledge-keypoint-search-$lang")
+        search.performTextReplacement("no-matches")
+        waitText(ai.uphill.app.core.localization.localizedText(localizedContext, "No cards matching \"%@\"", "no-matches"))
+        ui.onNodeWithTag("knowledge.empty").performScrollTo()
+        captureFixtureScreenshot("knowledge-empty-$lang")
         search.performTextReplacement("   ")
         ui.onAllNodesWithText("Fueling on long runs").assertCountEquals(1)
         ui.onAllNodesWithText("Aerobic base").assertCountEquals(1)
-        ui.onNode(hasText("Nutrition") and hasClickAction()).performScrollTo().performClick()
+        ui.onNodeWithTag("knowledge.topic.Nutrition").performScrollTo().performClick()
         ui.onNodeWithText("Fueling on long runs").assertExists()
         ui.onNodeWithText("Aerobic base").assertDoesNotExist()
+    }
+
+    @Test
+    fun knowledgeSourceIngestionClearsTheSubmittedLinkAfterSuccess() = verifyKnowledgeSource("en")
+
+    @Test
+    fun knowledgeSourceErrorsKeepTheLinkAndRetryInVietnamese() = verifyKnowledgeSource("vi")
+
+    private fun verifyKnowledgeSource(lang: String) {
+        val original = server.dispatcher
+        val submitted = java.util.concurrent.CopyOnWriteArrayList<String>()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                return when (request.requestUrl!!.encodedPath) {
+                    "/api/rag/sources" -> MockResponse().setBody(
+                        """[{"id":9,"title":"Training notes","type":"pdf","url":"https://example.com/notes.pdf"},{"id":10,"title":"Uphill practice podcast","type":"youtube","url":"https://example.com/podcast"}]"""
+                    )
+                    "/api/rag/link" -> {
+                        submitted.add(org.json.JSONObject(request.body.readUtf8()).getString("url"))
+                        if (submitted.size == 1) MockResponse().setResponseCode(503)
+                        else MockResponse().setBody("{}")
+                    }
+                    else -> original.dispatch(request)
+                }
+            }
+        }
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val configuration = android.content.res.Configuration(context.resources.configuration).apply {
+            setLocale(java.util.Locale.forLanguageTag(lang))
+        }
+        val localizedContext = context.createConfigurationContext(configuration)
+        ui.setContent {
+            CompositionLocalProvider(LocalContext provides localizedContext, LocalConfiguration provides configuration) {
+                AppFixture { ai.uphill.app.feature.knowledge.KnowledgeScreen(api, user.copy(role = "admin"), lang, {}) }
+            }
+        }
+        ui.onNodeWithTag("knowledge.sources.toggle").performScrollTo().performClick()
+        val input = ui.onNodeWithTag("knowledge.source.url")
+        input.performScrollTo().performTextInput("not-a-link")
+        ui.onNodeWithTag("knowledge.source.submit").assertIsNotEnabled()
+        input.performTextReplacement("https://example.com/endurance")
+        ui.onNodeWithTag("knowledge.source.submit").performScrollTo().performClick()
+        val errorText = ai.uphill.app.core.localization.localizedText(localizedContext,
+            "Something went wrong (%lld). Please try again.", 503L)
+        waitText(errorText)
+        assertEquals("https://example.com/endurance",
+            input.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.EditableText].text)
+        ui.onNodeWithTag("knowledge.sources.panel").performScrollTo()
+        ui.onNodeWithText(errorText).assertIsDisplayed()
+        captureFixtureScreenshot("knowledge-source-error-$lang")
+        ui.onNodeWithTag("knowledge.source.submit").performScrollTo().performClick()
+        waitText(ai.uphill.app.core.localization.localizedText(localizedContext, "Source added to indexing queue"))
+        assertEquals(listOf("https://example.com/endurance", "https://example.com/endurance"), submitted.toList())
+        ui.waitUntil(5000) {
+            input.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.EditableText].text.isEmpty()
+        }
+        ui.onNodeWithTag("knowledge.sources.panel").performScrollTo()
+        captureFixtureScreenshot("knowledge-source-success-$lang")
+    }
+
+    @Test
+    fun knowledgeReadersCanBrowseSourcesWithoutAdminIngestionControls() {
+        val original = server.dispatcher
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.requestUrl!!.encodedPath == "/api/rag/sources") return MockResponse().setBody(
+                    """[{"id":9,"title":"Training notes","type":"pdf","url":"https://example.com/notes.pdf"}]"""
+                )
+                return original.dispatch(request)
+            }
+        }
+        ui.setContent { AppFixture { ai.uphill.app.feature.knowledge.KnowledgeScreen(api, user, "en", {}) } }
+        ui.onNodeWithTag("knowledge.sources.toggle").performScrollTo().performClick()
+        waitText("Training notes")
+        ui.onNodeWithTag("knowledge.source.url").assertDoesNotExist()
+        ui.onNodeWithTag("knowledge.source.submit").assertDoesNotExist()
+        ui.onNodeWithTag("knowledge.sources.panel").performScrollTo()
+        captureFixtureScreenshot("knowledge-sources-reader-en")
     }
 
     @Test
@@ -905,7 +1005,7 @@ class NativeFlowTest {
                 val state by session.state.collectAsState()
                 val error by session.restoreError.collectAsState()
                 val scope = rememberCoroutineScope()
-                UphillTheme {
+                AppFixture {
                     if (state is SessionState.SignedIn) androidx.compose.material3.Text("Session restored")
                     else ai.uphill.app.feature.launch.LaunchScreen(
                         error = error?.let { ai.uphill.app.core.localization.localizedError(localizedContext, it) },
@@ -942,7 +1042,7 @@ class NativeFlowTest {
 
     @Test
     fun raceHistoryOpensManualResultForm() {
-        ui.setContent { UphillTheme { RaceHistoryScreen(api, user, "en", {}) } }
+        ui.setContent { AppFixture { RaceHistoryScreen(api, user, "en", {}) } }
         waitText("Race history")
         ui.onNodeWithText("Add race").performClick()
         waitText("Race name")
@@ -951,7 +1051,7 @@ class NativeFlowTest {
     @Test
     fun paceKeepsSelectedGoalWhenPlanLoads() {
         ToolHandoff.pacingTargetMinutes = 360.0
-        ui.setContent { UphillTheme { PaceScreen(api, user, "en", {}) } }
+        ui.setContent { AppFixture { PaceScreen(api, user, "en", {}) } }
         waitText("42")
         ui.onNodeWithTag("pace.target").assert(hasAnyDescendant(hasText("360.0")))
     }
@@ -959,14 +1059,14 @@ class NativeFlowTest {
     @Test
     fun nutritionKeepsPacingDurationWhenPlanLoads() {
         ToolHandoff.fuelingHours = 6.0
-        ui.setContent { UphillTheme { NutritionScreen(api, user, "en", {}) } }
+        ui.setContent { AppFixture { NutritionScreen(api, user, "en", {}) } }
         waitText("42.0")
         ui.onNodeWithTag("nutrition.duration").assert(hasAnyDescendant(hasText("6.0")))
     }
 
     @Test
     fun shoeRotationOpensSlotEditor() {
-        ui.setContent { UphillTheme { GearScreen(api, user, "en", {}) } }
+        ui.setContent { AppFixture { GearScreen(api, user, "en", {}) } }
         waitText("Gear Vault")
         ui.onNodeWithText("Shoe rotation").performClick()
         waitText("daily")

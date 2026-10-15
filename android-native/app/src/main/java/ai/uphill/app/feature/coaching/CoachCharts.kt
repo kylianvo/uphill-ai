@@ -2,6 +2,7 @@ package ai.uphill.app.feature.coaching
 
 import ai.uphill.app.core.coaching.*
 import ai.uphill.app.core.localization.L
+import ai.uphill.app.designsystem.UphillBodyFont
 import ai.uphill.app.designsystem.UH
 import android.graphics.Paint
 import androidx.compose.foundation.BorderStroke
@@ -23,6 +24,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -33,6 +35,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun CoachCharts(overview: CoachOverview) {
+    val chartTypeface = LocalFontFamilyResolver.current.resolve(UphillBodyFont).value as android.graphics.Typeface
     Column(
         Modifier.fillMaxWidth().testTag("coach.charts"),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -57,6 +60,7 @@ internal fun CoachCharts(overview: CoachOverview) {
                     val width = size.width - left - 8.dp.toPx()
                     val paint =
                         Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                            typeface = chartTypeface
                             color = UH.muted.toArgb()
                             textSize = 10.sp.toPx()
                         }
@@ -149,6 +153,7 @@ internal fun CoachCharts(overview: CoachOverview) {
                 val column = (size.width - left) / 7
                 val paint =
                     Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        typeface = chartTypeface
                         color = UH.secondary.toArgb()
                         textSize = 10.sp.toPx()
                         textAlign = Paint.Align.CENTER

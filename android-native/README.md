@@ -48,3 +48,8 @@ saved athlete notes are returned, and omitted API keys survive profile edits.
 See [handoff](docs/HANDOFF.md) for verification and remaining manual checks, and
 [emulator evidence](docs/screenshots/parity-2026-10-15/README.md) for EN/VI captures.
 The PR remains draft while complete iOS parity and live OAuth/device checks are pending.
+
+Body typography uses the bundled Plus Jakarta Sans variable font (weight axis200–800),
+as requested. Monospaced labels retain `FontFamily.Monospace`. The same font file is
+bundled by iOS for launch, while iOS body text uses its platform face; this choice
+does not establish exact iOS glyph matching. See [font license](licenses/README.md).

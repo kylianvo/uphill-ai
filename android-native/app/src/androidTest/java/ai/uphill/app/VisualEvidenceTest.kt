@@ -6,7 +6,6 @@ import ai.uphill.app.core.auth.AuthResponse
 import ai.uphill.app.core.auth.User
 import ai.uphill.app.core.localization.localizedText
 import ai.uphill.app.core.networking.JSONCoding
-import ai.uphill.app.designsystem.UphillTheme
 import android.content.res.Configuration
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.compose.runtime.CompositionLocalProvider
@@ -158,7 +157,7 @@ class VisualEvidenceTest {
                     LocalContext provides context.createConfigurationContext(configuration),
                     LocalConfiguration provides configuration,
                 ) {
-                    UphillTheme { RootNav(container) }
+                    AppFixture { RootNav(container) }
                 }
             }
             if (variant != "coaching") capture("sign-in", "en")
@@ -247,7 +246,7 @@ class VisualEvidenceTest {
                     capture("me", lang)
                     ui.onNodeWithTag("profile.rotation").performScrollTo()
                     capture("shoe-rotation", lang)
-                    if (variant == "normal") {
+                    if (variant == "normal" || variant == "accessible") {
                         for ((name, label) in
                             listOf(
                                 "pace" to "Pace Strategy",
@@ -256,7 +255,7 @@ class VisualEvidenceTest {
                                 "gear" to "Gear Vault",
                                 "knowledge" to "Knowledge Hub",
                                 "race-history" to "Race history",
-                            )) {
+                            ).filter { variant == "normal" || it.first == "knowledge" }) {
                             tab("Me", lang)
                             waitText(localized(label, lang))
                             ui.onNodeWithText(localized(label, lang))

@@ -19,7 +19,8 @@ The Kotlin/Compose port covers auth, onboarding/generation, Plan, coach chat,
 Goal/Gear/Nutrition/Pace/Knowledge, race history, COROS and coaching.
 Package `ai.uphill.app`, version 2.0.0/code10, min26/target36, existing signing key.
 Full feature and visual parity are not yet established. Keep PR #127 draft.
-The onboarding checkpoint `fb8f13e` passed all three GitHub test jobs.
+All three GitHub test jobs passed at `69e166c`; its backend COROS lifecycle failure
+passed on rerun without code changes. Fresh checks run for the next push.
 
 The earlier pass adds:
 - Scoped coach workout detail Edit/Approve/Remove and coach/athlete note threads.
@@ -124,28 +125,81 @@ See `docs/PARITY.md` for the area-by-area inventory against iOS main `5597527`.
   version verified (`/tmp/uphill-recovery-signed-release.log`). The Desktop APK is
   refreshed. GitHub checks at the prior Pace checkpoint `e2bf53a` all passed.
 
+## Continued Knowledge Hub presentation
+
+The Knowledge Hub follows the current SwiftUI header/search, daily widget,
+topic icons/pills/counts, full-card expansion with tags, empty state and source rows.
+Training cards use16dp; the daily wrapper uses12dp. Card motion maps the source
+.3s/.8 spring to stiffness440/damping.8; sources use320/1. Reduced motion skips
+transitions. Search includes key points and treats whitespace as an empty query.
+
+EN/VI source503→retry checks retain the URL on failure and clear it on success.
+Knowledge retains typed exceptions and localizes fallback errors beside the form.
+The source form is admin-only, matching `/api/rag/link` authorization; signed-in
+readers can browse attribution without an unusable ingestion control. This deliberately
+corrects the iOS form's unconditional visibility. No backend changes were needed.
+The inherited VI count said “comments”; a feature string now says “knowledge cards”.
+
+The first batched inspection found a wrapping URL placeholder and incomplete keyboard
+framing in direct-screen test captures. The placeholder now truncates to one line.
+A shared test-only AppFixture mirrors MainActivity's Theme/Surface/safeDrawingPadding;
+Native, GPX and visual tests now use the app's inset handling. No production keyboard
+policy was changed. Whole-card scroll targets frame expansion/empty/source evidence.
+
+## Requested body-font change
+
+The user supplied `ios-native/UphillAI/Resources/Fonts/PlusJakartaSans.ttf` and chose
+Plus Jakarta Sans for Android body text, with platform `FontFamily.Monospace` for mono.
+Android already bundled the exact same file as `res/font/plus_jakarta_sans.ttf`.
+Its variable `wght` axis is200–800 (default400). The theme explicitly maps each
+100-weight step with FontVariation.weight; all Material typography slots, launch,
+calendar BasicText and native Canvas chart labels use it. Existing mono overrides
+remain platform-specific. This is the user's body-face choice, not an exact match to
+iOS's system body face. System mono glyphs can also vary by Android device.
+Font SHA-256: `89b3fb38aa0d275d7a731d0d817a4f1622b316b4d7fbdedcf02ee9099ff68bc8`.
+
+The bounded Knowledge confirmation leaves one visible limitation: at font1.3, an
+expanded search result or empty card can extend beneath the open keyboard. Source
+error/retry messages are visible after scrolling. The fixture tests validate the
+expansion state and actions, not complete visibility of every expanded line. The manifest currently omits adjustResize, which Android
+[documents as necessary for IME insets](https://developer.android.com/develop/ui/compose/system/setup-e2e).
+Confirm actual-activity and test-host sizing before changing it. Follow
+up on keyboard/focus behavior in the remaining accessibility/state audit; do not
+claim full keyboard/TalkBack parity from these captures.
+One normal launch retry capture also caught a dark video frame with weak text
+contrast; launch overlay/video readiness needs a separate state check before release.
+The bundled Media3 PlayerView layout uses a black exo_shutter by default; investigate
+using the app surface color while the first frame loads.
+
 ## Verification and artifact freshness
 
 - **Lint, all 93 debug and 93 release JVM tests passed.** Converter four tests passed; catalog has
   1,469 EN/VI entries. `git diff --check` passed.
-- **31 instrumentation tests passed across isolated runs**: 28 NativeFlow tests
-  (55.376s), two real GPX picker tests (6.356s), and app-shell screenshot capture
-  (68.106s). Logs: `/tmp/uphill-recovery-final-native.log`,
-  `/tmp/uphill-pace-final-gpx-device.log`, `/tmp/uphill-pace-final-visual.log`.
+- **35 instrumentation tests passed across isolated runs**: 32 NativeFlow tests, two real GPX picker tests, and app-shell capture.
+  The font update reruns this matrix plus seven selected larger-text native tests,
+  both GPX flows and app-shell capture. Normal:32 tests/140.234s, GPX2/17.510s,
+  shell1/68.100s. Larger text:7 selected native/20.388s, GPX2/7.677s, shell1/23.791s.
+  Logs: `/tmp/uphill-font-{normal,accessible}-*.log`. The single font correction
+  truncates the search hint to one line; five Knowledge regressions and shell capture
+  passed in each variant afterward (`/tmp/uphill-font-confirm-*.log`).
   The main flow wait was updated from42.0 to42 for source-based integer formatting;
   the selected 360-minute target assertion is retained.
-- **56 normal +43 font1.3/zero-animation fixture captures** refreshed and visually
+- **68 normal +58 font1.3/zero-animation fixture captures** refreshed and visually
   confirmed. Profile navigation remains visible, VI `km/tuần` stays on one line, and
   onboarding/calendar controls fit the inspected states. Accessible capture passed in
   32.306s: `/tmp/uphill-latest-accessible-confirm.log`; settings restored.
 - The CI lint error was a test reading configuration through LocalContext. It now
   reads LocalConfiguration; local lint passes. The fixed Profile header also required
   removing an obsolete scroll action from the screenshot helper.
-- Latest signed/minified release including search/session recovery built in1m31s,
-  with fixture5554 closed. Log: `/tmp/uphill-recovery-signed-release.log`. Certificate, package and
-  version verified; `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk` includes this pass.
-  Installed over the signed release on5556 and cold-launched: authenticated shell
-  restored. No account data was cleared.
+- The latest signed/minified release includes Knowledge presentation and the requested
+  variable body font. Certificate/package/version are checked by the release script;
+  `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk` is refreshed after the font confirmation.
+  Release build passed in2m12s: `/tmp/uphill-font-published-release.log`. The font OFL notice is
+  packaged as an asset so resource shrinking retains it. Preserve5556's data when
+  installing over it; only the static authenticated-shell result is recorded.
+  Install-over and explicit cold activity launch on5556 restored the authenticated
+  shell. The monkey shortcut returned251; explicit `am start -W` succeeded in871ms.
+  No account data was cleared or production screenshot saved.
 - The first cold boot opened signed out for an unknown reason. After a fresh Google
   login on the latest APK, controlled force-stop/relaunch, matching-signed APK
   replacement/relaunch and full emulator reboot all restored the authenticated
@@ -192,7 +246,8 @@ This continuation cold-booted/tested5554 successfully, restored settings and clo
 before R8. Do not wipe either AVD; boot 5556 only for read-only release smoke.
 In the continuation, 5556 passed controlled session persistence through full reboot;
 5554 was restarted for isolated GPX and screenshot checks. Keep its settings restored.
-UI runner uninstalls main/test APKs; reinstall before standalone smoke checks.
+The Gradle UI runner can uninstall main/test APKs; use the explicit5554-only manual
+instrumentation commands in the capture index for account-safe fixture checks.
 The owned live backend is now stopped. It used port8016 and isolated database `uphill_android_native_oct15`
 on the local PostgreSQL container at port5433. Source is this worktree; runtime is
 main checkout's backend virtualenv. No real Gemini key is configured. Launch helper:
@@ -201,7 +256,7 @@ Port8000 belongs to unrelated work; do not stop or reuse it.
 
 From the checkout:
 ```sh
-./android-native/gradlew -p android-native lint testDebugUnitTest testReleaseUnitTest assembleDebug connectedDebugAndroidTest -PuphillReleaseSigningForDebug=true
+./android-native/gradlew -p android-native lint testDebugUnitTest testReleaseUnitTest assembleDebug -PuphillReleaseSigningForDebug=true
 cd android-native
 ./scripts/build_release_apk.sh
 ```

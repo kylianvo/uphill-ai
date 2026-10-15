@@ -3,7 +3,6 @@ package ai.uphill.app
 import ai.uphill.app.core.auth.User
 import ai.uphill.app.core.networking.APIClient
 import ai.uphill.app.core.networking.MemoryTokenStore
-import ai.uphill.app.designsystem.UphillTheme
 import ai.uphill.app.feature.pace.PaceScreen
 import ai.uphill.app.core.localization.localizedText
 import android.content.ContentValues
@@ -81,7 +80,7 @@ class GpxImportFlowTest {
                     LocalConfiguration provides configuration,
                     LocalActivityResultRegistryOwner provides registry,
                 ) {
-                    UphillTheme { PaceScreen(api, User(7, "fixture@example.com", "Runner"), lang, {}) }
+                    AppFixture { PaceScreen(api, User(7, "fixture@example.com", "Runner"), lang, {}) }
                 }
             }
             fun capture(state: String) {
