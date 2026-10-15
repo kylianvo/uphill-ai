@@ -101,25 +101,48 @@ See `docs/PARITY.md` for the area-by-area inventory against iOS main `5597527`.
   The earlier combined capture was interrupted by an external UI hierarchy probe;
   avoid running `uiautomator dump` while instrumentation owns UiAutomation.
 
+## Continued search and session recovery pass
+
+- Knowledge Hub now searches key points as well as title, summary and tags. Whitespace
+  searches keep all cards and hide Daily Insight like iOS; topic filtering still applies.
+  A failing device regression reproduced the omitted key point, then passed after the fix.
+  Evidence: `normal/knowledge-keypoint-search-en.png` uses a synthetic sodium-only point.
+- Session restore now keeps the token after HTTP/decoding/server errors and network
+  failure without a cached user. Only unauthorized restore clears the session. A cached
+  user still supports offline restore. Errors clear on retry/success/sign-out; cancellation
+  propagates. Two failing JVM regressions reproduced token loss before the fix.
+- RootNav presents the source-based launch error and Try again action. HTTP fallback
+  status messages use the existing EN/VI catalog. The device tests exercise503→200,
+  retained Authorization header, localized retry and successful restoration in EN/VI.
+  Three selective flows passed (including search) in11.11s. Final NativeFlow:
+  **28 tests passed in55.376s** (`/tmp/uphill-recovery-final-native.log`). EN/VI
+  font1.3/zero-animation retry checks passed in3.899s
+  (`/tmp/uphill-recovery-accessible.log`); settings restored. No new translations.
+- This source difference could cause sign-out after a transient error. No evidence
+  attributes the earlier unexplained cold-boot sign-out to this cause.
+- Latest signed release includes this pass: build passed in1m31s, certificate/package/
+  version verified (`/tmp/uphill-recovery-signed-release.log`). The Desktop APK is
+  refreshed. GitHub checks at the prior Pace checkpoint `e2bf53a` all passed.
+
 ## Verification and artifact freshness
 
-- **Lint, all 91 debug and 91 release JVM tests passed.** Converter four tests passed; catalog has
+- **Lint, all 93 debug and 93 release JVM tests passed.** Converter four tests passed; catalog has
   1,469 EN/VI entries. `git diff --check` passed.
-- **28 instrumentation tests passed across isolated runs**: 25 NativeFlow tests
-  (56.984s), two real GPX picker tests (6.356s), and app-shell screenshot capture
-  (68.106s). Logs: `/tmp/uphill-pace-confirm-native.log`,
+- **31 instrumentation tests passed across isolated runs**: 28 NativeFlow tests
+  (55.376s), two real GPX picker tests (6.356s), and app-shell screenshot capture
+  (68.106s). Logs: `/tmp/uphill-recovery-final-native.log`,
   `/tmp/uphill-pace-final-gpx-device.log`, `/tmp/uphill-pace-final-visual.log`.
   The main flow wait was updated from42.0 to42 for source-based integer formatting;
   the selected 360-minute target assertion is retained.
-- **53 normal +41 font1.3/zero-animation fixture captures** refreshed and visually
+- **56 normal +43 font1.3/zero-animation fixture captures** refreshed and visually
   confirmed. Profile navigation remains visible, VI `km/tuần` stays on one line, and
   onboarding/calendar controls fit the inspected states. Accessible capture passed in
   32.306s: `/tmp/uphill-latest-accessible-confirm.log`; settings restored.
 - The CI lint error was a test reading configuration through LocalContext. It now
   reads LocalConfiguration; local lint passes. The fixed Profile header also required
   removing an obsolete scroll action from the screenshot helper.
-- Latest signed/minified release including the Pace pass built in1m5s, with fixture
-  5554 closed. Log: `/tmp/uphill-pace-signed-release.log`. Certificate, package and
+- Latest signed/minified release including search/session recovery built in1m31s,
+  with fixture5554 closed. Log: `/tmp/uphill-recovery-signed-release.log`. Certificate, package and
   version verified; `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk` includes this pass.
   Installed over the signed release on5556 and cold-launched: authenticated shell
   restored. No account data was cleared.

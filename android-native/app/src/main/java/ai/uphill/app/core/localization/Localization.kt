@@ -39,4 +39,6 @@ fun localizedText(context: Context, key: String, vararg args: Any): String {
 }
 
 fun localizedError(context: Context, error: Throwable): String =
-    localizedText(context, error.message ?: "Something went wrong. Please try again.")
+    if (error is APIError.Http && error.serverMessage == null)
+        localizedText(context, "Something went wrong (%lld). Please try again.", error.status.toLong())
+    else localizedText(context, error.message ?: "Something went wrong. Please try again.")

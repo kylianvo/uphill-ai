@@ -47,6 +47,31 @@ class SessionStoreTest {
     }
 
     @Test
+    fun `server failure keeps the token and permits a successful restore retry`() = runTest {
+        val user = JSONCoding.json.decodeFromString<User>(fixture("auth_me.json"))
+        val tokens = MemoryTokenStore("valid")
+        var cleared = false
+        val session = SessionStore(tokens, { user }, {}, { cleared = true })
+        session.restore { throw APIError.Http(503) }
+        assertEquals(SessionState.Restoring, session.state.value)
+        assertEquals("valid", tokens.read())
+        assertFalse(cleared)
+        assertTrue(session.restoreError.value is APIError.Http)
+        session.restore { user }
+        assertNull(session.restoreError.value)
+        assertEquals(user, (session.state.value as SessionState.SignedIn).user)
+    }
+
+    @Test
+    fun `network failure without cache retains the token for retry`() = runTest {
+        val tokens = MemoryTokenStore("valid")
+        val session = SessionStore(tokens, { null }, {}, {})
+        session.restore { throw APIError.Transport(java.io.IOException()) }
+        assertEquals(SessionState.Restoring, session.state.value)
+        assertEquals("valid", tokens.read())
+    }
+
+    @Test
     fun `login stores new token and sign out clears local data`() {
         var cleared = false
         val tokens = MemoryTokenStore()

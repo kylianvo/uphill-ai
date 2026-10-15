@@ -6,7 +6,9 @@ sealed class APIError(message: String) : Exception(message) {
     class Unauthorized : APIError("Your session has expired. Please sign in again.")
 
     class Http(val status: Int, message: String? = null, val code: String? = null) :
-        APIError(message ?: "Something went wrong ($status). Please try again.")
+        APIError(message ?: "Something went wrong ($status). Please try again.") {
+        val serverMessage: String? = message
+    }
 
     class ScheduleGuard(val status: Int, val code: String, val params: Map<String, String>) :
         APIError(code)

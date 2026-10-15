@@ -1,6 +1,7 @@
 package ai.uphill.app.core.auth
 
 import ai.uphill.app.core.networking.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -23,18 +24,27 @@ class SessionStore(
             if (tokens.read() == null) SessionState.SignedOut else SessionState.Restoring
         )
     val state = mutable.asStateFlow()
+    private val mutableRestoreError = MutableStateFlow<Throwable?>(null)
+    val restoreError = mutableRestoreError.asStateFlow()
 
     suspend fun restore(me: suspend () -> User) {
+        mutableRestoreError.value = null
         if (tokens.read() == null) {
             mutable.value = SessionState.SignedOut
             return
         }
         try {
             updateUser(me())
-        } catch (e: APIError.Transport) {
-            load()?.let { mutable.value = SessionState.SignedIn(it) } ?: signOut()
-        } catch (e: APIError) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: APIError.Unauthorized) {
             signOut()
+        } catch (e: APIError.Transport) {
+            val cached = load()
+            if (cached != null) mutable.value = SessionState.SignedIn(cached)
+            else mutableRestoreError.value = e
+        } catch (e: Exception) {
+            mutableRestoreError.value = e
         }
     }
 
@@ -44,11 +54,13 @@ class SessionStore(
     }
 
     fun updateUser(user: User) {
+        mutableRestoreError.value = null
         save(user)
         mutable.value = SessionState.SignedIn(user)
     }
 
     fun signOut() {
+        mutableRestoreError.value = null
         tokens.write(null)
         clear()
         mutable.value = SessionState.SignedOut

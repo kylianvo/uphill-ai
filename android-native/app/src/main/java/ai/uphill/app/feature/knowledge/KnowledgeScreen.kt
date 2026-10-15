@@ -93,7 +93,7 @@ fun KnowledgeScreen(api: APIClient, user: User, lang: String, onNavigate: (Strin
         ToolError(state.error)
         if (state.busy)
             LinearProgressIndicator(modifier = androidx.compose.ui.Modifier.fillMaxWidth())
-        if (search.isBlank() && topic == "All")
+        if (search.isEmpty() && topic == "All")
             state.cards
                 .firstOrNull { it.id == dailyCardId }
                 ?.let { featured ->
@@ -110,8 +110,10 @@ fun KnowledgeScreen(api: APIClient, user: User, lang: String, onNavigate: (Strin
         val filtered =
             state.cards.filter {
                 (topic == "All" || it.topic.equals(topic, true)) &&
-                    ("${it.chapterTitle} ${it.summary} ${it.tags.joinToString()}"
-                        .contains(search, true))
+                    (search.isBlank() ||
+                        "${it.chapterTitle} ${it.summary} ${it.tags.joinToString()}"
+                            .contains(search, true) ||
+                        it.keyPoints.any { point -> point.contains(search, true) })
             }
         if (filtered.isEmpty() && !state.busy) Text(TT("No knowledge cards found."))
         filtered.forEach { card -> ToolPanel { KnowledgeCardBody(card) } }

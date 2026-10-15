@@ -2,6 +2,7 @@ package ai.uphill.app.feature.launch
 
 import ai.uphill.app.R
 import ai.uphill.app.core.localization.L
+import ai.uphill.app.designsystem.PrimaryButton
 import ai.uphill.app.designsystem.LocalReduceMotion
 import ai.uphill.app.designsystem.UH
 import android.net.Uri
@@ -17,6 +18,9 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -34,7 +38,7 @@ import androidx.media3.ui.PlayerView
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-fun LaunchScreen() {
+fun LaunchScreen(error: String? = null, onRetry: () -> Unit = {}) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val reduceMotion = LocalReduceMotion.current
@@ -127,16 +131,30 @@ fun LaunchScreen() {
                 color = UH.secondary,
             )
             Spacer(Modifier.height(24.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                Text(
-                    L("Loading your training"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = UH.secondary,
-                )
+            if (error != null) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        error,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = UH.danger,
+                    )
+                    PrimaryButton(onClick = onRetry, modifier = Modifier.widthIn(max = 220.dp).fillMaxWidth()) {
+                        Text(L("Try again"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Text(
+                        L("Loading your training"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = UH.secondary,
+                    )
+                }
             }
         }
     }

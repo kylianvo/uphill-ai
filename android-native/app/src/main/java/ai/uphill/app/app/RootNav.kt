@@ -2,6 +2,7 @@ package ai.uphill.app.app
 
 import ai.uphill.app.core.auth.*
 import ai.uphill.app.core.localization.L
+import ai.uphill.app.core.localization.localizedError
 import ai.uphill.app.core.plan.TrainingNavigation
 import ai.uphill.app.designsystem.LocalReduceMotion
 import ai.uphill.app.designsystem.UH
@@ -28,6 +29,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -43,7 +45,14 @@ fun RootNav(container: AppContainer) {
     val scope = rememberCoroutineScope()
     val transitionDuration = if (LocalReduceMotion.current) 0 else 350
     when (val value = session) {
-        SessionState.Restoring -> LaunchScreen()
+        SessionState.Restoring -> {
+            val error by container.session.restoreError.collectAsState()
+            val context = LocalContext.current
+            LaunchScreen(
+                error = error?.let { localizedError(context, it) },
+                onRetry = { scope.launch { container.session.restore { container.auth.me() } } },
+            )
+        }
         SessionState.SignedOut -> {
             val model: SignInViewModel =
                 viewModel(

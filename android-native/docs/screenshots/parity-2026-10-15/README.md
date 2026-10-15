@@ -20,7 +20,7 @@ the launch title shares bundled Plus Jakarta Sans. The large-text workout pace v
 now wraps between complete times, verified through rendered text layout. Titles and descriptions from the recorded
 English backend fixtures retain their original language.
 
-Current evidence contains **53 normal and 41 accessible captures**, including welcome,
+Current evidence contains **56 normal and 43 accessible captures**, including welcome,
 goal selection, Road details, race date, shoe rotation, Coach Hub and athlete Profile.
 The final bounded confirmation passed after correcting fixed Profile navigation,
 placeholder/status layout and VI weekly-caption auto-size. New goal/date, rotation and Pace course/imported-GPX
@@ -47,3 +47,11 @@ target initialization. These dedicated Pace captures omit the app shell bottom b
 `normal/pace-*` captures show the route inside the app shell. The normal/large-text
 confirmation includes EN/VI imported metadata and integer gain formatting. Runner
 weight, pacing controls, profile charts and split results still need broader iOS comparison.
+
+`knowledge-keypoint-search-en.png` demonstrates matching only a card key point with
+mixed-case input. `session-restore-error-en/vi.jpg` shows the localized503 retry state
+at normal and font1.3/zero-animation settings. The device checks verify that retry
+preserves the token and restores the user; fixture responses contain no real account.
+
+The photo-heavy launch video captures are exported as quality95 JPEG at the original
+1080×2400 size to meet the repository file-size limit; other captures remain PNG.

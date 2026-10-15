@@ -14,10 +14,14 @@ import ai.uphill.app.feature.pace.PaceScreen
 import ai.uphill.app.feature.plan.PlanScreen
 import ai.uphill.app.feature.racehistory.RaceHistoryScreen
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
+import kotlinx.coroutines.launch
 import okhttp3.mockwebserver.*
 import org.junit.*
 import org.junit.Assert.*
@@ -832,6 +836,108 @@ class NativeFlowTest {
         waitText("Stable aerobic week.")
         ui.onNodeWithText("Completed the long run.").assertExists()
         ui.onNodeWithText("Keep recovery easy.").assertExists()
+    }
+
+    @Test
+    fun knowledgeSearchFindsKeyPointsAndWhitespaceKeepsTheLibrary() {
+        val original = server.dispatcher
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.requestUrl!!.encodedPath == "/api/knowledge/cards") {
+                    return MockResponse().setHeader("Content-Type", "application/json").setBody(
+                        """{"cards":[{"id":801,"chapter_title":"Fueling on long runs","summary":"Practise your race plan.","key_points":["Check your sodium budget."],"topic":"Nutrition"},{"id":802,"chapter_title":"Aerobic base","summary":"Keep easy work easy.","key_points":["Build consistency."],"topic":"Training"}]}"""
+                    )
+                }
+                return original.dispatch(request)
+            }
+        }
+        ui.setContent {
+            UphillTheme {
+                ai.uphill.app.feature.knowledge.KnowledgeScreen(api, user, "en", {})
+            }
+        }
+        waitText("Fueling on long runs")
+        val search = ui.onNode(hasText("Search knowledge") and hasSetTextAction())
+        search.performTextInput("SoDiUm")
+        ui.onNodeWithText("Fueling on long runs").assertExists()
+        ui.onNodeWithText("Aerobic base").assertDoesNotExist()
+        captureFixtureScreenshot("knowledge-keypoint-search-en")
+        search.performTextReplacement("   ")
+        ui.onAllNodesWithText("Fueling on long runs").assertCountEquals(1)
+        ui.onAllNodesWithText("Aerobic base").assertCountEquals(1)
+        ui.onNode(hasText("Nutrition") and hasClickAction()).performScrollTo().performClick()
+        ui.onNodeWithText("Fueling on long runs").assertExists()
+        ui.onNodeWithText("Aerobic base").assertDoesNotExist()
+    }
+
+    @Test
+    fun sessionRestoreShowsRetryWithoutClearingTheToken() = verifyRestoreRetry("en")
+
+    @Test
+    fun sessionRestoreShowsVietnameseRetry() = verifyRestoreRetry("vi")
+
+    private fun verifyRestoreRetry(lang: String) {
+        val original = server.dispatcher
+        val attempts = java.util.concurrent.atomic.AtomicInteger()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.requestUrl!!.encodedPath == "/api/auth/me") {
+                    assertEquals("Bearer fixture-session-only", request.getHeader("Authorization"))
+                    return if (attempts.getAndIncrement() == 0) MockResponse().setResponseCode(503)
+                    else MockResponse().setHeader("Content-Type", "application/json").setBody(fixture("auth_me.json"))
+                }
+                return original.dispatch(request)
+            }
+        }
+        val tokens = MemoryTokenStore("fixture-session-only")
+        var cleared = false
+        val session = SessionStore(tokens, { null }, {}, { cleared = true })
+        val auth = AuthService(APIClient({ server.url("/").toString() }, tokens))
+        kotlinx.coroutines.runBlocking { session.restore { auth.me() } }
+        assertEquals(SessionState.Restoring, session.state.value)
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val configuration = android.content.res.Configuration(context.resources.configuration).apply {
+            setLocale(java.util.Locale.forLanguageTag(lang))
+        }
+        val localizedContext = context.createConfigurationContext(configuration)
+        ui.setContent {
+            CompositionLocalProvider(LocalContext provides localizedContext, LocalConfiguration provides configuration) {
+                val state by session.state.collectAsState()
+                val error by session.restoreError.collectAsState()
+                val scope = rememberCoroutineScope()
+                UphillTheme {
+                    if (state is SessionState.SignedIn) androidx.compose.material3.Text("Session restored")
+                    else ai.uphill.app.feature.launch.LaunchScreen(
+                        error = error?.let { ai.uphill.app.core.localization.localizedError(localizedContext, it) },
+                        onRetry = { scope.launch { session.restore { auth.me() } } },
+                    )
+                }
+            }
+        }
+        val retry = ai.uphill.app.core.localization.localizedText(localizedContext, "Try again")
+        waitText(retry)
+        captureFixtureScreenshot("session-restore-error-$lang")
+        ui.onNodeWithText(retry).performClick()
+        waitText("Session restored")
+        assertEquals("fixture-session-only", tokens.read())
+        assertFalse(cleared)
+        assertNull(session.restoreError.value)
+        assertEquals(2, attempts.get())
+    }
+
+    private fun captureFixtureScreenshot(name: String) {
+        val args = InstrumentationRegistry.getArguments()
+        if (args.getString("captureEvidence") != "true") return
+        ui.waitForIdle()
+        val variant = args.getString("captureVariant") ?: "normal"
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val directory = "/sdcard/Download/uphill-evidence/$variant"
+        automation.executeShellCommand("mkdir -p $directory").use {
+            java.io.FileInputStream(it.fileDescriptor).readBytes()
+        }
+        automation.executeShellCommand("screencap -p $directory/$name.png").use {
+            java.io.FileInputStream(it.fileDescriptor).readBytes()
+        }
     }
 
     @Test
