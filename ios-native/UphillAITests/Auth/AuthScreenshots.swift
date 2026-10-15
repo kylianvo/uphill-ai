@@ -23,6 +23,10 @@ struct AuthScreenshots {
         try? img.pngData()?.write(to: URL(fileURLWithPath: "\(outDir)/\(name)-\(dark ? "dark" : "light").png"))
     }
 
+    @Test func launchPhotoIsInTheAssetCatalog() {
+        #expect(UIImage(named: "LaunchPhoto") != nil)
+    }
+
     @Test func renderAuthScreens() throws {
         let model = SignInViewModel(auth: FakeAuthService(.success(try Fixture.decode(AuthResponse.self, "auth_login.json"))),
                                     session: SessionStore(tokenStore: InMemoryTokenStore()))
@@ -30,16 +34,6 @@ struct AuthScreenshots {
             save(SignInView(model: model), name: "sign-in", dark: dark)
             save(LaunchView(error: nil, onRetry: {}), name: "launch", dark: dark)
             save(LaunchView(error: "Couldn't reach Uphill AI. Check your connection and try again.", onRetry: {}), name: "launch-error", dark: dark)
-        }
-    }
-
-    /// Launch over real video frames (the test host can't draw AVPlayerLayer). Frames come from SCREENSHOT_FRAMES: "<dir>" holding light.png / dark.png.
-    @Test func renderLaunchOverVideo() {
-        guard let dir = ProcessInfo.processInfo.environment["SCREENSHOT_FRAMES"] else { return }
-        for dark in [false, true] {
-            guard let frame = UIImage(contentsOfFile: "\(dir)/\(dark ? "dark" : "light").png") else { continue }
-            save(LaunchView(error: nil, onRetry: {}, still: frame), name: "launch-video", dark: dark)
-            save(LaunchView(error: "Couldn't reach Uphill AI. Check your connection and try again.", onRetry: {}, still: frame), name: "launch-video-error", dark: dark)
         }
     }
 }
