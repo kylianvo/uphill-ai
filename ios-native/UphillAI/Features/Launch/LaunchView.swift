@@ -30,8 +30,10 @@ struct LaunchView: View {
             .accessibilityHidden(true)
 
             // Keeps the text readable when the fog thins mid-loop.
-            LinearGradient(colors: [UH.Palette.surface.opacity(0.85), UH.Palette.surface.opacity(0)],
-                           startPoint: .top, endPoint: .center)
+            LinearGradient(stops: [.init(color: UH.Palette.surface.opacity(0.85), location: 0),
+                                   .init(color: UH.Palette.surface.opacity(0.6), location: 0.42),
+                                   .init(color: UH.Palette.surface.opacity(0), location: 0.72)],
+                           startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
