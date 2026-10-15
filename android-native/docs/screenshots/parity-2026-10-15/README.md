@@ -20,10 +20,10 @@ the launch title shares bundled Plus Jakarta Sans. The large-text workout pace v
 now wraps between complete times, verified through rendered text layout. Titles and descriptions from the recorded
 English backend fixtures retain their original language.
 
-Current evidence contains **49 normal and 37 accessible captures**, including welcome,
+Current evidence contains **53 normal and 41 accessible captures**, including welcome,
 goal selection, Road details, race date, shoe rotation, Coach Hub and athlete Profile.
 The final bounded confirmation passed after correcting fixed Profile navigation,
-placeholder/status layout and VI weekly-caption auto-size. New goal/date and rotation
+placeholder/status layout and VI weekly-caption auto-size. New goal/date, rotation and Pace course/imported-GPX
 states were inspected against current SwiftUI source. The old Phase2b goal screenshot
 has obsolete choices; the current source's four choices are authoritative.
 
@@ -40,3 +40,10 @@ PNG files are saved under `/sdcard/Download/uphill-evidence/normal/` on the emul
 For accessible captures, set font scale 1.3 and animator/window/transition scales zero,
 then add `-Pandroid.testInstrumentationRunnerArguments.captureVariant=accessible`;
 restore the previous settings afterward.
+
+The `pace-course-*` and `pace-gpx-*` captures exercise the real Downloads document
+picker with a synthetic GPX file, including imported-field locking and source-based
+target initialization. These dedicated Pace captures omit the app shell bottom bar;
+`normal/pace-*` captures show the route inside the app shell. The normal/large-text
+confirmation includes EN/VI imported metadata and integer gain formatting. Runner
+weight, pacing controls, profile charts and split results still need broader iOS comparison.

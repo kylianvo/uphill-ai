@@ -9,7 +9,7 @@ Plan: `docs/superpowers/plans/2026-10-14-android-native.md`.
 
 The user resumed work toward around 3% **weekly allowance remaining**. The previous
 stop checkpoint was committed as `dea06bb`. This continuation fixes its CI lint issue,
-completes the interrupted UI confirmation and adds the onboarding/rotation work below.
+completes the interrupted UI confirmation and adds the onboarding/rotation/Pace work below.
 The user subsequently removed the usage stop threshold and authorized continued work.
 No deployment or merge has been performed.
 Health Connect stays deferred by explicit user decision. Google Android OAuth
@@ -19,6 +19,7 @@ The Kotlin/Compose port covers auth, onboarding/generation, Plan, coach chat,
 Goal/Gear/Nutrition/Pace/Knowledge, race history, COROS and coaching.
 Package `ai.uphill.app`, version 2.0.0/code10, min26/target36, existing signing key.
 Full feature and visual parity are not yet established. Keep PR #127 draft.
+The onboarding checkpoint `fb8f13e` passed all three GitHub test jobs.
 
 The earlier pass adds:
 - Scoped coach workout detail Edit/Approve/Remove and coach/athlete note threads.
@@ -81,27 +82,52 @@ See `docs/PARITY.md` for the area-by-area inventory against iOS main `5597527`.
   photo. Assigned-shoe imagery stays; wear percentage and bar share warning/danger
   colors. Slot action regression passes. Icon licensing: `android-native/licenses/`.
 
+## Continued Pace course pass
+
+- A real Downloads GPX file is selected through Android's system document picker,
+  read through ContentResolver and removed again. EN/VI device tests cover this path;
+  test files are deleted in cleanup. No production account is used.
+- Course configuration now follows the source import/loaded-file card, side-by-side
+  distance/gain inputs, source interval choices and haptics. GPX-owned inputs are
+  disabled until removal. The enabled-input regression was reproduced before fixing.
+- Import initializes the target with iOS's bounded course estimate; changing interval
+  reparses checkpoints while preserving a runner-edited target. Both regressions were
+  reproduced before the fix. Integer gain/distance display follows the source.
+- Normal and font1.3/zero-animation EN/VI captures were inspected and the single
+  correction batch confirmed. Pace controls/results/chart parity remains separate work.
+- Final GPX tests passed twice (normal 6.356s, larger text 5.622s). Standalone app-shell
+  capture passed in68.106s. Logs: `/tmp/uphill-pace-final-gpx-device.log`,
+  `/tmp/uphill-pace-final-accessible.log`, `/tmp/uphill-pace-final-visual.log`.
+  The earlier combined capture was interrupted by an external UI hierarchy probe;
+  avoid running `uiautomator dump` while instrumentation owns UiAutomation.
+
 ## Verification and artifact freshness
 
 - **Lint, all 91 debug and 91 release JVM tests passed.** Converter four tests passed; catalog has
   1,469 EN/VI entries. `git diff --check` passed.
-- **26 instrumentation tests passed**: 25 native UI flows and normal screenshot
-  capture. Log: `/tmp/uphill-latest-device-confirm.log` (161.128s).
-  Includes Profile editor/general notes, inline invite/race filtering, Road selection,
-  empty slots, calendar caption and date-window regression.
-- **49 normal +37 font1.3/zero-animation fixture captures** refreshed and visually
+- **28 instrumentation tests passed across isolated runs**: 25 NativeFlow tests
+  (56.984s), two real GPX picker tests (6.356s), and app-shell screenshot capture
+  (68.106s). Logs: `/tmp/uphill-pace-confirm-native.log`,
+  `/tmp/uphill-pace-final-gpx-device.log`, `/tmp/uphill-pace-final-visual.log`.
+  The main flow wait was updated from42.0 to42 for source-based integer formatting;
+  the selected 360-minute target assertion is retained.
+- **53 normal +41 font1.3/zero-animation fixture captures** refreshed and visually
   confirmed. Profile navigation remains visible, VI `km/tuần` stays on one line, and
   onboarding/calendar controls fit the inspected states. Accessible capture passed in
   32.306s: `/tmp/uphill-latest-accessible-confirm.log`; settings restored.
 - The CI lint error was a test reading configuration through LocalContext. It now
   reads LocalConfiguration; local lint passes. The fixed Profile header also required
   removing an obsolete scroll action from the screenshot helper.
-- Latest signed/minified release build passed in 1m22s after closing the fixture
-  emulator. Log: `/tmp/uphill-latest-signed-release.log`. Certificate, package and
+- Latest signed/minified release including the Pace pass built in1m5s, with fixture
+  5554 closed. Log: `/tmp/uphill-pace-signed-release.log`. Certificate, package and
   version verified; `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk` includes this pass.
-- The cold-boot/replacement smoke on5556 opened signed out. This does not establish
-  session preservation; the cause is not yet known. Earlier live Google login passed.
-  The user is signing in again for a controlled force-stop/replacement check.
+  Installed over the signed release on5556 and cold-launched: authenticated shell
+  restored. No account data was cleared.
+- The first cold boot opened signed out for an unknown reason. After a fresh Google
+  login on the latest APK, controlled force-stop/relaunch, matching-signed APK
+  replacement/relaunch and full emulator reboot all restored the authenticated
+  Plan/Coach/Me shell. No app data was cleared or instrumentation run on5556.
+  This verifies those controlled persistence paths without attributing the earlier state.
 - Earlier isolated live-backend flow passed; Docker and port8016 are now stopped, so
   this continuation used fixtures. No backend/service contract changes were made.
   Earlier backend tests: 1,265 passed plus ten targeted profile/auth tests. The two
@@ -115,9 +141,7 @@ See `docs/PARITY.md` for the area-by-area inventory against iOS main `5597527`.
 
 ## Remaining work, in order
 
-1. Finish the controlled authenticated session-restore smoke on `uphill_playstore`
-   (5556). Preserve its real session: no instrumentation, uninstall or data clear.
-   Then continue `docs/PARITY.md`: all setup/result/sheet/error
+1. Continue `docs/PARITY.md`: all setup/result/sheet/error
    states, TalkBack, full motion and other OS versions still need comparison. The
    pictured states establish bounded evidence, not complete iOS parity.
 2. Live Google sign-in passed on the signed minified release in `uphill_playstore`
@@ -143,6 +167,8 @@ Emulators: `uphill_test` /5554 for fixtures; `uphill_playstore` /5556 holds the 
 user session. Earlier processes exited during a concurrent build; userdata remained on disk.
 This continuation cold-booted/tested5554 successfully, restored settings and closed it
 before R8. Do not wipe either AVD; boot 5556 only for read-only release smoke.
+In the continuation, 5556 passed controlled session persistence through full reboot;
+5554 was restarted for isolated GPX and screenshot checks. Keep its settings restored.
 UI runner uninstalls main/test APKs; reinstall before standalone smoke checks.
 The owned live backend is now stopped. It used port8016 and isolated database `uphill_android_native_oct15`
 on the local PostgreSQL container at port5433. Source is this worktree; runtime is

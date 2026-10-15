@@ -18,7 +18,7 @@ service or a passing fixture test does not establish matching layout or animatio
 | Goal | Assessment/context toggles, race search, field curve, tiers, pacing handoff | Result-state chart/layout and every context card comparison |
 | Gear | Recommendation packshots, preferences, rotation assignment/edit/mileage/retire, debounced saves; neutral empty slots and wear colors tested/captured | Compare recommendation/rotation/detail layouts and latest iOS rotation changes |
 | Nutrition | Fueling preferences, catalog/results and feedback | Result-state composition and product/copy comparison |
-| Pace | GPX picker/parser, course profile, splits/checkpoints, debounced calculation, target handoff | Real file import/device checks and result/chart/table comparison |
+| Pace | GPX picker/parser, course profile, splits/checkpoints, debounced calculation, target handoff; real Downloads picker EN/VI checks, source course card and locked GPX fields | Source-based GPX target initialization and edited-target preservation through interval changes verified; result/chart/table, defaults and automatic recalculation comparison remains |
 | Knowledge | Search/topics/cards, local shuffle, source attribution | Card/result/source sheets and empty/error UI comparison |
 | Race history | Search/claims/bib verification, manual results/edit/delete, detail/PBs/badges; fixture/UI tests | Compare every link/claim/detail/course state against iOS |
 | Coaching | Roster/invites, overview/actions, athlete physiology/provenance, scoped plan/actions/notes; live backend flow | Adherence chart, seven-day bars, workout mix, Overview/Roster sections, 7/14/30-day and Elite filters, roster search ported and tested. Inline invite, action counts, roster progress, race-to-roster search and separate Profile sheet ported, tested and visually confirmed. Remaining state/motion comparison pending |
@@ -27,6 +27,6 @@ service or a passing fixture test does not establish matching layout or animatio
 | Release | Matching certificate/code10, earlier emulator upgrade preservation, minified signed-out smoke, earlier CI green at842a7c0; dea06bb test-lint error fixed locally, fresh signed build verified | Signed minified Google sign-in and existing COROS sync passed; physical phone upgrade, fresh COROS OAuth and all remaining release flows unverified |
 
 Current verified batch includes Coach Hub/Profile confirmation, onboarding goal/navigation/date
-controls and rotation placeholders. Lint, 91 debug +91 release JVM tests and 26 instrumentation
-tests pass; 86 EN/VI fixture screenshots are confirmed. Latest signed release builds and verifies; cold-boot session preservation is under
-investigation (opened signed out). See HANDOFF.md. Full feature/layout/font-rendering/motion parity is not established.
+controls and rotation placeholders. Lint, 91 debug +91 release JVM tests and 28 instrumentation
+tests pass across isolated runs; 94 EN/VI fixture screenshots are confirmed. Latest signed release builds and verifies; controlled app restart, APK replacement and full emulator reboot all restore the
+authenticated shell after a fresh Google login. See HANDOFF.md. Full feature/layout/font-rendering/motion parity is not established.

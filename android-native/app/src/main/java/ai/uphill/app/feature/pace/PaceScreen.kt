@@ -25,6 +25,7 @@ data class PaceState(
     val paced: List<PacedCheckpoint> = emptyList(),
     val benchmarks: List<RaceBenchmark> = emptyList(),
     val gpx: GpxCourseResult? = null,
+    val gpxImportVersion: Int = 0,
     val busy: Boolean = false,
     val error: String? = null,
     val activePlan: ActiveToolPlan? = null,
@@ -45,14 +46,20 @@ class PaceViewModel(api: APIClient) : ViewModel() {
         }
     }
 
-    fun parse(data: ByteArray, name: String, interval: Double) {
+    fun parse(data: ByteArray, name: String, interval: Double, imported: Boolean = true) {
         viewModelScope.launch {
             mutable.update { it.copy(busy = true, error = null) }
             try {
                 val result =
                     withContext(Dispatchers.Default) { GpxCourseParser.parse(data, name, interval) }
                 bytes = data
-                mutable.update { it.copy(gpx = result, busy = false) }
+                mutable.update {
+                    it.copy(
+                        gpx = result,
+                        gpxImportVersion = it.gpxImportVersion + if (imported) 1 else 0,
+                        busy = false,
+                    )
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -63,7 +70,7 @@ class PaceViewModel(api: APIClient) : ViewModel() {
 
     fun interval(value: Double) {
         val data = bytes ?: return
-        parse(data, mutable.value.gpx?.fileName ?: "course.gpx", value)
+        parse(data, mutable.value.gpx?.fileName ?: "course.gpx", value, imported = false)
     }
 
     fun removeGpx() {
@@ -165,17 +172,25 @@ fun PaceScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
             ?.takeUnless { planDefaultsApplied }
             ?.let { p ->
                 name = p.raceName
-                distance = (p.courseDistanceKm ?: 50.0).toString()
-                gain = (p.courseElevationGainM ?: 2200.0).toString()
+                distance = (p.courseDistanceKm ?: 50.0).toString().removeSuffix(".0")
+                gain = (p.courseElevationGainM ?: 2200.0).toString().removeSuffix(".0")
                 if (incomingTarget == null) p.targetMinutes?.let { target = it.toString() }
                 planDefaultsApplied = true
             }
     }
     LaunchedEffect(state.gpx) {
         state.gpx?.let {
-            distance = it.totalDistanceKm.toString()
-            gain = it.totalElevationGainM.toString()
+            distance = it.totalDistanceKm.toString().removeSuffix(".0")
+            gain = it.totalElevationGainM.toString().removeSuffix(".0")
             if (name.isBlank()) name = it.fileName.removeSuffix(".gpx").replace('_', ' ')
+        }
+    }
+    LaunchedEffect(state.gpxImportVersion) {
+        state.gpx?.let { course ->
+            val bounds = PacingCalculator.sliderBoundsMins(course.totalDistanceKm, course.totalElevationGainM)
+            target = ((course.totalDistanceKm + course.totalElevationGainM / 100) * 6.5)
+                .coerceIn(bounds.first, bounds.second)
+                .toString()
         }
     }
     fun pacingRequest(): Pair<PacingRequest, Double>? {
@@ -214,40 +229,31 @@ fun PaceScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
         }
     }
     ToolPage("Pace strategy", onNavigate) {
-        ToolPanel("Course setup") {
-            RaceSearch(api, name, { name = it }) {
-                distance = it.distanceKm.toString()
-                it.elevationGainM?.let { gain = it.toString() }
-            }
-            ToolField("Distance (km)", distance, { distance = it })
-            ToolField("Elevation Gain (m)", gain, { gain = it })
-            OutlinedButton(
-                onClick = {
-                    launcher.launch(
-                        arrayOf(
-                            "application/gpx+xml",
-                            "application/xml",
-                            "text/xml",
-                            "application/octet-stream",
-                            "*/*",
-                        )
-                    )
-                }
-            ) {
-                Text(TT("Import GPX"))
-            }
-            state.gpx?.let { g ->
-                Text("${g.fileName} · ${g.trackpointCount} ${TT("trackpoints")}")
-                Text(
-                    "${g.totalDistanceKm} km · D+ ${g.totalElevationGainM.toInt()}m · D− ${g.totalElevationLossM.toInt()}m"
-                )
-                TextButton(onClick = { vm.removeGpx() }) { Text(TT("Remove GPX")) }
-            }
-            ToolOptions("Split interval (km)", listOf("1", "3", "5", "10"), setOf(interval)) {
+        PaceCourseCard(
+            api = api,
+            name = name,
+            distance = distance,
+            gain = gain,
+            interval = interval,
+            gpx = state.gpx,
+            onName = { name = it },
+            onDistance = { distance = it },
+            onGain = { gain = it },
+            onRace = {
+                distance = it.distanceKm.toString().removeSuffix(".0")
+                it.elevationGainM?.let { gain = it.toString().removeSuffix(".0") }
+            },
+            onInterval = {
                 interval = it
                 vm.interval(it.toDouble())
-            }
-        }
+            },
+            onImport = {
+                launcher.launch(
+                    arrayOf("application/gpx+xml", "application/xml", "text/xml", "application/octet-stream", "*/*")
+                )
+            },
+            onRemove = { vm.removeGpx() },
+        )
         ToolPanel("Pacing controls") {
             Box(Modifier.testTag("pace.target")) {
                 ToolField("Target time (minutes)", target, { target = it })

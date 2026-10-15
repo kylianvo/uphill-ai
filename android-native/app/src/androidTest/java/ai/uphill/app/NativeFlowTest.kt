@@ -846,7 +846,7 @@ class NativeFlowTest {
     fun paceKeepsSelectedGoalWhenPlanLoads() {
         ToolHandoff.pacingTargetMinutes = 360.0
         ui.setContent { UphillTheme { PaceScreen(api, user, "en", {}) } }
-        waitText("42.0")
+        waitText("42")
         ui.onNodeWithTag("pace.target").assert(hasAnyDescendant(hasText("360.0")))
     }
 
