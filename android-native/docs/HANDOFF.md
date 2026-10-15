@@ -14,6 +14,13 @@ profile updates omit the key intentionally, so this is a data-loss risk, not jus
 or layout work. No production change was made. Deployment requires an explicit user
 request under the repository's deploy-backend skill.
 
+Main integration: merged `origin/main` at `a42cd12` (merge `bd4fcb1`). Production's
+`backend/db.py` and `backend/main.py` SHA256 values exactly match that main version;
+the branch adds only the intended key-preservation line and notes-response line to
+those files. Post-merge1327 backend unit tests pass in32.52s;98 debug/98 release
+JVM tests, lint and release verification pass. APK checksum is unchanged because no
+Android source changed in the merge. No production changes were made.
+
 This pass:
 - Reproduced three session races with failing JVM tests. Delayed restore success can
   no longer revive a signed-out user; old restore/API401 failures cannot sign out a

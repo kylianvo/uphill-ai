@@ -42,3 +42,9 @@ APK rebuilt and verified. Session race regressions and one independent benchmark
 were added. Three focused device flows passed; evidence is now129 captures. A read-only
 production check confirmed both backend profile fixes are absent. General rollout
 must wait: current profile updates can clear a saved Gemini key. No deploy performed.
+
+`origin/main` at `a42cd12` was merged after the release review to preserve current
+backend work. The Android app retains the approved light-only/video-launch scope;
+newer iOS dark appearance, photo launch and password recovery are not ported by this
+checkpoint. The approved feature baseline remains distinct from moving iOS main.
+Post-merge1327 backend unit tests and98 debug/98 release JVM tests pass.
