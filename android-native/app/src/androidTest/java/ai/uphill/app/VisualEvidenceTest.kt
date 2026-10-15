@@ -65,6 +65,9 @@ class VisualEvidenceTest {
                             "/api/coaching/my-invites" -> "[]"
                             "/api/coaching/overview" -> fixture("coaching_overview.json")
                             "/api/coaching/roster" -> fixture("coaching_roster.json")
+                            "/api/coaching/athletes/7/profile" ->
+                                fixture("coaching_athlete_profile.json")
+                            "/api/coaching/athletes/7/notes" -> "{\"notes\":[]}"
                             else -> "{}"
                         }
                     return MockResponse()
@@ -265,11 +268,28 @@ class VisualEvidenceTest {
                 ui.waitUntil(15000) {
                     ui.onAllNodesWithTag("coach.charts").fetchSemanticsNodes().isNotEmpty()
                 }
+                capture("coach-overview", lang)
                 ui.onNodeWithTag("coach.charts").performScrollTo()
                 capture("coach-charts", lang)
+                ui.onNodeWithTag("coach.race.0").performScrollTo()
+                capture("coach-races", lang)
                 ui.onNodeWithTag("coach.section.roster").performScrollTo().performClick()
+                capture("coach-invite", lang)
                 ui.onNodeWithTag("coach.roster.search").performScrollTo()
                 capture("coach-roster", lang)
+                ui.onNodeWithTag("coach.profile.7").performScrollTo().performClick()
+                ui.waitUntil(15000) {
+                    ui.onAllNodesWithTag("coach.profile.edit").fetchSemanticsNodes().any {
+                        it.config
+                            .contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled)
+                            .not()
+                    }
+                }
+                ui.onNodeWithTag("coach.profile.physiology").performScrollTo()
+                capture("coach-profile", lang)
+                ui.onNodeWithTag("coach.profile.preferences").performScrollTo()
+                capture("coach-preferences", lang)
+                ui.onNodeWithText(localized("Done", lang)).performScrollTo().performClick()
                 ui.runOnIdle {
                     container.session.signIn(AuthResponse("fixture-evidence-only", user))
                 }

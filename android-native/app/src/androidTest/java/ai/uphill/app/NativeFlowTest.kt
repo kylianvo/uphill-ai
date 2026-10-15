@@ -319,6 +319,148 @@ class NativeFlowTest {
     }
 
     @Test
+    fun coachRosterInvitesInlineAndRaceRowFiltersWithoutLeavingHub() {
+        val original = server.dispatcher
+        val invites = java.util.concurrent.CopyOnWriteArrayList<String>()
+        server.dispatcher =
+            object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val name =
+                        when (request.requestUrl!!.encodedPath) {
+                            "/api/coaching/overview" -> "coaching_overview.json"
+                            "/api/coaching/roster" -> "coaching_roster.json"
+                            "/api/coaching/my-invites" -> "coaching_my_invites.json"
+                            "/api/coaching/invite" -> {
+                                invites.add(request.body.readUtf8())
+                                return MockResponse()
+                                    .setHeader("Content-Type", "application/json")
+                                    .setBody("{}")
+                            }
+                            else -> return original.dispatch(request)
+                        }
+                    return MockResponse()
+                        .setHeader("Content-Type", "application/json")
+                        .setBody(fixture(name))
+                }
+            }
+        ui.setContent {
+            UphillTheme {
+                ai.uphill.app.feature.coaching.AthletesScreen(
+                    api,
+                    user.copy(isCoach = true),
+                    "en",
+                    {},
+                )
+            }
+        }
+        waitText("Roster Progress")
+        ui.onNodeWithText("Draft plans to finish").assertExists()
+        ui.onNodeWithText("Workouts pending approval").assertExists()
+        ui.onNodeWithTag("coach.race.0").performScrollTo().performClick()
+        ui.onNodeWithTag("coach.roster.search").assertTextContains("Vietnam Mountain Marathon 42K")
+        ui.onNodeWithText("Preview Runner").assertExists()
+        ui.onNodeWithText("Pending Invitee").assertDoesNotExist()
+        ui.onNodeWithContentDescription("Clear search").performScrollTo().performClick()
+        ui.onNodeWithText("Pending Invitee").assertExists()
+        ui.onNodeWithTag("coach.invite.email")
+            .performScrollTo()
+            .performTextInput("  new.runner@example.com  ")
+        ui.onNodeWithTag("coach.invite.send").performClick()
+        waitText("Invitation sent to new.runner@example.com!")
+        assertEquals(
+            "new.runner@example.com",
+            org.json.JSONObject(invites.single()).getString("athlete_email"),
+        )
+    }
+
+    @Test
+    fun coachProfileReadsPreferencesEditsThresholdsAndPostsGeneralNotes() {
+        val original = server.dispatcher
+        val profile = org.json.JSONObject(fixture("coaching_athlete_profile.json"))
+        val patches = java.util.concurrent.CopyOnWriteArrayList<String>()
+        val noteRequests = java.util.concurrent.CopyOnWriteArrayList<String>()
+        val noteQueries = java.util.concurrent.CopyOnWriteArrayList<String?>()
+        server.dispatcher =
+            object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val body =
+                        when (request.requestUrl!!.encodedPath) {
+                            "/api/coaching/overview" -> fixture("coaching_overview.json")
+                            "/api/coaching/roster" -> fixture("coaching_roster.json")
+                            "/api/coaching/my-invites" -> "[]"
+                            "/api/coaching/athletes/7/profile" -> {
+                                if (request.method == "PATCH") {
+                                    val patch = request.body.readUtf8()
+                                    patches.add(patch)
+                                    profile.put(
+                                        "resting_hr",
+                                        org.json.JSONObject(patch).getInt("resting_hr"),
+                                    )
+                                }
+                                profile.toString()
+                            }
+                            "/api/coaching/athletes/7/notes" -> {
+                                if (request.method == "POST") {
+                                    val note = request.body.readUtf8()
+                                    noteRequests.add(note)
+                                    org.json
+                                        .JSONObject(note)
+                                        .put("id", 99)
+                                        .put("coach_id", 39)
+                                        .put("athlete_id", 7)
+                                        .toString()
+                                } else {
+                                    noteQueries.add(
+                                        request.requestUrl!!.queryParameter("target_type")
+                                    )
+                                    "{\"notes\":[]}"
+                                }
+                            }
+                            else -> return original.dispatch(request)
+                        }
+                    return MockResponse()
+                        .setHeader("Content-Type", "application/json")
+                        .setBody(body)
+                }
+            }
+        ui.setContent {
+            UphillTheme {
+                ai.uphill.app.feature.coaching.AthletesScreen(
+                    api,
+                    user.copy(isCoach = true),
+                    "en",
+                    {},
+                )
+            }
+        }
+        waitText("Roster Progress")
+        ui.onNodeWithTag("coach.section.roster").performScrollTo().performClick()
+        ui.onNodeWithTag("coach.profile.7").performScrollTo().performClick()
+        waitText("Physiology & Threshold Zones")
+        ui.onNodeWithText("Training Preferences & Constraints").assertExists()
+        ui.onNodeWithText("4 days/week").assertExists()
+        ui.onNodeWithText("Saturday").assertExists()
+        ui.onNodeWithTag("coach.profile.edit").performScrollTo().performClick()
+        ui.onNode(hasText("Resting HR") and hasSetTextAction()).performTextReplacement("55")
+        ui.onNodeWithText("Save", useUnmergedTree = true).performScrollTo().performClick()
+        waitText("55 bpm")
+        assertEquals(55, org.json.JSONObject(patches.single()).getInt("resting_hr"))
+        assertEquals(1, org.json.JSONObject(patches.single()).length())
+        ui.onNodeWithTag("coach.profile.note.input")
+            .performScrollTo()
+            .performTextInput("Keep the easy days easy.")
+        ui.onNodeWithTag("coach.profile.note.post").performScrollTo()
+        ui.onNodeWithText("Done").assertIsDisplayed()
+        ui.onNodeWithTag("coach.profile.note.post").performClick()
+        waitText("Keep the easy days easy.")
+        val note = org.json.JSONObject(noteRequests.single())
+        assertEquals("general", note.getString("target_type"))
+        assertTrue(note.isNull("target_id"))
+        assertEquals("Keep the easy days easy.", note.getString("note"))
+        assertTrue(noteQueries.contains("general"))
+    }
+
+    @Test
     fun coachDashboardShowsChartsWithTargetAndAllWeekdays() {
         val original = server.dispatcher
         server.dispatcher =
@@ -353,6 +495,40 @@ class NativeFlowTest {
             .assertContentDescriptionEquals(
                 "Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 1, Sat: 0, Sun: 0"
             )
+    }
+
+    @Test
+    fun vietnameseCalendarWeeklyHeaderKeepsOneLineAtLargeText() {
+        ui.setContent {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val configuration =
+                android.content.res.Configuration(context.resources.configuration).apply {
+                    setLocale(java.util.Locale.forLanguageTag("vi"))
+                }
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalContext provides
+                    context.createConfigurationContext(configuration),
+                androidx.compose.ui.platform.LocalConfiguration provides configuration,
+                androidx.compose.ui.platform.LocalDensity provides
+                    androidx.compose.ui.unit.Density(density.density, 1.3f),
+            ) {
+                UphillTheme { PlanScreen(api, user, "vi", {}) }
+            }
+        }
+        waitText("Vietnam Mountain Marathon 42K")
+        ui.onNodeWithTag("plan.list").performScrollToNode(hasContentDescription("Lịch"))
+        ui.onNodeWithContentDescription("Lịch").performClick()
+        ui.onNodeWithTag("plan.list").performScrollToNode(hasTestTag("calendar.weekHeader"))
+        val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        ui.onNodeWithTag("calendar.weekHeader").performSemanticsAction(
+            androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult
+        ) {
+            it(results)
+        }
+        assertEquals(1, results.single().lineCount)
+        assertFalse(results.single().hasVisualOverflow)
+        ui.onNodeWithTag("calendar.weekHeader").assertTextEquals("km/tuần")
     }
 
     @Test

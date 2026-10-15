@@ -340,7 +340,7 @@ fun CoachedAthleteScreen(
 }
 
 @Composable
-private fun PhysiologyDialog(
+internal fun PhysiologyDialog(
     profile: User,
     busy: Boolean,
     serverError: String?,

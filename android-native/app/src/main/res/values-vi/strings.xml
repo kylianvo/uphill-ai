@@ -4,6 +4,7 @@
   <string name="set_as_target">%1$s %2$s, đặt mục tiêu</string>
   <string name="coming_soon">%1$s Sắp có</string>
   <string name="phase">Giai đoạn %1$s</string>
+  <string name="enters">%1$s vào giai đoạn %2$s %3$s</string>
   <string name="hill_or_trail_day">%1$s ngày có dốc/trail</string>
   <string name="invited_you_to_be_coached">%1$s mời bạn làm học viên</string>
   <string name="kilometres">%1$s km</string>
@@ -282,10 +283,13 @@
   <string name="clear_conversation" formatted="false">Xóa cuộc trò chuyện?</string>
   <string name="clear_conversation_16299ad1ab" formatted="false">Xóa cuộc trò chuyện</string>
   <string name="clear_conversation_1953205493" formatted="false">Xóa cuộc trò chuyện?</string>
+  <string name="clear_search" formatted="false">Xóa tìm kiếm</string>
   <string name="climbing_m_d" formatted="false">D+ (m)</string>
   <string name="close" formatted="false">Đóng</string>
   <string name="coach" formatted="false">Coach</string>
   <string name="coach_ai_co_creation" formatted="false">Cùng tạo với Coach AI</string>
+  <string name="coach_hub" formatted="false">Coach Hub</string>
+  <string name="coach_notes" formatted="false">Ghi chú của Coach</string>
   <string name="coach_notes_lld">Ghi chú của coach (%1$d)</string>
   <string name="coach_uphill" formatted="false">Coach Uphill</string>
   <string name="coach_uphill_builds_your_first_weeks_now_and_adds_each_new_week_as_you_train" formatted="false">Coach Uphill tạo các tuần đầu ngay bây giờ và thêm tuần mới khi bạn tập.</string>
@@ -1418,6 +1422,7 @@
   <string name="adherence_130bcd3861" formatted="false">mức độ hoàn thành</string>
   <string name="admitting" formatted="false">đang nhận</string>
   <string name="applied_b4267ce93c" formatted="false">đã áp dụng</string>
+  <string name="athlete" formatted="false">học viên</string>
   <string name="avg_hr_lld">HR TB %1$d</string>
   <string name="day_ago" formatted="false">ngày trước</string>
   <string name="days_ago" formatted="false">ngày trước</string>
@@ -1438,7 +1443,9 @@
   <string name="kept" formatted="false">giữ nguyên</string>
   <string name="km_week" formatted="false">km / tuần</string>
   <string name="km_run" formatted="false">km tập</string>
+  <string name="km_wk" formatted="false">km/tuần</string>
   <string name="min" formatted="false">phút</string>
+  <string name="next_week_326d83d3d4" formatted="false">tuần sau</string>
   <string name="or" formatted="false">hoặc</string>
   <string name="proposed_81e766d897" formatted="false">đề xuất</string>
   <string name="retrieving_23572fdd15" formatted="false">đang tìm</string>
@@ -1446,6 +1453,7 @@
   <string name="runs_week" formatted="false">buổi / tuần</string>
   <string name="speed_work" formatted="false">bài tốc độ</string>
   <string name="the_upcoming_weeks" formatted="false">các tuần tới</string>
+  <string name="this_week_7d76655e72" formatted="false">tuần này</string>
   <string name="top_d865b56ea0">top %1$s%%</string>
   <string name="was">trước đây: %1$s</string>
   <string name="week_6df37daaa4" formatted="false">tuần</string>

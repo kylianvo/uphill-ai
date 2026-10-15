@@ -233,13 +233,36 @@ internal fun CoachCharts(overview: CoachOverview) {
 }
 
 @Composable
-private fun CoachChartCard(
+internal fun CoachChartCard(
     title: String,
     icon: ImageVector,
     summary: String? = null,
+    modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    CoachCard(modifier) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(icon, null, Modifier.size(18.dp), tint = UH.ink)
+            Text(
+                L(title),
+                Modifier.weight(1f),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = UH.ink,
+            )
+            summary?.let { Text(it, fontSize = 13.sp, color = UH.secondary) }
+        }
+        content()
+    }
+}
+
+@Composable
+internal fun CoachCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     OutlinedCard(
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.outlinedCardColors(containerColor = Color.White),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, UH.line),
@@ -247,23 +270,8 @@ private fun CoachChartCard(
         Column(
             Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(icon, null, Modifier.size(18.dp), tint = UH.ink)
-                Text(
-                    L(title),
-                    Modifier.weight(1f),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = UH.ink,
-                )
-                summary?.let { Text(it, fontSize = 13.sp, color = UH.secondary) }
-            }
-            content()
-        }
+            content = content,
+        )
     }
 }
 

@@ -14,7 +14,10 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Flag
@@ -159,12 +162,23 @@ internal fun CalendarGrid(
                                     color = UH.muted,
                                 )
                             }
-                            Text(
-                                "km",
-                                Modifier.width(44.dp),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                fontSize = 11.sp,
-                                color = UH.muted,
+                            BasicText(
+                                L("km/wk"),
+                                Modifier.width(44.dp).testTag("calendar.weekHeader"),
+                                style =
+                                    androidx.compose.ui.text.TextStyle(
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        fontSize = 11.sp,
+                                        color = UH.muted,
+                                    ),
+                                maxLines = 1,
+                                softWrap = false,
+                                autoSize =
+                                    TextAutoSize.StepBased(
+                                        minFontSize = 7.7.sp,
+                                        maxFontSize = 11.sp,
+                                        stepSize = .25.sp,
+                                    ),
                             )
                         }
                         shown.weeks.forEach { row ->
@@ -425,10 +439,17 @@ internal fun CalendarDayContent(
             { w -> model.log(w, if (w.isDone) 0 else 1, 0, w.rpe, w.notes.orEmpty()) }
         else null,
     )
-    OutlinedButton(
+    SecondaryButton(
         onClick = { onWeek(week) },
         modifier = Modifier.fillMaxWidth().testTag("calendar.openWeek"),
+        colors =
+            ButtonDefaults.outlinedButtonColors(
+                containerColor = UH.accentInk.copy(alpha = .08f),
+                contentColor = UH.accentInk,
+            ),
     ) {
+        Icon(Icons.AutoMirrored.Filled.List, null, Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
         Text(L("Open week %lld in list", week))
     }
 }

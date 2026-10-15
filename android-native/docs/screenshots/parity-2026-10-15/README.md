@@ -11,8 +11,8 @@ fixture data, not a production account.
   1.3 and all three Android animation scales set to zero. Device settings are restored.
 
 The workout sheet includes source-based metrics and execution steps. Nested tools
-retain their originating tab selection. These are the confirmation captures after
-one batched Impeccable inspection and correction pass. The source of truth is current
+retain their originating tab selection. The earlier states include a completed Impeccable confirmation pass; the latest
+Coach Hub/Profile batch has inspection evidence with final confirmation pending. The source of truth is current
 SwiftUI code where older iOS screenshots differ.
 
 This evidence covers the pictured states. It does not establish complete screen,
@@ -21,7 +21,11 @@ the launch title shares bundled Plus Jakarta Sans. The large-text workout pace v
 now wraps between complete times, verified through rendered text layout. Titles and descriptions from the recorded
 English backend fixtures retain their original language.
 
-Current evidence contains 29 normal and 17 accessible captures.
+Current evidence contains 39 normal and 27 accessible captures, including Coach Hub
+invite/overview/race rows and athlete Profile/preferences. These were inspected against
+iOS Phase6/calendar references. They precede the final correction to sticky Profile
+navigation, placeholder layout, status/email layout and VI weekly-caption auto-size.
+The confirmation run was interrupted by emulator exits; confirmation remains pending.
 
 Reproduce the normal captures from the repository root:
 

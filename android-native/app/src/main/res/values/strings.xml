@@ -4,6 +4,7 @@
   <string name="set_as_target">%1$s %2$s, set as target</string>
   <string name="coming_soon">%1$s Coming soon</string>
   <string name="phase">%1$s Phase</string>
+  <string name="enters">%1$s enters %2$s %3$s</string>
   <string name="hill_or_trail_day">%1$s hill or trail day</string>
   <string name="invited_you_to_be_coached">%1$s invited you to be coached</string>
   <string name="kilometres">%1$s kilometres</string>
@@ -282,10 +283,13 @@
   <string name="clear_conversation" formatted="false">Clear Conversation?</string>
   <string name="clear_conversation_16299ad1ab" formatted="false">Clear conversation</string>
   <string name="clear_conversation_1953205493" formatted="false">Clear conversation?</string>
+  <string name="clear_search" formatted="false">Clear search</string>
   <string name="climbing_m_d" formatted="false">Climbing (m D+)</string>
   <string name="close" formatted="false">Close</string>
   <string name="coach" formatted="false">Coach</string>
   <string name="coach_ai_co_creation" formatted="false">Coach AI Co-Creation</string>
+  <string name="coach_hub" formatted="false">Coach Hub</string>
+  <string name="coach_notes" formatted="false">Coach Notes</string>
   <string name="coach_notes_lld">Coach Notes (%1$d)</string>
   <string name="coach_uphill" formatted="false">Coach Uphill</string>
   <string name="coach_uphill_builds_your_first_weeks_now_and_adds_each_new_week_as_you_train" formatted="false">Coach Uphill builds your first weeks now and adds each new week as you train.</string>
@@ -1418,6 +1422,7 @@
   <string name="adherence_130bcd3861" formatted="false">adherence</string>
   <string name="admitting" formatted="false">admitting</string>
   <string name="applied_b4267ce93c" formatted="false">applied</string>
+  <string name="athlete" formatted="false">athlete</string>
   <string name="avg_hr_lld">avg HR %1$d</string>
   <string name="day_ago" formatted="false">day ago</string>
   <string name="days_ago" formatted="false">days ago</string>
@@ -1438,7 +1443,9 @@
   <string name="kept" formatted="false">kept</string>
   <string name="km_week" formatted="false">km / week</string>
   <string name="km_run" formatted="false">km run</string>
+  <string name="km_wk" formatted="false">km/wk</string>
   <string name="min" formatted="false">min</string>
+  <string name="next_week_326d83d3d4" formatted="false">next week</string>
   <string name="or" formatted="false">or</string>
   <string name="proposed_81e766d897" formatted="false">proposed</string>
   <string name="retrieving_23572fdd15" formatted="false">retrieving</string>
@@ -1446,6 +1453,7 @@
   <string name="runs_week" formatted="false">runs / week</string>
   <string name="speed_work" formatted="false">speed work</string>
   <string name="the_upcoming_weeks" formatted="false">the upcoming weeks</string>
+  <string name="this_week_7d76655e72" formatted="false">this week</string>
   <string name="top_d865b56ea0">top %1$s%%</string>
   <string name="was">was: %1$s</string>
   <string name="week_6df37daaa4" formatted="false">week</string>
