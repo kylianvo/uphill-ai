@@ -7,6 +7,8 @@ import SwiftUI
 struct LaunchView: View {
     let error: String?
     let onRetry: () -> Void
+    /// A still frame in place of the video, for screenshots (video layers don't render in them).
+    var still: UIImage?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var scheme
     @State private var shown = false
@@ -15,10 +17,17 @@ struct LaunchView: View {
         ZStack(alignment: .top) {
             UH.Palette.surface.ignoresSafeArea()
 
-            LoopingVideo(name: "launch_bg", playing: !reduceMotion)
-                .ignoresSafeArea()
-                .opacity(shown && scheme == .light ? 1 : 0)  // the fog video is a daylight scene; dark shows the plain surface
-                .accessibilityHidden(true)
+            Group {
+                if let still {
+                    Color.clear.overlay(Image(uiImage: still).resizable().scaledToFill()).clipped()
+                } else {
+                    LoopingVideo(name: scheme == .dark ? "launch_bg_dark" : "launch_bg", playing: !reduceMotion)
+                        .id(scheme)
+                }
+            }
+            .ignoresSafeArea()
+            .opacity(shown || still != nil ? 1 : 0)
+            .accessibilityHidden(true)
 
             // Keeps the text readable when the fog thins mid-loop.
             LinearGradient(colors: [UH.Palette.surface.opacity(0.85), UH.Palette.surface.opacity(0)],

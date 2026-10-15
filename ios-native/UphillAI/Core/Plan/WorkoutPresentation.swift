@@ -37,7 +37,7 @@ enum WorkoutTypePresentation {
             return Color(light: "#0e7490", dark: "#22d3ee")
         }
         if t.contains("easy") || z.contains("2") {
-            return Color(light: "#2563eb", dark: "#60a5fa")
+            return Color(light: "#3b82f6", dark: "#60a5fa")
         }
         if t.contains("cross") {
             return Color(light: "#0f766e", dark: "#2dd4bf")
