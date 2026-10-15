@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="paceui_conservative_start">Conservative Start (Negative Split)</string>
+    <string name="paceui_aggressive_start">Aggressive Start (Positive Split)</string>
+    <string name="paceui_even_effort">Even Effort (Optimal Economy)</string>
+    <string name="paceui_conservative">Conservative</string>
+    <string name="paceui_aggressive">Aggressive</string>
+</resources>

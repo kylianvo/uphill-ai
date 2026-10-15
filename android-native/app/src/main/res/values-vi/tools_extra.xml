@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="tools_back" formatted="false">Quay lại</string>
+  <string name="tools_goal_determiner" formatted="false">Ước tính mục tiêu</string>
+  <string name="tools_race_setup" formatted="false">Thông tin race</string>
+  <string name="tools_race_name" formatted="false">Tên Race</string>
+  <string name="tools_race_date_yyyy_mm_dd" formatted="false">Ngày race (YYYY-MM-DD)</string>
+  <string name="tools_your_baseline" formatted="false">Nền thể lực</string>
+  <string name="tools_week" formatted="false">tuần</string>
+  <string name="tools_race_history" formatted="false">Lịch sử Race</string>
+  <string name="tools_utmb_index" formatted="false">UTMB index</string>
+  <string name="tools_watch_data" formatted="false">Dữ liệu đồng hồ</string>
+  <string name="tools_physiology" formatted="false">Chỉ số thể chất</string>
+  <string name="tools_manual_reference_race" formatted="false">Race tham chiếu</string>
+  <string name="tools_reference_race" formatted="false">Race tham chiếu</string>
+  <string name="tools_reference_distance_km" formatted="false">Cự ly cũ (km)</string>
+  <string name="tools_reference_gain_m" formatted="false">D+ cũ (m)</string>
+  <string name="tools_finish_time_h_mm_ss" formatted="false">Thời gian (H:MM:SS)</string>
+  <string name="tools_estimate_my_goals" formatted="false">Ước tính mục tiêu</string>
+  <string name="tools_results" formatted="false">Kết quả</string>
+  <string name="tools_goals" formatted="false">Mục tiêu</string>
+  <string name="tools_what_we_used" formatted="false">Dữ liệu đã dùng</string>
+  <string name="tools_field_curve" formatted="false">Phân bố thành tích</string>
+  <string name="tools_ambitious" formatted="false">Tham vọng</string>
+  <string name="tools_realistic" formatted="false">Thực tế</string>
+  <string name="tools_safe" formatted="false">An toàn</string>
+  <string name="tools_plan_pacing" formatted="false">Lên pace</string>
+  <string name="tools_not_enough_data_to_estimate_a_goal" formatted="false">Chưa đủ dữ liệu ước tính mục tiêu.</string>
+  <string name="tools_to_sharpen_this" formatted="false">Để sát hơn</string>
+  <string name="tools_coach_reasoning" formatted="false">Coach giải thích</string>
+  <string name="tools_confidence" formatted="false">Độ tin cậy</string>
+  <string name="tools_course_profile" formatted="false">Cao độ cung đường</string>
+  <string name="tools_unknown" formatted="false">Chưa rõ</string>
+  <string name="tools_finishers_field_curve" formatted="false">Phân bố thành tích</string>
+  <string name="tools_no_verified_benchmark_field_data_available_for_this_race" formatted="false">Chưa có dữ liệu thành tích đã xác minh cho Race này.</string>
+  <string name="tools_year" formatted="false">Năm</string>
+  <string name="tools_gender" formatted="false">Giới tính</string>
+  <string name="tools_overall" formatted="false">Tất cả</string>
+  <string name="tools_men" formatted="false">Nam</string>
+  <string name="tools_women" formatted="false">Nữ</string>
+  <string name="tools_time_mins_percentile" formatted="false">Phút / phân vị</string>
+  <string name="tools_top" formatted="false">Top</string>
+  <string name="tools_gear_vault" formatted="false">Kho giày</string>
+  <string name="tools_gear" formatted="false">Gear</string>
+  <string name="tools_find_shoes" formatted="false">Tìm giày</string>
+  <string name="tools_shoe_rotation" formatted="false">Dàn giày</string>
+  <string name="tools_shoe_preferences" formatted="false">Chọn giày</string>
+  <string name="tools_race_distance_km" formatted="false">Cự ly race (km)</string>
+  <string name="tools_surface" formatted="false">Mặt đường</string>
+  <string name="tools_trail" formatted="false">Trail</string>
+  <string name="tools_road" formatted="false">Road</string>
+  <string name="tools_terrain" formatted="false">Địa hình</string>
+  <string name="tools_runnable" formatted="false">Dễ chạy</string>
+  <string name="tools_technical" formatted="false">Kỹ thuật</string>
+  <string name="tools_muddy" formatted="false">Bùn</string>
+  <string name="tools_rocky" formatted="false">Đá</string>
+  <string name="tools_use_case" formatted="false">Mục đích</string>
+  <string name="tools_daily_training" formatted="false">Tập hằng ngày</string>
+  <string name="tools_tempo" formatted="false">Tempo</string>
+  <string name="tools_race" formatted="false">Race</string>
+  <string name="tools_daily" formatted="false">Hằng ngày</string>
+  <string name="tools_cushioning" formatted="false">Độ êm</string>
+  <string name="tools_plush" formatted="false">Êm</string>
+  <string name="tools_balanced" formatted="false">Cân bằng</string>
+  <string name="tools_firm" formatted="false">Cứng</string>
+  <string name="tools_width" formatted="false">Độ rộng</string>
+  <string name="tools_narrow" formatted="false">Hẹp</string>
+  <string name="tools_normal" formatted="false">Vừa</string>
+  <string name="tools_wide" formatted="false">Rộng</string>
+  <string name="tools_carbon_plate" formatted="false">Carbon Plate</string>
+  <string name="tools_yes" formatted="false">Có</string>
+  <string name="tools_no" formatted="false">Không</string>
+  <string name="tools_preferred_brands" formatted="false">Hãng ưa thích</string>
+  <string name="tools_budget" formatted="false">Ngân sách</string>
+  <string name="tools_additional_context" formatted="false">Ghi chú thêm</string>
+  <string name="tools_find_matching_shoes" formatted="false">Tìm giày phù hợp</string>
+  <string name="tools_matched_race" formatted="false">Đã khớp giải</string>
+  <string name="tools_no_recommendations_available" formatted="false">Chưa có gợi ý.</string>
+  <string name="tools_pros" formatted="false">Điểm mạnh</string>
+  <string name="tools_cons" formatted="false">Hạn chế</string>
+  <string name="tools_assign_to_rotation" formatted="false">Thêm vào dàn giày</string>
+  <string name="tools_tips" formatted="false">Gợi ý</string>
+  <string name="tools_saving_rotation" formatted="false">Đang lưu…</string>
+  <string name="tools_slot" formatted="false">Vị trí</string>
+  <string name="tools_save" formatted="false">Lưu</string>
+  <string name="tools_cancel" formatted="false">Hủy</string>
+  <string name="tools_retire" formatted="false">Ngừng dùng</string>
+  <string name="tools_remove" formatted="false">Xóa</string>
+  <string name="tools_no_shoe_assigned_to_this_slot" formatted="false">Chưa gán giày cho vị trí này</string>
+  <string name="tools_configure_shoe" formatted="false">Sửa giày</string>
+  <string name="tools_brand" formatted="false">Hãng</string>
+  <string name="tools_model" formatted="false">Mẫu giày</string>
+  <string name="tools_logged_distance_km" formatted="false">Đã chạy (km)</string>
+  <string name="tools_expected_life_km" formatted="false">Tuổi thọ (km)</string>
+  <string name="tools_notes" formatted="false">Ghi chú</string>
+  <string name="tools_was_this_useful" formatted="false">Có hữu ích không?</string>
+  <string name="tools_thanks" formatted="false">Cảm ơn</string>
+  <string name="tools_helpful" formatted="false">Hữu ích</string>
+  <string name="tools_needs_work" formatted="false">Cần sửa</string>
+  <string name="tools_which_distance" formatted="false">Cự ly nào?</string>
+  <string name="tools_nutrition_lab" formatted="false">Dinh dưỡng race</string>
+  <string name="tools_fueling_setup" formatted="false">Cài đặt fueling</string>
+  <string name="tools_duration_hours" formatted="false">Thời lượng (giờ)</string>
+  <string name="tools_temperature" formatted="false">Nhiệt độ</string>
+  <string name="tools_cool" formatted="false">Mát</string>
+  <string name="tools_moderate" formatted="false">Vừa</string>
+  <string name="tools_hot" formatted="false">Nóng</string>
+  <string name="tools_formats" formatted="false">Dạng sản phẩm</string>
+  <string name="tools_gel" formatted="false">Gel</string>
+  <string name="tools_chews" formatted="false">Chews</string>
+  <string name="tools_drink_mix" formatted="false">Drink Mix</string>
+  <string name="tools_solid" formatted="false">Đồ ăn</string>
+  <string name="tools_athlete_level" formatted="false">Trình độ</string>
+  <string name="tools_recreational" formatted="false">Phong trào</string>
+  <string name="tools_intermediate" formatted="false">Trung bình</string>
+  <string name="tools_advanced" formatted="false">Nâng cao</string>
+  <string name="tools_carbs_g_hour" formatted="false">Carbs (g/giờ)</string>
+  <string name="tools_sodium_mg_hour" formatted="false">Sodium (mg/giờ)</string>
+  <string name="tools_calculate_fueling" formatted="false">Tính fueling</string>
+  <string name="tools_fueling_totals" formatted="false">Tổng dinh dưỡng</string>
+  <string name="tools_timeline" formatted="false">Theo giờ</string>
+  <string name="tools_products" formatted="false">Sản phẩm</string>
+  <string name="tools_hour" formatted="false">Giờ</string>
+  <string name="tools_protein" formatted="false">Protein</string>
+  <string name="tools_browse_product_catalog" formatted="false">Xem sản phẩm</string>
+  <string name="tools_search_products" formatted="false">Tìm sản phẩm</string>
+  <string name="tools_caffeine" formatted="false">Caffeine</string>
+  <string name="tools_water" formatted="false">Nước</string>
+  <string name="tools_use_this_brand" formatted="false">Chọn hãng này</string>
+  <string name="tools_knowledge_hub" formatted="false">Thư viện kiến thức</string>
+  <string name="tools_search_knowledge" formatted="false">Tìm kiến thức</string>
+  <string name="tools_daily_insight" formatted="false">Kiến thức hôm nay</string>
+  <string name="tools_topics" formatted="false">Chủ đề</string>
+  <string name="tools_no_knowledge_cards_found" formatted="false">Chưa tìm thấy thẻ kiến thức.</string>
+  <string name="tools_knowledge_sources" formatted="false">Nguồn kiến thức</string>
+  <string name="tools_open_source" formatted="false">Mở nguồn</string>
+  <string name="tools_source_url" formatted="false">URL nguồn</string>
+  <string name="tools_add_source" formatted="false">Thêm nguồn</string>
+  <string name="tools_source_added" formatted="false">Đã thêm nguồn</string>
+  <string name="tools_show_less" formatted="false">Thu gọn</string>
+  <string name="tools_key_points" formatted="false">Ý chính</string>
+  <string name="tools_all" formatted="false">Tất cả</string>
+  <string name="tools_training" formatted="false">Tập luyện</string>
+  <string name="tools_nutrition" formatted="false">Dinh dưỡng</string>
+  <string name="tools_recovery" formatted="false">Hồi phục</string>
+  <string name="tools_pacing" formatted="false">Pace</string>
+  <string name="tools_mindset" formatted="false">Tâm lý</string>
+  <string name="tools_pdf" formatted="false">PDF</string>
+  <string name="tools_youtube" formatted="false">YouTube</string>
+  <string name="tools_web" formatted="false">Web</string>
+  <string name="tools_pace_strategy" formatted="false">Chiến lược pace</string>
+  <string name="tools_course_setup" formatted="false">Thông tin đường chạy</string>
+  <string name="tools_import_gpx" formatted="false">Nhập GPX</string>
+  <string name="tools_trackpoints" formatted="false">điểm</string>
+  <string name="tools_remove_gpx" formatted="false">Xóa GPX</string>
+  <string name="tools_split_interval_km" formatted="false">Khoảng Split (km)</string>
+  <string name="tools_pacing_controls" formatted="false">Cài đặt pace</string>
+  <string name="tools_target_time_minutes" formatted="false">Thời gian (phút)</string>
+  <string name="tools_runner_weight_kg" formatted="false">Cân nặng (kg)</string>
+  <string name="tools_start_time_hh_mm" formatted="false">Giờ xuất phát (HH:MM)</string>
+  <string name="tools_split_strategy" formatted="false">Chiến lược Split</string>
+  <string name="tools_even" formatted="false">Đều</string>
+  <string name="tools_negative" formatted="false">Nhanh dần</string>
+  <string name="tools_positive" formatted="false">Chậm dần</string>
+  <string name="tools_split_bias" formatted="false">Lệch Split</string>
+  <string name="tools_suggested_range" formatted="false">Khoảng gợi ý</string>
+  <string name="tools_calculate_pacing" formatted="false">Tính pace</string>
+  <string name="tools_past_results" formatted="false">Kết quả cũ</string>
+  <string name="tools_all_years" formatted="false">Tất cả</string>
+  <string name="tools_winner" formatted="false">Người thắng</string>
+  <string name="tools_winner_f" formatted="false">Vô địch nữ</string>
+  <string name="tools_race_summary" formatted="false">Tóm tắt race</string>
+  <string name="tools_moving_time" formatted="false">Thời gian chạy</string>
+  <string name="tools_with_rest" formatted="false">Cả nghỉ</string>
+  <string name="tools_hike_sections" formatted="false">đoạn hiking</string>
+  <string name="tools_elevation_profile" formatted="false">Biểu đồ độ cao</string>
+  <string name="tools_distance_km_elevation_m" formatted="false">Km / độ cao (m)</string>
+  <string name="tools_pacing_splits" formatted="false">Pacing Split</string>
+  <string name="tools_run" formatted="false">Chạy</string>
+  <string name="tools_hike" formatted="false">Hiking</string>
+  <string name="tools_split" formatted="false">Split</string>
+  <string name="tools_elapsed" formatted="false">Đã chạy</string>
+  <string name="tools_after_sunset" formatted="false">Sau hoàng hôn</string>
+  <string name="tools_rest_minutes" formatted="false">Nghỉ (phút)</string>
+  <string name="tools_plan_fueling" formatted="false">Lên fueling</string>
+  <string name="tools_choose_gear" formatted="false">Chọn giày</string>
+  <string name="tools_distance_km" formatted="false">Cự ly (km)</string>
+  <string name="tools_elevation_gain_m" formatted="false">Elevation Gain (m)</string>
+  <string name="tools_link_race_profile" formatted="false">Liên kết hồ sơ</string>
+  <string name="tools_add_a_race_result" formatted="false">Thêm thành tích</string>
+  <string name="tools_low" formatted="false">Thấp</string>
+  <string name="tools_medium" formatted="false">Vừa</string>
+  <string name="tools_high" formatted="false">Cao</string>
+  <string name="tools_synthetic" formatted="false">Ước tính</string>
+  <string name="tools_gpx" formatted="false">GPX</string>
+  <string name="tools_recent_trail_result" formatted="false">Race trail gần đây</string>
+  <string name="tools_vo2max" formatted="false">VO2max</string>
+  <string name="tools_watch" formatted="false">Đồng hồ</string>
+  <string name="tools_block" formatted="false">Block</string>
+  <string name="tools_profile" formatted="false">Hồ sơ</string>
+  <string name="tools_p5" formatted="false">P5</string>
+  <string name="tools_p10" formatted="false">P10</string>
+  <string name="tools_p25" formatted="false">P25</string>
+  <string name="tools_p50" formatted="false">P50</string>
+  <string name="tools_p75" formatted="false">P75</string>
+  <string name="tools_p90" formatted="false">P90</string>
+  <string name="tools_apply_to_plan" formatted="false">Áp dụng plan</string>
+  <string name="tools_goal_updated" formatted="false">Đã cập nhật</string>
+  <string name="tools_confirm_time_target" formatted="false">Xác nhận thời gian</string>
+  <string name="tools_update_plan_target_to" formatted="false">Đổi mục tiêu thành</string>
+  <string name="tools_apply" formatted="false">Áp dụng</string>
+</resources>
