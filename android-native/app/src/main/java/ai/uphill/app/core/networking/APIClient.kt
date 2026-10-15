@@ -63,10 +63,15 @@ class APIClient(
                 response.use {
                     APIError.from(it.code, it.body?.string().orEmpty(), endpoint.requiresAuth)
                 }
-            if (error is APIError.Unauthorized) onUnauthorized()
+            if (error is APIError.Unauthorized) handleUnauthorized(response.request)
             throw error
         }
         return response
+    }
+
+    suspend fun handleUnauthorized(request: Request) {
+        val authorization = request.header("Authorization") ?: return
+        if (authorization == tokenStore.read()?.let { "Bearer $it" }) onUnauthorized()
     }
 
     suspend fun text(endpoint: Endpoint): String =

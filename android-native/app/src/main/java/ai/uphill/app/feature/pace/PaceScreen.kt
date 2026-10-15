@@ -28,6 +28,7 @@ data class PaceState(
     val busy: Boolean = false,
     val error: String? = null,
     val activePlan: ActiveToolPlan? = null,
+    val planLoaded: Boolean = false,
 )
 
 class PaceViewModel(api: APIClient) : ViewModel() {
@@ -37,11 +38,12 @@ class PaceViewModel(api: APIClient) : ViewModel() {
     val state = mutable.asStateFlow()
     private var bytes: ByteArray? = null
     private var calculationJob: Job? = null
+    private var benchmarkJob: Job? = null
 
     init {
         viewModelScope.launch {
             val plan = plans.active()
-            mutable.update { it.copy(activePlan = plan) }
+            mutable.update { it.copy(activePlan = plan, planLoaded = true) }
         }
     }
 
@@ -79,8 +81,6 @@ class PaceViewModel(api: APIClient) : ViewModel() {
 
     fun calculate(
         request: PacingRequest,
-        name: String,
-        distance: Double,
         debounce: Boolean = false,
     ) {
         calculationJob?.cancel()
@@ -90,9 +90,8 @@ class PaceViewModel(api: APIClient) : ViewModel() {
                 mutable.update { it.copy(busy = true, error = null) }
                 try {
                     val paced = service.calculate(request)
-                    val benchmarks = service.benchmarks(name, distance)
                     ensureActive()
-                    mutable.update { it.copy(paced = paced, benchmarks = benchmarks, busy = false) }
+                    mutable.update { it.copy(paced = paced, busy = false) }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -100,6 +99,18 @@ class PaceViewModel(api: APIClient) : ViewModel() {
                     mutable.update { it.copy(error = e.message, busy = false) }
                 }
             }
+    }
+
+    fun loadBenchmarks(name: String, distance: Double) {
+        benchmarkJob?.cancel()
+        mutable.update { it.copy(benchmarks = emptyList()) }
+        if (name.trim().length < 3 || !distance.isFinite() || distance <= 0) return
+        benchmarkJob = viewModelScope.launch {
+            delay(400)
+            val results = service.benchmarks(name.trim(), distance)
+            ensureActive()
+            mutable.update { it.copy(benchmarks = results) }
+        }
     }
 
     fun cancelCalculation() {
@@ -166,16 +177,22 @@ fun PaceScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
         if (ToolHandoff.pacingTargetMinutes == incomingTarget)
             ToolHandoff.pacingTargetMinutes = null
     }
-    LaunchedEffect(state.activePlan) {
-        state.activePlan
-            ?.takeUnless { planDefaultsApplied }
-            ?.let { p ->
+    LaunchedEffect(state.planLoaded) {
+        if (state.planLoaded && !planDefaultsApplied) {
+            state.activePlan?.let { p ->
                 name = p.raceName
                 distance = (p.courseDistanceKm ?: 50.0).toString().removeSuffix(".0")
                 gain = (p.courseElevationGainM ?: 2200.0).toString().removeSuffix(".0")
-                if (incomingTarget == null) p.targetMinutes?.let { target = it.toString() }
-                planDefaultsApplied = true
             }
+            if (incomingTarget == null) {
+                val d = distance.toDoubleOrNull() ?: 50.0
+                val g = gain.toDoubleOrNull() ?: 2200.0
+                val bounds = PacingCalculator.sliderBoundsMins(d, g)
+                target = (state.activePlan?.targetMinutes
+                    ?: ((d + g / 100) * 6.5).coerceIn(bounds.first, bounds.second)).toString()
+            }
+            planDefaultsApplied = true
+        }
     }
     LaunchedEffect(state.gpx) {
         state.gpx?.let {
@@ -192,7 +209,7 @@ fun PaceScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
                 .toString()
         }
     }
-    fun pacingRequest(): Pair<PacingRequest, Double>? {
+    fun pacingRequest(): PacingRequest? {
         val d = state.gpx?.totalDistanceKm ?: distance.toDoubleOrNull() ?: return null
         val g = state.gpx?.totalElevationGainM ?: gain.toDoubleOrNull() ?: return null
         val minutes = target.toDoubleOrNull() ?: return null
@@ -218,14 +235,21 @@ fun PaceScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
             minutes,
             splitBias = bias.toDouble(),
             runnerWeightKg = kg,
-        ) to d
+        )
     }
-    LaunchedEffect(target, bias, distance, gain, weight, interval, state.gpx) {
-        if (state.paced.isNotEmpty()) {
+    LaunchedEffect(planDefaultsApplied, target, bias, distance, gain, weight, interval, state.gpx) {
+        if (planDefaultsApplied) {
             val request = pacingRequest()
             if (request == null) vm.cancelCalculation()
-            else vm.calculate(request.first, name, request.second, debounce = true)
+            else vm.calculate(request, debounce = true)
         }
+    }
+    LaunchedEffect(name, distance) {
+        vm.loadBenchmarks(name, distance.toDoubleOrNull() ?: 0.0)
+    }
+    LaunchedEffect(state.benchmarks) {
+        if (year != "All years" && state.benchmarks.none { it.year.toString() == year })
+            year = "All years"
     }
     ToolPage("Pace strategy", onNavigate) {
         PaceCourseCard(
@@ -264,7 +288,7 @@ fun PaceScreen(api: APIClient, user: User, lang: String, onNavigate: (String) ->
         )
         ToolError(state.error)
         ToolSubmit("Calculate pacing", state.busy, pacingRequest() != null) {
-            pacingRequest()?.let { (request, d) -> vm.calculate(request, name, d) }
+            pacingRequest()?.let { vm.calculate(it) }
         }
 
         if (state.benchmarks.isNotEmpty())

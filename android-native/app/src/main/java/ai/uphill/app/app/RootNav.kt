@@ -71,7 +71,7 @@ fun RootNav(container: AppContainer) {
                     onboarded = true
                     scope.launch {
                         try {
-                            container.session.updateUser(container.auth.me())
+                            container.session.restore { container.auth.me() }
                         } catch (_: Exception) {}
                     }
                 }

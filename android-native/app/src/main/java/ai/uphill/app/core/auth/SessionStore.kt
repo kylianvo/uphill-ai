@@ -29,21 +29,26 @@ class SessionStore(
 
     suspend fun restore(me: suspend () -> User) {
         mutableRestoreError.value = null
-        if (tokens.read() == null) {
+        val restoringToken = tokens.read()
+        if (restoringToken == null) {
             mutable.value = SessionState.SignedOut
             return
         }
         try {
-            updateUser(me())
+            val user = me()
+            if (tokens.read() == restoringToken) updateUser(user)
         } catch (e: CancellationException) {
             throw e
         } catch (e: APIError.Unauthorized) {
+            if (tokens.read() != restoringToken) return
             signOut()
         } catch (e: APIError.Transport) {
+            if (tokens.read() != restoringToken) return
             val cached = load()
             if (cached != null) mutable.value = SessionState.SignedIn(cached)
             else mutableRestoreError.value = e
         } catch (e: Exception) {
+            if (tokens.read() != restoringToken) return
             mutableRestoreError.value = e
         }
     }

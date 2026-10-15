@@ -72,6 +72,35 @@ class SessionStoreTest {
     }
 
     @Test
+    fun `restore cannot revive a signed out account`() = runTest {
+        val user = JSONCoding.json.decodeFromString<User>(fixture("auth_me.json"))
+        val tokens = MemoryTokenStore("old-token")
+        var saved = false
+        val session = SessionStore(tokens, { user }, { saved = true }, {})
+        session.restore {
+            session.signOut()
+            user
+        }
+        assertEquals(SessionState.SignedOut, session.state.value)
+        assertFalse(saved)
+        assertNull(tokens.read())
+    }
+
+    @Test
+    fun `old restore failure cannot expire a replacement session`() = runTest {
+        val response = JSONCoding.json.decodeFromString<AuthResponse>(fixture("auth_login.json"))
+        val tokens = MemoryTokenStore("old-token")
+        val session = SessionStore(tokens, { null }, {}, {})
+        session.restore {
+            session.signIn(response)
+            throw APIError.Unauthorized()
+        }
+        assertEquals(response.sessionToken, tokens.read())
+        assertEquals(SessionState.SignedIn(response.user), session.state.value)
+        assertNull(session.restoreError.value)
+    }
+
+    @Test
     fun `login stores new token and sign out clears local data`() {
         var cleared = false
         val tokens = MemoryTokenStore()

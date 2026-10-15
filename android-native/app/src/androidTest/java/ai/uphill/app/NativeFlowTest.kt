@@ -1077,6 +1077,9 @@ class NativeFlowTest {
         ToolHandoff.pacingTargetMinutes = 360.0
         ui.setContent { AppFixture { PaceScreen(api, user, "en", {}) } }
         waitText("42")
+        waitText("Race summary")
+        ui.onNodeWithTag("pace.target").performScrollTo()
+        captureFixtureScreenshot("pace-auto-calculation-en")
         assertEquals(360f, ui.onNodeWithTag("pace.target").fetchSemanticsNode()
             .config[androidx.compose.ui.semantics.SemanticsProperties.ProgressBarRangeInfo].current, .01f)
         val strategy = ui.onNodeWithTag("pace.bias").performScrollTo()

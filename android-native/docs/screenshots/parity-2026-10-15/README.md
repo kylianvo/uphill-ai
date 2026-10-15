@@ -91,3 +91,9 @@ Pace results/charts/benchmark layout remain outside this pass.
 The Pace pass used one copy correction and one VI-only confirmation: source-specific
 Thận trọng/Đều/Tấn công captions replace ambiguous shared translations. The GPX
 confirmation passed in3.917s; other screens and flows were not recaptured.
+
+`normal/pace-auto-calculation-en.png` is the only new capture in the release review.
+The targeted flow first asserts Race summary appears without tapping Calculate, then
+confirms the incoming Goal target and all three strategy thresholds. It passed in7.228s;
+EN/VI GPX checks passed in11.653s. No other captures were refreshed. Collection total:
+129 (69 normal +60 accessible). This is not a full result/chart parity audit.

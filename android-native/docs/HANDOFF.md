@@ -5,7 +5,43 @@ Branch: `codex/android-native`; approved iOS reference base: `afa2893`.
 Checkout: `/Users/vietvo/.codex/worktrees/android-native/uphill-ai`.
 Plan: `docs/superpowers/plans/2026-10-14-android-native.md`.
 
-## Current checkpoint — 2026-10-15
+## Release review — 2026-10-16
+
+**Hold general rollout until the included backend profile fixes are deployed.** A read-only
+production source check on this pass confirmed both are absent: omitted Gemini keys
+are still overwritten, and athlete notes are absent from the user response. Android
+profile updates omit the key intentionally, so this is a data-loss risk, not just copy
+or layout work. No production change was made. Deployment requires an explicit user
+request under the repository's deploy-backend skill.
+
+This pass:
+- Reproduced three session races with failing JVM tests. Delayed restore success can
+  no longer revive a signed-out user; old restore/API401 failures cannot sign out a
+  replacement session. Chat401 uses the same request-token guard, with its own test.
+  Post-onboarding profile refresh uses the guarded restore path.
+- Pace now calculates automatically after loading plan defaults, preserving an
+  incoming Goal target. Without either target it uses the source equivalent-distance
+  estimate. Benchmarks load separately after400ms, cancel stale lookups, clear for
+  an empty/invalid course and reset an unavailable selected year. Target edits no
+  longer repeat benchmark requests.
+- All98 debug and98 release JVM tests pass. Lint and signed/minified release build
+  pass in1m14s (`/tmp/uphill-ship-release.log`). Package, version and signing
+  certificate verified. Desktop APK SHA256:
+  `0e4cd5f9c608befc36827270c8490100c1362ea9c6090f409069c22205556ff0`.
+- Focused emulator checks: automatic calculation/Goal target/strategy passed in7.228s;
+  EN/VI GPX import, interval target preservation and removal passed in11.653s.
+  One fixture screenshot inspected; no broad simulator sweep. Fixture5554 closed
+  before the release build; live-account5556 was not modified.
+- Evidence now contains129 captures (69 normal +60 accessible). The added Pace
+  capture confirms the existing controls still render after automatic startup;
+  the device assertion, rather than the image alone, verifies the result exists.
+
+The APK is a release candidate, not a claim of complete iOS visual/motion parity.
+Fresh COROS OAuth/push, physical-phone upgrade, TalkBack and other Android versions
+remain unverified; the phone test and Health Connect are explicitly deferred.
+Keep PR127 draft pending the production dependency and remaining parity review.
+
+## Earlier checkpoint — 2026-10-15
 
 The user resumed work toward around 3% **weekly allowance remaining**. The previous
 stop checkpoint was committed as `dea06bb`. This continuation fixes its CI lint issue,
@@ -257,6 +293,9 @@ and release unit tests are also run by the packaging script.
 
 ## Remaining work, in order
 
+0. Deploy the included backend profile fixes only after an explicit deployment request.
+   The latest read-only production check confirmed both missing. Do not distribute
+   broadly while profile edits can clear an existing Gemini key.
 1. Continue `docs/PARITY.md`: all setup/result/sheet/error
    states, TalkBack, full motion and other OS versions still need comparison. The
    pictured states establish bounded evidence, not complete iOS parity.

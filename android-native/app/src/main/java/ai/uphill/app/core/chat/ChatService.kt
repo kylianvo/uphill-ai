@@ -80,7 +80,7 @@ class ChatService(private val api: APIClient) {
                     response.use {
                         if (!it.isSuccessful) {
                             val error = APIError.from(it.code, it.body?.string().orEmpty())
-                            if (error is APIError.Unauthorized) api.onUnauthorized()
+                            if (error is APIError.Unauthorized) api.handleUnauthorized(it.request)
                             throw error
                         }
                         val parser = SSEParser()

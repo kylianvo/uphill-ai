@@ -18,7 +18,7 @@ service or a passing fixture test does not establish matching layout or animatio
 | Goal | Assessment/context toggles, race search, field curve, tiers, pacing handoff | Result-state chart/layout and every context card comparison |
 | Gear | Recommendation packshots, preferences, rotation assignment/edit/mileage/retire, debounced saves; neutral empty slots and wear colors tested/captured | Compare recommendation/rotation/detail layouts and latest iOS rotation changes |
 | Nutrition | Fueling preferences, catalog/results and feedback | Result-state composition and product/copy comparison |
-| Pace | GPX picker/parser, course profile, splits/checkpoints, debounced calculation, target handoff; real Downloads picker EN/VI checks, source course/target/strategy controls and locked GPX fields | Source-based GPX target initialization and edited-target preservation through interval changes verified; Goal target, strategy thresholds and edited GPX target preservation pass focused checks; benchmark placement/lookup, initial calculation and result/chart/table comparison remain |
+| Pace | GPX picker/parser, course profile, splits/checkpoints, debounced calculation, target handoff; real Downloads picker EN/VI checks, source course/target/strategy controls and locked GPX fields | Source-based GPX target initialization and edited-target preservation through interval changes verified; Goal target, strategy thresholds and edited GPX target preservation pass focused checks; automatic initial calculation and independent debounced benchmark lookup now pass focused checks; benchmark placement and result/chart/table comparison remain |
 | Knowledge | Source header/search, daily widget, topic pills/count, full-card expansion/tags, empty state and source accordion; EN/VI key-point, retry and role checks | Larger-text expanded/empty content now verifies above the keyboard in EN/VI; broader loading/focus/TalkBack states remain |
 | Race history | Search/claims/bib verification, manual results/edit/delete, detail/PBs/badges; fixture/UI tests | Compare every link/claim/detail/course state against iOS |
 | Coaching | Roster/invites, overview/actions, athlete physiology/provenance, scoped plan/actions/notes; live backend flow | Adherence chart, seven-day bars, workout mix, Overview/Roster sections, 7/14/30-day and Elite filters, roster search ported and tested. Inline invite, action counts, roster progress, race-to-roster search and separate Profile sheet ported, tested and visually confirmed. Remaining state/motion comparison pending |
@@ -36,3 +36,9 @@ font1.3 and zero animation; only affected evidence was inspected/refreshed. The 
 simulator matrix and live-account checks were not repeated for this change.
 
 The evidence collection now contains128 captures after the two focused Pace controls additions.
+
+Release review2026-10-16:98 debug +98 release JVM tests and lint pass, signed/minified
+APK rebuilt and verified. Session race regressions and one independent benchmark test
+were added. Three focused device flows passed; evidence is now129 captures. A read-only
+production check confirmed both backend profile fixes are absent. General rollout
+must wait: current profile updates can clear a saved Gemini key. No deploy performed.

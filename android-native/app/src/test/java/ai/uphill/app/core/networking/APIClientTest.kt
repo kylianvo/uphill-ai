@@ -1,6 +1,8 @@
 package ai.uphill.app.core.networking
 
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.flow.toList
+import ai.uphill.app.core.chat.ChatService
 import kotlinx.serialization.Serializable
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -73,6 +75,48 @@ class APIClientTest {
                     is APIError.Unauthorized
             )
             assertTrue(expired)
+        }
+    }
+
+    @Test
+    fun `old request unauthorized does not expire a replacement session`() = runTest {
+        MockWebServer().use { server ->
+            val tokens = MemoryTokenStore("old-token")
+            server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+                override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
+                    assertEquals("Bearer old-token", request.getHeader("Authorization"))
+                    tokens.write("new-token")
+                    return MockResponse().setResponseCode(401)
+                }
+            }
+            var expired = false
+            val api = APIClient({ server.url("/").toString() }, tokens,
+                onUnauthorized = { expired = true })
+            assertTrue(runCatching { api.text(Endpoint("GET", "/api/auth/me")) }
+                .exceptionOrNull() is APIError.Unauthorized)
+            assertFalse(expired)
+            assertEquals("new-token", tokens.read())
+        }
+    }
+
+    @Test
+    fun `old chat unauthorized does not expire a replacement session`() = runTest {
+        MockWebServer().use { server ->
+            val tokens = MemoryTokenStore("old-token")
+            server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+                override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
+                    assertEquals("Bearer old-token", request.getHeader("Authorization"))
+                    tokens.write("new-token")
+                    return MockResponse().setResponseCode(401)
+                }
+            }
+            var expired = false
+            val api = APIClient({ server.url("/").toString() }, tokens,
+                onUnauthorized = { expired = true })
+            assertTrue(runCatching { ChatService(api).stream("request", "Hello", null, "en").toList() }
+                .exceptionOrNull() is APIError.Unauthorized)
+            assertFalse(expired)
+            assertEquals("new-token", tokens.read())
         }
     }
 
