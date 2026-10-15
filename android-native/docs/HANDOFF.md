@@ -158,20 +158,35 @@ remain platform-specific. This is the user's body-face choice, not an exact matc
 iOS's system body face. System mono glyphs can also vary by Android device.
 Font SHA-256: `89b3fb38aa0d275d7a731d0d817a4f1622b316b4d7fbdedcf02ee9099ff68bc8`.
 
-The bounded Knowledge confirmation leaves one visible limitation: at font1.3, an
-expanded search result or empty card can extend beneath the open keyboard. Source
-error/retry messages are visible after scrolling. The fixture tests validate the
-expansion state and actions, not complete visibility of every expanded line. The manifest currently omits adjustResize, which Android
-[documents as necessary for IME insets](https://developer.android.com/develop/ui/compose/system/setup-e2e).
-Confirm actual-activity and test-host sizing before changing it. Follow
-up on keyboard/focus behavior in the remaining accessibility/state audit; do not
-claim full keyboard/TalkBack parity from these captures.
-One normal launch retry capture also caught a dark video frame with weak text
-contrast; launch overlay/video readiness needs a separate state check before release.
-The bundled Media3 PlayerView layout uses a black exo_shutter by default; investigate
-using the app surface color while the first frame loads.
+## Focused keyboard and launch hardening
+
+MainActivity now uses `adjustResize`; the debug Compose test activity uses the same
+window policy. Existing safeDrawingPadding and scroll containers can then respond to
+the keyboard. A larger-text VI regression reproduced expanded text bottom1720px
+below keyboard top1517px before the fix (`/tmp/uphill-keyboard-before2.log`).
+The regression now checks actual text bounds against the keyboard-visible window,
+including the empty-search guidance. Search explicitly opens the keyboard before it.
+
+Media3 PlayerView's default black loading shutter now uses UH.surface, matching the
+launch background while the first video frame loads. This addresses the observed
+dark loading frame; the complete video loop/other devices remain unverified.
+
+**Latest focused verification:** four EN/VI Knowledge and session-retry flows passed
+at font1.3 with animations disabled in43.204s (`/tmp/uphill-keyboard-focused.log`).
+Two affected-state screenshots were inspected in one batch; six existing accessible
+captures were refreshed. Settings restored;5554 closed before release packaging.
+No full simulator matrix or new live-account run was repeated for this small change.
+
+**User workflow preference:** continue with Ponytail and Impeccable, minimizing
+simulator/screenshot token use. Compare source first, use targeted regressions and a
+small changed-state evidence batch; reuse unchanged captures. No repeated full sweeps.
 
 ## Verification and artifact freshness
+
+The broad baseline below is font checkpoint `39dfca4` (all three CI jobs green).
+The subsequent keyboard/shutter change uses the focused checks above. Release lint
+and release unit tests are also run by the packaging script.
+
 
 - **Lint, all 93 debug and 93 release JVM tests passed.** Converter four tests passed; catalog has
   1,469 EN/VI entries. `git diff --check` passed.
@@ -191,15 +206,18 @@ using the app surface color while the first frame loads.
 - The CI lint error was a test reading configuration through LocalContext. It now
   reads LocalConfiguration; local lint passes. The fixed Profile header also required
   removing an obsolete scroll action from the screenshot helper.
-- The latest signed/minified release includes Knowledge presentation and the requested
-  variable body font. Certificate/package/version are checked by the release script;
+- The latest signed/minified release includes Knowledge presentation, the requested
+  variable body font and keyboard/shutter hardening. Certificate/package/version are checked by the release script;
   `/Users/vietvo/Desktop/Uphill-AI-2.0.0.apk` is refreshed after the font confirmation.
-  Release build passed in2m12s: `/tmp/uphill-font-published-release.log`. The font OFL notice is
+  Font checkpoint release passed in2m12s: `/tmp/uphill-font-published-release.log`.
+  Latest hardening release passed in1m18s: `/tmp/uphill-keyboard-release.log`. The font OFL notice is
   packaged as an asset so resource shrinking retains it. Preserve5556's data when
   installing over it; only the static authenticated-shell result is recorded.
-  Install-over and explicit cold activity launch on5556 restored the authenticated
+  At font checkpoint39dfca4, install-over and explicit cold launch on5556 restored the authenticated
   shell. The monkey shortcut returned251; explicit `am start -W` succeeded in871ms.
   No account data was cleared or production screenshot saved.
+  The keyboard/shutter APK is refreshed on Desktop but is not reinstalled on5556;
+  the change does not touch session storage or networking.
 - The first cold boot opened signed out for an unknown reason. After a fresh Google
   login on the latest APK, controlled force-stop/relaunch, matching-signed APK
   replacement/relaunch and full emulator reboot all restored the authenticated

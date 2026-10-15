@@ -66,14 +66,19 @@ The photo-heavy launch video captures are exported as quality95 JPEG at the orig
 Knowledge captures include full-card expansion/tags, empty search, source503 retry,
 success and a reader-only attribution list. Admin-only ingestion matches backend
 authorization. Normal and larger-text captures use the same Surface/inset wrapper
-as MainActivity. At font1.3, expanded/empty search content can still extend beneath
-the open keyboard; tests establish the state transition, not full-line visibility.
-This remains an accessibility/state follow-up.
+as MainActivity. The focused window-sizing fix now verifies expanded tags and empty-search guidance
+above the open keyboard at font1.3 in EN/VI.
 
 The latest captures use the user-selected Plus Jakarta Sans variable body face
 (weights200–800), including chart and calendar labels. System mono remains explicit.
 
 Font confirmation passed after constraining the search hint to one line with an
 ellipsis. Logs: `/tmp/uphill-font-confirm-{normal,accessible}-{NativeFlowTest,VisualEvidenceTest}.log`.
-The normal launch retry evidence caught a dark loading frame; video-shutter/overlay
-contrast remains an open state check alongside the keyboard issue above.
+The original normal launch retry evidence caught a dark loading frame. The loading
+shutter now matches the app surface; the updated accessible retry capture is readable.
+The full video loop and other devices remain outside this focused check.
+
+Latest focused update: six accessible expansion/empty/retry captures reflect the
+keyboard/shutter fix. Unchanged captures, including normal/, remain font baseline
+39dfca4. Four targeted flows passed in43.204s (`/tmp/uphill-keyboard-focused.log`);
+only the expanded-card and retry captures were inspected in this pass.

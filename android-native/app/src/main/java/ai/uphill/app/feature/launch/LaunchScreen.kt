@@ -78,6 +78,7 @@ fun LaunchScreen(error: String? = null, onRetry: () -> Unit = {}) {
             factory = {
                 PlayerView(it).apply {
                     this.player = player
+                    setShutterBackgroundColor(UH.surface.toArgb())
                     useController = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 }

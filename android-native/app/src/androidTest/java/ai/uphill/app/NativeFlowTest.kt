@@ -868,13 +868,14 @@ class NativeFlowTest {
         waitText("Fueling on long runs")
         captureFixtureScreenshot("knowledge-library-$lang")
         val search = ui.onNodeWithTag("knowledge.search")
-        search.performTextInput("SoDiUm")
+        search.performClick().performTextInput("SoDiUm")
         ui.onNodeWithText("Fueling on long runs").assertExists()
         ui.onNodeWithText("Aerobic base").assertDoesNotExist()
         ui.onNodeWithText("Check your sodium budget.").assertDoesNotExist()
         ui.onNodeWithText("Fueling on long runs").performClick()
         ui.onNodeWithText("Check your sodium budget.").assertExists()
-        ui.onNodeWithText("#electrolytes").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("#electrolytes", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        assertAboveKeyboard("#electrolytes")
         captureFixtureScreenshot("knowledge-expanded-$lang")
         ui.onNodeWithText("Fueling on long runs").performClick()
         ui.onNodeWithText("Check your sodium budget.").assertDoesNotExist()
@@ -882,7 +883,10 @@ class NativeFlowTest {
         captureFixtureScreenshot("knowledge-keypoint-search-$lang")
         search.performTextReplacement("no-matches")
         waitText(ai.uphill.app.core.localization.localizedText(localizedContext, "No cards matching \"%@\"", "no-matches"))
-        ui.onNodeWithTag("knowledge.empty").performScrollTo()
+        val emptyHint = ai.uphill.app.core.localization.localizedText(localizedContext,
+            "Try searching for terms like aerobic, carbs, sodium, sleep, or poles.")
+        ui.onNodeWithText(emptyHint, useUnmergedTree = true).performScrollTo()
+        assertAboveKeyboard(emptyHint)
         captureFixtureScreenshot("knowledge-empty-$lang")
         search.performTextReplacement("   ")
         ui.onAllNodesWithText("Fueling on long runs").assertCountEquals(1)
@@ -1023,6 +1027,26 @@ class NativeFlowTest {
         assertFalse(cleared)
         assertNull(session.restoreError.value)
         assertEquals(2, attempts.get())
+    }
+
+    private fun assertAboveKeyboard(text: String) {
+        val visible = android.graphics.Rect()
+        ui.waitUntil(5000) {
+            var keyboardVisible = false
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                val activity = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                    .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED).first()
+                val view = activity.window.decorView
+                view.getWindowVisibleDisplayFrame(visible)
+                keyboardVisible = androidx.core.view.ViewCompat.getRootWindowInsets(view)
+                    ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
+            }
+            keyboardVisible
+        }
+        ui.waitForIdle()
+        val bounds = ui.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInWindow
+        assertTrue("Text bottom ${bounds.bottom} exceeds keyboard top ${visible.bottom}",
+            bounds.bottom <= visible.bottom)
     }
 
     private fun captureFixtureScreenshot(name: String) {
