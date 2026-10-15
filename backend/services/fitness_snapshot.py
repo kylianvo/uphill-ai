@@ -15,7 +15,8 @@ from typing import Any
 import db
 from services.athlete_tier import resolve_tier_explained
 
-PROVIDER = "coros"
+DEVICE_PROVIDERS = ("coros", "apple_health")
+SOURCE_LABELS = {"coros": "COROS", "apple_health": "Apple Health", "self_reported": "self-reported"}
 VOLUME_WEEKS = 4
 MIN_COUNTED_WEEKS = 3
 ASSESSMENT_MAX_AGE = timedelta(days=60)
@@ -37,6 +38,23 @@ def _monday(d: date) -> date:
 
 def _aware(ts: datetime) -> datetime:
     return ts if ts.tzinfo else ts.replace(tzinfo=UTC)
+
+
+def _freshest_connection(user_id: int) -> tuple[str, dict[str, Any]] | None:
+    """The active device connection synced most recently. On a tie the earlier entry
+    in DEVICE_PROVIDERS wins, so an athlete with both keeps COROS as before."""
+    best: tuple[str, dict[str, Any]] | None = None
+    for provider in DEVICE_PROVIDERS:
+        conn = db.get_connection(user_id, provider)
+        if not conn or conn.get("status") != "active":
+            continue
+        if best is None:
+            best = (provider, conn)
+            continue
+        new_at, best_at = conn.get("last_sync_at"), best[1].get("last_sync_at")
+        if new_at and (best_at is None or _aware(new_at) > _aware(best_at)):
+            best = (provider, conn)
+    return best
 
 
 def _counted_weeks(
@@ -180,7 +198,7 @@ class FitnessSnapshot:
             current_weekly_km=self.weekly_km,
             # Vert only when measured: typed volume has none, and inventing it would
             # move the level on a guess.
-            weekly_vert_m=self.weekly_vert_m if self.weekly_km_source == "coros" else None,
+            weekly_vert_m=self.weekly_vert_m if self.weekly_km_source in DEVICE_PROVIDERS else None,
             max_continuous_jog_min=max_continuous_jog_min,
             historical_max_distance_km=historical_max_distance_km,
             aet_hr=aet_hr,
@@ -200,12 +218,11 @@ class FitnessSnapshot:
 
     def prompt_block(self, lang: str = "en") -> str:
         # English like the rest of the scheduler prompt; `lang` steers the output elsewhere.
-        src = {"coros": "COROS", "self_reported": "self-reported"}
         lines = ["ATHLETE FITNESS SNAPSHOT"]
         vol = f"- Volume: {self.weekly_km:.0f} km/week"
         if self.weekly_vert_m:
             vol += f", {self.weekly_vert_m:,.0f} m vert"
-        vol += f" ({src[self.weekly_km_source]}"
+        vol += f" ({SOURCE_LABELS[self.weekly_km_source]}"
         vol += f", 4-week avg to {self.volume_as_of})" if self.volume_as_of else ")"
         lines.append(vol)
         a = self.assessment
@@ -226,7 +243,7 @@ class FitnessSnapshot:
             )
         if self.threshold_pace:
             lines.append(
-                f"- Threshold pace {self.threshold_pace}/km ({src[self.threshold_pace_source or 'self_reported']})"
+                f"- Threshold pace {self.threshold_pace}/km ({SOURCE_LABELS[self.threshold_pace_source or 'self_reported']})"
             )
         if self.utmb_index:
             lines.append(f"- UTMB index {self.utmb_index}")
@@ -255,19 +272,20 @@ def build(
 ) -> FitnessSnapshot:
     today = today or date.today()
     user = db.get_user_by_id(user_id) or {}
-    connection = db.get_connection(user_id, PROVIDER)
-    connected = bool(connection and connection.get("status") == "active")
+    freshest = _freshest_connection(user_id)
+    connected = freshest is not None
     notes: list[str] = []
 
     measured = None
-    if connected:
+    if freshest:
+        provider, connection = freshest
         # One query serves both the 4-week mean and the 12-week chronic cap.
         weeks = db.get_weekly_run_volumes(user_id, since=_monday(today) - timedelta(weeks=CHRONIC_WEEKS))
-        first_at = db.get_first_activity_at(user_id, PROVIDER)
+        first_at = db.get_first_activity_at(user_id, provider)
         last_sync_at = connection.get("last_sync_at")
         measured = measured_weekly_volume(weeks, first_at, last_sync_at, today)
         if measured is None:
-            notes.append("COROS volume unused: fewer than 3 complete synced weeks")
+            notes.append(f"{SOURCE_LABELS[provider]} volume unused: fewer than 3 complete synced weeks")
         else:
             # A spike cannot lift the tier past what the long-term load supports; a dip
             # still uses the lower 4-week value.
@@ -287,7 +305,7 @@ def build(
         if measured:
             notes.append(f"athlete override of measured {measured[0]:.0f} km/week")
     elif measured:
-        km, vert, as_of, km_src = measured[0], measured[1], measured[2].isoformat(), "coros"
+        km, vert, as_of, km_src = measured[0], measured[1], measured[2].isoformat(), freshest[0]
     else:
         km, vert, as_of, km_src = float(fallback_km), None, None, "self_reported"
 

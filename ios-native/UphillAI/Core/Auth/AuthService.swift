@@ -3,6 +3,8 @@ import Foundation
 protocol AuthServicing: Sendable {
     func login(email: String, password: String) async throws -> AuthResponse
     func register(name: String, email: String, password: String) async throws -> AuthResponse
+    func requestPasswordReset(email: String, lang: String) async throws
+    func resetPassword(email: String, code: String, newPassword: String) async throws -> AuthResponse
     func signInWithGoogle(idToken: String) async throws -> AuthResponse
     func signInWithApple(identityToken: String, fullName: String?) async throws -> AuthResponse
     func me() async throws -> User
@@ -16,6 +18,8 @@ struct AuthService: AuthServicing {
     private struct RegisterBody: Encodable { let name: String; let email: String; let password: String }
     private struct GoogleBody: Encodable { let credential: String }
     private struct AppleBody: Encodable { let identityToken: String; let fullName: String? }
+    private struct ForgotBody: Encodable { let email: String; let lang: String }
+    private struct ResetBody: Encodable { let email: String; let code: String; let newPassword: String }
 
     func login(email: String, password: String) async throws -> AuthResponse {
         try await client.send(.send(.post, "/api/auth/login",
@@ -25,6 +29,17 @@ struct AuthService: AuthServicing {
     func register(name: String, email: String, password: String) async throws -> AuthResponse {
         try await client.send(.send(.post, "/api/auth/register",
                                     body: RegisterBody(name: name, email: email, password: password), requiresAuth: false))
+    }
+
+    /// The server answers the same whether or not the account exists.
+    func requestPasswordReset(email: String, lang: String) async throws {
+        let _: EmptyResponse = try await client.send(.send(.post, "/api/auth/forgot-password",
+                                                           body: ForgotBody(email: email, lang: lang), requiresAuth: false))
+    }
+
+    func resetPassword(email: String, code: String, newPassword: String) async throws -> AuthResponse {
+        try await client.send(.send(.post, "/api/auth/reset-password",
+                                    body: ResetBody(email: email, code: code, newPassword: newPassword), requiresAuth: false))
     }
 
     func signInWithGoogle(idToken: String) async throws -> AuthResponse {

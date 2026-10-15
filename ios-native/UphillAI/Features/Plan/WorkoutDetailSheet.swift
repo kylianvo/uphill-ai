@@ -128,7 +128,7 @@ struct WorkoutDetailSheet: View {
                                                 Text("Approve Workout")
                                             }
                                             .font(UH.TextStyle.label)
-                                            .foregroundStyle(Color.white)
+                                            .foregroundStyle(UH.Palette.onSolid)
                                             .frame(maxWidth: .infinity)
                                             .frame(height: 48)
                                             .background(UH.Palette.accentInk, in: RoundedRectangle(cornerRadius: UH.Radius.control))
@@ -972,9 +972,9 @@ struct WorkoutDetailSheet: View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
             HStack {
                 HStack(spacing: 6) {
-                    Image(systemName: "applewatch")
-                        .foregroundStyle(UH.Palette.accentInk)
-                    Text("COROS")
+                    Image(systemName: w.matchedFromAppleHealth ? "heart.fill" : "applewatch")
+                        .foregroundStyle(w.matchedFromAppleHealth ? UH.Palette.healthPink : UH.Palette.accentInk)
+                    Text(verbatim: w.matchedSourceName)
                         .font(UH.TextStyle.sectionTitle)
                         .foregroundStyle(UH.Palette.ink)
                 }

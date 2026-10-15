@@ -28,7 +28,6 @@ targets:
         CFBundleDisplayName: Uphill AI
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, vi]
-        UIUserInterfaceStyle: Light
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UIAppFonts: [PlusJakartaSans.ttf]
@@ -40,6 +39,8 @@ targets:
           NSAllowsLocalNetworking: true
         NSCalendarsFullAccessUsageDescription: "Uphill AI syncs your scheduled training plan workouts and long runs to your calendar."
         NSCalendarsWriteOnlyAccessUsageDescription: "Uphill AI adds your scheduled workouts directly to your calendar."
+        NSHealthShareUsageDescription: "Uphill AI reads your runs, hikes and strength workouts, plus resting heart rate, HRV and sleep, so it can mark sessions done, measure your weekly mileage and adjust training to how you're recovering."
+        NSHealthUpdateUsageDescription: "Uphill AI does not write to Apple Health. It only reads your workouts to mark planned sessions done."
         GIDClientID: 451637841654-ncj3jhv24t9rq665noctori05faajiej.apps.googleusercontent.com
         CFBundleURLTypes:
           - CFBundleURLSchemes:
@@ -51,6 +52,9 @@ targets:
       path: UphillAI/UphillAI.entitlements
       properties:
         com.apple.developer.applesignin: [Default]
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+        com.apple.developer.healthkit.background-delivery: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: uphill.ai.app

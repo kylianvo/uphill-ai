@@ -201,6 +201,16 @@
         }
       }
     },
+    "%lld km · %@ h · %lld of %lld sessions done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld km · %@ h · xong %lld/%lld buổi"
+          }
+        }
+      }
+    },
     "%lld km/week": {
       "localizations": {
         "vi": {
@@ -547,6 +557,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "6+ tháng"
+          }
+        }
+      }
+    },
+    "6-digit code": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã 6 chữ số"
           }
         }
       }
@@ -1341,6 +1361,46 @@
         }
       }
     },
+    "Appearance": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giao diện"
+          }
+        }
+      }
+    },
+    "Dark mode": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chế độ tối"
+          }
+        }
+      }
+    },
+    "Light mode": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chế độ sáng"
+          }
+        }
+      }
+    },
+    "Match system": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theo hệ thống"
+          }
+        }
+      }
+    },
     "Apply Change": {
       "localizations": {
         "vi": {
@@ -1687,6 +1747,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tạo tuần %lld–%lld"
+          }
+        }
+      }
+    },
+    "Adapting your week…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang điều chỉnh tuần tập…"
           }
         }
       }
@@ -2637,6 +2707,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Không kết nối được COROS. Không có gì thay đổi. Thử lại sau."
+          }
+        }
+      }
+    },
+    "Couldn't send the code. Check your connection and try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không gửi được mã. Hãy kiểm tra kết nối rồi thử lại."
           }
         }
       }
@@ -3961,6 +4041,16 @@
         }
       }
     },
+    "Forgot password?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quên mật khẩu?"
+          }
+        }
+      }
+    },
     "Fresh": {
       "localizations": {
         "vi": {
@@ -4861,6 +4951,16 @@
         }
       }
     },
+    "If an account exists for this email, we sent a code. It expires in 15 minutes.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nếu email này có tài khoản, chúng tôi đã gửi mã. Mã hết hạn sau 15 phút."
+          }
+        }
+      }
+    },
     "Import GPX Course File": {
       "localizations": {
         "vi": {
@@ -5047,6 +5147,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tiếp tục dùng app"
+          }
+        }
+      }
+    },
+    "km/wk": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "km/tuần"
           }
         }
       }
@@ -5881,6 +5991,16 @@
         }
       }
     },
+    "No sessions planned this month": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tháng này chưa có buổi tập"
+          }
+        }
+      }
+    },
     "NOTES FOR COACH UPHILL (OPTIONAL)": {
       "localizations": {
         "vi": {
@@ -5937,6 +6057,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Plan mới"
+          }
+        }
+      }
+    },
+    "New password (8+ characters)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mật khẩu mới (từ 8 ký tự)"
           }
         }
       }
@@ -6387,6 +6517,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dinh dưỡng"
+          }
+        }
+      }
+    },
+    "Open in list": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở trong danh sách"
+          }
+        }
+      }
+    },
+    "Open week %lld in list": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở tuần %lld trong danh sách"
           }
         }
       }
@@ -7031,6 +7181,16 @@
         }
       }
     },
+    "Race day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày race"
+          }
+        }
+      }
+    },
     "RACE DAY PACING TARGETS": {
       "localizations": {
         "vi": {
@@ -7491,6 +7651,36 @@
         }
       }
     },
+    "Resend code": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi lại mã"
+          }
+        }
+      }
+    },
+    "Reset and sign in": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đặt lại và đăng nhập"
+          }
+        }
+      }
+    },
+    "Reset password": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đặt lại mật khẩu"
+          }
+        }
+      }
+    },
     "Rest": {
       "localizations": {
         "vi": {
@@ -7717,6 +7907,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "CHUYÊN GIA GIÀY"
+          }
+        }
+      }
+    },
+    "Show sessions": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem buổi tập"
           }
         }
       }
@@ -8027,6 +8227,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chọn mức gắng sức cho Block (1 đến 10)"
+          }
+        }
+      }
+    },
+    "Send code": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi mã"
           }
         }
       }
@@ -8851,6 +9061,16 @@
         }
       }
     },
+    "Today": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hôm nay"
+          }
+        }
+      }
+    },
     "TOOLS & LABS": {
       "localizations": {
         "vi": {
@@ -9147,6 +9367,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Thay đổi này không hợp lệ."
+          }
+        }
+      }
+    },
+    "That code is wrong or has expired. Request a new one.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã không đúng hoặc đã hết hạn. Hãy yêu cầu mã mới."
           }
         }
       }
@@ -9987,6 +10217,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "TUẦN %lld"
+          }
+        }
+      }
+    },
+    "Week %lld, %lld km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần %lld, %lld km"
           }
         }
       }
@@ -11397,6 +11637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "VĐV · không rõ cách đo"
+          }
+        }
+      }
+    },
+    "Enter your account email and we'll send you a 6-digit code.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập email tài khoản, chúng tôi sẽ gửi cho bạn mã 6 chữ số."
           }
         }
       }
@@ -13567,6 +13817,246 @@
           "stringUnit": {
             "state": "translated",
             "value": "nhất %@"
+          }
+        }
+      }
+    },
+    "Apple Health connected": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối Apple Health"
+          }
+        }
+      }
+    },
+    "Apple Health isn't available on this device.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Health không khả dụng trên thiết bị này."
+          }
+        }
+      }
+    },
+    "Connect Apple Health": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối Apple Health"
+          }
+        }
+      }
+    },
+    "Connected. I'll use your recent workouts to set your starting mileage.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối. Tôi sẽ dùng các buổi tập gần đây để đặt khối lượng khởi đầu."
+          }
+        }
+      }
+    },
+    "Couldn't disconnect. Check your connection and try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không ngắt kết nối được. Kiểm tra mạng rồi thử lại."
+          }
+        }
+      }
+    },
+    "Couldn't sync with Uphill. I'll try again next time you open the app.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không đồng bộ được với Uphill. Tôi sẽ thử lại lần sau khi bạn mở app."
+          }
+        }
+      }
+    },
+    "From Apple Health: %lld km a week over the last 4 full weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ Apple Health: %lld km/tuần, trung bình 4 tuần đầy đủ gần nhất"
+          }
+        }
+      }
+    },
+    "No workouts found. Check Settings → Health → Data Access & Devices → Uphill AI.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thấy buổi tập nào. Kiểm tra Cài đặt → Sức khỏe → Truy cập dữ liệu & thiết bị → Uphill AI."
+          }
+        }
+      }
+    },
+    "On the next screen": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ở màn hình tiếp theo"
+          }
+        }
+      }
+    },
+    "Apple starts with every switch off. Turn them all on and choose All Recorded Data, or I can't see your workouts.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple để mọi công tắc ở trạng thái tắt. Hãy bật tất cả và chọn Toàn bộ dữ liệu đã ghi (All Recorded Data), nếu không mình sẽ không thấy buổi tập của bạn."
+          }
+        }
+      }
+    },
+    "Open Settings": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Cài đặt"
+          }
+        }
+      }
+    },
+    "Runs, hikes and strength sessions from your iPhone, Apple Watch or any app that saves to Health.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy, hike và buổi Strength từ iPhone, Apple Watch hoặc app nào lưu vào Health."
+          }
+        }
+      }
+    },
+    "What I read": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi đọc gì"
+          }
+        }
+      }
+    },
+    "Runs, hikes, stair sessions and strength workouts from the last 12 weeks, then each new one as it's saved.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy, hike, leo cầu thang và Strength trong 12 tuần gần nhất, sau đó là từng buổi mới ngay khi được lưu."
+          }
+        }
+      }
+    },
+    "Why": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để làm gì"
+          }
+        }
+      }
+    },
+    "To mark your planned sessions done and start your plan from your real weekly mileage.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để đánh dấu buổi tập trong plan đã xong và bắt đầu plan từ khối lượng tuần thực tế của bạn."
+          }
+        }
+      }
+    },
+    "What I send to Uphill": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi gửi gì cho Uphill"
+          }
+        }
+      }
+    },
+    "Time, distance, climb, heart rate, calories and the app that recorded each workout, plus one daily value each for resting HR, HRV and sleep. Your GPS routes, sleep stages and heart-rate streams stay on your phone.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian, quãng đường, D+, nhịp tim, calo và app đã ghi lại mỗi buổi tập, cùng một giá trị mỗi ngày cho Resting HR, HRV và giấc ngủ. Lộ trình GPS, các giai đoạn ngủ và chuỗi nhịp tim ở lại trên điện thoại của bạn."
+          }
+        }
+      }
+    },
+    "Nothing written": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không ghi gì vào Health"
+          }
+        }
+      }
+    },
+    "I never write to Apple Health.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi không bao giờ ghi dữ liệu vào Apple Health."
+          }
+        }
+      }
+    },
+    "Continue": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục"
+          }
+        }
+      }
+    },
+    "Disconnect Apple Health?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngắt kết nối Apple Health?"
+          }
+        }
+      }
+    },
+    "Workouts received from Apple Health are deleted from Uphill AI. To stop sharing completely, turn off access in Settings → Health → Data Access & Devices.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các buổi tập nhận từ Apple Health sẽ bị xóa khỏi Uphill AI. Để dừng chia sẻ hoàn toàn, hãy tắt quyền truy cập trong Cài đặt → Sức khỏe → Truy cập dữ liệu & thiết bị."
+          }
+        }
+      }
+    },
+    "Resting heart rate, HRV and sleep, as daily totals, so your plan eases off when you're not recovering.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resting HR, HRV và giấc ngủ, dạng tổng theo ngày, để plan giảm tải khi bạn chưa hồi phục."
           }
         }
       }

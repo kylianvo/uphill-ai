@@ -153,7 +153,7 @@ struct AdaptWeekSheet: View {
                             Task { await submit() }
                         } label: {
                             if isSubmitting {
-                                ProgressView().tint(.white)
+                                ProgressView().tint(UH.Palette.onSolid)
                             } else {
                                 Text("Adapt week \(week)")
                             }

@@ -5,8 +5,10 @@ import SwiftUI
 struct SignInView: View {
     @Bindable var model: SignInViewModel
     @FocusState private var focused: Field?
+    @State private var forgotModel: ForgotPasswordViewModel?
     typealias Field = SignInViewModel.Field
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -49,7 +51,7 @@ struct SignInView: View {
                 } onCompletion: { result in
                     Task { await handleApple(result) }
                 }
-                .signInWithAppleButtonStyle(.black)
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                 .frame(height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: UH.Radius.control))
 
@@ -80,6 +82,7 @@ struct SignInView: View {
             }
         }
         .sensoryFeedback(.error, trigger: model.errorMessage) { _, new in new != nil }
+        .sheet(item: $forgotModel) { ForgotPasswordView(model: $0) }
     }
 
     private var divider: some View {
@@ -111,6 +114,14 @@ struct SignInView: View {
                 .onSubmit { handleReturn(in: .password) }
                 .inputBox()
                 .accessibilityIdentifier("signin.password")
+
+            if model.mode == .signIn {
+                Button(L("Forgot password?")) { forgotModel = model.makeForgotPasswordModel() }
+                    .font(UH.TextStyle.label)
+                    .foregroundStyle(UH.Palette.accentInk)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .trailing)
+                    .accessibilityIdentifier("signin.forgot")
+            }
 
             Button {
                 Task { await model.submitEmail() }
@@ -193,7 +204,7 @@ struct SignInView: View {
     }
 }
 
-private extension View {
+extension View {
     func inputBox() -> some View {
         self
             .padding(UH.Space.small)

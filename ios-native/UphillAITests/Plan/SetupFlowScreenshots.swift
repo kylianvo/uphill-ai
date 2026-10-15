@@ -12,6 +12,8 @@ struct SetupFlowScreenshots {
     private func capture<V: View>(_ view: V, name: String, size: CGSize = CGSize(width: 393, height: 852)) async throws {
         guard let outDir else { return }
         let controller = UIHostingController(rootView: view)
+        // SCREENSHOT_DARK=1 renders the same screens in dark mode.
+        if ProcessInfo.processInfo.environment["SCREENSHOT_DARK"] != nil { controller.overrideUserInterfaceStyle = .dark }
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
         window.rootViewController = controller
         window.makeKeyAndVisible()
@@ -41,7 +43,8 @@ struct SetupFlowScreenshots {
                 let watch = ScrollView {
                     VStack(alignment: .leading, spacing: UH.Space.section) {
                         Text("Connect your watch").font(UH.TextStyle.screenTitle)
-                        WatchChannelsList(connected: connected, available: true) { nil }
+                        WatchChannelsList(connected: connected, available: true, healthConnected: false, healthAvailable: true,
+                                          connect: { nil }, connectHealth: { nil })
                     }
                     .padding(UH.Space.section)
                 }

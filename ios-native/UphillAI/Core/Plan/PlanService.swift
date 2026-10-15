@@ -143,6 +143,7 @@ struct PlanService: PlanServicing {
         let durationSeconds: Double?
         let avgHr: Double?
         let deviceModel: String?
+        let sourceProvider: String?
     }
 
     private struct MatchesResponse: Decodable { let activities: [MatchedActivity] }
@@ -166,6 +167,7 @@ struct PlanService: PlanServicing {
             matched.matchedDistanceKm = activity.distanceKm
             matched.matchedDurationSeconds = activity.durationSeconds
             matched.matchedAvgHr = activity.avgHr.map { Int($0.rounded()) }
+            matched.matchedSourceProvider = activity.sourceProvider
             return matched
         }
     }

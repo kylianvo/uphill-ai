@@ -31,6 +31,7 @@ from services.calendar_rules import (
 from services.coach_tools.base import json_safe
 from services.course_match import resolve_course_match
 from services.plan_generator import PlanGenerator
+from services.plan_rules import count_me_sessions, is_me_session
 
 # Whole-week staleness: 4a's placement fields plus the content an edit changes.
 REBUILD_FINGERPRINT_FIELDS = FINGERPRINT_FIELDS + ("title", "type", "duration_minutes", "session_slot")
@@ -399,16 +400,7 @@ def build_rebuild_inputs(
             + f" vs Planned {planned_km:.1f}km / {planned_min / 60:.1f}h"
         )
         # Check if athlete missed an ME session in previous week (Scott Johnston Rule 7)
-        missed_me = [
-            w
-            for w in prev_wos
-            if (
-                "ME" in (w.get("type") or "").upper()
-                or "MUSCULAR ENDURANCE" in (w.get("title") or "").upper()
-                or "CIRCUIT" in (w.get("title") or "").upper()
-            )
-            and w.get("is_completed") != 1
-        ]
+        missed_me = [w for w in prev_wos if is_me_session(w) and w.get("is_completed") != 1]
         if missed_me:
             context_lines.append(
                 "  ME Progression Adjustment (Scott Johnston Rule 7): Athlete missed a scheduled Muscular Endurance (ME) session in the prior week. "
@@ -616,6 +608,7 @@ def build_rebuild_inputs(
         # hysteresis input, so re-plans follow the athlete's current fitness.
         "athlete_tier": None,
         "previous_tier": plan.get("athlete_tier"),
+        "me_history": count_me_sessions(all_workouts, request.week_number),
         "readiness_summary": readiness_summary,
         "lang": (
             "vi"

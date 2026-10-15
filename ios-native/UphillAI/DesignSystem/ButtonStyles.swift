@@ -26,7 +26,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .font(UH.TextStyle.label)
             .foregroundStyle(UH.Palette.ink)
             .frame(maxWidth: .infinity, minHeight: 48)
-            .background(Color.black.opacity(0.06), in: RoundedRectangle(cornerRadius: UH.Radius.control))
+            .background(UH.Palette.tint, in: RoundedRectangle(cornerRadius: UH.Radius.control))
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
             .opacity(configuration.isPressed && reduceMotion ? 0.8 : 1)
             .animation(reduceMotion ? nil : UH.Motion.standard, value: configuration.isPressed)

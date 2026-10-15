@@ -50,3 +50,7 @@ plan_job_duration_seconds = Histogram(
     ["kind", "status"],
     buckets=(5, 10, 20, 30, 45, 60, 90, 120, 180, 300, 600),
 )
+
+password_reset_email_failures_total = Counter(
+    "password_reset_email_failures_total", "Password reset emails that failed to send"
+)

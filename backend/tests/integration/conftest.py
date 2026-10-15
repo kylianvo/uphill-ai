@@ -35,6 +35,7 @@ ALL_TABLES = [
     "workouts",
     "fitness_assessments",
     "plans",
+    "password_reset_codes",
     "sessions",
     "sources",
     "coach_notes",

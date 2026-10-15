@@ -117,12 +117,20 @@ def build_chat_context(
     except Exception:
         race_history = ""
 
+    # 6. Recovery (7-day readiness from one wearable source), None without rows
+    try:
+        readiness = db.get_recent_readiness_summary(user_id, days=7)
+        recovery = readiness if readiness.get("days_recorded") else None
+    except Exception:
+        recovery = None
+
     return {
         "athlete": athlete_context,
         "plan": {"id": plan.get("id")} if plan else None,
         "workouts": plan_workouts,
         "recent_activities": recent_activities,
         "race_history": race_history,
+        "recovery": recovery,
         "history": valid_history,
         "evidence": list(retrieval_evidence or []),
         "question": question,

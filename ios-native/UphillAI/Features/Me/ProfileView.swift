@@ -4,6 +4,7 @@ struct ProfileView: View {
     @Bindable var app: AppModel
     @State private var showDeveloperMenu = false
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.en
+    @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
     @State private var path: [TrainingDestination] = []
     @State private var showSchedule = false
     @State private var selectedShoeSlot: ShoeRotationSlot? = nil
@@ -89,6 +90,12 @@ struct ProfileView: View {
                         ConnectedAccountsView(service: app.deviceConnectionService)
                             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                             .listRowBackground(Color.clear)
+                        if app.appleHealthEnabled {
+                            AppleHealthRow(app: app)
+                                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden, edges: .top)
+                        }
                     }
                 }
 
@@ -97,6 +104,10 @@ struct ProfileView: View {
                         ForEach(AppLanguage.allCases) { Text(verbatim: $0.nativeName).tag($0) }
                     }
                     .accessibilityIdentifier("me.language")
+                    Picker("Appearance", selection: $appearance) {
+                        ForEach(AppAppearance.allCases) { Text($0.label).tag($0) }
+                    }
+                    .accessibilityIdentifier("me.appearance")
                 }
 
                 Section("Account") {
@@ -163,8 +174,11 @@ struct ProfileView: View {
                     )
                 case .watch:
                     ScrollView {
-                        ConnectedAccountsView(service: app.deviceConnectionService)
-                            .padding(UH.Space.regular)
+                        VStack(spacing: UH.Space.regular) {
+                            ConnectedAccountsView(service: app.deviceConnectionService)
+                            if app.appleHealthEnabled { AppleHealthRow(app: app) }
+                        }
+                        .padding(UH.Space.regular)
                     }
                     .background(UH.Palette.surface)
                     .navigationTitle("Connected accounts")
@@ -197,7 +211,8 @@ struct ProfileView: View {
             .task {
                 async let rotation: Void = app.loadShoeRotation()
                 async let history: Void = app.loadRaceHistory()
-                _ = await (rotation, history)
+                async let health: Void = app.loadAppleHealthStatus()
+                _ = await (rotation, history, health)
             }
             .onChange(of: app.raceHistory, initial: true) { _, history in
                 if let history { raceHistory = history; badges = DistanceBadge.deriveBadges(from: history.results) }

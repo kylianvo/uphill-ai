@@ -55,6 +55,8 @@ def test_get_user_activity_ceiling_empty():
 def test_get_recent_readiness_summary_optimal():
     row1 = MagicMock(
         metric_date=datetime.date(2026, 3, 7),
+        source_provider="coros",
+        sleep_minutes=None,
         resting_hr=48,
         hrv_ms=65.0,
         hrv_status="Balanced",
@@ -63,6 +65,8 @@ def test_get_recent_readiness_summary_optimal():
     )
     row2 = MagicMock(
         metric_date=datetime.date(2026, 3, 6),
+        source_provider="coros",
+        sleep_minutes=None,
         resting_hr=50,
         hrv_ms=60.0,
         hrv_status="Balanced",
@@ -91,6 +95,8 @@ def test_get_recent_readiness_summary_overreaching_and_fatigued():
     # Overreaching: load_ratio > 1.4
     row_over = MagicMock(
         metric_date=datetime.date(2026, 3, 7),
+        source_provider="coros",
+        sleep_minutes=None,
         resting_hr=55,
         hrv_ms=45.0,
         hrv_status="Balanced",
@@ -108,6 +114,8 @@ def test_get_recent_readiness_summary_overreaching_and_fatigued():
     # Fatigued: low recovery (< 45) or low HRV status
     row_fatigued = MagicMock(
         metric_date=datetime.date(2026, 3, 7),
+        source_provider="coros",
+        sleep_minutes=None,
         resting_hr=58,
         hrv_ms=30.0,
         hrv_status="Low",
@@ -320,7 +328,8 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
     assert "Flat/Urban Weekdays vs Weekend Trails" in prompt
 
     # 6. 7-day Wearable Readiness
-    assert "7-DAY WEARABLE BIOLOGICAL READINESS & LOAD RATIO:" in prompt
+    assert "7-DAY WEARABLE BIOLOGICAL READINESS & LOAD RATIO (wearable):" in prompt
+    assert "- Sleep:" not in prompt
     assert "Rolling HRV: 68.0 ms" in prompt
     assert "ACWR (Acute:Chronic Load Ratio): 1.15 (Latest: 1.15)" in prompt
     assert "Biological Readiness Flag: OPTIMAL" in prompt
@@ -466,7 +475,8 @@ async def test_plan_generator_readiness_clean_formatting_when_none():
         )
 
     prompt = mock_client.models.generate_content.call_args.kwargs.get("contents", "")
-    assert "7-DAY WEARABLE BIOLOGICAL READINESS & LOAD RATIO:" in prompt
+    assert "7-DAY WEARABLE BIOLOGICAL READINESS & LOAD RATIO (wearable):" in prompt
+    assert "- Sleep:" not in prompt
     assert "None ms" not in prompt
     assert "None%" not in prompt
     assert "Rolling HRV: N/A" in prompt

@@ -107,9 +107,10 @@ struct SetupSteps: View {
                 trainingZones
             case .watch:
                 Text("Connect your watch").font(UH.TextStyle.screenTitle)
-                WatchChannelsList(connected: model.corosConnected, available: model.deviceService != nil) {
-                    await model.connectCoros()
-                }
+                WatchChannelsList(connected: model.corosConnected, available: model.deviceService != nil,
+                                  healthConnected: model.appleHealthConnected, healthAvailable: model.canConnectAppleHealth,
+                                  connect: { await model.connectCoros() },
+                                  connectHealth: { await model.connectAppleHealth() })
             case .raceHistory:
                 raceHistory
             case .startDate:
@@ -464,7 +465,10 @@ struct SetupSteps: View {
                     .labelsHidden()
             }
             if model.draft.weeklyKmFromWatch, let km = model.watchWeeklyKm {
-                Label(L("From your COROS: %lld km a week over the last 4 full weeks", Int(km)), systemImage: "applewatch.radiowaves.left.and.right")
+                Label(model.watchVolumeSource == "apple_health"
+                      ? L("From Apple Health: %lld km a week over the last 4 full weeks", Int(km))
+                      : L("From your COROS: %lld km a week over the last 4 full weeks", Int(km)),
+                      systemImage: "applewatch.radiowaves.left.and.right")
                     .font(UH.TextStyle.caption)
                     .foregroundStyle(UH.Palette.accentInk)
                     .accessibilityIdentifier("setup.weeklyKmFromWatch")
@@ -926,7 +930,7 @@ private struct SetupOption: View {
                             .frame(width: 44, height: 44)
                         Image(systemName: symbol)
                             .font(.title3.weight(.semibold))
-                            .foregroundStyle(selected ? Color.white : UH.Palette.accentInk)
+                            .foregroundStyle(selected ? UH.Palette.onSolid : UH.Palette.accentInk)
                     }
                 }
                 VStack(alignment: .leading, spacing: 3) {

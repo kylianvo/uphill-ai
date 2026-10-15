@@ -113,7 +113,7 @@ struct ShoeSlotDetailSheet: View {
                     // Packshot container
                     ZStack {
                         RoundedRectangle(cornerRadius: UH.Radius.control)
-                            .fill(UH.Palette.surface)
+                            .fill(UH.Palette.packshot)
                             .frame(width: 88, height: 88)
                             .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line, lineWidth: 1))
 
@@ -256,7 +256,7 @@ struct ShoeSlotDetailSheet: View {
                             // Mini thumbnail
                             ZStack {
                                 RoundedRectangle(cornerRadius: 6)
-                                    .fill(UH.Palette.surface)
+                                    .fill(UH.Palette.packshot)
                                     .frame(width: 44, height: 44)
                                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(UH.Palette.line, lineWidth: 1))
 
@@ -345,7 +345,7 @@ struct ShoeSlotDetailSheet: View {
                     } label: {
                         Text("Save as \(slot.title) Shoe")
                             .font(UH.TextStyle.label)
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(UH.Palette.onSolid)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                             .background(customBrand.isEmpty || customModel.isEmpty ? UH.Palette.muted : UH.Palette.accentInk, in: RoundedRectangle(cornerRadius: UH.Radius.control))

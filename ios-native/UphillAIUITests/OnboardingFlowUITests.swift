@@ -57,9 +57,11 @@ final class OnboardingFlowUITests: XCTestCase {
         XCTAssertTrue(goal.waitForExistence(timeout: 15))
         XCTAssertFalse(app.buttons["goal.return"].exists)
         XCTAssertFalse(app.buttons["goal.recovery"].exists)
-        goal.tap()                                   // → schedule
+        goal.tap()                                   // → watch
         let primary = app.buttons["setup.primary"]
-        XCTAssertTrue(primary.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Connect your watch"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["setup.connectAppleHealth"].exists)
+        primary.tap()                                // watch (skip) → schedule
         XCTAssertTrue(app.staticTexts["What does your week look like?"].exists)
         app.buttons["setup.noRunning"].tap()
         primary.tap()                                // schedule → venues

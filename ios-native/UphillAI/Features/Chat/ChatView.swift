@@ -299,7 +299,7 @@ struct ChatView: View {
                                 .foregroundStyle(UH.Palette.ink)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
-                                .background(Color.white, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                                .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.control))
                                 .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line, lineWidth: 1))
                         }
                         .accessibilityIdentifier("chat.starterChip")
@@ -330,7 +330,7 @@ struct ChatView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+            .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(UH.Palette.line, lineWidth: 1))
 
             Spacer()

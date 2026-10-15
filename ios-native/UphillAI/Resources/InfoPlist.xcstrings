@@ -1,0 +1,21 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSHealthShareUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Uphill AI reads your runs, hikes and strength workouts, plus resting heart rate, HRV and sleep, so it can mark sessions done, measure your weekly mileage and adjust training to how you're recovering." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Uphill AI đọc các buổi chạy, hike và strength, cùng Resting HR, HRV và giấc ngủ của bạn, để đánh dấu buổi đã xong, đo khối lượng tuần và điều chỉnh lịch tập theo mức hồi phục." } }
+      }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Uphill AI does not write to Apple Health. It only reads your workouts to mark planned sessions done." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Uphill AI không ghi dữ liệu vào Apple Health. Ứng dụng chỉ đọc buổi tập để đánh dấu buổi đã xong trong plan." } }
+      }
+    }
+
+  },
+  "version" : "1.0"
+}

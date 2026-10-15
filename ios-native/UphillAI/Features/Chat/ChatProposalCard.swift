@@ -89,7 +89,7 @@ struct ChatProposalCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(UH.Space.compact)
-            .background(Color.black.opacity(0.03), in: RoundedRectangle(cornerRadius: UH.Radius.control))
+            .background(UH.Palette.tint, in: RoundedRectangle(cornerRadius: UH.Radius.control))
         }
     }
 
@@ -228,7 +228,7 @@ struct ChatProposalCard: View {
                     .font(UH.TextStyle.label)
                     .foregroundStyle(UH.Palette.muted)
                     .frame(minWidth: 80, minHeight: 40)
-                    .background(Color.black.opacity(0.05), in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                    .background(UH.Palette.tint, in: RoundedRectangle(cornerRadius: UH.Radius.control))
             }
             .disabled(isBusy)
         }
@@ -238,10 +238,10 @@ struct ChatProposalCard: View {
     private var statusBadge: some View {
         let (text, ink, fill): (String, Color, Color) = switch status {
         case "applied": (L("Applied"), UH.Palette.accentInk, UH.Palette.activeFill)
-        case "discarded": (L("Discarded"), UH.Palette.muted, Color.black.opacity(0.06))
-        case "stale": (L("Stale"), UH.Palette.muted, Color.black.opacity(0.06))
+        case "discarded": (L("Discarded"), UH.Palette.muted, UH.Palette.tint)
+        case "stale": (L("Stale"), UH.Palette.muted, UH.Palette.tint)
         case "failed": (L("Failed"), UH.Palette.warningInk, UH.Palette.warningFill)
-        case "generating": (L("Drafting"), UH.Palette.muted, Color.black.opacity(0.06))
+        case "generating": (L("Drafting"), UH.Palette.muted, UH.Palette.tint)
         default: (L("Proposed"), UH.Palette.warningInk, UH.Palette.warningFill)
         }
         return Text(verbatim: text)

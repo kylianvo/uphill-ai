@@ -30,6 +30,9 @@ struct PlanView: View {
     }
     @State private var selectedWorkout: Workout?
     @State private var moveSwapDay: PlanDay?
+    @State private var calendarDay: MoveTarget?
+    /// Runs once the calendar day sheet has finished dismissing; a second sheet can't open while it is up.
+    @State private var afterCalendarDay: (() -> Void)?
     @State private var showManage = false
     @State private var toolAfterManage: TrainingDestination? = nil
     @State private var startNewAfterManage = false
@@ -42,6 +45,13 @@ struct PlanView: View {
     @State private var showAddWorkout = false
     @State private var readyBanner: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private func openWeekInList(_ week: Int) {
+        withAnimation(reduceMotion ? nil : UH.Motion.standard) {
+            model.selectedWeek = week
+            viewMode = .list
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -89,6 +99,18 @@ struct PlanView: View {
                             }
                         )
                     }
+                }
+                .sheet(item: $calendarDay, onDismiss: {
+                    afterCalendarDay?()
+                    afterCalendarDay = nil
+                }) { target in
+                    CalendarDaySheet(
+                        model: model,
+                        target: target,
+                        onOpenWeek: { week in afterCalendarDay = { openWeekInList(week) }; calendarDay = nil },
+                        onSelect: { workout in afterCalendarDay = { selectedWorkout = workout }; calendarDay = nil },
+                        onMoveOrSwap: model.athleteId == nil ? { day in afterCalendarDay = { moveSwapDay = day }; calendarDay = nil } : nil
+                    )
                 }
                 .sheet(item: $moveSwapDay) { day in
                     MoveSwapDaySheet(model: model, sourceDay: day)
@@ -153,7 +175,7 @@ struct PlanView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: UH.Space.small) {
-                        if generation.running?.kind == .newPlan { buildingBanner }
+                        if generation.running != nil { buildingBanner }
                         if let notice = model.calendarNotice {
                             ScheduleNoticeBanner(notice: notice, onDismiss: model.dismissCalendarNotice)
                                 .padding(.horizontal, UH.Space.regular)
@@ -198,7 +220,7 @@ struct PlanView: View {
                         if let app, let user, app.actingAsAthlete == nil {
                             SharpenChecklistCard(
                                 user: user,
-                                corosConnected: app.corosConnected,
+                                corosConnected: app.corosConnected || app.appleHealthConnected,
                                 raceHistoryLinked: !(app.raceHistory?.claims.isEmpty ?? true),
                                 onOpen: onSharpen
                             )
@@ -244,12 +266,7 @@ struct PlanView: View {
                             ungeneratedWeekCTA(model.selectedWeek)
                                 .padding(.horizontal, UH.Space.regular)
                         } else if viewMode == .calendar {
-                            PlanCalendarGridView(model: model) { date, week in
-                                withAnimation(reduceMotion ? nil : UH.Motion.standard) {
-                                    model.selectedWeek = week
-                                    viewMode = .list
-                                }
-                            }
+                            PlanCalendarGridView(model: model, onSelectDay: { calendarDay = $0 }, onOpenWeek: openWeekInList)
                             .padding(.horizontal, UH.Space.regular)
                         } else {
                             LazyVStack(spacing: UH.Space.compact) {
@@ -394,13 +411,22 @@ struct PlanView: View {
     private var buildingBanner: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let elapsed = max(0, Int(context.date.timeIntervalSince(generation.running?.startedAt ?? context.date)))
+            let kind = generation.running?.kind
+            let title: String = switch kind {
+            case .adaptWeek: L("Adapting your week…")
+            case .nextWeek: L("Building the next block…")
+            default: L("Building your plan…")
+            }
             HStack(spacing: UH.Space.small) {
                 ProgressView()
-                Text("Building your plan… \(elapsed / 60):\(String(format: "%02d", elapsed % 60))")
+                Text("\(title) \(elapsed / 60):\(String(format: "%02d", elapsed % 60))")
                     .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.ink)
                 Spacer(minLength: 0)
-                Button("View", action: onViewProgress).font(UH.TextStyle.disclosure).frame(minWidth: 44, minHeight: 44)
+                if kind == .newPlan {
+                    Button("View", action: onViewProgress).font(UH.TextStyle.disclosure).frame(minWidth: 44, minHeight: 44)
+                }
             }
+            .frame(minHeight: 44)
             .padding(.horizontal, UH.Space.small)
             .background(UH.Palette.hover, in: RoundedRectangle(cornerRadius: UH.Radius.control))
             .padding(.horizontal, UH.Space.regular)
@@ -462,16 +488,22 @@ struct PlanView: View {
                 showNextWeek = true
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                    Text("Generate Week \(week)")
+                    if generation.running?.kind == .nextWeek {
+                        ProgressView().tint(UH.Palette.onSolid)
+                        Text("Building the next block…")
+                    } else {
+                        Image(systemName: "sparkles")
+                        Text("Generate Week \(week)")
+                    }
                 }
                 .font(.system(size: 14, weight: .bold))
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
-                .foregroundStyle(Color.white)
+                .foregroundStyle(UH.Palette.onSolid)
                 .background(UH.Palette.accentInk, in: RoundedRectangle(cornerRadius: UH.Radius.control))
             }
             .buttonStyle(.plain)
+            .disabled(generation.running?.kind == .nextWeek)
             .accessibilityIdentifier("plan.generateWeekCTA")
             .padding(.horizontal, 16)
             .padding(.bottom, 8)

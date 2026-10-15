@@ -6,14 +6,14 @@ import { GOOGLE_IOS_CLIENT_ID, GOOGLE_WEB_CLIENT_ID } from "../lib/googleClientI
 
 export function useAppAuth() {
   const ctx = useAppContext();
-  const { setUser, setAuthModalOpen, setOnboardingOpen, setOnboardingStep, authErrorMsg, setAuthErrorMsg } = ctx;
+  const { lang, setUser, setAuthModalOpen, setOnboardingOpen, setOnboardingStep, authErrorMsg, setAuthErrorMsg } = ctx;
   const { fetchRecentPlansWithToken, fetchActivePlanWithToken } = usePlanner();
 
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [nameInput, setNameInput] = useState("");
   const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
-  const [authTab, setAuthTab] = useState<"login" | "register">("login");
+  const [authTab, setAuthTab] = useState<"login" | "register" | "forgot">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -88,6 +88,34 @@ export function useAppAuth() {
     }
   };
 
+  const requestPasswordReset = async (email: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, lang }),
+    });
+    if (!response.ok) throw new Error("Could not send the code.");
+  };
+
+  const resetPassword = async (email: string, code: string, newPassword: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code, new_password: newPassword }),
+    });
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.detail || "Reset failed.");
+    }
+    const data = await response.json();
+    localStorage.setItem("uphill_session_token", data.session_token);
+    setUser(data.user);
+    setAuthTab("login");
+    setAuthModalOpen(false);
+    fetchRecentPlansWithToken(data.session_token);
+    fetchActivePlanWithToken(data.session_token);
+  };
+
   // Shared by both the web GSI button (idToken from Google's embedded script)
   // and the native SocialLogin plugin (idToken from Credential Manager/iOS
   // GoogleSignIn SDK) -- the backend just validates any genuine Google ID
@@ -156,6 +184,7 @@ export function useAppAuth() {
   };
 
   return {
+    requestPasswordReset, resetPassword,
     emailInput, setEmailInput,
     passwordInput, setPasswordInput,
     nameInput, setNameInput,

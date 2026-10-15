@@ -23,6 +23,8 @@ struct PlanRedesignScreenshots {
 
     private func save<V: View>(_ view: V, name: String, size: CGSize = CGSize(width: 402, height: 874), scale: CGFloat = 2.0) {
         let controller = UIHostingController(rootView: view.frame(width: size.width, height: size.height))
+        // SCREENSHOT_DARK=1 renders the same screens in dark mode.
+        if ProcessInfo.processInfo.environment["SCREENSHOT_DARK"] != nil { controller.overrideUserInterfaceStyle = .dark }
         controller.view.bounds = CGRect(origin: .zero, size: size)
         controller.view.backgroundColor = .systemBackground
 

@@ -1,0 +1,39 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Synthetic: masters 50K athlete whose Apple Health recovery shows short sleep and low HRV; the plan should ease one hard session.",
+  "user_profile": {
+    "age": 58,
+    "gender": "female",
+    "max_hr": 165,
+    "resting_hr": 52,
+    "aet_hr": 128,
+    "ant_hr": 150,
+    "current_weekly_km": 45.0,
+    "days_per_week": 4,
+    "has_gym_access": true
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Masters 50K",
+    "date": "2026-12-15",
+    "course_distance_km": 50,
+    "course_elevation_gain_m": 2000,
+    "readiness_summary": {
+      "source_provider": "apple_health",
+      "days_recorded": 7,
+      "avg_hrv_ms": 38.0,
+      "latest_hrv_status": "low",
+      "avg_resting_hr": 56.0,
+      "avg_load_ratio": null,
+      "latest_load_ratio": null,
+      "avg_recovery_percent": null,
+      "readiness_flag": "fatigued",
+      "avg_sleep_minutes": 318,
+      "nights_recorded": 6
+    }
+  },
+  "total_weeks": 14
+}

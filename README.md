@@ -159,7 +159,6 @@ Uphill AI codifies the training methodologies of elite coaches and world-record 
 ### 8. Data Platform, Warehousing & Analytics
 *Production-grade data engineering and observability built for scale.*
 
-- **Event Streaming**: Apache Kafka capturing workout logs and telemetry streams.
 - **Batch Processing**: Apache Spark 3.5 & Delta Lake pipelines for user dimension and training load aggregations.
 - **Modern Data Warehouse**: DuckDB + dbt Core modeling dimensional layers (`dim_user`, `fct_workouts`, `fct_plan_generation`).
 - **Workflow Orchestration**: Apache Airflow DAGs orchestrating weekly KB distillation, race results enrichment, and ELT schedules.
@@ -184,7 +183,7 @@ Uphill AI codifies the training methodologies of elite coaches and world-record 
 | **Nutrition & Fueling Blueprint** | **Grounded in Real Products (Carb/Na+ hourly plan)** | Basic generic tips (e.g., "drink water") | ⚠️ Rough generic estimates (no catalog check) |
 | **Hallucination Safeguards** | **Dual RAG + Hardcoded Physiological Bounds** | N/A (Rules-based) | ❌ Frequent hallucinations & unsafe mileage jumps |
 | **Telemetry & Sensor Parsing** | **Garmin `.fit` activities & GPX route splits** | Closed ecosystem (e.g. Garmin only) | ❌ Cannot process telemetry streams |
-| **Data Platform & Analytics** | **Airflow + Spark + DuckDB/dbt + Kafka + Grafana** | Proprietary closed database | Closed proprietary API |
+| **Data Platform & Analytics** | **Airflow + Spark + DuckDB/dbt + Grafana** | Proprietary closed database | Closed proprietary API |
 | **Privacy & Self-Hosting** | **BYOK (Gemini API Key) + Dockerized Self-Host** | Closed subscription garden | Cloud-only subscription |
 | **Bilingual Localization** | **Native English & Tiếng Việt (Bilingual RAG & UI)** | English-only (or generic machine translation) | Multilingual text (no contextual grounding) |
 
@@ -249,9 +248,9 @@ Uphill AI codifies the training methodologies of elite coaches and world-record 
 *Explorable interactive version (pan/zoom, click-to-trace, light/dark) at [`assets/architecture/uphill-ai-architecture.html`](assets/architecture/uphill-ai-architecture.html) — open it locally in a browser. Source spec: [`assets/architecture/uphill-ai-architecture.json`](assets/architecture/uphill-ai-architecture.json). The original Excalidraw sketch is preserved at [`assets/architecture/uphill_ai_architecture.excalidraw`](assets/architecture/uphill_ai_architecture.excalidraw).*
 
 - **Client Layer**: the Next.js 16 static export (deployed to GitHub Pages) and the Capacitor-wrapped iOS/Android app both talk to the FastAPI backend over HTTPS/REST.
-- **Backend**: FastAPI + SQLAlchemy Core fronts the deterministic physics engines (Minetti grade/altitude/weather model, 80/20 auditor, goal/rank-transfer estimator) and issues SQL to PostgreSQL, vector retrieval to Qdrant, grounded generation calls to Gemini 2.5 Flash, workout events to Kafka, and metrics to Prometheus.
+- **Backend**: FastAPI + SQLAlchemy Core fronts the deterministic physics engines (Minetti grade/altitude/weather model, 80/20 auditor, goal/rank-transfer estimator) and issues SQL to PostgreSQL, vector retrieval to Qdrant, grounded generation calls to Gemini 2.5 Flash, and metrics to Prometheus.
 - **AI & Vector Layer**: Qdrant holds the Scheduler's philosophy embeddings for RAG; Gear and Nutrition instead inject their full curated catalog into the Gemini prompt directly (no retrieval-miss risk).
-- **Data Platform**: Kafka streams workout telemetry into Spark/Delta Lake; Airflow orchestrates the weekly KB-distillation and warehouse ELT DAGs into DuckDB/dbt.
+- **Data Platform**: Airflow orchestrates the weekly KB-distillation and warehouse ELT DAGs into DuckDB/dbt.
 - **Analytics & Ops**: Metabase serves BI dashboards off both PostgreSQL and the DuckDB warehouse; Prometheus + Grafana cover backend latency and system telemetry.
 
 ### Technology Breakdown
@@ -277,7 +276,6 @@ Uphill AI codifies the training methodologies of elite coaches and world-record 
 - **Podcast Processing**: `youtube-transcript-api` + Tavily crawler for *Evoke Endurance* podcast transcript synthesis.
 
 #### Data Platform & Observability
-- **Event Streaming**: Apache Kafka 3.7 (Docker Kraft cluster).
 - **Batch Processing**: Apache Spark 3.5 with Delta Lake.
 - **Data Warehousing**: DuckDB + dbt Core for ELT transformations.
 - **Workflow Orchestration**: Apache Airflow 2.9 (LocalExecutor, automated weekly distillation DAGs).

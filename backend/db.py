@@ -5,6 +5,7 @@ All raw SQL uses %s-style placeholders via psycopg2 through SQLAlchemy.
 
 import datetime
 import hashlib
+import hmac
 import json
 import math
 import unicodedata
@@ -105,6 +106,26 @@ def init_db():
             expires_at      TIMESTAMPTZ NOT NULL
         )
         """)
+        )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS password_reset_codes (
+            id          SERIAL PRIMARY KEY,
+            user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            code_hash   TEXT NOT NULL,
+            expires_at  TIMESTAMPTZ NOT NULL,
+            attempts    INTEGER NOT NULL DEFAULT 0,
+            used_at     TIMESTAMPTZ,
+            created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """)
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_password_reset_codes_user_created "
+                "ON password_reset_codes (user_id, created_at)"
+            )
         )
 
         conn.execute(
@@ -523,6 +544,7 @@ def init_db():
             training_load_long  REAL,
             load_ratio          REAL,
             recovery_percent    INTEGER,
+            sleep_minutes       INTEGER,
             created_at          TIMESTAMPTZ DEFAULT NOW(),
             UNIQUE (user_id, metric_date, source_provider)
         )
@@ -943,6 +965,8 @@ def init_db():
             "ALTER TABLE chat_daily_usage ADD COLUMN IF NOT EXISTS rebuilds_count INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE chat_proposals ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'schedule'",
             "ALTER TABLE chat_proposals ADD COLUMN IF NOT EXISTS draft JSONB",
+            # Apple Health recovery metrics: asleep minutes for the night ending on metric_date.
+            "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS sleep_minutes INTEGER",
             "ALTER TABLE chat_proposals DROP CONSTRAINT IF EXISTS chk_chat_proposals_kind",
             "ALTER TABLE chat_proposals ADD CONSTRAINT chk_chat_proposals_kind CHECK (kind IN ('schedule', 'rebuild'))",
             "ALTER TABLE chat_proposals DROP CONSTRAINT IF EXISTS chk_chat_proposals_status",
@@ -3003,6 +3027,72 @@ def delete_session(session_token: str) -> bool:
     return result.rowcount > 0
 
 
+# ─── Password reset codes ────────────────────────────────────────────────────
+
+
+def create_password_reset_code(user_id: int, code_hash: str, ttl_minutes: int = 15) -> bool:
+    """Stores a new reset code. Earlier live codes stay valid, so someone else
+    requesting codes for this email can't invalidate the one the owner is typing.
+
+    Returns False and stores nothing when the user is over the rate limit
+    (1 code per 60 s, 5 per hour)."""
+    with engine.connect() as conn:
+        recent = conn.execute(
+            text("""
+            SELECT COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '60 seconds') AS last_minute,
+                   COUNT(*) AS last_hour
+            FROM password_reset_codes
+            WHERE user_id = :uid AND created_at > NOW() - INTERVAL '1 hour'
+        """),
+            {"uid": user_id},
+        ).fetchone()
+        if recent.last_minute >= 1 or recent.last_hour >= 5:
+            return False
+        conn.execute(
+            text("""
+            INSERT INTO password_reset_codes (user_id, code_hash, expires_at)
+            VALUES (:uid, :h, NOW() + make_interval(mins => :ttl))
+        """),
+            {"uid": user_id, "h": code_hash, "ttl": ttl_minutes},
+        )
+        conn.commit()
+    return True
+
+
+def consume_password_reset_code(user_id: int, code_hash: str, new_password_hash: str) -> bool:
+    """Checks code_hash against every live code of the user.
+
+    A miss counts an attempt on all of them, so the user has 5 guesses in total
+    however many codes were requested. A hit sets the password, retires every
+    code and deletes every session, all in one transaction."""
+    with engine.begin() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT id, code_hash FROM password_reset_codes
+            WHERE user_id = :uid AND used_at IS NULL AND expires_at > NOW() AND attempts < 5
+            FOR UPDATE
+        """),
+            {"uid": user_id},
+        ).fetchall()
+        if not rows:
+            return False
+        if not any(hmac.compare_digest(row.code_hash, code_hash) for row in rows):
+            conn.execute(
+                text("UPDATE password_reset_codes SET attempts = attempts + 1 WHERE id = ANY(:ids)"),
+                {"ids": [row.id for row in rows]},
+            )
+            return False
+        conn.execute(
+            text("UPDATE users SET password_hash = :ph WHERE id = :uid"), {"ph": new_password_hash, "uid": user_id}
+        )
+        conn.execute(
+            text("UPDATE password_reset_codes SET used_at = NOW() WHERE user_id = :uid AND used_at IS NULL"),
+            {"uid": user_id},
+        )
+        conn.execute(text("DELETE FROM sessions WHERE user_id = :uid"), {"uid": user_id})
+    return True
+
+
 # ─── Knowledge Cards ─────────────────────────────────────────────────────────
 
 
@@ -3387,6 +3477,24 @@ def get_activity_external_ids(user_id: int, provider: str) -> set[str]:
         return {row for row in rows if row}
 
 
+def delete_activities_by_external_ids(user_id: int, provider: str, external_ids: list[str]) -> int:
+    """Hard-delete one provider's activities by their provider ids (e.g. workouts the
+    athlete deleted in Apple Health). A workout matched to a deleted row and another
+    provider's copy that pointed at it are both released by ON DELETE SET NULL."""
+    if not external_ids:
+        return 0
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+            DELETE FROM activities
+            WHERE user_id = :u AND source_provider = :p AND external_ids ->> :p = ANY(:ids)
+            """),
+            {"u": user_id, "p": provider, "ids": list(external_ids)},
+        )
+        conn.commit()
+        return result.rowcount
+
+
 def upsert_activity(user_id: int, activity) -> int:
     """Insert an activity, or return the existing row id if we already have it.
 
@@ -3478,11 +3586,11 @@ def upsert_daily_metric(user_id: int, metric) -> int:
             INSERT INTO daily_metrics (
                 user_id, metric_date, source_provider, resting_hr, hrv_ms,
                 hrv_baseline_ms, hrv_status, training_load_short,
-                training_load_long, load_ratio, recovery_percent
+                training_load_long, load_ratio, recovery_percent, sleep_minutes
             ) VALUES (
                 :user_id, :metric_date, :provider, :resting_hr, :hrv_ms,
                 :hrv_baseline_ms, :hrv_status, :load_short, :load_long,
-                :load_ratio, :recovery_percent
+                :load_ratio, :recovery_percent, :sleep_minutes
             )
             ON CONFLICT (user_id, metric_date, source_provider) DO UPDATE SET
                 resting_hr = COALESCE(EXCLUDED.resting_hr, daily_metrics.resting_hr),
@@ -3492,7 +3600,8 @@ def upsert_daily_metric(user_id: int, metric) -> int:
                 training_load_short = COALESCE(EXCLUDED.training_load_short, daily_metrics.training_load_short),
                 training_load_long = COALESCE(EXCLUDED.training_load_long, daily_metrics.training_load_long),
                 load_ratio = COALESCE(EXCLUDED.load_ratio, daily_metrics.load_ratio),
-                recovery_percent = COALESCE(EXCLUDED.recovery_percent, daily_metrics.recovery_percent)
+                recovery_percent = COALESCE(EXCLUDED.recovery_percent, daily_metrics.recovery_percent),
+                sleep_minutes = COALESCE(EXCLUDED.sleep_minutes, daily_metrics.sleep_minutes)
             RETURNING id
             """),
             {
@@ -3507,6 +3616,7 @@ def upsert_daily_metric(user_id: int, metric) -> int:
                 "load_long": metric.training_load_long,
                 "load_ratio": metric.load_ratio,
                 "recovery_percent": metric.recovery_percent,
+                "sleep_minutes": metric.sleep_minutes,
             },
         ).fetchone()
         conn.commit()
@@ -4037,22 +4147,37 @@ def get_user_activity_ceiling(user_id: int) -> dict[str, Any]:
         }
 
 
+def _pick_readiness_provider(rows: list[Any]) -> str:
+    """The provider whose newest row is the latest; a tie goes to COROS.
+
+    Providers never mix: COROS reports overnight RMSSD, Apple Health SDNN, and
+    the two sit on different scales. Rows must be ordered newest first."""
+    newest = rows[0].metric_date
+    on_newest = {r.source_provider for r in rows if r.metric_date == newest}
+    return "coros" if "coros" in on_newest else sorted(on_newest)[0]
+
+
 def get_recent_readiness_summary(user_id: int, days: int = 7) -> dict[str, Any]:
-    """Computes a rolling readiness summary from daily_metrics over the last `days` days.
+    """Computes a rolling readiness summary from daily_metrics over the last `days` days,
+    reading a single provider (see _pick_readiness_provider).
     Returns:
+    - source_provider: str | None
     - avg_hrv_ms: float | None
     - latest_hrv_status: str | None
     - avg_resting_hr: float | None
     - avg_load_ratio: float | None (Acute:Chronic Workload Ratio / ACWR)
     - latest_load_ratio: float | None
     - avg_recovery_percent: int | None
+    - avg_sleep_minutes: int | None
+    - nights_recorded: int (rows with sleep_minutes)
     - days_recorded: int
     - readiness_flag: str ("optimal" | "fatigued" | "overreaching" | "fresh" | "insufficient_data")
     """
     with engine.connect() as conn:
         rows = conn.execute(
             text("""
-                SELECT metric_date, resting_hr, hrv_ms, hrv_status, load_ratio, recovery_percent
+                SELECT metric_date, source_provider, resting_hr, hrv_ms, hrv_status,
+                       load_ratio, recovery_percent, sleep_minutes
                 FROM daily_metrics
                 WHERE user_id = :uid
                   AND metric_date >= CURRENT_DATE - CAST(:days AS INTEGER)
@@ -4063,6 +4188,7 @@ def get_recent_readiness_summary(user_id: int, days: int = 7) -> dict[str, Any]:
 
     if not rows:
         return {
+            "source_provider": None,
             "days_recorded": 0,
             "avg_hrv_ms": None,
             "latest_hrv_status": None,
@@ -4070,13 +4196,19 @@ def get_recent_readiness_summary(user_id: int, days: int = 7) -> dict[str, Any]:
             "avg_load_ratio": None,
             "latest_load_ratio": None,
             "avg_recovery_percent": None,
+            "avg_sleep_minutes": None,
+            "nights_recorded": 0,
             "readiness_flag": "insufficient_data",
         }
+
+    provider = _pick_readiness_provider(rows)
+    rows = [r for r in rows if r.source_provider == provider]
 
     hrvs = [float(r.hrv_ms) for r in rows if r.hrv_ms is not None]
     rhrs = [float(r.resting_hr) for r in rows if r.resting_hr is not None]
     ratios = [float(r.load_ratio) for r in rows if r.load_ratio is not None]
     recovs = [float(r.recovery_percent) for r in rows if r.recovery_percent is not None]
+    sleeps = [int(r.sleep_minutes) for r in rows if r.sleep_minutes is not None]
 
     avg_hrv = round(sum(hrvs) / len(hrvs), 1) if hrvs else None
     avg_rhr = round(sum(rhrs) / len(rhrs), 1) if rhrs else None
@@ -4084,19 +4216,23 @@ def get_recent_readiness_summary(user_id: int, days: int = 7) -> dict[str, Any]:
     latest_ratio = round(ratios[0], 2) if ratios else None
     latest_hrv_status = rows[0].hrv_status if rows[0].hrv_status else None
     avg_recov = int(round(sum(recovs) / len(recovs))) if recovs else None
+    avg_sleep = int(round(sum(sleeps) / len(sleeps))) if sleeps else None
 
-    # Determine readiness flag based on ACWR (sweet spot: 0.8-1.3) and recovery
+    # Determine readiness flag based on ACWR (sweet spot: 0.8-1.3), recovery and sleep
     readiness_flag = "optimal"
     if latest_ratio and latest_ratio > 1.4:
         readiness_flag = "overreaching"
-    elif (latest_hrv_status and latest_hrv_status.lower() in ["low", "fatigued", "depleted"]) or (
-        avg_recov is not None and avg_recov < 45
+    elif (
+        (latest_hrv_status and latest_hrv_status.lower() in ["low", "fatigued", "depleted"])
+        or (avg_recov is not None and avg_recov < 45)
+        or (len(sleeps) >= MIN_SLEEP_NIGHTS and avg_sleep is not None and avg_sleep < SHORT_SLEEP_MINUTES)
     ):
         readiness_flag = "fatigued"
     elif latest_ratio and latest_ratio < 0.8:
         readiness_flag = "fresh"
 
     return {
+        "source_provider": provider,
         "days_recorded": len(rows),
         "avg_hrv_ms": avg_hrv,
         "latest_hrv_status": latest_hrv_status,
@@ -4104,8 +4240,51 @@ def get_recent_readiness_summary(user_id: int, days: int = 7) -> dict[str, Any]:
         "avg_load_ratio": avg_ratio,
         "latest_load_ratio": latest_ratio,
         "avg_recovery_percent": avg_recov,
+        "avg_sleep_minutes": avg_sleep,
+        "nights_recorded": len(sleeps),
         "readiness_flag": readiness_flag,
     }
+
+
+# An average under 6 h over at least 3 recorded nights reads as fatigued.
+SHORT_SLEEP_MINUTES = 360
+MIN_SLEEP_NIGHTS = 3
+
+
+def get_daily_hrv(
+    user_id: int, start: datetime.date, end: datetime.date, provider: str
+) -> list[tuple[datetime.date, float]]:
+    """(metric_date, hrv_ms) for one provider's rows with an HRV value, oldest first."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT metric_date, hrv_ms FROM daily_metrics
+                WHERE user_id = :uid AND source_provider = :p
+                  AND metric_date BETWEEN :start AND :end AND hrv_ms IS NOT NULL
+                ORDER BY metric_date
+            """),
+            {"uid": user_id, "p": provider, "start": start, "end": end},
+        ).fetchall()
+    return [(r.metric_date, float(r.hrv_ms)) for r in rows]
+
+
+def set_daily_hrv_status(
+    user_id: int, provider: str, updates: list[tuple[datetime.date, float | None, str | None]]
+) -> None:
+    """Overwrites hrv_baseline_ms/hrv_status for existing rows. Unlike the upsert's
+    COALESCE this can clear a status, since a computed status is re-derived each time."""
+    if not updates:
+        return
+    with engine.connect() as conn:
+        for metric_date, baseline, status in updates:
+            conn.execute(
+                text("""
+                    UPDATE daily_metrics SET hrv_baseline_ms = :b, hrv_status = :s
+                    WHERE user_id = :uid AND source_provider = :p AND metric_date = :d
+                """),
+                {"uid": user_id, "p": provider, "d": metric_date, "b": baseline, "s": status},
+            )
+        conn.commit()
 
 
 def get_block_actual_volume(
@@ -5934,9 +6113,11 @@ def get_latest_daily_metrics(user_id: int) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(
             text("""
-            SELECT metric_date, resting_hr, hrv_ms, hrv_baseline_ms, hrv_status, load_ratio, recovery_percent
+            SELECT metric_date, source_provider, resting_hr, hrv_ms, hrv_baseline_ms, hrv_status,
+                   load_ratio, recovery_percent, sleep_minutes
             FROM daily_metrics WHERE user_id = :uid AND metric_date >= CURRENT_DATE - 14
-            ORDER BY metric_date DESC LIMIT 1
+            -- One provider's row: the newest, a same-day tie going to COROS (see _pick_readiness_provider).
+            ORDER BY metric_date DESC, (source_provider = 'coros') DESC, source_provider LIMIT 1
         """),
             {"uid": user_id},
         ).fetchone()

@@ -1,27 +1,35 @@
-import AVFoundation
 import SwiftUI
 
-/// Shown while the stored session is restored. Plays the web app's valley video;
-/// its foggy sky matches the system launch screen's colour, so the hand-off from
-/// launch to here to sign-in never flashes.
+/// Shown while the stored session is restored: a Dalat trail photo (day and a long-exposure night
+/// version from the asset catalog) behind the logo. Its sky matches the system launch screen's colour,
+/// so the hand-off from launch to here to sign-in never flashes.
 struct LaunchView: View {
     let error: String?
     let onRetry: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var shown = false
+    @Environment(\.colorScheme) private var scheme
+    @State private var zoomed = false
 
     var body: some View {
         ZStack(alignment: .top) {
             UH.Palette.surface.ignoresSafeArea()
 
-            LoopingVideo(name: "launch_bg", playing: !reduceMotion)
+            Color.clear
+                .overlay(
+                    Image("LaunchPhoto")
+                        .resizable()
+                        .scaledToFill()
+                        .scaleEffect(zoomed ? 1.06 : 1, anchor: .bottom)
+                )
+                .clipped()
                 .ignoresSafeArea()
-                .opacity(shown ? 1 : 0)
                 .accessibilityHidden(true)
 
-            // Keeps the text readable when the fog thins mid-loop.
-            LinearGradient(colors: [UH.Palette.surface.opacity(0.85), UH.Palette.surface.opacity(0)],
-                           startPoint: .top, endPoint: .center)
+            // Keeps the text readable over the sky and the ridge line.
+            LinearGradient(stops: [.init(color: UH.Palette.surface.opacity(scheme == .dark ? 0.4 : 0.85), location: 0),
+                                   .init(color: UH.Palette.surface.opacity(scheme == .dark ? 0.35 : 0.6), location: 0.42),
+                                   .init(color: UH.Palette.surface.opacity(0), location: 0.72)],
+                           startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
@@ -51,7 +59,8 @@ struct LaunchView: View {
             .padding(.top, 96)
         }
         .onAppear {
-            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.8)) { shown = true }
+            // A slow push-in keeps the still alive; Reduce Motion gets the plain photo.
+            if !reduceMotion { withAnimation(.easeInOut(duration: 14)) { zoomed = true } }
         }
     }
 
@@ -99,43 +108,6 @@ private struct LogoMark: View {
 
 /// A muted, gapless, aspect-filling video loop from the app bundle. Shows the first
 /// frame without playing when `playing` is false (Reduce Motion).
-private struct LoopingVideo: UIViewRepresentable {
-    let name: String
-    let playing: Bool
-
-    func makeUIView(context: Context) -> PlayerView {
-        let view = PlayerView()
-        guard let url = Bundle.main.url(forResource: name, withExtension: "mp4") else { return view }
-        let player = AVQueuePlayer()
-        player.isMuted = true
-        player.preventsDisplaySleepDuringVideoPlayback = false
-        // Don't interrupt the user's music or podcast.
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: .mixWithOthers)
-        context.coordinator.looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: url))
-        view.playerLayer.player = player
-        view.playerLayer.videoGravity = .resizeAspectFill
-        if playing { player.play() }
-        return view
-    }
-
-    func updateUIView(_ view: PlayerView, context: Context) {
-        guard let player = view.playerLayer.player else { return }
-        if playing { player.play() } else { player.pause() }
-    }
-
-    static func dismantleUIView(_ view: PlayerView, coordinator: Coordinator) {
-        view.playerLayer.player?.pause()
-        coordinator.looper = nil
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-    final class Coordinator { var looper: AVPlayerLooper? }
-
-    final class PlayerView: UIView {
-        override static var layerClass: AnyClass { AVPlayerLayer.self }
-        var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
-    }
-}
 
 #Preview("Loading") { LaunchView(error: nil, onRetry: {}) }
 #Preview("Error") { LaunchView(error: "Couldn't reach Uphill AI. Check your connection and try again.", onRetry: {}) }

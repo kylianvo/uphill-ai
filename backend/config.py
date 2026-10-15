@@ -74,6 +74,12 @@ class Config:
     API_PORT: int = int(os.getenv("PORT", "8000"))
     API_HOST: str = os.getenv("HOST", "0.0.0.0")
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    # Outbound email (password reset codes). Empty SMTP_HOST = log and skip sending.
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "465"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    MAIL_FROM: str = os.getenv("MAIL_FROM", "")
     # Public OAuth IDs for the web/Android and native iOS clients.
     GOOGLE_CLIENT_IDS: list[str] = [
         c.strip()
@@ -144,11 +150,6 @@ class Config:
         "QDRANT_URL", "http://qdrant:6333" if os.path.exists("/.dockerenv") else "http://localhost:6333"
     )
 
-    # Kafka clickstream pipeline
-    KAFKA_BOOTSTRAP_SERVERS: str = os.getenv(
-        "KAFKA_BOOTSTRAP_SERVERS", "kafka:9092" if os.path.exists("/.dockerenv") else "127.0.0.1:9092"
-    )
-
     # Single source of truth for training block size (weeks per block), used by
     # plan generation, the 70% completion gate, and block review/evaluation.
     # See db.py's week_range_for_block/block_number_for_week helpers.
@@ -175,6 +176,12 @@ class Config:
     )
     COROS_MCP_ENDPOINT: str = os.getenv("COROS_MCP_ENDPOINT", "https://mcp.coros.com/mcp")
     COROS_DAILY_PUSH_LIMIT: int = int(os.getenv("COROS_DAILY_PUSH_LIMIT", "10"))
+    # Hides Apple Health in the app (via /api/integrations/status) and 404s its sync
+    # endpoint, without an app release.
+    APPLE_HEALTH_ENABLED: bool = os.getenv("APPLE_HEALTH_ENABLED", "true").lower() != "false"
+    # Resting HR, HRV and sleep riding on the Apple Health sync. Off: the server ignores
+    # them and /status tells the app to stop reading them.
+    APPLE_HEALTH_RECOVERY_ENABLED: bool = os.getenv("APPLE_HEALTH_RECOVERY_ENABLED", "true").lower() != "false"
 
     # Where the OAuth callback redirects the athlete's browser after a COROS
     # connect attempt (success or failure) -- the static-export frontend, not the API.

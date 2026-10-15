@@ -18,6 +18,13 @@ final class FakeAuthService: AuthServicing {
     func register(name: String, email: String, password: String) async throws -> AuthResponse {
         try record("register \(name) \(email)")
     }
+    func requestPasswordReset(email: String, lang: String) async throws {
+        calls.withLock { $0.append("forgot \(email) \(lang)") }
+        if case .failure(let error) = result { throw error }
+    }
+    func resetPassword(email: String, code: String, newPassword: String) async throws -> AuthResponse {
+        try record("reset \(email) \(code)")
+    }
     func signInWithGoogle(idToken: String) async throws -> AuthResponse { try record("google \(idToken)") }
     func signInWithApple(identityToken: String, fullName: String?) async throws -> AuthResponse {
         try record("apple \(identityToken) \(fullName ?? "-")")

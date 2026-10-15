@@ -46,15 +46,15 @@ struct ShoeRotationView: View {
                 // Shoe graphic container (Studio light-base packshot aesthetic)
                 ZStack {
                     RoundedRectangle(cornerRadius: UH.Radius.control)
-                        .fill(UH.Palette.surface)
+                        .fill(UH.Palette.packshot)
                         .frame(height: 72)
                         .overlay(
                             RoundedRectangle(cornerRadius: UH.Radius.control)
                                 .stroke(UH.Palette.line, lineWidth: 1)
                         )
 
-                    let asset = GearImageResolver.assetName(brand: item?.brand ?? "", model: item?.model ?? "", slot: slot)
-                    if let uiImage = UIImage(named: asset) {
+                    // Empty slots show the placeholder, not the slot's generic packshot.
+                    if let item, let uiImage = UIImage(named: GearImageResolver.assetName(brand: item.brand, model: item.model, slot: slot)) {
                         Image(uiImage: uiImage)
                             .resizable()
                             .aspectRatio(contentMode: .fit)

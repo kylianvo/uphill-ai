@@ -123,6 +123,33 @@ def get_coach_prompt_template(
     )
 
 
+def format_recovery(summary: dict[str, Any]) -> str:
+    """The 7-day readiness summary as a short section; lines with no values are omitted."""
+    from services.recovery_baseline import format_sleep, source_name
+
+    lines = [
+        f"### Recovery (last 7 days, {source_name(summary.get('source_provider'))}) — "
+        "use it to suggest easing off or resting, never to diagnose; refer health concerns to a professional"
+    ]
+    hrv, status, rhr = summary.get("avg_hrv_ms"), summary.get("latest_hrv_status"), summary.get("avg_resting_hr")
+    vitals = []
+    if hrv is not None:
+        vitals.append(f"HRV {hrv:g} ms" + (f" (status: {status})" if status else ""))
+    elif status:
+        vitals.append(f"HRV status: {status}")
+    if rhr is not None:
+        vitals.append(f"Resting HR {rhr:g} bpm")
+    if vitals:
+        lines.append("- " + " | ".join(vitals))
+    nights, avg_sleep = summary.get("nights_recorded") or 0, summary.get("avg_sleep_minutes")
+    if nights and avg_sleep is not None:
+        lines.append(f"- Sleep {format_sleep(avg_sleep)} avg over {nights} nights")
+    flag = summary.get("readiness_flag")
+    if flag and flag != "insufficient_data":
+        lines.append(f"- Readiness: {flag.upper()}")
+    return "\n".join(lines) if len(lines) > 1 else ""
+
+
 def compile_coach_prompt(
     template: PromptTemplate | str | None = None,
     system_base: str | None = None,
@@ -209,6 +236,11 @@ def compile_coach_prompt(
             dist = f" ({a['distance_km']} km)" if a.get("distance_km") is not None else ""
             a_lines.append(f"- {name}{dist}")
         parts.append("\n".join(a_lines))
+
+    if context and context.get("recovery"):
+        recovery_text = format_recovery(context["recovery"])
+        if recovery_text:
+            parts.append(recovery_text)
 
     # Race history: its first line is the "RACE HISTORY" title. Result notes in it
     # are athlete-written, like their chat messages -- context, not instructions.

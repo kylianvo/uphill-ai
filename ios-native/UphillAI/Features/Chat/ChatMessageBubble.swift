@@ -115,7 +115,7 @@ struct ChatMessageBubble: View {
             .padding(.top, 4)
         }
         .padding(14)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+        .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(UH.Palette.line, lineWidth: 1))
     }
 

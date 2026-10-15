@@ -48,7 +48,7 @@ struct EffortSelector: View {
                                 if selected {
                                     Image(systemName: "checkmark.circle.fill")
                                         .symbolRenderingMode(.palette)
-                                        .foregroundStyle(Color.white, UH.Palette.ink)
+                                        .foregroundStyle(UH.Palette.onSolid, UH.Palette.ink)
                                         .font(.system(size: 22, weight: .semibold))
                                 }
                             }

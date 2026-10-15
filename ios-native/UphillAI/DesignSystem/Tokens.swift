@@ -4,19 +4,27 @@ import SwiftUI
 enum UH {
     enum Palette {
         static let accent = Color(hex: "#19ce8b")
-        static let accentInk = Color(hex: "#08764f")
+        static let accentInk = Color(light: "#08764f", dark: "#19ce8b")
         static let buttonInk = Color(hex: "#063e2b")
-        static let ink = Color(hex: "#172b26")
-        static let secondary = Color(hex: "#455c52")
-        static let muted = Color(hex: "#5d7167")
-        static let line = Color(hex: "#dce5df")
-        static let hover = Color(hex: "#edf5f0")
-        static let surface = Color(hex: "#f8faf8")
-        static let card = Color.white
+        static let ink = Color(light: "#172b26", dark: "#e8f1ec")
+        static let secondary = Color(light: "#455c52", dark: "#b4c5bb")
+        static let muted = Color(light: "#5d7167", dark: "#9fb3a9")
+        static let line = Color(light: "#dce5df", dark: "#2f403a")
+        static let hover = Color(light: "#edf5f0", dark: "#1f2b26")
+        static let surface = Color(light: "#f8faf8", dark: "#0f1613")
+        static let card = Color(light: "#ffffff", dark: "#17201c")
+        /// Tile behind product photos: dark products need a lighter field than the page in dark mode.
+        static let packshot = Color(light: "#f8faf8", dark: "#2c3b35")
+        /// Neutral wash for chips and quiet fills; replaces `Color.black.opacity(0.0x)`.
+        static let tint = Color(light: "#000000", dark: "#ffffff").opacity(0.07)
+        /// Text/icons on solid ink or accent-ink fills, which flip in dark.
+        static let onSolid = Color(light: "#ffffff", dark: "#063e2b")
         static let activeFill = Color(hex: "#19ce8b").opacity(0.16)
-        static let warningInk = Color(hex: "#92400e")
+        static let warningInk = Color(light: "#92400e", dark: "#fbbf24")
         static let warningFill = Color(hex: "#f59e0b").opacity(0.12)
-        static let danger = Color(hex: "#b42318")
+        static let danger = Color(light: "#b42318", dark: "#f97066")
+        /// Apple Health's heart pink, used only beside the Apple Health name.
+        static let healthPink = Color(hex: "#ff2d55")
     }
 
     enum Space {

@@ -16,30 +16,26 @@ enum WorkoutTypePresentation {
         return workout.type
     }
 
+    /// One effort palette for the whole app. Light values are the 700-weights (>= 3:1 on white, so thin
+    /// bars and outlines hold); Recovery is cyan so it parts from Easy. Dark values are the lighter 400s.
     static func zoneColor(for workout: Workout) -> Color {
-        let t = workout.type.lowercased()
+        // Colour follows the chip the athlete reads, so every "Easy" is the same blue whatever zone range it targets.
+        switch chipLabel(for: workout) {
+        case "Intervals": return Color(light: "#dc2626", dark: "#f87171")
+        case "Long": return Color(light: "#047857", dark: "#34d399")
+        case "Recovery": return Color(light: "#0e7490", dark: "#22d3ee")
+        case "Easy": return Color(light: "#3b82f6", dark: "#60a5fa")
+        case "Tempo", "Threshold": return Color(light: "#b45309", dark: "#fbbf24")
+        case "ME", "Strength": return Color(light: "#7c3aed", dark: "#a78bfa")
+        case "Cross": return Color(light: "#0f766e", dark: "#2dd4bf")
+        default: break
+        }
+        // Unrecognised type: fall back to the target zone.
         let z = workout.targetZone.lowercased()
-        if t.contains("strength") || t.contains("me") || t.contains("muscular") {
-            return Color(hex: "#8b5cf6")
-        }
-        if t.contains("interval") || t.contains("hill") || z.contains("4") || z.contains("5") {
-            return Color(hex: "#ef4444")
-        }
-        if t.contains("tempo") || t.contains("threshold") || z.contains("3") {
-            return Color(hex: "#f59e0b")
-        }
-        if t.contains("long") {
-            return Color(hex: "#10b981")
-        }
-        if t.contains("recovery") || z.contains("1") {
-            return Color(hex: "#0ea5e9")
-        }
-        if t.contains("easy") || z.contains("2") {
-            return Color(hex: "#3b82f6")
-        }
-        if t.contains("cross") {
-            return Color(hex: "#14b8a6")
-        }
+        if z.contains("4") || z.contains("5") { return Color(light: "#dc2626", dark: "#f87171") }
+        if z.contains("3") { return Color(light: "#b45309", dark: "#fbbf24") }
+        if z.contains("1") { return Color(light: "#0e7490", dark: "#22d3ee") }
+        if z.contains("2") { return Color(light: "#3b82f6", dark: "#60a5fa") }
         return Color(hex: "#6b7280")
     }
 
