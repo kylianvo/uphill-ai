@@ -97,3 +97,13 @@ def test_never_offers_substitutes_the_athlete_does_not_have():
     trainer = Venues(use_treadmill=True, treadmill_max_incline=25).prompt_block(allows_intensity=True, allows_me=True)
     assert "from treadmill incline blocks." in trainer and "stair laps" not in trainer
     assert "where available" not in trainer
+
+
+def test_mountain_preferences_round_trip():
+    venues = Venues.from_race_info(
+        {"training_mountain": "nui_dinh", "mountain_min_minutes": 210, "mountain_days": '["Saturday"]'}
+    )
+    assert venues.training_mountain == "nui_dinh"
+    assert venues.mountain_min_minutes == 210
+    assert venues.is_mountain_day("Saturday")
+    assert not venues.is_mountain_day("Tuesday")

@@ -968,3 +968,76 @@ class TestZoneFallbackConsistency:
         slow, fast = default_zone2_pace()
         zones = PlanGenerator.estimate_pace_zones(None, None)
         assert zones["zone2_pace"] == f"{slow} - {fast}"
+
+
+class TestMountainDaySessions:
+    def _generate(self, *, mountain="nui_dinh", day="Saturday", elevation=850, use_treadmill=False):
+        import json
+
+        response = MagicMock()
+        response.text = json.dumps(
+            [
+                {
+                    "week_number": 1,
+                    "day_of_week": day,
+                    "phase": "Build",
+                    "type": "Long Run",
+                    "title": "Long Run",
+                    "duration_minutes": 130,
+                    "target_zone": "Zone 2",
+                    "elevation_gain_m": elevation,
+                }
+            ]
+        )
+        client = MagicMock()
+        client.models.generate_content.return_value = response
+        with (
+            patch("google.genai.Client", return_value=client),
+            patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+        ):
+            workouts, _ = asyncio.run(
+                PlanGenerator.generate_plan_workouts(
+                    plan_id=1,
+                    user_profile={"threshold_pace": "3:55", "aet_hr": 134, "ant_hr": 163, "current_weekly_km": 60},
+                    race_info={
+                        "training_mountain": mountain,
+                        "mountain_days": ["Saturday"],
+                        "terrain": "trail",
+                        "use_treadmill": use_treadmill,
+                        "plan_start_date": "2026-10-12",
+                    },
+                    total_weeks=12,
+                    api_key="test-key",
+                    weeks_per_block=2,
+                )
+            )
+        assert client.models.generate_content.called
+        return workouts[0]
+
+    def test_nui_dinh_long_run_uses_minimum_and_mountain_rate(self):
+        wo = self._generate()
+        assert wo["duration_minutes"] == 180
+        assert wo["mountain_mode"] == "mountain"
+        assert wo["target_pace"] == "8:26 - 7:44 /km"
+        assert abs(wo["elevation_gain_m"] - wo["distance_km"] * 60) < 1
+
+    def test_no_mountain_or_course_uses_ai_climb_rate(self):
+        wo = self._generate(mountain=None)
+        assert PlanGenerator.parse_pace_range(wo["target_pace"])[0] > 4.9
+        assert wo["elevation_gain_m"] > 0
+
+    def test_other_day_keeps_duration(self):
+        assert self._generate(day="Tuesday")["duration_minutes"] == 130
+
+    def test_treadmill_uses_flat_pace(self):
+        wo = self._generate(use_treadmill=True)
+        _, expected_speed = PlanGenerator.resolve_treadmill_settings(wo, "4:54 - 4:30 /km", True, max_incline=15)
+        assert wo["treadmill_speed"] == expected_speed
+
+    def test_climb_rate_fallback_order(self):
+        from services.training_venues import Venues
+
+        assert PlanGenerator.resolve_climb_rate(Venues(training_mountain="nui_dinh"), 2000, 50, 850, 27.7) == 60
+        assert PlanGenerator.resolve_climb_rate(Venues(), 2000, 50, 850, 27.7) == 40
+        assert PlanGenerator.resolve_climb_rate(Venues(), None, None, 850, 25) == 34
+        assert PlanGenerator.resolve_climb_rate(Venues(), None, None, None, 25) is None

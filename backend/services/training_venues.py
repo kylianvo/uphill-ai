@@ -55,6 +55,8 @@ def _clamp_incline(value: Any) -> int:
 class Venues:
     environment: str = "flat"
     mountain_days: tuple[str, ...] = ()
+    training_mountain: str | None = None
+    mountain_min_minutes: int | None = None
     stair_access: bool = False
     use_treadmill: bool = False
     treadmill_max_incline: int = STANDARD_TREADMILL_MAX
@@ -65,6 +67,8 @@ class Venues:
         return cls(
             environment=(race_info.get("training_environment") or "flat").lower(),
             mountain_days=parse_days(race_info.get("mountain_days")),
+            training_mountain=race_info.get("training_mountain"),
+            mountain_min_minutes=race_info.get("mountain_min_minutes"),
             stair_access=bool(race_info.get("stair_access")),
             use_treadmill=bool(race_info.get("use_treadmill")),
             treadmill_max_incline=_clamp_incline(race_info.get("treadmill_max_incline")),
@@ -75,6 +79,9 @@ class Venues:
     def local_hills(self) -> bool:
         """Hills close enough to use on any day."""
         return self.environment in ("hilly", "mixed")
+
+    def is_mountain_day(self, day: str) -> bool:
+        return day in self.mountain_days
 
     def hills_on(self, day: str) -> bool:
         return self.local_hills or day in self.mountain_days

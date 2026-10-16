@@ -8,6 +8,7 @@ from log_utils import get_logger
 from services import observability, recovery_baseline
 from services.athlete_tier import MEASURED_THRESHOLD_SOURCES, TIER_PROFILES, get_profile, resolve_tier
 from services.plan_rules import build_rules_block, me_runway, me_status_block
+from services.training_mountains import default_min_minutes, long_run_climb_rate
 from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
 from services.training_venues import INCLINE_TRAINER_MIN, STANDARD_TREADMILL_MAX, Venues
 
@@ -436,6 +437,23 @@ class PlanGenerator:
                 grade_percent = 0.0
 
         return round(elevation_gain_m, 1), round(grade_percent, 1)
+
+    @staticmethod
+    def resolve_climb_rate(
+        venues: Venues,
+        course_elevation_gain_m: float | None,
+        course_distance_km: float | None,
+        ai_elevation_m: float | None,
+        flat_distance_km: float,
+    ) -> float | None:
+        rate = long_run_climb_rate(venues.training_mountain)
+        if rate is not None:
+            return rate
+        if course_elevation_gain_m and course_distance_km and course_distance_km > 0:
+            return course_elevation_gain_m / course_distance_km
+        if ai_elevation_m and flat_distance_km > 0:
+            return ai_elevation_m / flat_distance_km
+        return None
 
     INTERVAL_REP_UNITS = ("s", "m", "min", "km")
 
@@ -1079,6 +1097,17 @@ class PlanGenerator:
                 else:
                     wo["week_number"] = block_start_week
 
+                if (
+                    terrain == "trail"
+                    and w_type == "Long Run"
+                    and venues.is_mountain_day(wo["day_of_week"])
+                    and not wo.get("mountain_mode")
+                ):
+                    minimum = venues.mountain_min_minutes or default_min_minutes(venues.training_mountain)
+                    dur = min(max(dur, minimum or 0), 300)
+                    wo["duration_minutes"] = dur
+                    wo["mountain_mode"] = "mountain"
+
                 # Reset Rest/Strength/ME — always zero distance, never inherit AI value
                 title_lower = wo.get("title", "").lower()
 
@@ -1113,6 +1142,18 @@ class PlanGenerator:
                 )
                 # Treadmill speed applies its own incline slowdown, so it must start from the flat pace.
                 flat_pace = wo["target_pace"]
+                if terrain == "trail" and w_type in ("Easy", "Long Run") and flat_pace and dur > 0:
+                    from services.trail_pace import trail_session
+
+                    rate = PlanGenerator.resolve_climb_rate(
+                        venues, course_elevation_gain_m, course_distance_km, wo["elevation_gain_m"], wo["distance_km"]
+                    )
+                    if rate is not None:
+                        wo["target_pace"], wo["distance_km"], wo["elevation_gain_m"] = trail_session(
+                            flat_pace, dur, rate
+                        )
+                        wo["grade_percent"] = wo["elevation_gain_m"] / (wo["distance_km"] * 10)
+
                 # Treadmill settings are never the AI's raw numbers: derive range
                 # strings from this workout's own pace range and resolved grade
                 # (Hill Sprints get the non-negotiable 15% treadmill ceiling).

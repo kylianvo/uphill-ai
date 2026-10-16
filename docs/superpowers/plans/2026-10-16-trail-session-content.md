@@ -112,11 +112,11 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
 - `Long Run` on `venues.is_mountain_day(day)` with `mountain_mode` not set by Task 5 → `dur = min(max(dur, min_minutes), 300)` (300 = the HCMC bus window ceiling, my call) where `min_minutes = venues.mountain_min_minutes or default_min_minutes(venues.training_mountain)`; set `mountain_mode = "mountain"`.
 - Treadmill still gets `flat_pace`.
 
-- [ ] **Step 1: Tests:** (a) Núi Dinh Long Run 130 min on Saturday mountain day → `duration_minutes == 180`, pace slowed ×1.72, D+ ≈ km × 60; (b) no mountain, course D+ None, AI elevation 850 on 130 min → pace is a trail pace (slower than flat); (c) Saturday not a mountain day → duration unchanged; (d) treadmill speed for a mountain-day Long Run equals the speed computed from the flat pace; (e) migration round-trip per db-migration skill.
-- [ ] **Step 2: Run** — FAIL.
-- [ ] **Step 3: Implement** schema (both places), API fields, `Venues` fields, `resolve_climb_rate`, post-process rules.
-- [ ] **Step 4: Run** `.venv/bin/pytest tests/unit -q` and `.venv/bin/alembic upgrade head` against a scratch DB (never the integration-test DB in use) — PASS.
-- [ ] **Step 5: Commit** `feat: mountain-day sessions sized from training mountain`
+- [x] **Step 1: Tests:** (a) Núi Dinh Long Run 130 min on Saturday mountain day → `duration_minutes == 180`, pace slowed ×1.72, D+ ≈ km × 60; (b) no mountain, course D+ None, AI elevation 850 on 130 min → pace is a trail pace (slower than flat); (c) Saturday not a mountain day → duration unchanged; (d) treadmill speed for a mountain-day Long Run equals the speed computed from the flat pace; (e) migration round-trip per db-migration skill.
+- [x] **Step 2: Run** — FAIL.
+- [x] **Step 3: Implement** schema (both places), API fields, `Venues` fields, `resolve_climb_rate`, post-process rules.
+- [x] **Step 4: Run** `.venv/bin/pytest tests/unit -q` and `.venv/bin/alembic upgrade head` against a scratch DB (never the integration-test DB in use) — PASS.
+- [x] **Step 5: Commit** `feat: mountain-day sessions sized from training mountain`
 
 ### Task 4: Prompt rule for mountain days (LLM change process)
 

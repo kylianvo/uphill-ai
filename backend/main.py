@@ -244,6 +244,8 @@ class PlanGenerateRequest(BaseModel):
     # Training venues (services/training_venues.py): weekdays with hill/trail access,
     # stairs, and the treadmill's top incline in %.
     mountain_days: list[str] | None = None
+    training_mountain: str | None = None
+    mountain_min_minutes: int | None = None
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     # Non-race / start date fields
@@ -316,6 +318,8 @@ class GenerateNextBlockRequest(BaseModel):
     # Training venues (services/training_venues.py): weekdays with hill/trail access,
     # stairs, and the treadmill's top incline in %.
     mountain_days: list[str] | None = None
+    training_mountain: str | None = None
+    mountain_min_minutes: int | None = None
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     athlete_notes: str | None = None
@@ -340,6 +344,8 @@ class AdaptWeekRequest(BaseModel):
     # Training venues (services/training_venues.py): weekdays with hill/trail access,
     # stairs, and the treadmill's top incline in %.
     mountain_days: list[str] | None = None
+    training_mountain: str | None = None
+    mountain_min_minutes: int | None = None
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     # Longest unbroken jog in minutes. The beginner progression metric: asked of the
@@ -493,6 +499,8 @@ class OnboardingRequest(BaseModel):
     # Training venues (services/training_venues.py): weekdays with hill/trail access,
     # stairs, and the treadmill's top incline in %.
     mountain_days: list[str] | None = None
+    training_mountain: str | None = None
+    mountain_min_minutes: int | None = None
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     # Goal-specific extras
@@ -1288,6 +1296,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         use_treadmill=use_treadmill,
         training_environment=request.training_environment or "flat",
         mountain_days=request.mountain_days or [],
+        training_mountain=request.training_mountain,
+        mountain_min_minutes=request.mountain_min_minutes,
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
         athlete_notes=request.athlete_notes,
@@ -1318,6 +1328,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "use_treadmill": use_treadmill,
         "training_environment": request.training_environment or "flat",
         "mountain_days": request.mountain_days or [],
+        "training_mountain": request.training_mountain,
+        "mountain_min_minutes": request.mountain_min_minutes,
         "stair_access": bool(request.stair_access),
         "treadmill_max_incline": request.treadmill_max_incline,
         "plan_start_date": onboarding_start_date,
@@ -2146,6 +2158,8 @@ async def _generate_plan_for_athlete(
         use_treadmill=request.use_treadmill,
         training_environment=request.training_environment or "flat",
         mountain_days=request.mountain_days or [],
+        training_mountain=request.training_mountain,
+        mountain_min_minutes=request.mountain_min_minutes,
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
         created_by_user_id=created_by_user_id,
@@ -2178,6 +2192,8 @@ async def _generate_plan_for_athlete(
         else (request.has_gym_access or False),
         "training_environment": request.training_environment or "flat",
         "mountain_days": request.mountain_days or [],
+        "training_mountain": request.training_mountain,
+        "mountain_min_minutes": request.mountain_min_minutes,
         "stair_access": bool(request.stair_access),
         "treadmill_max_incline": request.treadmill_max_incline,
         # Start date
@@ -2488,6 +2504,8 @@ async def _generate_next_block_for_athlete(
         request.training_environment,
         request.athlete_notes,
         request.mountain_days,
+        request.training_mountain,
+        request.mountain_min_minutes,
         request.stair_access,
         request.treadmill_max_incline,
     )
@@ -2503,6 +2521,8 @@ async def _generate_next_block_for_athlete(
             training_environment=request.training_environment,
             athlete_notes=request.athlete_notes,
             mountain_days=request.mountain_days,
+            training_mountain=request.training_mountain,
+            mountain_min_minutes=request.mountain_min_minutes,
             stair_access=request.stair_access,
             treadmill_max_incline=request.treadmill_max_incline,
         )
@@ -2732,6 +2752,8 @@ async def _generate_next_block_for_athlete(
         "use_treadmill": plan.get("use_treadmill", False),
         "training_environment": plan.get("training_environment") or "flat",
         "mountain_days": plan.get("mountain_days"),
+        "training_mountain": plan.get("training_mountain"),
+        "mountain_min_minutes": plan.get("mountain_min_minutes"),
         "stair_access": plan.get("stair_access"),
         "treadmill_max_incline": plan.get("treadmill_max_incline"),
         "plan_start_date": plan.get("start_date"),

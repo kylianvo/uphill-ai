@@ -161,6 +161,8 @@ def init_db():
             -- where the athlete can train (services/training_venues.py): weekdays with
             -- hill/trail access (JSON list), stairs, and the treadmill's top incline
             mountain_days           TEXT,
+            training_mountain       TEXT,
+            mountain_min_minutes    INTEGER,
             stair_access            BOOLEAN DEFAULT FALSE,
             treadmill_max_incline   INTEGER DEFAULT 15,
             -- explicit tier override for THIS plan; NULL means derive it from the
@@ -232,6 +234,7 @@ def init_db():
             walk_interval_value REAL,
             description         TEXT,
             fueling_tip         TEXT,
+            mountain_mode       TEXT,
             source              TEXT NOT NULL DEFAULT 'ai_generated',  -- 'ai_generated' | 'coach_edited' | 'coach_created'
             last_edited_by_user_id INTEGER REFERENCES users(id),
             is_completed        INTEGER DEFAULT 0,
@@ -916,6 +919,9 @@ def init_db():
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS use_treadmill BOOLEAN DEFAULT FALSE",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS training_environment TEXT DEFAULT 'flat'",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS mountain_days TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS training_mountain TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS mountain_min_minutes INTEGER",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS mountain_mode TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS stair_access BOOLEAN DEFAULT FALSE",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS treadmill_max_incline INTEGER DEFAULT 15",
             "ALTER TABLE users DROP COLUMN IF EXISTS has_gym_access",
@@ -1159,6 +1165,8 @@ def create_plan(
     use_treadmill: bool | None = None,
     training_environment: str = "flat",
     mountain_days: list | None = None,
+    training_mountain: str | None = None,
+    mountain_min_minutes: int | None = None,
     stair_access: bool = False,
     treadmill_max_incline: int | None = None,
     created_by_user_id: int | None = None,
@@ -1173,13 +1181,13 @@ def create_plan(
                                course_elevation_gain_m, preferred_run_days, long_run_day,
                                days_per_week, double_session_days, start_date,
                                has_gym_access, use_treadmill, training_environment,
-                               mountain_days, stair_access, treadmill_max_incline,
+                               mountain_days, training_mountain, mountain_min_minutes, stair_access, treadmill_max_incline,
                                created_by_user_id, plan_status, athlete_notes)
             VALUES (:user_id, :race_name, :race_date, :goal_type,
                     :tth, :total_weeks, :dist_km, :elev_m, :preferred_run_days,
                     :long_run_day, :days_per_week, :double_session_days, :start_date,
                     :has_gym_access, :use_treadmill, :training_environment,
-                    :mountain_days, :stair_access, :treadmill_max_incline,
+                    :mountain_days, :training_mountain, :mountain_min_minutes, :stair_access, :treadmill_max_incline,
                     :created_by_user_id, :plan_status, :athlete_notes)
             RETURNING id
         """),
@@ -1201,6 +1209,8 @@ def create_plan(
                 "use_treadmill": use_treadmill if use_treadmill is not None else has_gym_access,
                 "training_environment": training_environment or "flat",
                 "mountain_days": json.dumps(mountain_days or []),
+                "training_mountain": training_mountain,
+                "mountain_min_minutes": mountain_min_minutes,
                 "stair_access": bool(stair_access),
                 "treadmill_max_incline": treadmill_max_incline or 15,
                 "created_by_user_id": created_by_user_id if created_by_user_id is not None else user_id,
@@ -1243,12 +1253,12 @@ _WORKOUT_INSERT_SQL = """
         duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
         treadmill_incline, treadmill_speed, elevation_gain_m, grade_percent,
         interval_reps, interval_rep_value, interval_rep_unit, walk_interval_value,
-        description, fueling_tip, session_slot, approved_at, is_priority)
+        description, fueling_tip, session_slot, approved_at, is_priority, mountain_mode)
     VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
         :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
         :treadmill_incline, :treadmill_speed, :elevation_gain_m, :grade_percent,
         :interval_reps, :interval_rep_value, :interval_rep_unit, :walk_interval_value,
-        :description, :fueling_tip, :session_slot, :approved_at, :is_priority)
+        :description, :fueling_tip, :session_slot, :approved_at, :is_priority, :mountain_mode)
 """
 
 
@@ -1281,6 +1291,7 @@ def _workout_insert_params(plan_id: int, wo: dict[str, Any], auto_approve: bool)
         "fueling_tip": _flatten_llm_text(wo.get("fueling_tip")),
         "session_slot": _flatten_llm_text(wo.get("session_slot", "main")),
         "is_priority": wo.get("is_priority") is True,
+        "mountain_mode": wo.get("mountain_mode"),
     }
 
 
@@ -1419,6 +1430,8 @@ def update_plan_schedule(
     training_environment: str | None = None,
     athlete_notes: str | None = None,
     mountain_days: list | None = None,
+    training_mountain: str | None = None,
+    mountain_min_minutes: int | None = None,
     stair_access: bool | None = None,
     treadmill_max_incline: int | None = None,
 ) -> dict[str, Any] | None:
@@ -1438,6 +1451,8 @@ def update_plan_schedule(
                     training_environment = COALESCE(:training_environment, training_environment),
                     athlete_notes = COALESCE(:athlete_notes, athlete_notes),
                     mountain_days = COALESCE(:mountain_days, mountain_days),
+                    training_mountain = COALESCE(:training_mountain, training_mountain),
+                    mountain_min_minutes = COALESCE(:mountain_min_minutes, mountain_min_minutes),
                     stair_access = COALESCE(:stair_access, stair_access),
                     treadmill_max_incline = COALESCE(:treadmill_max_incline, treadmill_max_incline)
                 WHERE id = :plan_id
@@ -1454,6 +1469,8 @@ def update_plan_schedule(
                 "training_environment": training_environment,
                 "athlete_notes": athlete_notes,
                 "mountain_days": json.dumps(mountain_days) if mountain_days is not None else None,
+                "training_mountain": training_mountain,
+                "mountain_min_minutes": mountain_min_minutes,
                 "stair_access": stair_access,
                 "treadmill_max_incline": treadmill_max_incline,
             },
