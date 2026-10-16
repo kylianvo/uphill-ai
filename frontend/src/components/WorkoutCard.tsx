@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef } from "react";
+import { translations } from "../app/translations";
 import {
   CheckCircle,
   Circle,
@@ -48,7 +49,6 @@ export function formatIntervalSummary(wo: {
   walk_interval_value?: number;
 }): string | null {
   const type = wo.type?.toLowerCase();
-  if (type !== "interval" && type !== "walk/run") return null;
   const { interval_reps: reps, interval_rep_value: value, interval_rep_unit: unit } = wo;
   if (!reps || !value || !unit) return null;
 
@@ -60,6 +60,10 @@ export function formatIntervalSummary(wo: {
     return `${reps} x ${fmtRepValue(value)}${unit} jog / ${fmtRepValue(wo.walk_interval_value)}${unit} walk`;
   }
   return `${reps}x${fmtRepValue(value)}${unit}`;
+}
+
+function hideRepPace(wo: { title?: string; target_zone?: string; interval_reps?: number; interval_rep_value?: number; interval_rep_unit?: string }) {
+  return Boolean(formatIntervalSummary(wo)) && (wo.target_zone === "Zone 5" || /hill[ -]?sprints?|strides/i.test(wo.title || ""));
 }
 
 interface WorkoutCardProps {
@@ -150,6 +154,9 @@ export default function WorkoutCard({
   shellV2 = false,
   eyebrow,
 }: WorkoutCardProps) {
+  const labels = translations[lang === "vi" ? "vi" : "en"];
+  const isTrail = wo.elevation_gain_m > 0;
+  const hidePace = hideRepPace(wo);
   const isRest = wo.type === "Rest";
   const isRaceDay = wo.type?.toLowerCase() === "race";
   const isPending = !wo.approved_at;
@@ -425,7 +432,7 @@ export default function WorkoutCard({
                   }
                   return null;
                 })()}
-                {wo.target_pace && wo.target_pace.trim() && (
+                {!hidePace && wo.target_pace && wo.target_pace.trim() && (
                   <span
                     style={{
                       display: "flex",
@@ -437,8 +444,16 @@ export default function WorkoutCard({
                     }}
                   >
                     <Footprints size={11} weight="bold" />
-                    {wo.target_pace}
+                    {isTrail ? `${labels.trailPace}: ${wo.target_pace}` : wo.target_pace}
                   </span>
+                )}
+                {isTrail && (
+                  <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "var(--text-secondary)", fontWeight: "600" }}>
+                    <Mountains size={11} /> {labels.estElevation}: ~{Math.round(wo.elevation_gain_m)}m
+                  </span>
+                )}
+                {isTrail && formatIntervalSummary(wo) && wo.distance_km > 0 && (
+                  <span style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: "600" }}>~{wo.distance_km}km</span>
                 )}
                 {wo.target_hr_range && (
                   <span
@@ -800,9 +815,9 @@ export default function WorkoutCard({
                 marginBottom: "16px",
               }}
             >
-              {surface === "outdoor" && wo.target_pace && (
+              {surface === "outdoor" && !hidePace && wo.target_pace && (
                 <MetricPill
-                  label={lang === "en" ? "Pace" : "Pace"}
+                  label={isTrail ? labels.trailPace : "Pace"}
                   value={wo.target_pace}
                   color={zoneColor}
                   icon={<Footprints size={12} />}
@@ -810,8 +825,8 @@ export default function WorkoutCard({
               )}
               {surface === "outdoor" && wo.elevation_gain_m > 0 && (
                 <MetricPill
-                  label={lang === "en" ? "Elevation" : "Độ cao"}
-                  value={`+${Math.ceil(wo.elevation_gain_m / 100) * 100}m`}
+                  label={labels.estElevation}
+                  value={`~${Math.round(wo.elevation_gain_m)}m`}
                   color={zoneColor}
                   icon={<Mountains size={12} />}
                 />
@@ -840,9 +855,9 @@ export default function WorkoutCard({
                   icon={<Gauge size={12} />}
                 />
               )}
-              {surface === "treadmill" && wo.target_pace && (
+              {surface === "treadmill" && !hidePace && wo.target_pace && (
                 <MetricPill
-                  label={lang === "en" ? "Pace" : "Pace"}
+                  label={isTrail ? labels.trailPace : "Pace"}
                   value={wo.target_pace}
                   color="#6b7280"
                   icon={<Footprints size={12} />}
@@ -1393,15 +1408,18 @@ function WorkoutLibrarySection({
   // Build the "today's target" chips from actual planner values
   const targets: Array<{ label: string; value: string; color: string; icon: React.ReactNode }> = [];
   if (wo.target_zone) targets.push({ label: lang === "en" ? "Zone" : "Vùng", value: wo.target_zone, color: zoneColor, icon: <Lightning size={10} /> });
-  if (wo.target_pace?.trim()) targets.push({ label: lang === "en" ? "Pace" : "Pace", value: wo.target_pace, color: zoneColor, icon: <Footprints size={10} /> });
+  if (wo.target_pace?.trim() && !hideRepPace(wo)) targets.push({ label: wo.elevation_gain_m > 0 ? translations[lang === "vi" ? "vi" : "en"].trailPace : "Pace", value: wo.target_pace, color: zoneColor, icon: <Footprints size={10} /> });
   if (wo.target_hr_range) targets.push({ label: "HR", value: wo.target_hr_range, color: "#ef4444", icon: <Heart size={10} /> });
   if (mainMinutes > 0) targets.push({ label: lang === "en" ? "Duration" : "Thời gian", value: `${mainMinutes} min`, color: "var(--text-secondary)", icon: <Timer size={10} /> });
   const intervalSummary = formatIntervalSummary(wo);
   if (intervalSummary) {
     targets.push({ label: lang === "en" ? "Reps" : "Số lượt", value: intervalSummary, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
-  } else if (wo.distance_km > 0) {
+  }
+  if (wo.distance_km > 0 && (!intervalSummary || wo.elevation_gain_m > 0)) {
     targets.push({ label: lang === "en" ? "Est. distance" : "Cự ly ước tính", value: `~${wo.distance_km} km`, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
   }
+
+  if (wo.elevation_gain_m > 0) targets.push({ label: translations[lang === "vi" ? "vi" : "en"].estElevation, value: `~${Math.round(wo.elevation_gain_m)} m`, color: zoneColor, icon: <Mountains size={10} /> });
 
   return (
     <div style={{ marginBottom: "14px" }}>

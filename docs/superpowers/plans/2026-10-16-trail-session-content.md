@@ -218,11 +218,11 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
 - Modify: `frontend/src/app/translations.ts` — new keys `trailPace`, `estElevation` (VI via the Vietnamese copy skill).
 - Test: `frontend/src/utils/workoutDescription.test.ts`, `frontend/src/components/WorkoutCard.test.tsx`
 
-- [ ] **Step 1: Tests:** Quang's Process string → main steps include the Hill Sprints step, cool-down starts with "Hạ nhiệt"; Easy workout with `interval_reps 8, value 10, unit s` renders chip `8x10s`; trail Long Run renders the trail-pace label and D+.
-- [ ] **Step 2: Run** `cd frontend && npx vitest run src/utils/workoutDescription.test.ts src/components/WorkoutCard.test.tsx` — FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** vitest, `npm run lint`, `npx tsc --noEmit` — PASS; screenshot the card locally per `ui-screenshot-evidence`.
-- [ ] **Step 5: Commit** `feat(web): trail card labels, rep chip, Vietnamese step cues`
+- [x] **Step 1: Tests:** Quang's Process string → main steps include the Hill Sprints step, cool-down starts with "Hạ nhiệt"; Easy workout with `interval_reps 8, value 10, unit s` renders chip `8x10s`; trail Long Run renders the trail-pace label and D+.
+- [x] **Step 2: Run** `cd frontend && npx vitest run src/utils/workoutDescription.test.ts src/components/WorkoutCard.test.tsx` — FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** vitest, `npm run lint`, `npx tsc --noEmit` — PASS; screenshot the card locally per `ui-screenshot-evidence`.
+- [x] **Step 5: Commit** `feat(web): trail card labels, rep chip, Vietnamese step cues`
 
 ### Task 10: iOS — rep detection, values, trail card labels
 
