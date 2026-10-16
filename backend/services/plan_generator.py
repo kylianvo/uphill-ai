@@ -455,6 +455,77 @@ class PlanGenerator:
             return ai_elevation_m / flat_distance_km
         return None
 
+    @staticmethod
+    def apply_mountain_mode(wo: dict, mode: str, venues: Venues, est_zones: dict, flat_pace: str) -> dict:
+        from services.trail_pace import trail_session
+
+        rate = long_run_climb_rate(venues.training_mountain)
+        if rate is None:
+            rate = wo.get("mountain_climb_rate")
+        if rate is None and wo.get("distance_km"):
+            rate = float(wo.get("elevation_gain_m") or 0) / wo["distance_km"]
+        wo["mountain_climb_rate"] = rate
+        if wo.get("mountain_mode") == "indoor":
+            wo["title"] = wo.get("title", "Long Run").removesuffix(" / Stairs")
+        if mode == "indoor" and not (venues.use_treadmill or venues.stair_access):
+            mode = "skip"
+        minimum = venues.mountain_min_minutes or default_min_minutes(venues.training_mountain)
+        duration = float(wo.get("duration_minutes") or 0)
+        if mode == "skip":
+            duration = 60
+        elif mode == "indoor":
+            duration = 120
+        elif mode == "chill":
+            duration = min(minimum or duration, 300)
+        else:
+            duration = min(max(duration, minimum or 0), 300)
+        zone = 1 if mode == "chill" or (mode == "mountain" and flat_pace == f"{est_zones['zone1_pace']} /km") else 2
+        pace = f"{est_zones[f'zone{zone}_pace']} /km"
+        wo.update(
+            mountain_mode=mode,
+            duration_minutes=duration,
+            target_zone=f"Zone {zone}",
+            target_hr_range=est_zones[f"zone{zone}_hr"],
+            target_pace=pace,
+            treadmill_incline="0",
+            treadmill_speed="0",
+        )
+        if mode == "skip":
+            wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                "Zone 2", duration, est_zones
+            )
+            wo.update(elevation_gain_m=0, grade_percent=0)
+        elif mode == "indoor":
+            if venues.use_treadmill:
+                incline = min((rate or 0) / 10, venues.treadmill_incline_cap)
+                slower, faster = PlanGenerator.parse_pace_range(pace)
+                settings = TrainingRules.calculate_treadmill_settings((slower + faster) / 2, incline)
+                speed = settings["speed_kph"]
+                wo.update(
+                    treadmill_incline=f"{incline:g}",
+                    treadmill_speed=f"{speed:g}",
+                    distance_km=speed * 2,
+                    elevation_gain_m=speed * 2 * incline * 10,
+                    grade_percent=incline,
+                    target_pace=f"{PlanGenerator.decimal_to_pace_str(60 / speed)} /km",
+                )
+            else:
+                wo.update(
+                    title=wo.get("title", "Long Run") + " / Stairs",
+                    target_pace="",
+                    distance_km=0,
+                    elevation_gain_m=0,
+                    grade_percent=0,
+                )
+        else:
+            pace = pace if mode == "chill" else flat_pace
+            wo["target_pace"], wo["distance_km"], wo["elevation_gain_m"] = trail_session(pace, duration, rate or 0)
+            wo["grade_percent"] = wo["elevation_gain_m"] / (wo["distance_km"] * 10) if wo["distance_km"] else 0
+            wo["treadmill_incline"], wo["treadmill_speed"] = PlanGenerator.resolve_treadmill_settings(
+                wo, pace, venues.use_treadmill, max_incline=venues.treadmill_incline_cap
+            )
+        return wo
+
     INTERVAL_REP_UNITS = ("s", "m", "min", "km")
 
     @staticmethod
@@ -1097,17 +1168,6 @@ class PlanGenerator:
                 else:
                     wo["week_number"] = block_start_week
 
-                if (
-                    terrain == "trail"
-                    and w_type == "Long Run"
-                    and venues.is_mountain_day(wo["day_of_week"])
-                    and not wo.get("mountain_mode")
-                ):
-                    minimum = venues.mountain_min_minutes or default_min_minutes(venues.training_mountain)
-                    dur = min(max(dur, minimum or 0), 300)
-                    wo["duration_minutes"] = dur
-                    wo["mountain_mode"] = "mountain"
-
                 # Reset Rest/Strength/ME — always zero distance, never inherit AI value
                 title_lower = wo.get("title", "").lower()
 
@@ -1148,6 +1208,7 @@ class PlanGenerator:
                     rate = PlanGenerator.resolve_climb_rate(
                         venues, course_elevation_gain_m, course_distance_km, wo["elevation_gain_m"], wo["distance_km"]
                     )
+                    wo["mountain_climb_rate"] = rate
                     if rate is not None:
                         wo["target_pace"], wo["distance_km"], wo["elevation_gain_m"] = trail_session(
                             flat_pace, dur, rate
@@ -1160,6 +1221,25 @@ class PlanGenerator:
                 wo["treadmill_incline"], wo["treadmill_speed"] = PlanGenerator.resolve_treadmill_settings(
                     wo, flat_pace, use_treadmill, max_incline=venues.treadmill_incline_cap
                 )
+
+                if terrain == "trail" and w_type == "Long Run" and venues.is_mountain_day(wo["day_of_week"]):
+                    if wo.get("mountain_climb_rate") is None:
+                        wo["mountain_climb_rate"] = PlanGenerator.resolve_climb_rate(
+                            venues,
+                            course_elevation_gain_m,
+                            course_distance_km,
+                            wo["elevation_gain_m"],
+                            wo["distance_km"],
+                        )
+                    if wo["phase"] == "Race Week" or athlete_tier == "beginner":
+                        mode = "skip"
+                    elif wo["phase"] in ("Recovery", "Taper"):
+                        mode = "chill"
+                    else:
+                        mode = "mountain"
+                    PlanGenerator.apply_mountain_mode(
+                        wo, mode, venues, {**est_zones, "zone1_hr": z1_range, "zone2_hr": z2_range}, flat_pace
+                    )
 
                 wo["interval_reps"], wo["interval_rep_value"], wo["interval_rep_unit"] = (
                     PlanGenerator.resolve_interval_summary(wo, w_type)

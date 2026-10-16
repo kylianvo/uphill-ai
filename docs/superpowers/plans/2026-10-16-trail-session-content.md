@@ -139,7 +139,7 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
 - [x] **Step 1: Test** that `prompt_block` for Núi Dinh + Saturday mountain day contains `"180 min"`, `"Núi Dinh"`, `"60 m D+/km"`, `"Zone 1"`; and contains none of them when `training_mountain` is None.
 - [x] **Step 2: Run** — FAIL.
 - [x] **Step 3: Implement.**
-- [ ] **Step 4: Run** unit tests — PASS; then run the llm-change-process checklist: `python scripts/golden_eval.py capture --service scheduler` on main, `compare --service scheduler` on this branch; push the Langfuse prompt version only if the plan prompt template itself changed (the rule is injected via the existing `equipment_terrain_rule` variable).
+- [x] **Step 4: Run** unit tests — PASS; then run the llm-change-process checklist: `python scripts/golden_eval.py capture --service scheduler` on main, `compare --service scheduler` on this branch; push the Langfuse prompt version only if the plan prompt template itself changed (the rule is injected via the existing `equipment_terrain_rule` variable).
 - [x] **Step 5: Commit** `feat: mountain-day rule in plan prompt`
 
 ### Task 5: Chill / skip by phase, indoor fallback, athlete switch
@@ -158,11 +158,11 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
   - `indoor`: 120 min. If `venues.use_treadmill`: incline = `min(mountain grade %, venues.treadmill_incline_cap)` (mountain grade % = `long_run_climb_rate / 10`), speed from the flat Zone 2 pace via `TrainingRules.calculate_treadmill_settings`, `distance_km = speed × 2`, `elevation_gain_m = distance_km × incline × 10`. Else if `venues.stair_access`: stairs climbing session, Zone 2, no pace, `elevation_gain_m = 0`. Else same as `skip`. Athlete-only mode (never chosen by the phase rule).
 - Phase decision in post-process for mountain-day Long Runs: phase `Recovery` or `Taper` → `chill`; phase `Race Week` or tier `beginner` → `skip`; else `mountain`.
 
-- [ ] **Step 1: Tests:** Taper week → `mountain_mode == "chill"`, `target_zone == "Zone 1"`, 180 min; Race Week → `skip`, 0 elevation, flat pace; beginner tier Build week → `skip`; route switches chill→skip and leaves other workouts in the week unchanged; `indoor` with treadmill (max 15%) on Núi Dinh → 120 min, incline 6%, distance = speed × 2, D+ = km × 6 × 10; `indoor` with no treadmill but stairs → stairs session; with neither → equals `skip`.
-- [ ] **Step 2: Run** — FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** — PASS.
-- [ ] **Step 5: Commit** `feat: chill/skip mountain mode by phase with athlete switch`
+- [x] **Step 1: Tests:** Taper week → `mountain_mode == "chill"`, `target_zone == "Zone 1"`, 180 min; Race Week → `skip`, 0 elevation, flat pace; beginner tier Build week → `skip`; route switches chill→skip and leaves other workouts in the week unchanged; `indoor` with treadmill (max 15%) on Núi Dinh → 120 min, incline 6%, distance = speed × 2, D+ = km × 6 × 10; `indoor` with no treadmill but stairs → stairs session; with neither → equals `skip`.
+- [x] **Step 2: Run** — FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** — PASS.
+- [x] **Step 5: Commit** `feat: chill/skip mountain mode by phase with athlete switch`
 
 ### Task 6: Coach km + D+ mode
 

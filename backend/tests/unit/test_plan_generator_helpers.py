@@ -971,7 +971,9 @@ class TestZoneFallbackConsistency:
 
 
 class TestMountainDaySessions:
-    def _generate(self, *, mountain="nui_dinh", day="Saturday", elevation=850, use_treadmill=False):
+    def _generate(
+        self, *, mountain="nui_dinh", day="Saturday", elevation=850, use_treadmill=False, phase="Build", tier=None
+    ):
         import json
 
         response = MagicMock()
@@ -980,7 +982,7 @@ class TestMountainDaySessions:
                 {
                     "week_number": 1,
                     "day_of_week": day,
-                    "phase": "Build",
+                    "phase": phase,
                     "type": "Long Run",
                     "title": "Long Run",
                     "duration_minutes": 130,
@@ -1001,6 +1003,7 @@ class TestMountainDaySessions:
                     user_profile={"threshold_pace": "3:55", "aet_hr": 134, "ant_hr": 163, "current_weekly_km": 60},
                     race_info={
                         "training_mountain": mountain,
+                        "athlete_tier": tier,
                         "mountain_days": ["Saturday"],
                         "terrain": "trail",
                         "use_treadmill": use_treadmill,
@@ -1041,3 +1044,26 @@ class TestMountainDaySessions:
         assert PlanGenerator.resolve_climb_rate(Venues(), 2000, 50, 850, 27.7) == 40
         assert PlanGenerator.resolve_climb_rate(Venues(), None, None, 850, 25) == 34
         assert PlanGenerator.resolve_climb_rate(Venues(), None, None, None, 25) is None
+
+    def test_taper_chills_at_zone1_and_minimum(self):
+        wo = self._generate(phase="Taper")
+        assert wo["mountain_mode"] == "chill"
+        assert wo["target_zone"] == "Zone 1"
+        assert wo["duration_minutes"] == 180
+        assert wo["target_hr_range"]
+
+    def test_race_week_skips_to_flat_city_session(self):
+        wo = self._generate(phase="Race Week")
+        assert wo["mountain_mode"] == "skip"
+        assert wo["duration_minutes"] == 60
+        assert wo["elevation_gain_m"] == wo["grade_percent"] == 0
+        assert wo["target_pace"] == "4:54 - 4:30 /km"
+
+    def test_beginner_build_week_skips(self):
+        assert self._generate(tier="beginner")["mountain_mode"] == "skip"
+
+    def test_dalat_chill_preserves_generated_duration(self):
+        assert self._generate(mountain="dalat", phase="Taper")["duration_minutes"] == 130
+
+    def test_generated_mountain_keeps_original_rate(self):
+        assert self._generate(mountain=None)["mountain_climb_rate"] > 0

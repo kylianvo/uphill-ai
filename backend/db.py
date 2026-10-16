@@ -235,6 +235,7 @@ def init_db():
             description         TEXT,
             fueling_tip         TEXT,
             mountain_mode       TEXT,
+            mountain_climb_rate REAL,
             source              TEXT NOT NULL DEFAULT 'ai_generated',  -- 'ai_generated' | 'coach_edited' | 'coach_created'
             last_edited_by_user_id INTEGER REFERENCES users(id),
             is_completed        INTEGER DEFAULT 0,
@@ -922,6 +923,7 @@ def init_db():
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS training_mountain TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS mountain_min_minutes INTEGER",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS mountain_mode TEXT",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS mountain_climb_rate REAL",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS stair_access BOOLEAN DEFAULT FALSE",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS treadmill_max_incline INTEGER DEFAULT 15",
             "ALTER TABLE users DROP COLUMN IF EXISTS has_gym_access",
@@ -1253,12 +1255,12 @@ _WORKOUT_INSERT_SQL = """
         duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
         treadmill_incline, treadmill_speed, elevation_gain_m, grade_percent,
         interval_reps, interval_rep_value, interval_rep_unit, walk_interval_value,
-        description, fueling_tip, session_slot, approved_at, is_priority, mountain_mode)
+        description, fueling_tip, session_slot, approved_at, is_priority, mountain_mode, mountain_climb_rate)
     VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
         :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
         :treadmill_incline, :treadmill_speed, :elevation_gain_m, :grade_percent,
         :interval_reps, :interval_rep_value, :interval_rep_unit, :walk_interval_value,
-        :description, :fueling_tip, :session_slot, :approved_at, :is_priority, :mountain_mode)
+        :description, :fueling_tip, :session_slot, :approved_at, :is_priority, :mountain_mode, :mountain_climb_rate)
 """
 
 
@@ -1292,6 +1294,7 @@ def _workout_insert_params(plan_id: int, wo: dict[str, Any], auto_approve: bool)
         "session_slot": _flatten_llm_text(wo.get("session_slot", "main")),
         "is_priority": wo.get("is_priority") is True,
         "mountain_mode": wo.get("mountain_mode"),
+        "mountain_climb_rate": wo.get("mountain_climb_rate"),
     }
 
 
@@ -1490,6 +1493,29 @@ def get_draft_plan_for_athlete(athlete_id: int) -> dict[str, Any] | None:
             {"uid": athlete_id},
         ).fetchone()
     return _row_to_dict(row) if row else None
+
+
+def update_workout_mountain_mode(workout_id: int, fields: dict) -> None:
+    allowed = {
+        "mountain_mode",
+        "mountain_climb_rate",
+        "duration_minutes",
+        "distance_km",
+        "target_zone",
+        "target_hr_range",
+        "target_pace",
+        "elevation_gain_m",
+        "grade_percent",
+        "treadmill_incline",
+        "treadmill_speed",
+        "title",
+    }
+    updates = {key: value for key, value in fields.items() if key in allowed}
+    with engine.begin() as conn:
+        conn.execute(
+            text("UPDATE workouts SET " + ", ".join(f"{key} = :{key}" for key in updates) + " WHERE id = :workout_id"),
+            {**updates, "workout_id": workout_id},
+        )
 
 
 def get_workout_by_id(workout_id: int) -> dict[str, Any] | None:
