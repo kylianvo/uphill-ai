@@ -55,7 +55,11 @@ def _slot(row: dict[str, Any]) -> str:
 
 
 def _is_history(row: dict[str, Any]) -> bool:
-    return row.get("matched_activity_id") is not None or int(row.get("is_completed") or 0) == 1
+    return (
+        row.get("source") in ("coach_edited", "coach_created")
+        or row.get("matched_activity_id") is not None
+        or int(row.get("is_completed") or 0) == 1
+    )
 
 
 def rebuild_range(plan: dict[str, Any], workouts: list[dict[str, Any]], week: int, today: dt.date) -> RebuildRange:
@@ -212,6 +216,8 @@ class RebuildRequest:
     use_treadmill: bool | None = None
     training_environment: str | None = None
     mountain_days: list[str] | None = None
+    training_mountain: str | None = None
+    mountain_min_minutes: int | None = None
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     lang: str | None = None
@@ -594,6 +600,12 @@ def build_rebuild_inputs(
         "use_treadmill": use_treadmill,
         "training_environment": training_environment,
         "mountain_days": request.mountain_days if request.mountain_days is not None else plan.get("mountain_days"),
+        "training_mountain": request.training_mountain
+        if request.training_mountain is not None
+        else plan.get("training_mountain"),
+        "mountain_min_minutes": request.mountain_min_minutes
+        if request.mountain_min_minutes is not None
+        else plan.get("mountain_min_minutes"),
         "stair_access": request.stair_access if request.stair_access is not None else plan.get("stair_access"),
         "treadmill_max_incline": (
             request.treadmill_max_incline

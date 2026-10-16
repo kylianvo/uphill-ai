@@ -353,11 +353,19 @@ def build_course(
     if minutes <= 0:
         return None
     main = _main_intensity(w)
+    sections = None
+    if (
+        w.get("source") in ("coach_edited", "coach_created")
+        and w.get("type") in ("Easy", "Long Run")
+        and _float(w.get("elevation_gain_m")) > 0
+        and _float(w.get("distance_km")) > 0
+    ):
+        sections = [_section(SECTION_TRAINING, TARGET_DISTANCE, round(_float(w["distance_km"]) * 1000), main)]
     return {
         "sportType": SPORT_RUNNING,
         "courseName": course_name(w),
         "courseDescription": _description(w, lang),
-        "sections": _process_sections(w, main, hr_zones) or _fallback_sections(w, main, minutes),
+        "sections": sections or _process_sections(w, main, hr_zones) or _fallback_sections(w, main, minutes),
     }
 
 

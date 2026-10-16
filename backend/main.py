@@ -619,7 +619,8 @@ class CoachWorkoutUpdateRequest(BaseModel):
     title: str | None = None
     type: str | None = None
     duration_minutes: float | None = None
-    distance_km: float | None = None
+    distance_km: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    elevation_gain_m: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     target_zone: str | None = None
     # target_hr_range/target_pace are intentionally NOT accepted here --
     # edit_athlete_workout recomputes both from target_zone server-side so
@@ -1700,6 +1701,25 @@ def edit_athlete_workout(
         fields["target_pace"], fields["target_hr_range"] = _resolve_zone_pace_and_hr(
             athlete, request.target_zone, fields.get("duration_minutes") or workout["duration_minutes"]
         )
+    if (
+        request.distance_km is not None
+        and request.elevation_gain_m is not None
+        and fields.get("type", workout["type"]) in ("Easy", "Long Run")
+        and (request.elevation_gain_m > 0 or (workout.get("elevation_gain_m") or 0) > 0)
+    ):
+        from services.trail_pace import trail_minutes, trail_pace_range
+
+        if request.distance_km <= 0:
+            raise HTTPException(status_code=422, detail="Trail distance must be positive.")
+        athlete = get_user_by_id(athlete_id)
+        zones = PlanGenerator.resolve_pace_zones(athlete, plan.get("goal_type") or athlete.get("goal_type"))
+        zone = fields.get("target_zone") or workout["target_zone"]
+        flat_pace, _ = PlanGenerator.pace_and_distance_for_zone(zone, 1, zones)
+        rate = request.elevation_gain_m / request.distance_km
+        fields["duration_minutes"] = trail_minutes(flat_pace, request.distance_km, request.elevation_gain_m)
+        fields["target_pace"] = trail_pace_range(flat_pace, rate)
+        fields["grade_percent"] = rate / 10
+        fields["mountain_climb_rate"] = rate
     updated = coach_update_workout(workout_id, acting_user["id"], fields)
     return updated
 

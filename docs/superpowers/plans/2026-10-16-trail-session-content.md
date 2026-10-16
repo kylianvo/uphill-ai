@@ -17,6 +17,7 @@
 - Add HCMC's Núi Châu Thới (`chau_thoi`, 28 m D+/km, long runs allowed, 180-minute default); the catalog now has seven mountains.
 - Task 4's three snapshot volume checks use a separate flat-equivalent metric while workout distances remain actual trail km. Golden fixtures start on a fixed Monday. The ME cutoff decision explicitly overrides the short-block instruction. Keep ME expectations unchanged.
 - Task 5 persists the original climb rate in nullable `workouts.mountain_climb_rate` so skip → mountain/chill restores the original estimate without requiring a selected mountain. Update both schema definitions.
+- Task 6 uses the shared `coros_workouts.py` mapper; `coros_push.py` delegates payload construction there.
 - Push completed tasks as work progresses, as requested, rather than waiting until Task 12.
 
 ## Global Constraints
@@ -169,17 +170,17 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
 **Files:**
 - Modify: `backend/main.py` `CoachWorkoutUpdateRequest` and its handler (around line 1687): when `distance_km` and `elevation_gain_m` are both set on an Easy/Long Run trail session, compute `duration_minutes = trail_minutes(flat_zone_pace, km, dplus)`, keep the coach's km and D+, set `source = "coach"` (check the value the handler already writes and reuse it).
 - Modify: `backend/services/plan_generator.py` / `backend/services/week_rebuild.py` — rows with the coach source are never recomputed (they are history to the rebuild already if `_is_history`; verify and add the check where post-processing would touch them).
-- Modify: `backend/services/coros_push.py` — a coach-set trail session pushes a distance target; others keep time.
+- Modify: `backend/services/coros_workouts.py` — a coach-set trail session pushes a distance target; others keep time.
 - Test: `backend/tests/unit/test_coach_trail_mode.py`
 
 **Interfaces:**
 - Consumes: `trail_minutes` (Task 1).
 
-- [ ] **Step 1: Tests:** coach sets 26 km / 1500 m for Quang's zones → duration ≈ 210 min, km and D+ unchanged after a week rebuild draft is applied; COROS section built with a distance target for that workout.
-- [ ] **Step 2: Run** — FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** — PASS.
-- [ ] **Step 5: Commit** `feat: coach sets trail sessions by km + D+`
+- [x] **Step 1: Tests:** coach sets 26 km / 1500 m for Quang's zones → duration ≈ 210 min, km and D+ unchanged after a week rebuild draft is applied; COROS section built with a distance target for that workout.
+- [x] **Step 2: Run** — FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** — PASS.
+- [x] **Step 5: Commit** `feat: coach sets trail sessions by km + D+`
 
 ### Task 7: Coach zone edit uses the plan's pace source (gap A1)
 
