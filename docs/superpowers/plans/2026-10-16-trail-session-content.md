@@ -46,7 +46,7 @@
   - `trail_session(flat_pace: str, minutes: float, climb_rate: float) -> tuple[str, float, float]` — `(pace_str, distance_km, elevation_gain_m)`, km and D+ rounded to 0.1 / whole metres; km from the range midpoint.
   - `trail_minutes(flat_pace: str, distance_km: float, elevation_gain_m: float) -> float` — inverse, for coach km + D+ mode.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```python
 def test_quang_example_flat_5_00_at_50_m_per_km_is_8_00():
@@ -69,10 +69,10 @@ def test_minutes_round_trips_session():
 
 (4:54 × 1.72 = 8:26, 4:30 × 1.72 = 7:44; midpoint 8:05 → 210 / 8.08 ≈ 26.0 km.)
 
-- [ ] **Step 2: Run** `cd backend && .venv/bin/pytest tests/unit/test_trail_pace.py -q` — expected FAIL (module missing).
-- [ ] **Step 3: Implement** using `PlanGenerator.parse_pace_range` / `decimal_to_pace_str`. Remove the PR #142 climb code and its tests.
-- [ ] **Step 4: Run** `.venv/bin/pytest tests/unit -q` — expected all pass.
-- [ ] **Step 5: Commit** `feat: trail pace formula from Quang's flat→trail rule`
+- [x] **Step 2: Run** `cd backend && .venv/bin/pytest tests/unit/test_trail_pace.py -q` — expected FAIL (module missing).
+- [x] **Step 3: Implement** using `PlanGenerator.parse_pace_range` / `decimal_to_pace_str`. Remove the PR #142 climb code and its tests.
+- [x] **Step 4: Run** `.venv/bin/pytest tests/unit -q` — expected all pass.
+- [x] **Step 5: Commit** `feat: trail pace formula from Quang's flat→trail rule`
 
 ### Task 2: Training mountains list
 

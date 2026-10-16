@@ -968,19 +968,3 @@ class TestZoneFallbackConsistency:
         slow, fast = default_zone2_pace()
         zones = PlanGenerator.estimate_pace_zones(None, None)
         assert zones["zone2_pace"] == f"{slow} - {fast}"
-
-
-class TestAdjustPaceForClimbing:
-    def test_850m_long_run_is_slower_and_shorter_than_flat(self):
-        # Quang's real case: 130 min, flat Z2 4:54-4:30 gave 27.7 km with 850 m D+.
-        pace, km = PlanGenerator.adjust_pace_for_climbing("4:54 - 4:30 /km", 130, 27.7, 850)
-        assert km == 19.2  # 27.7 - 8.5 = 19.2 flat-equivalent km removed
-        slower, faster = PlanGenerator.parse_pace_range(pace)
-        assert slower > 4.9 and faster > 4.5  # both ends slower than the flat range
-
-    def test_no_climb_leaves_pace_and_distance_alone(self):
-        assert PlanGenerator.adjust_pace_for_climbing("5:00 - 4:30 /km", 60, 12.0, 0) == ("5:00 - 4:30 /km", 12.0)
-
-    def test_floor_caps_the_slowdown(self):
-        _, km = PlanGenerator.adjust_pace_for_climbing("5:00 - 4:30 /km", 60, 10.0, 5000)
-        assert km == 6.0
