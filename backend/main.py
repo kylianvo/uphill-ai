@@ -602,10 +602,8 @@ def _resolve_zone_pace_and_hr(
     aet_hr = int(athlete.get("aet_hr", resting_hr + int((max_hr - resting_hr) * 0.65)))
     ant_hr = int(athlete.get("ant_hr", resting_hr + int((max_hr - resting_hr) * 0.85)))
     hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
-    est_zones = PlanGenerator.estimate_pace_zones(
-        *resolve_zone2_pace(athlete.get("zone2_pace_min"), athlete.get("zone2_pace_max"), athlete.get("goal_type")),
-        aet_hr,
-        ant_hr,
+    est_zones = PlanGenerator.resolve_pace_zones(
+        {**athlete, "aet_hr": aet_hr, "ant_hr": ant_hr}, athlete.get("goal_type")
     )
     pace, _distance_km = PlanGenerator.pace_and_distance_for_zone(target_zone, duration_minutes or 30, est_zones)
     zone_key = target_zone if target_zone in hr_zones else "Zone 2"

@@ -188,11 +188,11 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
 - Modify: `backend/main.py:584` `_resolve_zone_pace_and_hr` — use `PlanGenerator.resolve_pace_zones({**athlete, "aet_hr": aet_hr, "ant_hr": ant_hr}, athlete.get("goal_type"))` like `_generate_single_workout`.
 - Test: `backend/tests/unit/test_coach_zone_edit.py`
 
-- [ ] **Step 1: Test:** athlete with threshold 3:55, AeT 134, AnT 163 and default Zone 2 fields 6:30/5:45 → Zone 2 edit returns the same pace as `resolve_pace_zones(...)["zone2_pace"]` (≈ 4:54 - 4:30), not 6:30 - 5:45.
-- [ ] **Step 2: Run** — FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** — PASS.
-- [ ] **Step 5: Commit** `fix: coach zone edits use the plan's pace zones`
+- [x] **Step 1: Test:** athlete with threshold 3:55, AeT 134, AnT 163 and default Zone 2 fields 6:30/5:45 → Zone 2 edit returns the same pace as `resolve_pace_zones(...)["zone2_pace"]` (≈ 4:54 - 4:30), not 6:30 - 5:45.
+- [x] **Step 2: Run** — FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** — PASS.
+- [x] **Step 5: Commit** `fix: coach zone edits use the plan's pace zones`
 
 ### Task 8: Rep fields parsed from the description (gap A3)
 
