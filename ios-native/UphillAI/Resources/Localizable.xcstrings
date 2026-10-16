@@ -17710,6 +17710,196 @@
           }
         }
       }
+    },
+    "Notifications": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông báo"
+          }
+        }
+      }
+    },
+    "Workout reminders": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhắc buổi tập"
+          }
+        }
+      }
+    },
+    "Coaching tips": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gợi ý tập luyện"
+          }
+        }
+      }
+    },
+    "Plan ready updates": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Báo plan mới"
+          }
+        }
+      }
+    },
+    "At most one coaching reminder a day. Requested plan updates are separate.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tối đa một lời nhắc mỗi ngày. Báo plan mới được tính riêng."
+          }
+        }
+      }
+    },
+    "Timing": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian"
+          }
+        }
+      }
+    },
+    "Workout reminder": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhắc buổi tập"
+          }
+        }
+      }
+    },
+    "Coaching reminder": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gợi ý tập luyện"
+          }
+        }
+      }
+    },
+    "Quiet hours start": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bắt đầu giờ yên lặng"
+          }
+        }
+      }
+    },
+    "Quiet hours end": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết thúc giờ yên lặng"
+          }
+        }
+      }
+    },
+    "Distance units": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn vị khoảng cách"
+          }
+        }
+      }
+    },
+    "Resume notifications": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bật lại thông báo"
+          }
+        }
+      }
+    },
+    "Pause for a week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạm dừng một tuần"
+          }
+        }
+      }
+    },
+    "Open notification settings": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cài đặt thông báo"
+          }
+        }
+      }
+    },
+    "Couldn't update notifications. Try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa cập nhật được thông báo. Bạn thử lại nhé."
+          }
+        }
+      }
+    },
+    "Knowledge card unavailable": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa mở được thẻ kiến thức"
+          }
+        }
+      }
+    },
+    "This card is unavailable. Check your connection and try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa mở được thẻ. Kiểm tra kết nối rồi thử lại."
+          }
+        }
+      }
+    },
+    "Notification unavailable": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa mở được thông báo"
+          }
+        }
+      }
+    },
+    "This item is no longer available. Your current plan is shown.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nội dung này không còn. Bạn đang xem plan hiện tại."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

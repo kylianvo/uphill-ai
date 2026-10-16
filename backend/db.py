@@ -10,7 +10,7 @@ import json
 import math
 import unicodedata
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import Any
 
 from sqlalchemy import bindparam, create_engine, text
@@ -1365,6 +1365,8 @@ def save_workouts(
     workouts: list[dict[str, Any]],
     auto_approve: bool = True,
     preserve_completed: bool = False,
+    *,
+    conn=None,
 ):
     """`auto_approve=False` for coach-drafted plans: workouts start pending
     (approved_at NULL) until the coach reviews each one. Self-serve plans
@@ -1376,7 +1378,8 @@ def save_workouts(
         return
     week_numbers = [wo["week_number"] for wo in workouts]
     week_start, week_end = min(week_numbers), max(week_numbers)
-    with engine.connect() as conn:
+    owns_transaction = conn is None
+    with engine.connect() if owns_transaction else nullcontext(conn) as conn:
         existing_completed_slots = set()
         if preserve_completed:
             # Query existing completed workout slots (week_number, day_of_week, session_slot)
@@ -1425,7 +1428,8 @@ def save_workouts(
             if preserve_completed and (wn_val, day_val, slot_val) in existing_completed_slots:
                 continue
             conn.execute(text(_WORKOUT_INSERT_SQL), _workout_insert_params(plan_id, wo, auto_approve))
-        conn.commit()
+        if owns_transaction:
+            conn.commit()
 
 
 def get_active_plan(user_id: int) -> dict[str, Any] | None:
@@ -1903,6 +1907,8 @@ def update_workout_log(
     notes: str | None = None,
     is_missed: int | None = None,
     missed_reason: str | None = None,
+    *,
+    missed_origin: str | None = None,
 ) -> bool:
     """Update is_completed, is_missed, rpe, and/or notes for a workout.
 
@@ -1917,14 +1923,23 @@ def update_workout_log(
             return False
         if is_completed is not None:
             conn.execute(
-                text("UPDATE workouts SET is_completed = :v WHERE id = :id"), {"v": is_completed, "id": workout_id}
+                text(
+                    "UPDATE workouts SET first_completed_at=CASE WHEN :v=1 AND is_completed IS DISTINCT FROM 1 THEN COALESCE(first_completed_at,NOW()) ELSE first_completed_at END, is_completed = :v WHERE id = :id"
+                ),
+                {"v": is_completed, "id": workout_id},
             )
             if is_completed == 1:
                 conn.execute(
-                    text("UPDATE workouts SET is_missed = 0, missed_reason = NULL WHERE id = :id"), {"id": workout_id}
+                    text("UPDATE workouts SET is_missed = 0, missed_reason = NULL, missed_origin = NULL WHERE id = :id"),
+                    {"id": workout_id},
                 )
         if is_missed is not None:
-            conn.execute(text("UPDATE workouts SET is_missed = :v WHERE id = :id"), {"v": is_missed, "id": workout_id})
+            conn.execute(
+                text(
+                    "UPDATE workouts SET is_missed = :v, missed_origin=CASE WHEN :v=1 THEN :origin ELSE NULL END WHERE id = :id"
+                ),
+                {"v": is_missed, "id": workout_id, "origin": missed_origin},
+            )
             if is_missed == 1:
                 conn.execute(text("UPDATE workouts SET is_completed = 0 WHERE id = :id"), {"id": workout_id})
             else:
@@ -5683,7 +5698,7 @@ def apply_workout_moves(conn, moves: list[dict[str, Any]]) -> None:
     for m in moves:
         conn.execute(
             text(
-                "UPDATE workouts SET week_number = :wk, day_of_week = :day, is_missed = 0, missed_reason = NULL WHERE id = :id"
+                "UPDATE workouts SET week_number = :wk, day_of_week = :day, is_missed = 0, missed_reason = NULL, missed_origin = NULL WHERE id = :id"
             ),
             {"wk": m["to_week"], "day": m["to_day"], "id": m["workout_id"]},
         )
