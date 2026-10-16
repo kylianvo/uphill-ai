@@ -204,11 +204,11 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
 **Interfaces:**
 - Produces: `parse_rep_block(text: str) -> tuple[int, float, str] | None` — unit in `s|m|min|km`; returns None when the text has zero or more than one distinct rep block.
 
-- [ ] **Step 1: Tests** (real prod strings): `"8 x 12s hill sprints"` → `(8, 12, "s")`; `"6 reps of 10s maximum-effort"` → `(6, 10, "s")`; `"9 x 12-second maximum effort"` → `(9, 12, "s")`; `"3 x 10 min at threshold"` → `(3, 10, "min")`; `"5 x 400m"` → `(5, 400, "m")`; `"4 x 1.5 km"` → `(4, 1.5, "km")`; `"3 x 5 phút"` → `(3, 5, "min")`; `"8 x 10s Hill Sprints dốc >20%"` → `(8, 10, "s")`; `"4x10 mỗi chân"` → None; two different blocks → None.
-- [ ] **Step 2: Run** — FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `.venv/bin/pytest tests/unit -q` — PASS.
-- [ ] **Step 5: Commit** `feat: derive rep fields from session text`
+- [x] **Step 1: Tests** (real prod strings): `"8 x 12s hill sprints"` → `(8, 12, "s")`; `"6 reps of 10s maximum-effort"` → `(6, 10, "s")`; `"9 x 12-second maximum effort"` → `(9, 12, "s")`; `"3 x 10 min at threshold"` → `(3, 10, "min")`; `"5 x 400m"` → `(5, 400, "m")`; `"4 x 1.5 km"` → `(4, 1.5, "km")`; `"3 x 5 phút"` → `(3, 5, "min")`; `"8 x 10s Hill Sprints dốc >20%"` → `(8, 10, "s")`; `"4x10 mỗi chân"` → None; two different blocks → None.
+- [x] **Step 2: Run** — FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `.venv/bin/pytest tests/unit -q` — PASS.
+- [x] **Step 5: Commit** `feat: derive rep fields from session text`
 
 ### Task 9: Web — Vietnamese step cues, rep chip, trail card labels
 

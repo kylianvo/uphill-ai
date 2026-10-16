@@ -480,10 +480,10 @@ class TestResolveElevationAndGrade:
 
 
 class TestResolveIntervalSummary:
-    def test_non_interval_type_returns_all_none(self):
+    def test_tempo_with_explicit_rep_fields_keeps_them(self):
         wo = {"interval_reps": 8, "interval_rep_value": 12, "interval_rep_unit": "s"}
         result = PlanGenerator.resolve_interval_summary(wo, w_type="Tempo")
-        assert result == (None, None, None)
+        assert result == (8, 12.0, "s")
 
     def test_clean_single_block_seconds(self):
         wo = {"interval_reps": 8, "interval_rep_value": 12, "interval_rep_unit": "s"}

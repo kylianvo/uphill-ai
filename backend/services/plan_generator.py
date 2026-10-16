@@ -530,36 +530,22 @@ class PlanGenerator:
 
     @staticmethod
     def resolve_interval_summary(wo: dict[str, Any], w_type: str) -> tuple[int | None, float | None, str | None]:
-        """Resolves (interval_reps, interval_rep_value, interval_rep_unit) for a
-        single workout — a single primary rep block (e.g. 8 reps x 12 seconds,
-        rendered as "8x12s"). Returns (None, None, None) whenever the workout
-        isn't a clean single-block Interval: wrong type, a missing field, an
-        unparseable/non-positive value, or an unrecognized unit. Callers fall
-        back to the existing distance_km display in that case — multi-block or
-        pyramid workouts are expected to leave these fields unset and keep
-        relying on the free-text description, same as before this field existed.
-        """
-        # Walk/Run sessions are the whole reason a beginner's plan has rep structure at
-        # all. Gating this on "Interval" alone meant their structure was silently dropped
-        # and survived only as free text in the description, so the UI could never render
-        # "5 x 2 min jog / 1 min walk" as a chip.
-        if w_type not in ("Interval", "Walk/Run"):
+        """Use valid explicit rep fields, else one clean block from the Process text."""
+        from services.rep_parser import parse_rep_block
+
+        if w_type in ("Rest", "Strength", "Muscular Endurance", "ME"):
             return None, None, None
-
-        raw_reps = wo.get("interval_reps")
-        raw_value = wo.get("interval_rep_value")
-        unit = wo.get("interval_rep_unit")
-
         try:
-            reps = int(raw_reps)
-            value = float(raw_value)
-        except (TypeError, ValueError):
-            return None, None, None
-
-        if reps <= 0 or value <= 0 or unit not in PlanGenerator.INTERVAL_REP_UNITS:
-            return None, None, None
-
-        return reps, value, unit
+            reps = int(wo.get("interval_reps"))
+            value = float(wo.get("interval_rep_value"))
+            unit = wo.get("interval_rep_unit")
+            if reps > 0 and value > 0 and unit in PlanGenerator.INTERVAL_REP_UNITS:
+                return reps, value, unit
+        except (TypeError, ValueError, OverflowError):
+            pass
+        description = wo.get("description_process") or wo.get("description") or ""
+        block = parse_rep_block(description) if isinstance(description, str) else None
+        return block or (None, None, None)
 
     # Title substrings (case-insensitive) that identify a true hill-sprint/hill-repeat
     # session — short, near-maximal efforts that require a steep grade by design,
