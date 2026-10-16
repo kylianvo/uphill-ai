@@ -156,7 +156,7 @@ export default function WorkoutCard({
 }: WorkoutCardProps) {
   const labels = translations[lang === "vi" ? "vi" : "en"];
   const isTrail = wo.elevation_gain_m > 0;
-  const hidePace = hideRepPace(wo);
+  const hidePace = hideRepPace(wo) && (wo.target_zone === "Zone 5" || !["Easy", "Long Run"].includes(wo.type));
   const isRest = wo.type === "Rest";
   const isRaceDay = wo.type?.toLowerCase() === "race";
   const isPending = !wo.approved_at;
@@ -212,16 +212,16 @@ export default function WorkoutCard({
   };
 
   const handleEditSave = () => {
-    const isInterval = editFields.type === "Interval";
+    const hasReps = editFields.type === "Interval" || (editFields.type === wo.type && Boolean(formatIntervalSummary(wo)));
     onEditWorkout?.(wo.id, {
       title: editFields.title,
       type: editFields.type,
       duration_minutes: parseFloat(editFields.duration_minutes) || 0,
       target_zone: editFields.target_zone,
       description: editFields.description,
-      interval_reps: isInterval ? parseInt(editFields.interval_reps, 10) || null : null,
-      interval_rep_value: isInterval ? parseFloat(editFields.interval_rep_value) || null : null,
-      interval_rep_unit: isInterval ? editFields.interval_rep_unit : null,
+      interval_reps: hasReps ? parseInt(editFields.interval_reps, 10) || null : null,
+      interval_rep_value: hasReps ? parseFloat(editFields.interval_rep_value) || null : null,
+      interval_rep_unit: hasReps ? editFields.interval_rep_unit : null,
       is_priority: editFields.is_priority,
     });
     setEditing(false);

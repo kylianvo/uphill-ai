@@ -208,3 +208,22 @@ describe("trail and sprint metrics", () => {
     expect(screen.getByText(/D\+ ước tính/)).toBeInTheDocument();
   });
 });
+
+describe("Easy hill-sprint editing and aerobic pace", () => {
+  const wo = { id: 112, day_of_week: "Saturday", title: "Easy + Hill Sprints", type: "Easy", target_zone: "Zone 2",
+    duration_minutes: 80, distance_km: 9.9, elevation_gain_m: 594, target_pace: "8:26 - 7:44 /km",
+    interval_reps: 8, interval_rep_value: 10, interval_rep_unit: "s", approved_at: "2026-10-17" };
+  it("keeps the aerobic trail pace separate from the sprint rep chip", () => {
+    render(<WorkoutCard wo={wo} isMobile={false} lang="en" getWorkoutDate={() => ""} readOnly />);
+    expect(screen.getByText("8x10s")).toBeInTheDocument();
+    expect(screen.getByText(`Trail pace: ${wo.target_pace}`)).toBeInTheDocument();
+  });
+  it("preserves Easy-run reps through ordinary coach edits", () => {
+    const onEdit = vi.fn();
+    render(<WorkoutCard wo={wo} isMobile={false} lang="en" getWorkoutDate={() => ""} isCoachActingAsAthlete onEditWorkout={onEdit} />);
+    fireEvent.click(screen.getByTitle("Edit"));
+    fireEvent.click(screen.getByLabelText("Priority"));
+    fireEvent.click(screen.getByText("Save"));
+    expect(onEdit).toHaveBeenCalledWith(112, expect.objectContaining({ interval_reps: 8, interval_rep_value: 10, interval_rep_unit: "s" }));
+  });
+});

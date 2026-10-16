@@ -315,10 +315,7 @@ struct WorkoutDetailSheet: View {
             return w.distanceKm.flatMap { $0 > 0 ? String(format: "%.1f km", $0) : nil } ?? "—"
         }()
 
-        let paceValue: String = {
-            if w.isStrengthOrME || WorkoutStepParser.hidesRepPace(w) { return "—" }
-            return WorkoutTypePresentation.paceTileValue(w.targetPace)
-        }()
+        let paceValue = WorkoutTypePresentation.sessionPaceValue(for: w)
 
         return HStack(spacing: UH.Space.small) {
             statTile(

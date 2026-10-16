@@ -79,6 +79,12 @@ enum WorkoutTypePresentation {
         return value
     }
 
+    static func sessionPaceValue(for workout: Workout) -> String {
+        let aerobic = ["Easy", "Long Run"].contains(workout.type) && zoneShort(workout.targetZone) != "Z5"
+        if workout.isStrengthOrME || (WorkoutStepParser.hidesRepPace(workout) && !aerobic) { return "—" }
+        return paceTileValue(workout.targetPace)
+    }
+
     /// Compact pace for the stat tile, whose label already says "(/KM)":
     /// "6:24 - 5:42 /km" -> "6:24–5:42", "5:30 /km" -> "5:30".
     static func paceTileValue(_ pace: String?) -> String {
