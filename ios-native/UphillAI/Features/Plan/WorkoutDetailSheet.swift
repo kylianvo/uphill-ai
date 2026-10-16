@@ -316,7 +316,7 @@ struct WorkoutDetailSheet: View {
         }()
 
         let paceValue: String = {
-            if w.isStrengthOrME { return "—" }
+            if w.isStrengthOrME || WorkoutStepParser.hidesRepPace(w) { return "—" }
             return WorkoutTypePresentation.paceTileValue(w.targetPace)
         }()
 
@@ -332,7 +332,7 @@ struct WorkoutDetailSheet: View {
             )
 
             statTile(
-                label: L("PACE (/KM)"),
+                label: (w.elevationGainM ?? 0) > 0 ? L("TRAIL PACE") : L("PACE (/KM)"),
                 value: paceValue
             )
         }
@@ -368,7 +368,7 @@ struct WorkoutDetailSheet: View {
             items.append(zone)
         }
         if let gain = w.elevationGainM, gain > 0 {
-            items.append(L("+%lld m elevation gain", Int(gain)))
+            items.append(L("Estimated D+: ~%lld m", Int(gain.rounded())))
         }
 
         return HStack(spacing: 6) {

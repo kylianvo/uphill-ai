@@ -167,19 +167,20 @@ enum WorkoutStepParser {
         // 2. Main Set
         let mainTarget: String
         let recovery: String?
-        let isIntervalSet = (workout.intervalReps ?? 0) > 0 || detectReps(parts.main.first ?? "") != nil
+        let detectedReps = parts.main.compactMap { detectReps($0) }.first
+        let isIntervalSet = (workout.intervalReps ?? 0) > 0 || detectedReps != nil
         if isTreadmill, let tm = treadmillSettings(workout: workout) {
             mainTarget = "\(tm.speed) · \(tm.incline)"
             recovery = "Maintain stable uphill cadence"
         } else if let reps = workout.intervalReps, reps > 0, let val = workout.intervalRepValue, let unit = workout.intervalRepUnit {
-            let paceStr = workout.targetPace.map { " @ \($0)" } ?? ""
-            mainTarget = "\(reps) × \(Int(val)) \(unit)\(paceStr)"
+            let paceStr = hidesRepPace(workout) ? "" : (workout.targetPace.map { " @ \($0)" } ?? "")
+            mainTarget = "\(reps) × \(fmtRepValue(val)) \(unit)\(paceStr)"
             if let walk = workout.walkIntervalValue, walk > 0 {
-                recovery = "Recovery: \(Int(walk)) \(unit) jog / walk"
+                recovery = "Recovery: \(fmtRepValue(walk)) \(unit) jog / walk"
             } else {
                 recovery = "Recovery: easy jog between intervals"
             }
-        } else if let detectedReps = detectReps(parts.main.first ?? "") {
+        } else if let detectedReps {
             mainTarget = detectedReps.reps
             recovery = detectedReps.recovery
         } else {
@@ -242,17 +243,29 @@ enum WorkoutStepParser {
         return res
     }
 
+    static func hidesRepPace(_ workout: Workout) -> Bool {
+        let zone = workout.targetZone.lowercased().replacingOccurrences(of: " ", with: "")
+        return zone == "zone5" || zone == "z5"
+            || workout.title.range(of: #"(?i)hill[ -]?sprints?|strides"#, options: .regularExpression) != nil
+    }
+
+    private static func fmtRepValue(_ value: Double) -> String {
+        String(format: value.rounded() == value ? "%.0f" : "%.1f", value)
+    }
+
     private static func detectReps(_ text: String) -> (reps: String, recovery: String?)? {
-        let pattern = #"(?i)(\d+\s*[x×]\s*\d+\s*min[^\n,]*)(?:with\s*([^\n.]*))?"#
+        let pattern = #"(?i)(?<![\d.\-])(\d+)\s*(?:[x×]|reps?\s+of)\s*(\d+(?:\.\d+)?)\s*-?\s*(seconds?|secs?|s|min(?:utes?)?|phút|giây|km|m)\b(?:[^\n,]*?\bwith\s+([^\n.]*))?"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
         let ns = text as NSString
-        guard let m = regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)), m.numberOfRanges > 1 else { return nil }
-        let reps = ns.substring(with: m.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines)
-        var recovery: String? = nil
-        if m.numberOfRanges > 2 && m.range(at: 2).location != NSNotFound {
-            recovery = "Recovery: " + ns.substring(with: m.range(at: 2)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return (reps, recovery)
+        guard let m = regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)),
+              let count = Int(ns.substring(with: m.range(at: 1))), count > 0,
+              let value = Double(ns.substring(with: m.range(at: 2))), value > 0 else { return nil }
+        let rawUnit = ns.substring(with: m.range(at: 3)).lowercased()
+        let unit = rawUnit == "phút" || rawUnit.hasPrefix("min") ? "min"
+            : (rawUnit == "giây" || rawUnit.hasPrefix("s") ? "s" : rawUnit)
+        let recovery = m.range(at: 4).location == NSNotFound ? nil
+            : "Recovery: " + ns.substring(with: m.range(at: 4)).trimmingCharacters(in: .whitespacesAndNewlines)
+        return ("\(count) × \(fmtRepValue(value)) \(unit)", recovery)
     }
 
     static func splitProcess(_ text: String) -> (warmup: String?, main: [String], cooldown: String?) {

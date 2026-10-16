@@ -14060,6 +14060,26 @@
           }
         }
       }
+    },
+    "TRAIL PACE": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PACE TRAIL"
+          }
+        }
+      }
+    },
+    "Estimated D+: ~%lld m": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D+ ước tính: ~%lld m"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

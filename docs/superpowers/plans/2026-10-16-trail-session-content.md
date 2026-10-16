@@ -231,11 +231,11 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
 - Modify: the workout detail view that renders duration/distance/pace chips (find via `PACE (/KM)` label) — trail sessions label pace as trail pace and show est. D+.
 - Test: `ios-native/UphillAITests/Plan/WorkoutStepParserTests.swift`
 
-- [ ] **Step 1: Tests:** Quang's session → main target `"8 × 10 s"` with no pace; `intervalRepValue 0.4, unit km` → `"5 × 0.4 km"`; `"3 x 5 phút"` detected; existing 13 tests still pass.
-- [ ] **Step 2: Run** `cd ios-native && xcodegen generate && xcodebuild test -project UphillAI.xcodeproj -scheme UphillAI -destination 'id=C61BEDF9-6807-47A8-8225-34A09EE1CF81' -only-testing:UphillAITests/WorkoutStepParserTests CODE_SIGNING_ALLOWED=NO` — FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** — `** TEST SUCCEEDED **`; simulator screenshot of the detail screen.
-- [ ] **Step 5: Commit** `feat(ios): rep detection for seconds/distance/VI, trail card labels`
+- [x] **Step 1: Tests:** Quang's session → main target `"8 × 10 s"` with no pace; `intervalRepValue 0.4, unit km` → `"5 × 0.4 km"`; `"3 x 5 phút"` detected; existing 13 tests still pass.
+- [x] **Step 2: Run** `cd ios-native && xcodegen generate && xcodebuild test -project UphillAI.xcodeproj -scheme UphillAI -destination 'id=C61BEDF9-6807-47A8-8225-34A09EE1CF81' -only-testing:UphillAITests/WorkoutStepParserTests CODE_SIGNING_ALLOWED=NO` — FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** — `** TEST SUCCEEDED **`; simulator screenshot of the detail screen.
+- [x] **Step 5: Commit** `feat(ios): rep detection for seconds/distance/VI, trail card labels`
 
 ### Task 11: Mountain picker (web + iOS)
 
