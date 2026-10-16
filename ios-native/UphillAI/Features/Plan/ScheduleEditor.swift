@@ -89,6 +89,8 @@ struct ScheduleEditor: View {
             // Where the athlete can train: hill days, stairs, treadmill ceiling
             TrainingVenueSection(
                 mountainDays: $draft.mountainDays,
+                trainingMountain: $draft.trainingMountain,
+                mountainMinMinutes: $draft.mountainMinMinutes,
                 stairAccess: $draft.stairAccess,
                 treadmillMaxIncline: draft.useTreadmill ? $draft.treadmillMaxIncline : nil
             )

@@ -1435,12 +1435,15 @@ def update_plan_schedule(
     mountain_days: list | None = None,
     training_mountain: str | None = None,
     mountain_min_minutes: int | None = None,
+    clear_training_mountain: bool = False,
+    clear_mountain_min_minutes: bool = False,
     stair_access: bool | None = None,
     treadmill_max_incline: int | None = None,
 ) -> dict[str, Any] | None:
     """Partial update of a plan's mid-plan-editable schedule columns. Any
     argument left as None keeps that column's current value (COALESCE) --
-    lets callers pass only the fields the athlete actually changed."""
+    lets callers pass only the fields the athlete actually changed. The two
+    nullable mountain fields use explicit clear flags to remove saved values."""
     with engine.connect() as conn:
         result = conn.execute(
             text("""
@@ -1454,8 +1457,8 @@ def update_plan_schedule(
                     training_environment = COALESCE(:training_environment, training_environment),
                     athlete_notes = COALESCE(:athlete_notes, athlete_notes),
                     mountain_days = COALESCE(:mountain_days, mountain_days),
-                    training_mountain = COALESCE(:training_mountain, training_mountain),
-                    mountain_min_minutes = COALESCE(:mountain_min_minutes, mountain_min_minutes),
+                    training_mountain = CASE WHEN :clear_training_mountain THEN NULL ELSE COALESCE(:training_mountain, training_mountain) END,
+                    mountain_min_minutes = CASE WHEN :clear_mountain_min_minutes THEN NULL ELSE COALESCE(:mountain_min_minutes, mountain_min_minutes) END,
                     stair_access = COALESCE(:stair_access, stair_access),
                     treadmill_max_incline = COALESCE(:treadmill_max_incline, treadmill_max_incline)
                 WHERE id = :plan_id
@@ -1473,6 +1476,8 @@ def update_plan_schedule(
                 "athlete_notes": athlete_notes,
                 "mountain_days": json.dumps(mountain_days) if mountain_days is not None else None,
                 "training_mountain": training_mountain,
+                "clear_training_mountain": clear_training_mountain,
+                "clear_mountain_min_minutes": clear_mountain_min_minutes,
                 "mountain_min_minutes": mountain_min_minutes,
                 "stair_access": stair_access,
                 "treadmill_max_incline": treadmill_max_incline,

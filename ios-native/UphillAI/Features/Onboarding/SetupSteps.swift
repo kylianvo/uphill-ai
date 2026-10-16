@@ -519,6 +519,8 @@ struct SetupSteps: View {
             }
             TrainingVenueSection(
                 mountainDays: $model.draft.mountainDays,
+                trainingMountain: $model.draft.trainingMountain,
+                mountainMinMinutes: $model.draft.mountainMinMinutes,
                 stairAccess: $model.draft.stairAccess,
                 treadmillMaxIncline: model.draft.useTreadmill ? $model.draft.treadmillMaxIncline : nil
             )

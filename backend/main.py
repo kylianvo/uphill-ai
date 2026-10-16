@@ -3,6 +3,7 @@ import re
 import threading
 import time
 import uuid as _uuid
+from dataclasses import asdict
 from typing import Any, Literal
 
 import httpx
@@ -127,6 +128,7 @@ from services.pacing_calculator import PacingCalculator
 from services.plan_generator import PlanGenerator
 from services.plan_rules import count_me_sessions
 from services.rag_service import RagService
+from services.training_mountains import MOUNTAINS
 from services.training_rules import TrainingRules, resolve_zone2_pace
 from services.weather_service import WeatherService
 from services.week_review_narrative import generate_week_narrative
@@ -874,6 +876,11 @@ def is_vietnamese_request(
 class CoachChatRequest(BaseModel):
     messages: list[ChatMessage]
     lang: str | None = None
+
+
+@app.get("/api/training-mountains")
+def training_mountains():
+    return [asdict(mountain) for mountain in MOUNTAINS.values()]
 
 
 @app.get("/api/health")
@@ -2528,7 +2535,10 @@ async def _generate_next_block_for_athlete(
         request.stair_access,
         request.treadmill_max_incline,
     )
-    if any(f is not None for f in _schedule_fields):
+    if (
+        any(f is not None for f in _schedule_fields)
+        or {"training_mountain", "mountain_min_minutes"} & request.model_fields_set
+    ):
         updated_plan = update_plan_schedule(
             plan_id=request.plan_id,
             preferred_run_days=request.preferred_days,
@@ -2542,6 +2552,10 @@ async def _generate_next_block_for_athlete(
             mountain_days=request.mountain_days,
             training_mountain=request.training_mountain,
             mountain_min_minutes=request.mountain_min_minutes,
+            clear_training_mountain="training_mountain" in request.model_fields_set
+            and request.training_mountain is None,
+            clear_mountain_min_minutes="mountain_min_minutes" in request.model_fields_set
+            and request.mountain_min_minutes is None,
             stair_access=request.stair_access,
             treadmill_max_incline=request.treadmill_max_incline,
         )
@@ -2942,7 +2956,11 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         plan_rows,
         rng,
         week_rebuild.RebuildRequest(
-            **request.model_dump(exclude={"plan_id", "max_continuous_jog_min", "client_today"})
+            **request.model_dump(exclude={"plan_id", "max_continuous_jog_min", "client_today"}),
+            clear_training_mountain="training_mountain" in request.model_fields_set
+            and request.training_mountain is None,
+            clear_mountain_min_minutes="mountain_min_minutes" in request.model_fields_set
+            and request.mountain_min_minutes is None,
         ),
         today=today,
     )

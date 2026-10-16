@@ -5,6 +5,10 @@ import SwiftUI
 /// venue for every session type (backend/services/training_venues.py).
 struct TrainingVenueSection: View {
     @Binding var mountainDays: Set<Weekday>
+    @Binding var trainingMountain: String?
+    @Binding var mountainMinMinutes: Int?
+    @State private var mountains: [TrainingMountain] = []
+    @State private var loadError = false
     @Binding var stairAccess: Bool
     /// Nil hides the incline picker (the athlete has no treadmill, or the flow doesn't ask).
     var treadmillMaxIncline: Binding<Int>?
@@ -13,6 +17,31 @@ struct TrainingVenueSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: UH.Space.regular) {
+            Picker("Training mountain", selection: Binding(
+                get: { trainingMountain ?? "" },
+                set: { key in
+                    let mountain = mountains.first { $0.key == key }
+                    trainingMountain = mountain?.key
+                    mountainMinMinutes = mountain?.defaultMinMinutes
+                }
+            )) {
+                Text("Other / none").tag("")
+                ForEach(mountains) { mountain in
+                    Text("\(AppLanguage.current == .vi ? mountain.nameVi : mountain.nameEn) · \(mountain.climbRate.formatted(.number.precision(.fractionLength(0...1)))) m D+/km").tag(mountain.key)
+                }
+            }
+            .tint(UH.Palette.accentInk)
+            if loadError { Text("Mountains unavailable").foregroundStyle(UH.Palette.secondary) }
+            HStack {
+                Text("Minimum minutes").font(UH.TextStyle.label)
+                Spacer()
+                TextField("Minimum minutes", value: $mountainMinMinutes, format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 90)
+                    .accessibilityIdentifier("mountain.minimum")
+            }
+
             VStack(alignment: .leading, spacing: UH.Space.compact) {
                 Text("Hill or trail days").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 8) {
@@ -64,5 +93,22 @@ struct TrainingVenueSection: View {
                 }
             }
         }
+        .task {
+            do {
+                let client = APIClient(baseURL: { AppEnvironment.current().baseURL }, tokenStore: InMemoryTokenStore())
+                mountains = try await client.send(.get("/api/training-mountains", requiresAuth: false))
+            } catch { loadError = true }
+        }
     }
+}
+
+struct TrainingMountain: Decodable, Sendable, Identifiable {
+    let key: String
+    let area: String
+    let nameEn: String
+    let nameVi: String
+    let climbRate: Double
+    let repeatsOnly: Bool
+    let defaultMinMinutes: Int?
+    var id: String { key }
 }

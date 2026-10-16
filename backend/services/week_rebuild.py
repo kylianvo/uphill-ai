@@ -216,6 +216,8 @@ class RebuildRequest:
     use_treadmill: bool | None = None
     training_environment: str | None = None
     mountain_days: list[str] | None = None
+    clear_training_mountain: bool = False
+    clear_mountain_min_minutes: bool = False
     training_mountain: str | None = None
     mountain_min_minutes: int | None = None
     stair_access: bool | None = None
@@ -601,10 +603,10 @@ def build_rebuild_inputs(
         "training_environment": training_environment,
         "mountain_days": request.mountain_days if request.mountain_days is not None else plan.get("mountain_days"),
         "training_mountain": request.training_mountain
-        if request.training_mountain is not None
+        if request.training_mountain is not None or request.clear_training_mountain
         else plan.get("training_mountain"),
         "mountain_min_minutes": request.mountain_min_minutes
-        if request.mountain_min_minutes is not None
+        if request.mountain_min_minutes is not None or request.clear_mountain_min_minutes
         else plan.get("mountain_min_minutes"),
         "stair_access": request.stair_access if request.stair_access is not None else plan.get("stair_access"),
         "treadmill_max_incline": (

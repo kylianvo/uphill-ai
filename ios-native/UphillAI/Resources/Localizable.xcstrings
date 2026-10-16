@@ -14080,6 +14080,56 @@
           }
         }
       }
+    },
+    "Training mountain": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Núi tập luyện"
+          }
+        }
+      }
+    },
+    "Other / none": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khác / không"
+          }
+        }
+      }
+    },
+    "Minimum minutes": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phút tối thiểu"
+          }
+        }
+      }
+    },
+    "Mountains unavailable": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa tải được núi"
+          }
+        }
+      }
+    },
+    "Minimum minutes must be zero or more.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số phút tối thiểu phải từ 0 trở lên."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

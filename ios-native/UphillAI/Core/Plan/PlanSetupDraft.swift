@@ -141,6 +141,8 @@ struct PlanSetupDraft: Equatable, Sendable {
     var weeklyKmFromWatch = false
     var environment: TrainingEnvironment = .flat
     var mountainDays: Set<Weekday> = []
+    var trainingMountain: String?
+    var mountainMinMinutes: Int?
     var stairAccess = false
     var hasGymAccess = false
     var useTreadmill = false
@@ -358,6 +360,8 @@ struct PlanSetupDraft: Equatable, Sendable {
             useTreadmill: useTreadmill,
             trainingEnvironment: environment.rawValue,
             mountainDays: Weekday.allCases.filter(mountainDays.contains).map(\.rawValue),
+            trainingMountain: trainingMountain,
+            mountainMinMinutes: mountainMinMinutes,
             stairAccess: stairAccess,
             treadmillMaxIncline: useTreadmill ? treadmillMaxIncline : nil,
             doubleSessionDays: requestDoubleDays,
@@ -392,6 +396,8 @@ struct PlanSetupDraft: Equatable, Sendable {
             useTreadmill: useTreadmill,
             trainingEnvironment: environment.rawValue,
             mountainDays: Weekday.allCases.filter(mountainDays.contains).map(\.rawValue),
+            trainingMountain: trainingMountain,
+            mountainMinMinutes: mountainMinMinutes,
             stairAccess: stairAccess,
             treadmillMaxIncline: useTreadmill ? treadmillMaxIncline : nil,
             doubleSessionDays: requestDoubleDays,
@@ -490,6 +496,8 @@ struct OnboardingBody: Encodable, Sendable {
     var useTreadmill: Bool
     var trainingEnvironment: String
     var mountainDays: [String]
+    var trainingMountain: String? = nil
+    var mountainMinMinutes: Int? = nil
     var stairAccess: Bool
     var treadmillMaxIncline: Int?
     var doubleSessionDays: [String]
@@ -522,6 +530,8 @@ struct PlanBody: Encodable, Sendable {
     var useTreadmill: Bool
     var trainingEnvironment: String
     var mountainDays: [String]
+    var trainingMountain: String? = nil
+    var mountainMinMinutes: Int? = nil
     var stairAccess: Bool
     var treadmillMaxIncline: Int?
     var doubleSessionDays: [String]

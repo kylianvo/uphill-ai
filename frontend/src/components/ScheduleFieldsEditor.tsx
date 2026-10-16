@@ -9,6 +9,8 @@ export interface ScheduleFieldsValue {
   use_treadmill: boolean;
   training_environment: "flat" | "hilly" | "mixed";
   mountain_days: string[];
+  training_mountain?: string | null;
+  mountain_min_minutes?: number | null;
   stair_access: boolean;
   treadmill_max_incline: number;
   double_session_days: string[];

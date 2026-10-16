@@ -32,6 +32,18 @@ struct PlanSetupDraftTests {
         return d
     }
 
+    @Test func mountainPreferencesReachBothCreationRequests() throws {
+        var draft = raceDraft()
+        draft.trainingMountain = "nui_dinh"
+        draft.mountainMinMinutes = 180
+        let plan = try encoded(draft.planBody(calendar: cal))
+        let onboarding = try encoded(draft.onboardingBody(skipPlan: false, calendar: cal))
+        for json in [plan, onboarding] {
+            #expect(json["training_mountain"] as? String == "nui_dinh")
+            #expect(json["mountain_min_minutes"] as? Int == 180)
+        }
+    }
+
     @Test func decodesRecordedRaceSearch() throws {
         let response = try Fixture.decode(RaceMatchResponse.self, "race_match.json")
         #expect(!response.matched)

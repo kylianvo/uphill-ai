@@ -11,6 +11,8 @@ struct ScheduleDraft {
     var environment: TrainingEnvironment
     /// Weekdays the athlete can reach hills or trails (e.g. weekend trips from a flat city).
     var mountainDays: Set<Weekday>
+    var trainingMountain: String?
+    var mountainMinMinutes: Int?
     /// Fire stairs in a tall building, a stadium, or a Stairmaster.
     var stairAccess: Bool
     /// The treadmill's top incline in %: 15 on a standard gym treadmill, 25+ on an incline trainer.
@@ -28,6 +30,8 @@ struct ScheduleDraft {
         useTreadmill = plan?.useTreadmill ?? false
         environment = plan?.trainingEnvironment.flatMap(TrainingEnvironment.init(rawValue:)) ?? .flat
         mountainDays = Self.days(plan?.mountainDays)
+        trainingMountain = plan?.trainingMountain
+        mountainMinMinutes = plan?.mountainMinMinutes
         stairAccess = plan?.stairAccess ?? false
         treadmillMaxIncline = plan?.treadmillMaxIncline ?? 15
         maxContinuousJogMin = plan?.maxContinuousJogMin ?? 0
@@ -49,6 +53,7 @@ struct ScheduleDraft {
         }
         if let longRunDay, !unspecified, !preferredDays.contains(longRunDay) { return L("Choose a long run day from your run days.") }
         if doubleSessionDays.count > 2 || !doubleSessionDays.isSubset(of: preferredDays) { return L("Pick up to 2 run days for double sessions.") }
+        if let mountainMinMinutes, mountainMinMinutes < 0 { return L("Minimum minutes must be zero or more.") }
         if isGettingStarted && !(0...120).contains(maxContinuousJogMin) { return L("Enter 0 to 120 minutes.") }
         return nil
     }
@@ -82,6 +87,8 @@ struct ScheduleDraft {
         if useTreadmill != before.useTreadmill { body.useTreadmill = useTreadmill }
         if environment != before.environment { body.trainingEnvironment = environment.rawValue }
         if mountainDays != before.mountainDays { body.mountainDays = Weekday.allCases.filter(mountainDays.contains).map(\.rawValue) }
+        if trainingMountain != before.trainingMountain { body.trainingMountain = .some(trainingMountain) }
+        if mountainMinMinutes != before.mountainMinMinutes { body.mountainMinMinutes = .some(mountainMinMinutes) }
         if stairAccess != before.stairAccess { body.stairAccess = stairAccess }
         if treadmillMaxIncline != before.treadmillMaxIncline { body.treadmillMaxIncline = treadmillMaxIncline }
         if isGettingStarted && maxContinuousJogMin != before.maxContinuousJogMin { body.maxContinuousJogMin = maxContinuousJogMin }
@@ -97,6 +104,8 @@ struct ScheduleDraft {
         if useTreadmill != before.useTreadmill { body.useTreadmill = useTreadmill }
         if environment != before.environment { body.trainingEnvironment = environment.rawValue }
         if mountainDays != before.mountainDays { body.mountainDays = Weekday.allCases.filter(mountainDays.contains).map(\.rawValue) }
+        if trainingMountain != before.trainingMountain { body.trainingMountain = .some(trainingMountain) }
+        if mountainMinMinutes != before.mountainMinMinutes { body.mountainMinMinutes = .some(mountainMinMinutes) }
         if stairAccess != before.stairAccess { body.stairAccess = stairAccess }
         if treadmillMaxIncline != before.treadmillMaxIncline { body.treadmillMaxIncline = treadmillMaxIncline }
     }
@@ -106,6 +115,7 @@ struct ScheduleDraft {
         return preferredDays != before.preferredDays || longRunDay != before.longRunDay || daysPerWeek != before.daysPerWeek
             || doubleSessionDays != before.doubleSessionDays || hasGymAccess != before.hasGymAccess
             || useTreadmill != before.useTreadmill || environment != before.environment
+            || trainingMountain != before.trainingMountain || mountainMinMinutes != before.mountainMinMinutes
             || mountainDays != before.mountainDays || stairAccess != before.stairAccess
             || treadmillMaxIncline != before.treadmillMaxIncline
             || (isGettingStarted && maxContinuousJogMin != before.maxContinuousJogMin)

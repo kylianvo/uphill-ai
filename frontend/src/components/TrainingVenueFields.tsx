@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { getApiBaseUrl } from "../lib/apiUrlOverride";
+import type { TrainingMountain } from "../types";
 import { translations } from "../app/translations";
 
 // Where the athlete can actually train: weekdays with hill/trail access (e.g. weekend
@@ -5,6 +8,8 @@ import { translations } from "../app/translations";
 // these into a venue for every session type (services/training_venues.py).
 export interface TrainingVenueValue {
   mountain_days: string[];
+  training_mountain?: string | null;
+  mountain_min_minutes?: number | null;
   stair_access: boolean;
   treadmill_max_incline: number;
 }
@@ -53,8 +58,36 @@ function chipStyle(selected: boolean) {
 }
 
 export function TrainingVenueFields({ lang, t, value, useTreadmill, onChange }: TrainingVenueFieldsProps) {
+  const [mountains, setMountains] = useState<TrainingMountain[]>([]);
+  const [loadError, setLoadError] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetch(`${getApiBaseUrl()}/api/training-mountains`)
+      .then(response => { if (!response.ok) throw new Error(); return response.json(); })
+      .then(rows => { if (active) setMountains(rows); })
+      .catch(() => { if (active) setLoadError(true); });
+    return () => { active = false; };
+  }, []);
   return (
     <div data-testid="training-venue-fields">
+      <div style={{ marginTop: "12px" }}>
+        <label htmlFor="training-mountain" style={labelStyle}>{t("plan_training_mountain")}</label>
+        <select id="training-mountain" className="chat-input" style={{ width: "100%", padding: "8px" }}
+          disabled={mountains.length === 0} value={value.training_mountain ?? ""} onChange={e => {
+            const mountain = mountains.find(m => m.key === e.target.value);
+            onChange({ training_mountain: mountain?.key ?? null, mountain_min_minutes: mountain?.default_min_minutes ?? null });
+          }}>
+          <option value="">{t("plan_mountain_other")}</option>
+          {mountains.map(m => <option key={m.key} value={m.key}>{lang === "vi" ? m.name_vi : m.name_en} · {m.climb_rate} m D+/km</option>)}
+        </select>
+        {loadError && <p role="alert" style={helpStyle}>{t("plan_mountains_unavailable")}</p>}
+      </div>
+      <div style={{ marginTop: "12px" }}>
+        <label htmlFor="mountain-min-minutes" style={labelStyle}>{t("plan_mountain_min_minutes")}</label>
+        <input id="mountain-min-minutes" className="chat-input" type="number" min="0" step="1"
+          value={value.mountain_min_minutes ?? ""}
+          onChange={e => onChange({ mountain_min_minutes: e.target.value === "" ? null : Number(e.target.value) })} />
+      </div>
       <div style={{ marginTop: "12px" }}>
         <label style={labelStyle}>{t("plan_mountain_days")}</label>
         <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>

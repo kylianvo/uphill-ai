@@ -19,6 +19,7 @@
 - Task 5 persists the original climb rate in nullable `workouts.mountain_climb_rate` so skip → mountain/chill restores the original estimate without requiring a selected mountain. Update both schema definitions.
 - Task 6 uses the shared `coros_workouts.py` mapper; `coros_push.py` delegates payload construction there.
 - Push completed tasks as work progresses, as requested, rather than waiting until Task 12.
+- Task 11 distinguishes omitted mountain fields from explicit null: "Other / none" clears the mountain, and Dalat/Sapa clears an old minimum (user approved). Both client creation flows and schedule request bodies must carry these fields.
 
 ## Global Constraints
 
@@ -245,11 +246,11 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
 - Modify: `backend/main.py` — `GET /api/training-mountains` returns `MOUNTAINS` (key, area, names, climb_rate, repeats_only, default_min_minutes) so both clients read one list.
 - Test: `frontend/src/components/TrainingVenueFields.test.tsx` (create if absent), iOS `ScheduleDraft` test, backend route test.
 
-- [ ] **Step 1: Tests:** web select saves `training_mountain: "nui_dinh"`, min field shows 180; iOS draft diff includes `trainingMountain` only when changed; route returns 7 mountains.
-- [ ] **Step 2: Run** — FAIL.
-- [ ] **Step 3: Implement.** Mountain names in VI via the Vietnamese copy skill.
-- [ ] **Step 4: Run** all three suites — PASS; screenshots on web and simulator.
-- [ ] **Step 5: Commit** `feat: training mountain picker in schedule preferences`
+- [x] **Step 1: Tests:** web select saves `training_mountain: "nui_dinh"`, min field shows 180; iOS draft diff includes `trainingMountain` only when changed; route returns 7 mountains.
+- [x] **Step 2: Run** — FAIL.
+- [x] **Step 3: Implement.** Mountain names in VI via the Vietnamese copy skill.
+- [x] **Step 4: Run** all three suites — PASS; screenshots on web and simulator.
+- [x] **Step 5: Commit** `feat: training mountain picker in schedule preferences`
 
 ### Task 12: Finish the branch
 
