@@ -87,11 +87,11 @@ def test_minutes_round_trips_session():
   - `long_run_climb_rate(key: str | None) -> float | None` — repeats-only mountains return their area's default long-run mountain rate; unknown/None → None.
   - `default_min_minutes(key: str | None) -> int | None` — 180 for hcmc/hanoi, None otherwise.
 
-- [ ] **Step 1: Tests:** `long_run_climb_rate("nui_dinh") == 60`; `long_run_climb_rate("ba_den") == 60`; `long_run_climb_rate("ham_lon") == 45`; `long_run_climb_rate(None) is None`; `default_min_minutes("ham_lon") == 180`; `default_min_minutes("sapa") is None`.
-- [ ] **Step 2: Run** — FAIL.
-- [ ] **Step 3: Implement** with the Global Constraints values; one comment line naming the sources (spec B1).
-- [ ] **Step 4: Run** — PASS.
-- [ ] **Step 5: Commit** `feat: curated training mountains`
+- [x] **Step 1: Tests:** `long_run_climb_rate("nui_dinh") == 60`; `long_run_climb_rate("ba_den") == 60`; `long_run_climb_rate("ham_lon") == 45`; `long_run_climb_rate(None) is None`; `default_min_minutes("ham_lon") == 180`; `default_min_minutes("sapa") is None`.
+- [x] **Step 2: Run** — FAIL.
+- [x] **Step 3: Implement** with the Global Constraints values; one comment line naming the sources (spec B1).
+- [x] **Step 4: Run** — PASS.
+- [x] **Step 5: Commit** `feat: curated training mountains`
 
 ### Task 3: Plan columns + mountain-day wiring in post-processing
 
