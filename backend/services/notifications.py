@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 
+from prometheus_client import Counter, Gauge
 from sqlalchemy import text
 
 import db
@@ -14,6 +15,9 @@ from services.notification_copy import render_notification
 
 logger = get_logger(__name__)
 LOCK_ID = 174620163
+OUTCOMES = Counter("uphill_notification_outcomes_total", "Notification transport outcomes", ["outcome"])
+HEARTBEAT = Gauge("uphill_notification_worker_last_tick_seconds", "Last successful notification worker tick")
+PENDING_AGE = Gauge("uphill_notification_pending_age_seconds", "Age of oldest pending notification")
 
 
 def load_context(user_id, now):
@@ -47,6 +51,7 @@ def still_eligible(event, context, now):
         return any(
             str(r["id"]) == event["source"].get("request_id") and r["status"] == "done" for r in context["requests"]
         )
+    context = {**context, "history": [e for e in context["history"] if str(e.get("id")) != str(event["id"])]}
     return any(c["event_key"] == event["event_key"] for c in rules.candidates(context, now))
 
 
@@ -54,6 +59,8 @@ def run_once(now):
     if not settings.NOTIFICATION_WORKER_ENABLED or not settings.NOTIFICATION_DELIVERY_ENABLED:
         return 0
     allowed = {int(v) for v in settings.NOTIFICATION_ALLOWLIST.split(",") if v.strip().isdigit()}
+    if not allowed:
+        return 0
     sent = 0
     with db.engine.connect() as lock:
         if not lock.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": LOCK_ID}).scalar():
@@ -71,9 +78,9 @@ def run_once(now):
                 )
                 users = list(
                     conn.execute(
-                        text("""SELECT user_id FROM notification_preferences WHERE next_evaluation_at<=:now
+                        text("""SELECT user_id FROM notification_preferences WHERE next_evaluation_at<=:now AND user_id=ANY(:allowed)
                     AND (workouts_enabled OR coaching_enabled OR results_enabled) ORDER BY next_evaluation_at,user_id LIMIT 100"""),
-                        {"now": now},
+                        {"now": now, "allowed": list(allowed)},
                     ).scalars()
                 )
             for user_id in users:
@@ -141,10 +148,18 @@ def run_once(now):
                     title, body = render_notification(event, fresh)
                     result = apns.send_notification(dict(device), event, title, body)
                     store.record_delivery(str(event["id"]), result, now)
+                    OUTCOMES.labels(outcome=result["outcome"]).inc()
                     if result["outcome"] == "configuration_error":
                         logger.error("Notification transport configuration failure")
                         return sent
                     sent += int(result["outcome"] == "accepted")
+            store.prune_history(now)
+            HEARTBEAT.set(now.timestamp())
+            with db.engine.connect() as conn:
+                oldest = conn.execute(
+                    text("SELECT MIN(due_at) FROM notification_events WHERE status='pending'")
+                ).scalar()
+                PENDING_AGE.set(max(0, (now - oldest).total_seconds()) if oldest else 0)
             return sent
         finally:
             lock.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": LOCK_ID})

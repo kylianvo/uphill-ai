@@ -10,6 +10,21 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-16-ios-notifications-design.md` (approved in chat after commit `e8fae1d`). Read the entire spec before executing.
 
+## Draft PR implementation status — 2026-10-16
+
+The implementation is ready for draft review, not rollout. The original task checkboxes below remain the acceptance checklist; they are not a claim that every listed edge case was tested.
+
+- Implemented: persistence and authenticated API; deterministic scheduling and APNs transport; opt-in worker with delivery disabled; native settings/registration; workout, review, checklist and exact server-card navigation; completion provenance; ordinary generation result events; Sunday, checklist, knowledge, recovery, unlogged, taper and race candidates; retention and basic operational metrics.
+- Review fixes: exclude the current claim from its own cooldown history, require a race goal for race reminders, await coach-scope exit, and preserve generated week/result intent so a ready-result tap does not open next-week generation.
+- Task 7/9 remaining: coach-generated draft notifications need authorized athlete/draft navigation. Coach Chat rebuild proposals need durable completion events and exact proposal navigation.
+- Task 11 remaining: use actual matched-activity end time for recovery freshness when available; current implementation conservatively requires a recent completion and a workout scheduled today/yesterday. The reviewed recovery-line merge into a workout reminder is not implemented.
+- Tasks 1–12 verification remaining: complete the full acceptance matrix below, especially migration upgrade/account deletion, token/account switching and offline lifecycle cases, changed/deleted destinations, and UI accessibility. Passing automated suites do not certify unimplemented cases.
+- Task 10 rollout: review real English/Vietnamese server cards and mark eligible content. All cards default to ineligible; no invented card IDs.
+- Task 12 remaining: APNs credentials/provisioning, sandbox and TestFlight device checks, terminated-app taps, settings screenshots in both languages, Dynamic Type and VoiceOver checks.
+- Retention deviation: payloads are stripped after 90 days, but minimal deduplication tombstones remain until account deletion. Source-specific tombstone pruning remains deferred; storage grows with event count.
+- Verified after review fixes: full backend pytest suite **1,995 passed** (47 existing warnings); full iOS simulator suite **502 tests in 79 suites passed** on iPhone 17 / iOS 27.0; Ruff and whitespace checks passed. Independent review confirmed the four fixes with no new blocking regression.
+- Operational instructions: [iOS notification runbook](../../ios-notifications-operations.md).
+
 ## Global Constraints
 
 - "One proactive notification per account per local date. Also require 20 hours between proactive sends to prevent rapid duplicates after timezone changes."

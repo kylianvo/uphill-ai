@@ -124,6 +124,27 @@ def insert_event(conn, user_id, candidate):
 def upsert_installation(user_id, installation_id, token, environment, permission, now):
     get_preferences(user_id)
     with engine.begin() as conn:
+        conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:id))"), {"id": installation_id})
+        old = (
+            conn.execute(
+                text("SELECT * FROM notification_installations WHERE id=:id FOR UPDATE"), {"id": installation_id}
+            )
+            .mappings()
+            .first()
+        )
+        if (
+            old
+            and old["user_id"] == user_id
+            and old["token"] == token
+            and old["environment"] == environment
+            and old["permission"] == permission
+            and old["disabled_at"] is None
+        ):
+            conn.execute(
+                text("UPDATE notification_installations SET last_active_at=:now WHERE id=:id"),
+                {"now": now, "id": installation_id},
+            )
+            return {"id": installation_id}
         # Serialize token rebinding as well as installation UUID rebinding.
         conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:token))"), {"token": token + environment})
         conn.execute(
@@ -210,6 +231,12 @@ def claim_event(user_id, candidate, now):
             previous["status"] != "pending" or (previous["next_attempt_at"] and previous["next_attempt_at"] > now)
         ):
             return None
+        if category == "results_enabled":
+            from services.notification_rules import delivery_window
+
+            window = delivery_window(now, p, candidate["expires_at"])
+            if not window or window[0] > now:
+                return None
         today = now.astimezone(ZoneInfo(p["timezone"])).date()
         retry = previous and previous["claimed_at"] is not None
         if not retry:
@@ -281,3 +308,94 @@ def record_delivery(event_id, result, now):
                     now=now, id=event["installation_id"], revision=event["registration_revision"], user=event["user_id"]
                 ),
             )
+
+
+def start_generation(conn, request):
+    conn.execute(
+        text("""INSERT INTO notification_generation_requests(id,user_id,plan_id,coverage,status)
+        VALUES(:id,:user_id,:plan_id,:coverage,'generating') ON CONFLICT(id) DO NOTHING"""),
+        {**request, "coverage": request.get("coverage")},
+    )
+
+
+def register_generation(request_id, job):
+    from config import settings
+
+    with engine.begin() as conn:
+        start_generation(
+            conn,
+            dict(
+                id=request_id,
+                user_id=job["user_id"],
+                plan_id=job["plan_id"],
+                coverage=job.get("target_week") or (job.get("block_number", 1) - 1) * settings.WEEKS_PER_BLOCK + 1,
+            ),
+        )
+
+
+def finish_generation(conn, request_id, result, now):
+    from datetime import timedelta
+
+    request = (
+        conn.execute(
+            text("""UPDATE notification_generation_requests SET status='done',updated_at=:now,
+        result=CAST(:result AS jsonb) WHERE id=:id AND status<>'done' RETURNING *"""),
+            {"id": request_id, "now": now, "result": json.dumps(result)},
+        )
+        .mappings()
+        .first()
+    )
+    if request:
+        result = {**result, "week_number": request["coverage"] or 1, "intent": "result"}
+        conn.execute(
+            text("UPDATE notification_generation_requests SET result=CAST(:result AS jsonb) WHERE id=:id"),
+            {"id": request_id, "result": json.dumps(result)},
+        )
+        insert_event(
+            conn,
+            request["user_id"],
+            dict(
+                event_key=f"plan_ready:{request_id}",
+                kind="plan_ready",
+                destination=result,
+                source={"request_id": str(request_id)},
+                due_at=now,
+                expires_at=now + timedelta(hours=24),
+            ),
+        )
+        conn.execute(
+            text("UPDATE notification_preferences SET next_evaluation_at=:now WHERE user_id=:id"),
+            {"now": now, "id": request["user_id"]},
+        )
+
+
+def fail_generation(request_id):
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE notification_generation_requests SET status='error',updated_at=NOW() WHERE id=:id AND status='generating'"
+            ),
+            {"id": request_id},
+        )
+
+
+def save_generated_workouts(request_id, plan_id, workouts, **kwargs):
+    from datetime import UTC, datetime
+
+    from db import save_workouts
+
+    with engine.begin() as conn:
+        save_workouts(plan_id, workouts, conn=conn, **kwargs)
+        finish_generation(conn, request_id, {"kind": "plan", "plan_id": plan_id}, datetime.now(UTC))
+
+
+def prune_history(now):
+    from datetime import timedelta
+
+    with engine.begin() as conn:
+        return conn.execute(
+            text("""UPDATE notification_events SET destination='{}',result_code=NULL,suppression_reason=NULL
+            WHERE id IN (SELECT id FROM notification_events WHERE status IN ('accepted','suppressed','expired','failed','unknown')
+            AND expires_at<:cutoff AND destination<>'{}'::jsonb LIMIT 500)"""),
+            {"cutoff": now - timedelta(days=90)},
+        ).rowcount

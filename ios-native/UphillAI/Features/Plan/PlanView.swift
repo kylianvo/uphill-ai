@@ -57,6 +57,15 @@ struct PlanView: View {
         NavigationStack {
             content
                 .background(UH.Palette.surface.ignoresSafeArea())
+                .onChange(of: model.notificationRoute, initial: true) { _, route in
+                    guard let route else { return }
+                    if let week = route.weekNumber { openWeekInList(week) }
+                    if let id = route.workoutId { selectedWorkout = model.snapshot?.workouts.first { $0.id == id } }
+                    if route.kind == "review" { showReview = true }
+                    if route.kind == "plan", route.intent == "planning", model.nextWeekOffer != nil { showNextWeek = true }
+                    app?.notifications.visibleRoute = route
+                    model.notificationRoute = nil
+                }
                 .navigationTitle("Plan")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -74,7 +83,7 @@ struct PlanView: View {
                             .accessibilityIdentifier("plan.manageButton")
                     }
                 }
-                .sheet(item: $selectedWorkout) { workout in
+                .sheet(item: $selectedWorkout, onDismiss: { app?.notifications.visibleRoute = nil }) { workout in
                     WorkoutDetailSheet(
                         model: model,
                         workoutID: workout.id,
@@ -222,7 +231,7 @@ struct PlanView: View {
                                 user: user,
                                 corosConnected: app.corosConnected || app.appleHealthConnected,
                                 raceHistoryLinked: !(app.raceHistory?.claims.isEmpty ?? true),
-                                onOpen: onSharpen
+                                onOpen: onSharpen, notifications: app.notifications
                             )
                             .padding(.horizontal, UH.Space.regular)
                             .task {
@@ -291,7 +300,9 @@ struct PlanView: View {
                                     .foregroundStyle(UH.Palette.muted)
                                     .padding(.horizontal, 2)
 
-                                KnowledgeCardView(card: card)
+                                KnowledgeCardView(card: card) {
+                                    if card.isServerCard { Task { try? await app?.knowledgeService.markOpened(id: card.id, lang: AppLanguage.code) } }
+                                }
                             }
                             .padding(.horizontal, UH.Space.regular)
                             .padding(.top, 4)

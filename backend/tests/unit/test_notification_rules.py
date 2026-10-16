@@ -17,7 +17,7 @@ def context():
             quiet_start="21:00",
             quiet_end="07:00",
         ),
-        plan=dict(id=5, start_date="2026-10-12", race_date="2026-12-20", plan_status="active"),
+        plan=dict(goal_type="finish", id=5, start_date="2026-10-12", race_date="2026-12-20", plan_status="active"),
         workouts=[
             dict(
                 id=1,

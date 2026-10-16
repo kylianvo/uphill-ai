@@ -61,6 +61,8 @@ enum FatigueLevel: String, CaseIterable, Identifiable {
 @Observable
 @MainActor
 final class PlanViewModel {
+    var notificationRoute: NotificationRoute?
+
     enum LoadState: Equatable { case loading, empty, loaded, failed(String) }
 
     static var offlineMessage: String { L("You're offline. Changes need a connection.") }
