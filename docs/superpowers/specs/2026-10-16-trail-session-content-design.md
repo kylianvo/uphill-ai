@@ -1,7 +1,9 @@
 # Trail session content and plan-flow gap fixes
 
 Date: 2026-10-16. Source: beta feedback from quangtranultra (plan 108, Aptrc 80km) and a
-brainstorm with Viet. Builds on PR #142 (unmerged).
+brainstorm with Viet. Builds on PR #142, which is **held** (Viet's decision): its iOS
+sprint-step parser fix and treadmill flat-pace fix stay; its km-effort pace logic is
+reworked to the B2 formula on the same branch before anything merges.
 
 ## Why
 
