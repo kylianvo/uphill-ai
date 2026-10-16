@@ -1139,6 +1139,8 @@ class PlanGenerator:
                 wo["elevation_gain_m"], wo["grade_percent"] = PlanGenerator.resolve_elevation_and_grade(
                     wo, w_type, terrain, wo["distance_km"], course_elevation_gain_m, course_distance_km
                 )
+                # Treadmill speed applies its own incline slowdown, so it must start from the flat pace.
+                flat_pace = wo["target_pace"]
                 if w_type in PlanGenerator.CLIMB_ADJUSTED_TYPES and wo["elevation_gain_m"] > 0 and wo["target_pace"]:
                     wo["target_pace"], wo["distance_km"] = PlanGenerator.adjust_pace_for_climbing(
                         wo["target_pace"], dur, wo["distance_km"], wo["elevation_gain_m"]
@@ -1149,7 +1151,7 @@ class PlanGenerator:
                 # strings from this workout's own pace range and resolved grade
                 # (Hill Sprints get the non-negotiable 15% treadmill ceiling).
                 wo["treadmill_incline"], wo["treadmill_speed"] = PlanGenerator.resolve_treadmill_settings(
-                    wo, wo["target_pace"], use_treadmill, max_incline=venues.treadmill_incline_cap
+                    wo, flat_pace, use_treadmill, max_incline=venues.treadmill_incline_cap
                 )
 
                 wo["interval_reps"], wo["interval_rep_value"], wo["interval_rep_unit"] = (
