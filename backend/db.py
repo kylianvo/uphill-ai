@@ -1064,6 +1064,10 @@ def init_db():
         except Exception:
             conn.rollback()
 
+    from services.notification_store import init_schema
+
+    with engine.begin() as conn:
+        init_schema(conn)
     seed_data()
     print("PostgreSQL database tables initialized successfully.")
 

@@ -272,5 +272,14 @@ class Config:
     )
     COACH_CHAT_PROMPT_CACHE_TTL_SECONDS: int = int(os.getenv("COACH_CHAT_PROMPT_CACHE_TTL_SECONDS", "300"))
 
+    NOTIFICATION_WORKER_ENABLED: bool = os.getenv("NOTIFICATION_WORKER_ENABLED", "false").lower() == "true"
+    NOTIFICATION_DELIVERY_ENABLED: bool = os.getenv("NOTIFICATION_DELIVERY_ENABLED", "false").lower() == "true"
+    NOTIFICATION_ALLOWLIST: str = os.getenv("NOTIFICATION_ALLOWLIST", "")
+    APNS_ALLOWED_ENVIRONMENTS: str = os.getenv("APNS_ALLOWED_ENVIRONMENTS", "sandbox,production")
+    APNS_KEY_ID: str = os.getenv("APNS_KEY_ID", "")
+    APNS_TEAM_ID: str = os.getenv("APNS_TEAM_ID", "")
+    APNS_PRIVATE_KEY_PATH: str = os.getenv("APNS_PRIVATE_KEY_PATH", "")
+    APNS_TOPIC: str = os.getenv("APNS_TOPIC", "uphill.ai.app")
+
 
 settings = Config()
