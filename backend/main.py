@@ -104,6 +104,7 @@ from routers.analytics import router as analytics_router
 from routers.coach_chat import ChatMessage
 from routers.coach_chat import router as coach_chat_router
 from routers.integrations import router as integrations_router
+from routers.notifications import router as notifications_router
 from services import (
     apple_auth,
     calendar_ops,
@@ -142,6 +143,8 @@ app = FastAPI(
     openapi_url=None if _is_prod else "/openapi.json",
 )
 
+
+app.include_router(notifications_router)
 app.include_router(analytics_router, prefix="/api")
 app.include_router(integrations_router, prefix="/api")
 app.include_router(coach_chat_router)
@@ -165,6 +168,7 @@ Instrumentator().add(
 
 # Initialize the database schema and LLM observability on startup
 _race_worker_stop = None
+_notification_worker_stop = None
 
 
 @app.on_event("startup")
@@ -173,7 +177,12 @@ def startup_event():
     observability.init()
     from threading import Event, Thread
 
-    global _race_worker_stop
+    global _race_worker_stop, _notification_worker_stop
+    if settings.NOTIFICATION_WORKER_ENABLED:
+        from services.notifications import run_worker
+
+        _notification_worker_stop = Event()
+        Thread(target=run_worker, args=(_notification_worker_stop,), daemon=True, name="notification-worker").start()
     if not settings.RACE_HISTORY_WORKER_ENABLED:
         return
     _race_worker_stop = Event()
@@ -185,6 +194,8 @@ def startup_event():
 def shutdown_event():
     if _race_worker_stop:
         _race_worker_stop.set()
+    if _notification_worker_stop:
+        _notification_worker_stop.set()
     observability.flush()
 
 

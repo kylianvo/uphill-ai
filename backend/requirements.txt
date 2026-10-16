@@ -9,7 +9,7 @@ python-multipart
 pypdf
 beautifulsoup4
 youtube-transcript-api
-httpx
+httpx[http2]
 # PostgreSQL + SQLAlchemy
 psycopg2-binary>=2.9.0
 # <2.1: SQLAlchemy 2.1 maps plain postgresql:// URLs to psycopg 3, which isn't installed
