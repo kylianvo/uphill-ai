@@ -9,6 +9,7 @@ struct SharpenChecklistCard: View {
     let raceHistoryLinked: Bool
     let onOpen: (TrainingDestination) -> Void
     var now: () -> Date = { .now }
+    var notifications: NotificationCoordinator? = nil
 
     static let snoozeKey = "UPHILL_SHARPEN_SNOOZED_AT"
     static let snoozeDays = 14
@@ -22,7 +23,7 @@ struct SharpenChecklistCard: View {
         let items = items
         let doneCount = items.filter(\.done).count
         Group {
-            if !snoozed && doneCount < items.count {
+            if !snoozed && !(NotificationCoordinator.date(notifications?.preferences.checklistSnoozedUntil).map { $0 > now() } ?? false) && doneCount < items.count {
                 VStack(alignment: .leading, spacing: UH.Space.regular) {
                     HStack(alignment: .firstTextBaseline) {
                         Text("Get the most from your plan").font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
@@ -46,6 +47,7 @@ struct SharpenChecklistCard: View {
                     Button("Not now") {
                         UserDefaults.standard.set(now().timeIntervalSince1970, forKey: Self.snoozeKey)
                         withAnimation(UH.Motion.standard) { snoozed = true }
+                        Task { await notifications?.snoozeChecklist() }
                     }
                     .font(UH.TextStyle.caption)
                     .foregroundStyle(UH.Palette.secondary)

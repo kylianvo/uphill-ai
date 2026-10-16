@@ -28,6 +28,7 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task {
+                    await app.notifications.refresh(userID: app.session.user?.id)
                     await app.autoSyncWatchIfDue()
                     await app.syncAppleHealthIfDue()
                 }
@@ -35,6 +36,7 @@ struct RootView: View {
         }
         .task(id: app.session.user?.id) {
             if app.session.user != nil {
+                await app.notifications.refresh(userID: app.session.user?.id)
                 await app.autoSyncWatchIfDue()
                 await app.syncAppleHealthIfDue()
             }
@@ -76,6 +78,8 @@ private struct MainTabs: View {
     let app: AppModel
     @State private var overlay: Overlay?
     @State private var selection = Tab.plan
+    @State private var knowledgeRoute: NotificationRoute?
+    @State private var routeError: String?
 
     private enum Tab: Hashable { case athletes, plan, coach, me }
 
@@ -107,6 +111,20 @@ private struct MainTabs: View {
                 ProfileView(app: app)
             }
         }
+        .task(id: app.notifications.pendingID) { await openNotification() }
+        .sheet(isPresented: Binding(get: { knowledgeRoute != nil }, set: { if !$0 { knowledgeRoute = nil; app.notifications.visibleRoute = nil } })) {
+            if let route = knowledgeRoute, let card = route.cardId {
+                NavigationStack {
+                    KnowledgeDetailScreen(service: app.knowledgeService, cardID: card, language: route.lang ?? AppLanguage.code) {
+                        Task { await app.notifications.didOpen() }
+                    }
+                }
+            }
+        }
+        .alert("Notification unavailable", isPresented: Binding(get: { routeError != nil }, set: { if !$0 { routeError = nil } })) {
+            Button("Try again") { Task { await openNotification() } }
+            Button("Cancel", role: .cancel) { app.notifications.pendingID = nil; app.notifications.pendingRoute = nil }
+        } message: { Text(routeError ?? "") }
         // An always-visible bar material: content scrolls cleanly behind the tab bar instead of
         // showing through it (e.g. the Plan tab's "Coach's pick this week" label).
         .toolbarBackground(.visible, for: .tabBar)
@@ -146,6 +164,36 @@ private struct MainTabs: View {
         .onChange(of: app.generation.lastOutcome) { _, outcome in
             if outcome?.kind == .newPlan { overlay = .progress }
         }
+    }
+
+    private func openNotification() async {
+        guard let route = app.notifications.pendingRoute else { return }
+        if app.actingAsAthlete != nil { await app.exitAthleteView() }
+        overlay = nil
+        if route.kind == "knowledge" {
+            knowledgeRoute = route
+            app.notifications.visibleRoute = route
+            return
+        }
+        if let destination = route.trainingDestination {
+            app.trainingDestination = destination
+            selection = .me
+            await app.notifications.didOpen()
+            return
+        }
+        await app.plan.load()
+        guard app.plan.cachedAt == nil, app.plan.snapshot?.plan.id == route.planId else {
+            selection = .plan
+            routeError = L("This item is no longer available. Your current plan is shown.")
+            return
+        }
+        if let id = route.workoutId, app.plan.snapshot?.workouts.contains(where: { $0.id == id }) != true {
+            routeError = L("This item is no longer available. Your current plan is shown.")
+            return
+        }
+        selection = .plan
+        app.plan.notificationRoute = route
+        await app.notifications.didOpen()
     }
 
     /// The flow calls this after a successful start too; that must not hide the progress screen.

@@ -12,6 +12,7 @@ from google import genai
 from google.genai import types as genai_types
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator
+from sqlalchemy import text
 
 from config import settings
 from db import (
@@ -37,6 +38,7 @@ from db import (
     delete_plan,
     delete_session,
     delete_source,
+    engine,
     get_active_coach_link_for_athlete,
     get_active_plan,
     get_all_knowledge_cards,
@@ -79,7 +81,6 @@ from db import (
     remove_coach_athlete_link,
     replace_shoe_rotation,
     save_block_review,
-    save_workouts,
     set_max_continuous_jog_min,
     set_plan_active,
     set_plan_athlete_tier,
@@ -104,11 +105,13 @@ from routers.analytics import router as analytics_router
 from routers.coach_chat import ChatMessage
 from routers.coach_chat import router as coach_chat_router
 from routers.integrations import router as integrations_router
+from routers.notifications import router as notifications_router
 from services import (
     apple_auth,
     calendar_ops,
     coros_sync,
     fitness_snapshot,
+    notification_store,
     observability,
     race_history,
     race_review,
@@ -142,6 +145,8 @@ app = FastAPI(
     openapi_url=None if _is_prod else "/openapi.json",
 )
 
+
+app.include_router(notifications_router)
 app.include_router(analytics_router, prefix="/api")
 app.include_router(integrations_router, prefix="/api")
 app.include_router(coach_chat_router)
@@ -165,6 +170,7 @@ Instrumentator().add(
 
 # Initialize the database schema and LLM observability on startup
 _race_worker_stop = None
+_notification_worker_stop = None
 
 
 @app.on_event("startup")
@@ -173,7 +179,12 @@ def startup_event():
     observability.init()
     from threading import Event, Thread
 
-    global _race_worker_stop
+    global _race_worker_stop, _notification_worker_stop
+    if settings.NOTIFICATION_WORKER_ENABLED:
+        from services.notifications import run_worker
+
+        _notification_worker_stop = Event()
+        Thread(target=run_worker, args=(_notification_worker_stop,), daemon=True, name="notification-worker").start()
     if not settings.RACE_HISTORY_WORKER_ENABLED:
         return
     _race_worker_stop = Event()
@@ -185,6 +196,8 @@ def startup_event():
 def shutdown_event():
     if _race_worker_stop:
         _race_worker_stop.set()
+    if _notification_worker_stop:
+        _notification_worker_stop.set()
     observability.flush()
 
 
@@ -1338,6 +1351,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "error": None,
     }
 
+    notification_store.register_generation(job_id, plan_jobs[job_id])
+
     async def _run_plan_gen():
         _t0 = time.monotonic()
         try:
@@ -1351,7 +1366,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
                 block_number=1,
                 weeks_per_block=settings.WEEKS_PER_BLOCK,
             )
-            save_workouts(plan_id, workouts)
+            notification_store.save_generated_workouts(job_id, plan_id, workouts)
             set_plan_athlete_tier(plan_id, resolved_tier)
             _store_plan_snapshot(plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts
@@ -1359,6 +1374,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
             plan_job_duration_seconds.labels(kind="onboarding", status="done").observe(time.monotonic() - _t0)
             print(f"[PlanJob][{job_id}] Onboarding plan generation complete — {len(workouts)} workouts saved.")
         except Exception as ex:
+            notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"
             plan_job_duration_seconds.labels(kind="onboarding", status="error").observe(time.monotonic() - _t0)
             plan_jobs[job_id]["error"] = str(ex)
@@ -2220,6 +2236,8 @@ async def _generate_plan_for_athlete(
         "error": None,
     }
 
+    notification_store.register_generation(job_id, plan_jobs[job_id])
+
     async def _run_gen():
         _t0 = time.monotonic()
         try:
@@ -2236,7 +2254,7 @@ async def _generate_plan_for_athlete(
                 block_number=1,
                 weeks_per_block=settings.WEEKS_PER_BLOCK,
             )
-            save_workouts(plan_id, workouts, auto_approve=(plan_status != "draft"))
+            notification_store.save_generated_workouts(job_id, plan_id, workouts, auto_approve=(plan_status != "draft"))
             set_plan_athlete_tier(plan_id, resolved_tier)
             _store_plan_snapshot(plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts
@@ -2244,6 +2262,7 @@ async def _generate_plan_for_athlete(
             plan_job_duration_seconds.labels(kind="generate", status="done").observe(time.monotonic() - _t0)
             print(f"[PlanJob][{job_id}] generate-plan complete — {len(workouts)} workouts saved.")
         except Exception as ex:
+            notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"
             plan_job_duration_seconds.labels(kind="generate", status="error").observe(time.monotonic() - _t0)
             plan_jobs[job_id]["error"] = str(ex)
@@ -2767,6 +2786,8 @@ async def _generate_next_block_for_athlete(
         "error": None,
     }
 
+    notification_store.register_generation(job_id, plan_jobs[job_id])
+
     async def _run_next_block():
         _t0 = time.monotonic()
         try:
@@ -2781,7 +2802,7 @@ async def _generate_next_block_for_athlete(
                 weeks_per_block=settings.WEEKS_PER_BLOCK,
                 block_context=block_context,
             )
-            save_workouts(request.plan_id, workouts)
+            notification_store.save_generated_workouts(job_id, request.plan_id, workouts)
             set_plan_athlete_tier(request.plan_id, resolved_tier)
             _store_plan_snapshot(request.plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts
@@ -2808,6 +2829,7 @@ async def _generate_next_block_for_athlete(
             except Exception as ex:
                 print(f"[NextBlock][{job_id}] Week narrative FAILED (non-fatal): {ex}")
         except Exception as ex:
+            notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"
             plan_job_duration_seconds.labels(kind="next_block", status="error").observe(time.monotonic() - _t0)
             plan_jobs[job_id]["error"] = str(ex)
@@ -2917,16 +2939,19 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         "error": None,
     }
 
+    notification_store.register_generation(job_id, plan_jobs[job_id])
+
     async def _run_adapt_week():
         _t0 = time.monotonic()
         try:
             draft = await week_rebuild.generate_week_draft(inputs, rng)
-            week_rebuild.write_draft(plan, request.week_number, today, draft)
+            week_rebuild.write_draft(plan, request.week_number, today, draft, notification_request_id=job_id)
             plan_jobs[job_id]["workouts"] = draft.workouts
             plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="adapt_week", status="done").observe(time.monotonic() - _t0)
             print(f"[AdaptWeek][{job_id}] Week {request.week_number} complete — {len(draft.workouts)} workouts saved.")
         except Exception as ex:
+            notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"
             plan_job_duration_seconds.labels(kind="adapt_week", status="error").observe(time.monotonic() - _t0)
             plan_jobs[job_id]["error"] = str(ex)
@@ -3086,7 +3111,9 @@ def log_workout(request: WorkoutLogRequest, user: dict[str, Any] = Depends(get_c
     wo_ids = {w["id"] for w in workouts}
     if request.workout_id not in wo_ids:
         raise HTTPException(status_code=403, detail="Workout not in your active plan.")
-    ok = update_workout_log(request.workout_id, request.is_completed, request.rpe, request.notes, request.is_missed)
+    ok = update_workout_log(
+        request.workout_id, request.is_completed, request.rpe, request.notes, request.is_missed, missed_origin="athlete"
+    )
     if not ok:
         raise HTTPException(status_code=404, detail="Workout not found.")
     updated = get_plan_workouts(active_plan["id"])
@@ -3339,6 +3366,26 @@ def get_random_cards(n: int = 3, lang: str = "en"):
     """Return n random knowledge cards for the Daily Knowledge widget. Public: same content for every user, logged in or not."""
     cards = get_random_knowledge_cards(n=n, lang=lang)
     return {"cards": cards}
+
+
+@app.get("/api/knowledge/cards/{card_id}")
+def exact_knowledge_card(card_id: int, lang: str = "en", user=Depends(get_current_user)):
+    card = next((c for c in get_all_knowledge_cards(lang=lang) if c["id"] == card_id), None)
+    if card is None:
+        raise HTTPException(404, "Knowledge card unavailable")
+    return card
+
+
+@app.post("/api/knowledge/cards/{card_id}/opened")
+def open_knowledge_card(card_id: int, lang: str = "en", user=Depends(get_current_user)):
+    exact_knowledge_card(card_id, lang, user)
+    with engine.begin() as conn:
+        conn.execute(
+            text("""INSERT INTO notification_knowledge_opens(user_id,card_id,lang)
+            VALUES(:user,:card,:lang) ON CONFLICT(user_id,card_id,lang) DO NOTHING"""),
+            {"user": user["id"], "card": card_id, "lang": lang},
+        )
+    return {}
 
 
 @app.get("/api/knowledge/topics")
