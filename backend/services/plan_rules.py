@@ -158,7 +158,7 @@ def _performance_rules(profile: TierProfile, treadmill_max_incline: int = 15) ->
         """4. Periodization Phases (Training for the Uphill Athlete):
    - ME Timing, keyed to the WEEKS LEFT before the ME cutoff (10-14 days before race day) stated in ME HISTORY, never to the plan's total length:
      * 16 or more weeks left: for a MOUNTAIN RUNNER the ME block starts in the EARLY Base phase, as volume begins to build — 8-14 weeks, up to 16 when there is time, at least 8 sessions — then about 8 weeks of uphill and rolling intervals before the taper.
-     * Fewer than 16 weeks left: skip extended base building. Start a short ME block NOW — at least 6-8 sessions, once or twice a week, on top of the Zone 1-2 volume — then fill the weeks that remain with uphill and rolling intervals.
+     * Fewer than 16 weeks left (but at least 3): skip extended base building. Start a short ME block NOW — at least 6-8 sessions, once or twice a week, on top of the Zone 1-2 volume — then fill the weeks that remain with uphill and rolling intervals.
      * Catch-up: if ME HISTORY shows fewer than 6 completed ME sessions and 3 or more weeks are left, schedule ME in THIS block even in the Build phase — twice a week when the runway is short, once a week when the rest of the training load is high.
      * Fewer than 3 weeks left: do NOT start ME.
      * In every case ME stops 10-14 days before race day.
@@ -330,6 +330,11 @@ def me_status_block(
     if done is not None:
         lines.append(f"- {done} ME sessions completed so far ({scheduled} scheduled) before week {block_start_week}.")
     lines.append(f"- Weeks left before the ME cutoff (10-14 days before race day): {weeks_left}.")
+    if weeks_left < 3:
+        decision = "Do NOT schedule ME in this block" if done == 0 else "Do NOT start a new ME block"
+        lines.append(f"- ME DECISION: {decision}; the cutoff overrides the short-block and catch-up rules.")
+    elif done is None or done < 6:
+        lines.append("- ME DECISION: Start or continue ME in this block, applying the soft start to a new ME block.")
     if tier_changed_from:
         lines.append(
             f"- TIER CHANGE: the athlete moved up from {tier_changed_from} this block. ME starts from zero: apply the soft start."

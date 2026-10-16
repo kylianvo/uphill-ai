@@ -14,7 +14,8 @@
     "lang": "en",
     "terrain": "road",
     "goal_type": "return",
-    "name": "Back to Running"
+    "name": "Back to Running",
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 8
 }

@@ -434,3 +434,23 @@ def test_gate_fails_on_venue_violations():
         "city: 2 session(s) the athlete has no venue for"
     ]
     assert golden_eval.gate_failures("scheduler", items, [{"engine": "gemini", "venue_violations": 0}]) == []
+
+
+def test_trail_volume_gate_keeps_actual_and_flat_equivalent_km_separate():
+    rows = [
+        {"week_number": 2, "type": "Easy", "distance_km": 10, "elevation_gain_m": 500},
+        {"week_number": 2, "type": "Tempo", "distance_km": 10, "elevation_gain_m": 500},
+        {"week_number": 2, "type": "Recovery", "distance_km": 5, "elevation_gain_m": 0},
+        {"week_number": 1, "type": "Long Run", "distance_km": 20, "elevation_gain_m": 1000},
+    ]
+    assert golden_eval._week_flat_equivalent_km(rows, 2) == 31
+    assert golden_eval._week_km(rows, 2) == 25
+    assert rows[0]["distance_km"] == 10
+
+
+def test_scheduler_golden_fixtures_start_on_a_fixed_monday():
+    from datetime import date
+
+    for path in golden_eval._fixtures("scheduler"):
+        fixture = json.load(open(path, encoding="utf-8"))
+        assert date.fromisoformat(fixture["race_info"]["plan_start_date"]).weekday() == 0

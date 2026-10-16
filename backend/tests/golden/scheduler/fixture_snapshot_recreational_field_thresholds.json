@@ -42,12 +42,13 @@
     "name": "Trail 50K",
     "date": "2026-12-06",
     "course_distance_km": 50,
-    "course_elevation_gain_m": 2700
+    "course_elevation_gain_m": 2700,
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 9,
   "expect": {
     "tier": "recreational",
-    "week2_km": [
+    "week2_flat_equivalent_km": [
       55,
       78
     ]

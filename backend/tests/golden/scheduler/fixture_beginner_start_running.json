@@ -14,7 +14,8 @@
     "lang": "en",
     "terrain": "road",
     "goal_type": "start_running",
-    "name": "My Running Journey"
+    "name": "My Running Journey",
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 12
 }

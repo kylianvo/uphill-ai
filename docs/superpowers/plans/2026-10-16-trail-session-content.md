@@ -10,6 +10,15 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-16-trail-session-content-design.md`
 
+## Approved amendments during implementation
+
+- Task 4 uses `--service scheduler`; the CLI has no `plan` service.
+- Without a configured mountain minimum (Dalat/Sapa by default), keep generated duration capped at 300 and omit the prompt's minimum-time clause.
+- Add HCMC's Núi Châu Thới (`chau_thoi`, 28 m D+/km, long runs allowed, 180-minute default); the catalog now has seven mountains.
+- Task 4's three snapshot volume checks use a separate flat-equivalent metric while workout distances remain actual trail km. Golden fixtures start on a fixed Monday. The ME cutoff decision explicitly overrides the short-block instruction. Keep ME expectations unchanged.
+- Task 5 persists the original climb rate in nullable `workouts.mountain_climb_rate` so skip → mountain/chill restores the original estimate without requiring a selected mountain. Update both schema definitions.
+- Push completed tasks as work progresses, as requested, rather than waiting until Task 12.
+
 ## Global Constraints
 
 - Branch: `claude/quangtranultra-plan-review-1a3cd3` (PR #142, held). Keep its iOS parser fix and its treadmill flat-pace fix.
@@ -127,11 +136,11 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
 **Interfaces:**
 - Consumes: `Venues.training_mountain`, `MOUNTAINS`, `default_min_minutes`.
 
-- [ ] **Step 1: Test** that `prompt_block` for Núi Dinh + Saturday mountain day contains `"180 min"`, `"Núi Dinh"`, `"60 m D+/km"`, `"Zone 1"`; and contains none of them when `training_mountain` is None.
-- [ ] **Step 2: Run** — FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** unit tests — PASS; then run the llm-change-process checklist: `python scripts/golden_eval.py capture --service plan` on main, `compare --service plan` on this branch; push the Langfuse prompt version only if the plan prompt template itself changed (the rule is injected via the existing `equipment_terrain_rule` variable).
-- [ ] **Step 5: Commit** `feat: mountain-day rule in plan prompt`
+- [x] **Step 1: Test** that `prompt_block` for Núi Dinh + Saturday mountain day contains `"180 min"`, `"Núi Dinh"`, `"60 m D+/km"`, `"Zone 1"`; and contains none of them when `training_mountain` is None.
+- [x] **Step 2: Run** — FAIL.
+- [x] **Step 3: Implement.**
+- [ ] **Step 4: Run** unit tests — PASS; then run the llm-change-process checklist: `python scripts/golden_eval.py capture --service scheduler` on main, `compare --service scheduler` on this branch; push the Langfuse prompt version only if the plan prompt template itself changed (the rule is injected via the existing `equipment_terrain_rule` variable).
+- [x] **Step 5: Commit** `feat: mountain-day rule in plan prompt`
 
 ### Task 5: Chill / skip by phase, indoor fallback, athlete switch
 

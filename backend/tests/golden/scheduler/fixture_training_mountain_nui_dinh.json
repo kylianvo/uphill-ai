@@ -1,0 +1,46 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Synthetic flat-city runner with a selected training mountain. Exercises the mountain-day minimum, trail rate, and venue prompt alongside existing scheduler gates.",
+  "user_profile": {
+    "age": 34,
+    "gender": "male",
+    "max_hr": 188,
+    "resting_hr": 52,
+    "current_weekly_km": 55.0,
+    "days_per_week": 5,
+    "has_gym_access": true
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Sapa Mountain 50K",
+    "date": "2026-12-13",
+    "course_distance_km": 50,
+    "course_elevation_gain_m": 2800,
+    "preferred_days": [
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Saturday",
+      "Sunday"
+    ],
+    "long_run_day": "Saturday",
+    "days_per_week": 5,
+    "has_gym_access": true,
+    "use_treadmill": true,
+    "training_environment": "flat",
+    "mountain_days": [
+      "Saturday",
+      "Sunday"
+    ],
+    "stair_access": true,
+    "treadmill_max_incline": 15,
+    "training_mountain": "nui_dinh",
+    "mountain_min_minutes": 180,
+    "plan_start_date": "2026-10-12"
+  },
+  "total_weeks": 16,
+  "id": "scheduler_training_mountain_nui_dinh"
+}

@@ -21,12 +21,13 @@
     "name": "Trail 80K",
     "date": "2026-11-29",
     "course_distance_km": 80,
-    "course_elevation_gain_m": 4200
+    "course_elevation_gain_m": 4200,
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 8,
   "expect": {
     "tier": "sub_elite",
-    "week2_km": [
+    "week2_flat_equivalent_km": [
       115,
       150
     ]
