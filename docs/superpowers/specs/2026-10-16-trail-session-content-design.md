@@ -134,6 +134,11 @@ Example, Quang (flat Z2 4:54–4:30), Núi Dinh, 3.5 h: pace ~8:25–7:45, ~26 k
   - final taper days or beginner tier → "skip": short road/treadmill session in the city.
 - The **athlete can switch** chill ↔ skip on that workout without the rest of the week
   being rearranged.
+- **Indoor fallback** (missed the bus, weather): a fourth mode the athlete taps on the
+  day. 120 min (Viet's decision), first available of: treadmill at the mountain's grade
+  capped at the treadmill max, speed from the flat Zone 2 pace via the existing incline
+  model; stairs climbing with a light pack; else the skip road session. Shows estimated
+  D+ = time × speed × incline. Nothing else in the week moves.
 - These are prompt rules → LLM change process (Langfuse prompt version, golden eval,
   staging → production label), plus a post-processing backstop that enforces the
   minimum.

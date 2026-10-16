@@ -96,7 +96,7 @@ def test_minutes_round_trips_session():
 ### Task 3: Plan columns + mountain-day wiring in post-processing
 
 **Files:**
-- Modify: `backend/db.py` (plans table: `training_mountain TEXT`, `mountain_min_minutes INTEGER`; workouts table: `mountain_mode TEXT` — values `mountain|chill|skip|NULL`; idempotent ALTERs in `init_db()`)
+- Modify: `backend/db.py` (plans table: `training_mountain TEXT`, `mountain_min_minutes INTEGER`; workouts table: `mountain_mode TEXT` — values `mountain|chill|skip|indoor|NULL`; idempotent ALTERs in `init_db()`)
 - Create: `backend/alembic/versions/<rev>_trail_mountain_fields.py` (down_revision `c8e2a4f6d9b1`)
 - Modify: `backend/main.py` request models that carry `mountain_days` (lines ~246, 318, 342, 495) and the persist/return sites (~1290, 1320, 2148, 2180, 2490, 2505, 2734) to carry `training_mountain` and `mountain_min_minutes`
 - Modify: `backend/services/training_venues.py` — `Venues.training_mountain: str | None`, `Venues.mountain_min_minutes: int | None`, read in `from_race_info`; `Venues.is_mountain_day(day: str) -> bool`
@@ -133,11 +133,11 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
 - [ ] **Step 4: Run** unit tests — PASS; then run the llm-change-process checklist: `python scripts/golden_eval.py capture --service plan` on main, `compare --service plan` on this branch; push the Langfuse prompt version only if the plan prompt template itself changed (the rule is injected via the existing `equipment_terrain_rule` variable).
 - [ ] **Step 5: Commit** `feat: mountain-day rule in plan prompt`
 
-### Task 5: Chill / skip by phase, athlete switch
+### Task 5: Chill / skip by phase, indoor fallback, athlete switch
 
 **Files:**
 - Modify: `backend/services/plan_generator.py` `post_process_workouts`
-- Modify: `backend/main.py` — new `PATCH /api/workouts/{workout_id}/mountain-mode` body `{"mode": "mountain" | "chill" | "skip"}`, owner or coach only (same auth check as the existing workout update route)
+- Modify: `backend/main.py` — new `PATCH /api/workouts/{workout_id}/mountain-mode` body `{"mode": "mountain" | "chill" | "skip" | "indoor"}`, owner or coach only (same auth check as the existing workout update route)
 - Modify: `backend/db.py` — `update_workout_mountain_mode(workout_id: int, fields: dict) -> None` (parameterized `text()`)
 - Test: `backend/tests/unit/test_plan_generator_helpers.py`, `backend/tests/unit/test_mountain_mode_route.py`
 
@@ -146,9 +146,10 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
   - `mountain`: Task 3 sizing.
   - `chill`: duration = mountain minimum, `target_zone = "Zone 1"`, Zone 1 HR range, trail pace from Zone 1 flat pace.
   - `skip`: 60 min (my call) Zone 2 city session, flat pace, `elevation_gain_m = 0`, `grade_percent = 0`.
+  - `indoor`: 120 min. If `venues.use_treadmill`: incline = `min(mountain grade %, venues.treadmill_incline_cap)` (mountain grade % = `long_run_climb_rate / 10`), speed from the flat Zone 2 pace via `TrainingRules.calculate_treadmill_settings`, `distance_km = speed × 2`, `elevation_gain_m = distance_km × incline × 10`. Else if `venues.stair_access`: stairs climbing session, Zone 2, no pace, `elevation_gain_m = 0`. Else same as `skip`. Athlete-only mode (never chosen by the phase rule).
 - Phase decision in post-process for mountain-day Long Runs: phase `Recovery` or `Taper` → `chill`; phase `Race Week` or tier `beginner` → `skip`; else `mountain`.
 
-- [ ] **Step 1: Tests:** Taper week → `mountain_mode == "chill"`, `target_zone == "Zone 1"`, 180 min; Race Week → `skip`, 0 elevation, flat pace; beginner tier Build week → `skip`; route switches chill→skip and leaves other workouts in the week unchanged.
+- [ ] **Step 1: Tests:** Taper week → `mountain_mode == "chill"`, `target_zone == "Zone 1"`, 180 min; Race Week → `skip`, 0 elevation, flat pace; beginner tier Build week → `skip`; route switches chill→skip and leaves other workouts in the week unchanged; `indoor` with treadmill (max 15%) on Núi Dinh → 120 min, incline 6%, distance = speed × 2, D+ = km × 6 × 10; `indoor` with no treadmill but stairs → stairs session; with neither → equals `skip`.
 - [ ] **Step 2: Run** — FAIL.
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** — PASS.
