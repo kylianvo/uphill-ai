@@ -171,3 +171,15 @@ struct WorkoutStepParserTests {
         #expect(steps.last?.duration == "10 phút")
     }
 }
+
+@Suite("WorkoutStepParser hill sprint steps")
+struct WorkoutStepParserSprintTests {
+    // Vietnamese sprint step contains "thả lỏng" mid-sentence; it must stay in Main Set.
+    @Test func vietnameseSprintStepIsNotTreatedAsCooldown() {
+        let process = "Khởi động 10 phút xoay khớp → Chạy 40 phút duy trì nhịp nhàng Zone 2 → 8 x 10s Hill Sprints dốc >20% bung hết sức, nghỉ đi bộ thả lỏng 2 phút 30 giây giữa mỗi rep → Hạ nhiệt 5 phút chạy thả lỏng cực nhẹ."
+        let parts = WorkoutStepParser.splitProcess(process)
+        #expect(parts.main.count == 2)
+        #expect(parts.main.last?.contains("Hill Sprints") == true)
+        #expect(parts.cooldown?.hasPrefix("Hạ nhiệt") == true)
+    }
+}

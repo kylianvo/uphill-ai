@@ -437,6 +437,34 @@ class PlanGenerator:
 
         return round(elevation_gain_m, 1), round(grade_percent, 1)
 
+    # Aerobic-effort runs where the zone pace is a flat-ground number; Tempo/Interval
+    # paces are set by the rep structure, so climbing does not rescale them.
+    CLIMB_ADJUSTED_TYPES = ("Easy", "Long Run")
+    # Km-effort rule of thumb: every 100 m of climbing costs about 1 flat km.
+    METERS_CLIMB_PER_EFFORT_KM = 100.0
+    # shortcut: flat-equivalent km, not a grade-by-grade model; floor keeps a steep
+    # session from claiming more than ~40% fewer km than flat. Upgrade if Strava GAP data lands.
+    CLIMB_MIN_DISTANCE_FACTOR = 0.6
+
+    @staticmethod
+    def adjust_pace_for_climbing(
+        pace_str: str, duration_minutes: float, flat_distance_km: float, elevation_gain_m: float
+    ) -> tuple[str, float]:
+        """Slows a flat-ground zone pace to what the same effort covers on a climbing
+        route, returning (pace_str, distance_km). Same duration, fewer ground km."""
+        if elevation_gain_m <= 0 or flat_distance_km <= 0 or duration_minutes <= 0:
+            return pace_str, flat_distance_km
+        adjusted_km = max(
+            flat_distance_km - elevation_gain_m / PlanGenerator.METERS_CLIMB_PER_EFFORT_KM,
+            flat_distance_km * PlanGenerator.CLIMB_MIN_DISTANCE_FACTOR,
+        )
+        pace_range = PlanGenerator.parse_pace_range(pace_str)
+        if pace_range is None:
+            return pace_str, flat_distance_km
+        scale = flat_distance_km / adjusted_km
+        slower, faster = (PlanGenerator.decimal_to_pace_str(p * scale) for p in pace_range)
+        return f"{slower} - {faster} /km", round(adjusted_km, 1)
+
     INTERVAL_REP_UNITS = ("s", "m", "min", "km")
 
     @staticmethod
@@ -1111,6 +1139,11 @@ class PlanGenerator:
                 wo["elevation_gain_m"], wo["grade_percent"] = PlanGenerator.resolve_elevation_and_grade(
                     wo, w_type, terrain, wo["distance_km"], course_elevation_gain_m, course_distance_km
                 )
+                if w_type in PlanGenerator.CLIMB_ADJUSTED_TYPES and wo["elevation_gain_m"] > 0 and wo["target_pace"]:
+                    wo["target_pace"], wo["distance_km"] = PlanGenerator.adjust_pace_for_climbing(
+                        wo["target_pace"], dur, wo["distance_km"], wo["elevation_gain_m"]
+                    )
+                    wo["grade_percent"] = round(wo["elevation_gain_m"] / (wo["distance_km"] * 10), 1)
 
                 # Treadmill settings are never the AI's raw numbers: derive range
                 # strings from this workout's own pace range and resolved grade

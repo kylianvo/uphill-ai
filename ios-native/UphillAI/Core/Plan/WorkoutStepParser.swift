@@ -255,7 +255,7 @@ enum WorkoutStepParser {
         return (reps, recovery)
     }
 
-    private static func splitProcess(_ text: String) -> (warmup: String?, main: [String], cooldown: String?) {
+    static func splitProcess(_ text: String) -> (warmup: String?, main: [String], cooldown: String?) {
         guard !text.isEmpty else { return (nil, [], nil) }
 
         if text.contains("→") {
@@ -268,7 +268,9 @@ enum WorkoutStepParser {
                 let lower = s.lowercased()
                 if warmup == nil && (lower.contains("warm") || lower.contains("easy jog") || lower.contains("khởi động")) {
                     warmup = s
-                } else if lower.contains("cool") || lower.contains("stretch") || lower.contains("thả lỏng") || lower.contains("hạ nhiệt") {
+                // Vietnamese cues must lead the step: "thả lỏng" also appears mid-step in
+                // "nghỉ đi bộ thả lỏng 2 phút" (sprint recovery), which is not a cool-down.
+                } else if lower.contains("cool") || lower.contains("stretch") || lower.hasPrefix("thả lỏng") || lower.hasPrefix("hạ nhiệt") {
                     cooldown = s
                 } else {
                     main.append(s)
