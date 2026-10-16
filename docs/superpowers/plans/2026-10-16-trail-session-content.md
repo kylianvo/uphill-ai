@@ -14,7 +14,7 @@
 
 - Branch: `claude/quangtranultra-plan-review-1a3cd3` (PR #142, held). Keep its iOS parser fix and its treadmill flat-pace fix.
 - Trail formula: `trail_pace = flat_zone_pace × (1 + 0.012 × climb_rate)`, `km = minutes / trail_pace`, `D+ = km × climb_rate`. Constant `0.012`.
-- Mountain data (m D+ per km): Núi Dinh 60, Núi Chứa Chan 85, Núi Bà Đen 176 (repeats only), Núi Hàm Lợn 45, Dalat trails 47, Sapa trails 56.
+- Mountain data (m D+ per km): Núi Dinh 60, Núi Châu Thới 28 (user addition), Núi Chứa Chan 85, Núi Bà Đen 176 (repeats only), Núi Hàm Lợn 45, Dalat trails 47, Sapa trails 56.
 - Mountain minimum: 180 min for HCMC and Hanoi mountains, none for Dalat/Sapa; editable per plan.
 - Applies only to `Easy` and `Long Run`. Tempo/Interval keep zone paces. Treadmill settings always use the flat pace.
 - Schema changes in both `backend/db.py:init_db()` and a hand-written Alembic migration (down_revision `c8e2a4f6d9b1`); follow `.claude/skills/db-migration/SKILL.md`.
@@ -83,7 +83,7 @@ def test_minutes_round_trips_session():
 **Interfaces:**
 - Produces:
   - `@dataclass(frozen=True) class Mountain: key: str; area: str; name_en: str; name_vi: str; climb_rate: float; repeats_only: bool; default_min_minutes: int | None`
-  - `MOUNTAINS: dict[str, Mountain]` with keys `nui_dinh`, `chua_chan`, `ba_den`, `ham_lon`, `dalat`, `sapa`; areas `hcmc`, `hanoi`, `dalat`, `sapa`.
+  - `MOUNTAINS: dict[str, Mountain]` with keys `nui_dinh`, `chau_thoi`, `chua_chan`, `ba_den`, `ham_lon`, `dalat`, `sapa`; areas `hcmc`, `hanoi`, `dalat`, `sapa`.
   - `long_run_climb_rate(key: str | None) -> float | None` — repeats-only mountains return their area's default long-run mountain rate; unknown/None → None.
   - `default_min_minutes(key: str | None) -> int | None` — 180 for hcmc/hanoi, None otherwise.
 
@@ -235,7 +235,7 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
 - Modify: `backend/main.py` — `GET /api/training-mountains` returns `MOUNTAINS` (key, area, names, climb_rate, repeats_only, default_min_minutes) so both clients read one list.
 - Test: `frontend/src/components/TrainingVenueFields.test.tsx` (create if absent), iOS `ScheduleDraft` test, backend route test.
 
-- [ ] **Step 1: Tests:** web select saves `training_mountain: "nui_dinh"`, min field shows 180; iOS draft diff includes `trainingMountain` only when changed; route returns 6 mountains.
+- [ ] **Step 1: Tests:** web select saves `training_mountain: "nui_dinh"`, min field shows 180; iOS draft diff includes `trainingMountain` only when changed; route returns 7 mountains.
 - [ ] **Step 2: Run** — FAIL.
 - [ ] **Step 3: Implement.** Mountain names in VI via the Vietnamese copy skill.
 - [ ] **Step 4: Run** all three suites — PASS; screenshots on web and simulator.

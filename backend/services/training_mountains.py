@@ -14,9 +14,10 @@ class Mountain:
     default_min_minutes: int | None
 
 
-# Sources: Viet's Núi Dinh/Chứa Chan runs, Bà Đen/Hàm Lợn routes, and Dalat/VMM race-course seeds.
+# Sources: Viet's Núi Dinh/Chứa Chan/Châu Thới data, Bà Đen/Hàm Lợn routes, and Dalat/VMM seeds.
 MOUNTAINS: dict[str, Mountain] = {
     "nui_dinh": Mountain("nui_dinh", "hcmc", "Núi Dinh", "Núi Dinh", 60, False, 180),
+    "chau_thoi": Mountain("chau_thoi", "hcmc", "Núi Châu Thới", "Núi Châu Thới", 28, False, 180),
     "chua_chan": Mountain("chua_chan", "hcmc", "Núi Chứa Chan", "Núi Chứa Chan", 85, False, 180),
     "ba_den": Mountain("ba_den", "hcmc", "Núi Bà Đen", "Núi Bà Đen", 176, True, 180),
     "ham_lon": Mountain("ham_lon", "hanoi", "Núi Hàm Lợn", "Núi Hàm Lợn", 45, False, 180),
