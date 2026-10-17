@@ -3,6 +3,7 @@ import re
 import threading
 import time
 import uuid as _uuid
+from dataclasses import asdict
 from typing import Any, Literal
 
 import httpx
@@ -93,6 +94,7 @@ from db import (
     update_user_profile,
     update_user_weekly_km,
     update_workout_log,
+    update_workout_mountain_mode,
     upsert_block_review_ai_fields,
     verify_session,
     week_range_for_block,
@@ -126,6 +128,7 @@ from services.pacing_calculator import PacingCalculator
 from services.plan_generator import PlanGenerator
 from services.plan_rules import count_me_sessions
 from services.rag_service import RagService
+from services.training_mountains import MOUNTAINS
 from services.training_rules import TrainingRules, resolve_zone2_pace
 from services.weather_service import WeatherService
 from services.week_review_narrative import generate_week_narrative
@@ -244,6 +247,8 @@ class PlanGenerateRequest(BaseModel):
     # Training venues (services/training_venues.py): weekdays with hill/trail access,
     # stairs, and the treadmill's top incline in %.
     mountain_days: list[str] | None = None
+    training_mountain: str | None = None
+    mountain_min_minutes: int | None = Field(default=None, ge=0)
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     # Non-race / start date fields
@@ -316,6 +321,8 @@ class GenerateNextBlockRequest(BaseModel):
     # Training venues (services/training_venues.py): weekdays with hill/trail access,
     # stairs, and the treadmill's top incline in %.
     mountain_days: list[str] | None = None
+    training_mountain: str | None = None
+    mountain_min_minutes: int | None = Field(default=None, ge=0)
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     athlete_notes: str | None = None
@@ -340,6 +347,8 @@ class AdaptWeekRequest(BaseModel):
     # Training venues (services/training_venues.py): weekdays with hill/trail access,
     # stairs, and the treadmill's top incline in %.
     mountain_days: list[str] | None = None
+    training_mountain: str | None = None
+    mountain_min_minutes: int | None = Field(default=None, ge=0)
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     # Longest unbroken jog in minutes. The beginner progression metric: asked of the
@@ -493,6 +502,8 @@ class OnboardingRequest(BaseModel):
     # Training venues (services/training_venues.py): weekdays with hill/trail access,
     # stairs, and the treadmill's top incline in %.
     mountain_days: list[str] | None = None
+    training_mountain: str | None = None
+    mountain_min_minutes: int | None = Field(default=None, ge=0)
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     # Goal-specific extras
@@ -593,10 +604,8 @@ def _resolve_zone_pace_and_hr(
     aet_hr = int(athlete.get("aet_hr", resting_hr + int((max_hr - resting_hr) * 0.65)))
     ant_hr = int(athlete.get("ant_hr", resting_hr + int((max_hr - resting_hr) * 0.85)))
     hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
-    est_zones = PlanGenerator.estimate_pace_zones(
-        *resolve_zone2_pace(athlete.get("zone2_pace_min"), athlete.get("zone2_pace_max"), athlete.get("goal_type")),
-        aet_hr,
-        ant_hr,
+    est_zones = PlanGenerator.resolve_pace_zones(
+        {**athlete, "aet_hr": aet_hr, "ant_hr": ant_hr}, athlete.get("goal_type")
     )
     pace, _distance_km = PlanGenerator.pace_and_distance_for_zone(target_zone, duration_minutes or 30, est_zones)
     zone_key = target_zone if target_zone in hr_zones else "Zone 2"
@@ -610,7 +619,8 @@ class CoachWorkoutUpdateRequest(BaseModel):
     title: str | None = None
     type: str | None = None
     duration_minutes: float | None = None
-    distance_km: float | None = None
+    distance_km: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    elevation_gain_m: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     target_zone: str | None = None
     # target_hr_range/target_pace are intentionally NOT accepted here --
     # edit_athlete_workout recomputes both from target_zone server-side so
@@ -866,6 +876,11 @@ def is_vietnamese_request(
 class CoachChatRequest(BaseModel):
     messages: list[ChatMessage]
     lang: str | None = None
+
+
+@app.get("/api/training-mountains")
+def training_mountains():
+    return [asdict(mountain) for mountain in MOUNTAINS.values()]
 
 
 @app.get("/api/health")
@@ -1288,6 +1303,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         use_treadmill=use_treadmill,
         training_environment=request.training_environment or "flat",
         mountain_days=request.mountain_days or [],
+        training_mountain=request.training_mountain,
+        mountain_min_minutes=request.mountain_min_minutes,
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
         athlete_notes=request.athlete_notes,
@@ -1318,6 +1335,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "use_treadmill": use_treadmill,
         "training_environment": request.training_environment or "flat",
         "mountain_days": request.mountain_days or [],
+        "training_mountain": request.training_mountain,
+        "mountain_min_minutes": request.mountain_min_minutes,
         "stair_access": bool(request.stair_access),
         "treadmill_max_incline": request.treadmill_max_incline,
         "plan_start_date": onboarding_start_date,
@@ -1687,6 +1706,36 @@ def edit_athlete_workout(
         fields["target_pace"], fields["target_hr_range"] = _resolve_zone_pace_and_hr(
             athlete, request.target_zone, fields.get("duration_minutes") or workout["duration_minutes"]
         )
+    explicit_trail_target = request.distance_km is not None and request.elevation_gain_m is not None
+    if (
+        fields.get("type", workout["type"]) in ("Easy", "Long Run")
+        and (request.elevation_gain_m or workout.get("elevation_gain_m") or 0) > 0
+        and fields.get("target_zone", workout["target_zone"]) != "Rest"
+    ):
+        from services.trail_pace import trail_minutes, trail_pace_range, trail_session
+
+        athlete = get_user_by_id(athlete_id)
+        zones = PlanGenerator.resolve_pace_zones(athlete, plan.get("goal_type") or athlete.get("goal_type"))
+        zone = fields.get("target_zone") or workout["target_zone"]
+        flat_pace, _ = PlanGenerator.pace_and_distance_for_zone(zone, 1, zones)
+        if explicit_trail_target:
+            if request.distance_km <= 0:
+                raise HTTPException(status_code=422, detail="Trail distance must be positive.")
+            rate = request.elevation_gain_m / request.distance_km
+            fields["duration_minutes"] = trail_minutes(flat_pace, request.distance_km, request.elevation_gain_m)
+            fields["target_pace"] = trail_pace_range(flat_pace, rate)
+        else:
+            rate = workout.get("mountain_climb_rate")
+            if rate is None:
+                rate = workout["elevation_gain_m"] / workout["distance_km"]
+            duration = fields.get("duration_minutes")
+            if duration is None:
+                duration = workout["duration_minutes"]
+            fields["target_pace"], fields["distance_km"], fields["elevation_gain_m"] = trail_session(
+                flat_pace, duration, rate
+            )
+        fields["grade_percent"] = rate / 10
+        fields["mountain_climb_rate"] = rate
     updated = coach_update_workout(workout_id, acting_user["id"], fields)
     return updated
 
@@ -2146,6 +2195,8 @@ async def _generate_plan_for_athlete(
         use_treadmill=request.use_treadmill,
         training_environment=request.training_environment or "flat",
         mountain_days=request.mountain_days or [],
+        training_mountain=request.training_mountain,
+        mountain_min_minutes=request.mountain_min_minutes,
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
         created_by_user_id=created_by_user_id,
@@ -2178,6 +2229,8 @@ async def _generate_plan_for_athlete(
         else (request.has_gym_access or False),
         "training_environment": request.training_environment or "flat",
         "mountain_days": request.mountain_days or [],
+        "training_mountain": request.training_mountain,
+        "mountain_min_minutes": request.mountain_min_minutes,
         "stair_access": bool(request.stair_access),
         "treadmill_max_incline": request.treadmill_max_incline,
         # Start date
@@ -2488,10 +2541,15 @@ async def _generate_next_block_for_athlete(
         request.training_environment,
         request.athlete_notes,
         request.mountain_days,
+        request.training_mountain,
+        request.mountain_min_minutes,
         request.stair_access,
         request.treadmill_max_incline,
     )
-    if any(f is not None for f in _schedule_fields):
+    if (
+        any(f is not None for f in _schedule_fields)
+        or {"training_mountain", "mountain_min_minutes"} & request.model_fields_set
+    ):
         updated_plan = update_plan_schedule(
             plan_id=request.plan_id,
             preferred_run_days=request.preferred_days,
@@ -2503,6 +2561,12 @@ async def _generate_next_block_for_athlete(
             training_environment=request.training_environment,
             athlete_notes=request.athlete_notes,
             mountain_days=request.mountain_days,
+            training_mountain=request.training_mountain,
+            mountain_min_minutes=request.mountain_min_minutes,
+            clear_training_mountain="training_mountain" in request.model_fields_set
+            and request.training_mountain is None,
+            clear_mountain_min_minutes="mountain_min_minutes" in request.model_fields_set
+            and request.mountain_min_minutes is None,
             stair_access=request.stair_access,
             treadmill_max_incline=request.treadmill_max_incline,
         )
@@ -2732,6 +2796,8 @@ async def _generate_next_block_for_athlete(
         "use_treadmill": plan.get("use_treadmill", False),
         "training_environment": plan.get("training_environment") or "flat",
         "mountain_days": plan.get("mountain_days"),
+        "training_mountain": plan.get("training_mountain"),
+        "mountain_min_minutes": plan.get("mountain_min_minutes"),
         "stair_access": plan.get("stair_access"),
         "treadmill_max_incline": plan.get("treadmill_max_incline"),
         "plan_start_date": plan.get("start_date"),
@@ -2901,7 +2967,11 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         plan_rows,
         rng,
         week_rebuild.RebuildRequest(
-            **request.model_dump(exclude={"plan_id", "max_continuous_jog_min", "client_today"})
+            **request.model_dump(exclude={"plan_id", "max_continuous_jog_min", "client_today"}),
+            clear_training_mountain="training_mountain" in request.model_fields_set
+            and request.training_mountain is None,
+            clear_mountain_min_minutes="mountain_min_minutes" in request.model_fields_set
+            and request.mountain_min_minutes is None,
         ),
         today=today,
     )
@@ -3074,6 +3144,52 @@ class WorkoutLogRequest(BaseModel):
     is_missed: int | None = None
     rpe: int | None = None
     notes: str | None = None
+
+
+class MountainModeRequest(BaseModel):
+    mode: Literal["mountain", "chill", "skip", "indoor"]
+
+
+@app.patch("/api/workouts/{workout_id}/mountain-mode")
+async def set_workout_mountain_mode(
+    workout_id: int, request: MountainModeRequest, user: dict[str, Any] = Depends(get_current_user)
+):
+    from services.training_venues import Venues
+
+    workout = get_workout_by_id(workout_id)
+    if not workout:
+        raise HTTPException(status_code=404, detail="Workout not found.")
+    plan = get_plan_by_id(workout["plan_id"])
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    await require_athlete_access(plan["user_id"], user)
+    venues = Venues.from_race_info(plan)
+    if workout["type"] != "Long Run" or not (
+        venues.is_mountain_day(workout["day_of_week"]) or workout.get("mountain_mode")
+    ):
+        raise HTTPException(status_code=400, detail="This is not a mountain-day Long Run.")
+    athlete = get_user_by_id(plan["user_id"])
+    max_hr = int(athlete.get("max_hr") or 220 - int(athlete.get("age") or 30))
+    resting_hr = int(athlete.get("resting_hr") or 60)
+    aet_hr = int(athlete.get("aet_hr") or resting_hr + int((max_hr - resting_hr) * 0.65))
+    ant_hr = int(athlete.get("ant_hr") or resting_hr + int((max_hr - resting_hr) * 0.85))
+    hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
+    zones = PlanGenerator.resolve_pace_zones({**athlete, "aet_hr": aet_hr, "ant_hr": ant_hr}, plan.get("goal_type"))
+    for number in (1, 2):
+        hr = hr_zones[f"Zone {number}"]
+        zones[f"zone{number}_hr"] = f"{hr['min']}-{hr['max']} bpm"
+    if workout.get("mountain_climb_rate") is None:
+        flat_distance = PlanGenerator.pace_and_distance_for_zone("Zone 2", workout["duration_minutes"], zones)[1]
+        workout["mountain_climb_rate"] = PlanGenerator.resolve_climb_rate(
+            venues,
+            plan.get("course_elevation_gain_m"),
+            plan.get("course_distance_km"),
+            workout.get("elevation_gain_m"),
+            flat_distance,
+        )
+    updated = PlanGenerator.apply_mountain_mode(workout, request.mode, venues, zones, f"{zones['zone2_pace']} /km")
+    update_workout_mountain_mode(workout_id, updated)
+    return get_workout_by_id(workout_id)
 
 
 @app.patch("/api/coach/workouts/log")

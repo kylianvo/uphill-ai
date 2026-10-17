@@ -26,6 +26,8 @@ export interface AdaptWeekModalProps {
     use_treadmill: boolean;
     training_environment: "flat" | "hilly" | "mixed";
     mountain_days: string[];
+    training_mountain?: string | null;
+    mountain_min_minutes?: number | null;
     stair_access: boolean;
     treadmill_max_incline: number;
     double_session_days: string[];
@@ -120,6 +122,8 @@ export function AdaptWeekModal({
         use_treadmill: schedule.use_treadmill,
         training_environment: schedule.training_environment,
         mountain_days: schedule.mountain_days,
+        ...(schedule.training_mountain !== initialSchedule.training_mountain ? { training_mountain: schedule.training_mountain ?? null } : {}),
+        ...(schedule.mountain_min_minutes !== initialSchedule.mountain_min_minutes ? { mountain_min_minutes: schedule.mountain_min_minutes ?? null } : {}),
         stair_access: schedule.stair_access,
         treadmill_max_incline: schedule.treadmill_max_incline,
         lang,
@@ -513,15 +517,6 @@ export function AdaptWeekModal({
                 />
                 {t("plan_gym_access")}
               </label>
-              <label style={{ display: "flex", alignItems: "center", gap: "7px", cursor: "pointer", fontSize: "12px", color: "var(--text-primary)" }}>
-                <input
-                  type="checkbox"
-                  checked={schedule.use_treadmill}
-                  onChange={(e) => setSchedule({ ...schedule, use_treadmill: e.target.checked })}
-                  style={{ width: "15px", height: "15px", accentColor: "var(--accent-primary)" }}
-                />
-                {t("plan_use_treadmill")}
-              </label>
             </div>
 
             <TrainingVenueFields
@@ -529,6 +524,7 @@ export function AdaptWeekModal({
               t={t}
               value={schedule}
               useTreadmill={schedule.use_treadmill}
+              onTreadmillChange={enabled => setSchedule({ ...schedule, use_treadmill: enabled })}
               onChange={(patch) => setSchedule({ ...schedule, ...patch })}
             />
           </div>

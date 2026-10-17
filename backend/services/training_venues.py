@@ -24,6 +24,8 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
+from services.training_mountains import MOUNTAINS, default_min_minutes, long_run_climb_rate
+
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 STANDARD_TREADMILL_MAX = 15
 INCLINE_TRAINER_MIN = 25
@@ -55,6 +57,8 @@ def _clamp_incline(value: Any) -> int:
 class Venues:
     environment: str = "flat"
     mountain_days: tuple[str, ...] = ()
+    training_mountain: str | None = None
+    mountain_min_minutes: int | None = None
     stair_access: bool = False
     use_treadmill: bool = False
     treadmill_max_incline: int = STANDARD_TREADMILL_MAX
@@ -65,6 +69,8 @@ class Venues:
         return cls(
             environment=(race_info.get("training_environment") or "flat").lower(),
             mountain_days=parse_days(race_info.get("mountain_days")),
+            training_mountain=race_info.get("training_mountain"),
+            mountain_min_minutes=race_info.get("mountain_min_minutes"),
             stair_access=bool(race_info.get("stair_access")),
             use_treadmill=bool(race_info.get("use_treadmill")),
             treadmill_max_incline=_clamp_incline(race_info.get("treadmill_max_incline")),
@@ -75,6 +81,9 @@ class Venues:
     def local_hills(self) -> bool:
         """Hills close enough to use on any day."""
         return self.environment in ("hilly", "mixed")
+
+    def is_mountain_day(self, day: str) -> bool:
+        return day in self.mountain_days
 
     def hills_on(self, day: str) -> bool:
         return self.local_hills or day in self.mountain_days
@@ -132,6 +141,16 @@ class Venues:
             f"   - Stairs (fire stairs in a tall building, stadium, or Stairmaster): {'yes' if self.stair_access else 'no'}."
             f" Treadmill: {treadmill}. Gym: {'yes' if self.has_gym_access else 'no'}.",
         ]
+        mountain = MOUNTAINS.get(self.training_mountain)
+        if mountain and self.mountain_days:
+            minimum = self.mountain_min_minutes or default_min_minutes(self.training_mountain)
+            time_rule = f"lasts at least {minimum} min" if minimum else "keeps the generated time"
+            lines.append(
+                f"   - MOUNTAIN DAY: Long Run on mountain days {time_rule} at {mountain.name_en} "
+                f"(~{long_run_climb_rate(self.training_mountain):g} m D+/km). Recovery week / Taper: "
+                "keep the generated time at Zone 1, mostly power-hiking. Race Week or beginner tier: "
+                "a short road/treadmill session instead."
+            )
         if not self.has_gym_access:
             lines.append(
                 "   - No gym: NEVER prescribe weighted or machine-based Strength or ME — bodyweight only (step-ups, "

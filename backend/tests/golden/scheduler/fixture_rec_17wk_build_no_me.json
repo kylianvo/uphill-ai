@@ -24,7 +24,8 @@
     "me_history": {
       "done": 0,
       "scheduled": 0
-    }
+    },
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 17,
   "block_number": 11,

@@ -33,7 +33,8 @@
       "readiness_flag": "fatigued",
       "avg_sleep_minutes": 318,
       "nights_recorded": 6
-    }
+    },
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 14
 }

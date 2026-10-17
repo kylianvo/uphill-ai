@@ -208,3 +208,11 @@ describe("mainDurationMinutes", () => {
     expect(mainDurationMinutes(60, steps)).toBe(0);
   });
 });
+
+it("keeps Vietnamese sprint recovery in Main Set and recognizes leading cues", () => {
+  const process = "Khởi động 10 phút xoay khớp → Chạy 40 phút duy trì nhịp nhàng Zone 2 → 8 x 10s Hill Sprints dốc >20% bung hết sức, nghỉ đi bộ thả lỏng 2 phút 30 giây giữa mỗi rep → Hạ nhiệt 5 phút chạy thả lỏng cực nhẹ.";
+  const parsed = parseExecutionSteps(process);
+  expect(parsed.warmup).toMatch(/^Khởi động/);
+  expect(parsed.mainSteps.some((step) => step.includes("Hill Sprints"))).toBe(true);
+  expect(parsed.cooldown).toMatch(/^Hạ nhiệt/);
+});

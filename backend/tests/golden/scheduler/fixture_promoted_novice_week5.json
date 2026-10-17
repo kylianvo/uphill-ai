@@ -25,7 +25,8 @@
       "done": 0,
       "scheduled": 0
     },
-    "previous_tier": "novice"
+    "previous_tier": "novice",
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 20,
   "block_number": 5,

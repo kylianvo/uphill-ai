@@ -20,7 +20,8 @@
     "date": "2026-12-15",
     "course_distance_km": 42.2,
     "course_elevation_gain_m": 100,
-    "target_time_hours": 3.5
+    "target_time_hours": 3.5,
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 16
 }

@@ -20,7 +20,8 @@
     "name": "Regional 50K",
     "date": "2026-12-15",
     "course_distance_km": 50,
-    "course_elevation_gain_m": 2500
+    "course_elevation_gain_m": 2500,
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 12
 }

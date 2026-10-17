@@ -8,6 +8,33 @@ struct ScheduleDraftTests {
         draft.applyChanges(to: &body)
         return try #require(try JSONSerialization.jsonObject(with: JSONCoding.encoder.encode(body)) as? [String: Any])
     }
+    @Test func mountainChangesAreSentOnlyWhenChanged() throws {
+        var draft = ScheduleDraft(plan: TestData.plan(["training_mountain": "nui_dinh", "mountain_min_minutes": 180]))
+        #expect(draft.trainingMountain == "nui_dinh")
+        #expect(draft.mountainMinMinutes == 180)
+        #expect(try body(draft)["training_mountain"] == nil)
+        #expect(try body(draft)["mountain_min_minutes"] == nil)
+        draft.trainingMountain = "chau_thoi"
+        draft.mountainMinMinutes = 210
+        #expect(draft.hasChanges)
+        #expect(try body(draft)["training_mountain"] as? String == "chau_thoi")
+        #expect(try body(draft)["mountain_min_minutes"] as? Int == 210)
+    }
+
+    @Test func clearingMountainEncodesExplicitNulls() throws {
+        var draft = ScheduleDraft(plan: TestData.plan(["training_mountain": "nui_dinh", "mountain_min_minutes": 180]))
+        draft.trainingMountain = nil
+        draft.mountainMinMinutes = nil
+        let json = try body(draft)
+        #expect(json["training_mountain"] is NSNull)
+        #expect(json["mountain_min_minutes"] is NSNull)
+        var next = NextBlockBody(planId: 1, blockNumber: 2, overallRpe: nil, notes: nil, overrideGate: false, lang: "en")
+        draft.applyChanges(to: &next)
+        let nextJSON = try #require(try JSONSerialization.jsonObject(with: JSONCoding.encoder.encode(next)) as? [String: Any])
+        #expect(nextJSON["training_mountain"] is NSNull)
+        #expect(nextJSON["mountain_min_minutes"] is NSNull)
+    }
+
     @Test func unchangedFieldsAreOmitted() throws {
         let draft = ScheduleDraft(plan: TestData.plan())
         let json = try body(draft)

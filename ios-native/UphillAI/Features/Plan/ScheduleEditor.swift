@@ -61,12 +61,9 @@ struct ScheduleEditor: View {
 
             Divider()
 
-            // Gym & Treadmill
+            // Gym
             VStack(spacing: UH.Space.small) {
                 Toggle("I can use a gym", isOn: $draft.hasGymAccess)
-                    .font(UH.TextStyle.label)
-                    .tint(UH.Palette.accent)
-                Toggle("I can use a treadmill", isOn: $draft.useTreadmill)
                     .font(UH.TextStyle.label)
                     .tint(UH.Palette.accent)
             }
@@ -89,7 +86,10 @@ struct ScheduleEditor: View {
             // Where the athlete can train: hill days, stairs, treadmill ceiling
             TrainingVenueSection(
                 mountainDays: $draft.mountainDays,
+                trainingMountain: $draft.trainingMountain,
+                mountainMinMinutes: $draft.mountainMinMinutes,
                 stairAccess: $draft.stairAccess,
+                useTreadmill: $draft.useTreadmill,
                 treadmillMaxIncline: draft.useTreadmill ? $draft.treadmillMaxIncline : nil
             )
 

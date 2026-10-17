@@ -21,7 +21,8 @@
     "date": "2026-12-15",
     "course_distance_km": 5,
     "course_elevation_gain_m": 1000,
-    "has_gym_access": false
+    "has_gym_access": false,
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 10
 }

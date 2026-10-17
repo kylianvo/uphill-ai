@@ -73,7 +73,7 @@ describe("AdaptWeekModal", () => {
     const onAdaptSuccess = vi.fn();
     const onClose = vi.fn();
 
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({ ok: true, json: async () => [] } as unknown as Response).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ job_id: "adapt-job-123", plan_id: 10, week_number: 2 }),
     } as Response);
@@ -106,10 +106,10 @@ describe("AdaptWeekModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Regenerate Week$/i }));
 
     await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 
-    const [url, options] = fetchSpy.mock.calls[0];
+    const [url, options] = fetchSpy.mock.calls[1];
     expect(url).toContain("/api/coach/adapt-week");
     const body = JSON.parse(options?.body as string);
     expect(body.plan_id).toBe(10);
@@ -127,7 +127,7 @@ describe("AdaptWeekModal", () => {
     const onAdaptSuccess = vi.fn();
     const onClose = vi.fn();
 
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({ ok: true, json: async () => [] } as unknown as Response).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ job_id: "adapt-job-789", plan_id: 10, week_number: 2 }),
     } as Response);
@@ -162,10 +162,10 @@ describe("AdaptWeekModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Regenerate Week$/i }));
 
     await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 
-    const [, options] = fetchSpy.mock.calls[0];
+    const [, options] = fetchSpy.mock.calls[1];
     const body = JSON.parse(options?.body as string);
     expect(body.double_session_days).toEqual(["Tuesday"]);
   });
@@ -174,7 +174,7 @@ describe("AdaptWeekModal", () => {
     const onAdaptSuccess = vi.fn();
     const onClose = vi.fn();
 
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({ ok: true, json: async () => [] } as unknown as Response).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ job_id: "coach-adapt-456", plan_id: 10, week_number: 3 }),
     } as Response);
@@ -202,15 +202,15 @@ describe("AdaptWeekModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Regenerate Week$/i }));
 
     await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 
-    const [url] = fetchSpy.mock.calls[0];
+    const [url] = fetchSpy.mock.calls[1];
     expect(url).toContain("/api/coaching/athletes/99/adapt-week");
   });
 
   it("explains a refused adapt with the guard code", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({ ok: true, json: async () => [] } as unknown as Response).mockResolvedValueOnce({
       ok: false,
       status: 422,
       json: async () => ({ detail: { code: "G3_past_target", params: { week: 2 } } }),
@@ -232,7 +232,7 @@ describe("AdaptWeekModal", () => {
     fireEvent.click(screen.getByText("Regenerate Week 2"));
     fireEvent.click(screen.getByRole("button", { name: /^Regenerate Week$/i }));
     expect(await screen.findByText("That week is already over.")).toBeInTheDocument();
-    const body = JSON.parse(((globalThis.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0][1].body) as string);
+    const body = JSON.parse(((globalThis.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[1][1].body) as string);
     expect(body.client_today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

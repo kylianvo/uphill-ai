@@ -9,6 +9,8 @@ export interface ScheduleFieldsValue {
   use_treadmill: boolean;
   training_environment: "flat" | "hilly" | "mixed";
   mountain_days: string[];
+  training_mountain?: string | null;
+  mountain_min_minutes?: number | null;
   stair_access: boolean;
   treadmill_max_incline: number;
   double_session_days: string[];
@@ -99,12 +101,6 @@ export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange }: Sch
             style={{ width: "16px", height: "16px", accentColor: "var(--accent-primary)" }} />
           {t("plan_gym_access")}
         </label>
-        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: "var(--text-primary)" }}>
-          <input type="checkbox" checked={value.use_treadmill}
-            onChange={e => onChange({ use_treadmill: e.target.checked })}
-            style={{ width: "16px", height: "16px", accentColor: "var(--accent-primary)" }} />
-          {t("plan_use_treadmill")}
-        </label>
       </div>
 
       <div style={{ marginTop: "12px" }}>
@@ -132,6 +128,7 @@ export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange }: Sch
         t={t}
         value={value}
         useTreadmill={value.use_treadmill}
+        onTreadmillChange={enabled => onChange({ use_treadmill: enabled })}
         onChange={onChange}
       />
 

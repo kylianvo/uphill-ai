@@ -97,3 +97,50 @@ def test_never_offers_substitutes_the_athlete_does_not_have():
     trainer = Venues(use_treadmill=True, treadmill_max_incline=25).prompt_block(allows_intensity=True, allows_me=True)
     assert "from treadmill incline blocks." in trainer and "stair laps" not in trainer
     assert "where available" not in trainer
+
+
+def test_mountain_preferences_round_trip():
+    venues = Venues.from_race_info(
+        {"training_mountain": "nui_dinh", "mountain_min_minutes": 210, "mountain_days": '["Saturday"]'}
+    )
+    assert venues.training_mountain == "nui_dinh"
+    assert venues.mountain_min_minutes == 210
+    assert venues.is_mountain_day("Saturday")
+    assert not venues.is_mountain_day("Tuesday")
+
+
+def test_mountain_day_prompt_rule():
+    block = Venues(training_mountain="nui_dinh", mountain_days=("Saturday",)).prompt_block(
+        allows_intensity=True, allows_me=True
+    )
+    for text in (
+        "MOUNTAIN DAY",
+        "180 min",
+        "Núi Dinh",
+        "60 m D+/km",
+        "Zone 1",
+        "power-hiking",
+        "Race Week",
+        "beginner",
+    ):
+        assert text in block
+    without = Venues(mountain_days=("Saturday",)).prompt_block(allows_intensity=True, allows_me=True)
+    for text in ("MOUNTAIN DAY", "180 min", "Núi Dinh", "60 m D+/km", "Zone 1"):
+        assert text not in without
+
+
+def test_mountain_prompt_without_minimum_keeps_generated_time():
+    block = Venues(training_mountain="dalat", mountain_days=("Saturday",)).prompt_block(
+        allows_intensity=True, allows_me=True
+    )
+    assert "47 m D+/km" in block
+    assert "at least" not in block
+    assert "keep the generated time" in block
+    assert "Zone 1" in block
+
+
+def test_mountain_prompt_uses_custom_minimum():
+    block = Venues(training_mountain="sapa", mountain_days=("Saturday",), mountain_min_minutes=210).prompt_block(
+        allows_intensity=True, allows_me=True
+    )
+    assert "210 min" in block
