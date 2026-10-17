@@ -1188,7 +1188,9 @@ class PlanGenerator:
                 )
                 # Treadmill speed applies its own incline slowdown, so it must start from the flat pace.
                 flat_pace = wo["target_pace"]
-                if terrain == "trail" and w_type in ("Easy", "Long Run") and flat_pace and dur > 0:
+                # Only mountain days are on the mountain; with no mountain days set, every trail run may be.
+                on_mountain = venues.is_mountain_day(wo["day_of_week"]) or not venues.mountain_days
+                if terrain == "trail" and w_type in ("Easy", "Long Run") and flat_pace and dur > 0 and on_mountain:
                     from services.trail_pace import trail_session
 
                     rate = PlanGenerator.resolve_climb_rate(

@@ -972,7 +972,15 @@ class TestZoneFallbackConsistency:
 
 class TestMountainDaySessions:
     def _generate(
-        self, *, mountain="nui_dinh", day="Saturday", elevation=850, use_treadmill=False, phase="Build", tier=None
+        self,
+        *,
+        mountain="nui_dinh",
+        day="Saturday",
+        elevation=850,
+        use_treadmill=False,
+        phase="Build",
+        tier=None,
+        workout_type="Long Run",
     ):
         import json
 
@@ -983,8 +991,8 @@ class TestMountainDaySessions:
                     "week_number": 1,
                     "day_of_week": day,
                     "phase": phase,
-                    "type": "Long Run",
-                    "title": "Long Run",
+                    "type": workout_type,
+                    "title": workout_type,
                     "duration_minutes": 130,
                     "target_zone": "Zone 2",
                     "elevation_gain_m": elevation,
@@ -1016,6 +1024,13 @@ class TestMountainDaySessions:
             )
         assert client.models.generate_content.called
         return workouts[0]
+
+    def test_weekday_city_easy_run_keeps_flat_pace(self):
+        # Tuesday is not a mountain day: the athlete runs in the city, not on Núi Dinh.
+        wo = self._generate(day="Tuesday", workout_type="Easy", elevation=0)
+        slower, _ = PlanGenerator.parse_pace_range(wo["target_pace"])
+        assert slower < 6.0
+        assert wo["elevation_gain_m"] == 0
 
     def test_nui_dinh_long_run_uses_minimum_and_mountain_rate(self):
         wo = self._generate()
