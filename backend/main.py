@@ -1706,23 +1706,34 @@ def edit_athlete_workout(
         fields["target_pace"], fields["target_hr_range"] = _resolve_zone_pace_and_hr(
             athlete, request.target_zone, fields.get("duration_minutes") or workout["duration_minutes"]
         )
+    explicit_trail_target = request.distance_km is not None and request.elevation_gain_m is not None
     if (
-        request.distance_km is not None
-        and request.elevation_gain_m is not None
-        and fields.get("type", workout["type"]) in ("Easy", "Long Run")
-        and (request.elevation_gain_m > 0 or (workout.get("elevation_gain_m") or 0) > 0)
+        fields.get("type", workout["type"]) in ("Easy", "Long Run")
+        and (request.elevation_gain_m or workout.get("elevation_gain_m") or 0) > 0
+        and fields.get("target_zone", workout["target_zone"]) != "Rest"
     ):
-        from services.trail_pace import trail_minutes, trail_pace_range
+        from services.trail_pace import trail_minutes, trail_pace_range, trail_session
 
-        if request.distance_km <= 0:
-            raise HTTPException(status_code=422, detail="Trail distance must be positive.")
         athlete = get_user_by_id(athlete_id)
         zones = PlanGenerator.resolve_pace_zones(athlete, plan.get("goal_type") or athlete.get("goal_type"))
         zone = fields.get("target_zone") or workout["target_zone"]
         flat_pace, _ = PlanGenerator.pace_and_distance_for_zone(zone, 1, zones)
-        rate = request.elevation_gain_m / request.distance_km
-        fields["duration_minutes"] = trail_minutes(flat_pace, request.distance_km, request.elevation_gain_m)
-        fields["target_pace"] = trail_pace_range(flat_pace, rate)
+        if explicit_trail_target:
+            if request.distance_km <= 0:
+                raise HTTPException(status_code=422, detail="Trail distance must be positive.")
+            rate = request.elevation_gain_m / request.distance_km
+            fields["duration_minutes"] = trail_minutes(flat_pace, request.distance_km, request.elevation_gain_m)
+            fields["target_pace"] = trail_pace_range(flat_pace, rate)
+        else:
+            rate = workout.get("mountain_climb_rate")
+            if rate is None:
+                rate = workout["elevation_gain_m"] / workout["distance_km"]
+            duration = fields.get("duration_minutes")
+            if duration is None:
+                duration = workout["duration_minutes"]
+            fields["target_pace"], fields["distance_km"], fields["elevation_gain_m"] = trail_session(
+                flat_pace, duration, rate
+            )
         fields["grade_percent"] = rate / 10
         fields["mountain_climb_rate"] = rate
     updated = coach_update_workout(workout_id, acting_user["id"], fields)

@@ -47,7 +47,7 @@ def test_coach_km_and_climb_derive_time_and_keep_exact_values(monkeypatch):
     monkeypatch.setattr(
         main, "coach_update_workout", lambda wid, uid, fields: {**row, **fields, "source": "coach_edited"}
     )
-    request = main.CoachWorkoutUpdateRequest(distance_km=26, elevation_gain_m=1500)
+    request = main.CoachWorkoutUpdateRequest(distance_km=26, elevation_gain_m=1500, duration_minutes=30)
     updated = main.edit_athlete_workout(7, 1, 11, request, {"id": 8})
     assert updated["distance_km"] == 26 and updated["elevation_gain_m"] == 1500
     assert abs(updated["duration_minutes"] - 210) < 5
@@ -103,3 +103,37 @@ def test_adapt_request_accepts_mountain_preferences_in_shared_rebuild():
 def test_coach_negative_climb_rejected():
     with pytest.raises(ValidationError, match="elevation_gain_m"):
         main.CoachWorkoutUpdateRequest(distance_km=26, elevation_gain_m=-1)
+
+
+def test_normal_coach_editor_preserves_trail_metrics_for_title_edit(monkeypatch):
+    row = workout(distance_km=16.1, elevation_gain_m=966, mountain_climb_rate=60, target_pace="8:26 - 7:44 /km")
+    monkeypatch.setattr(main, "get_plan_by_id", lambda pid: PLAN)
+    monkeypatch.setattr(main, "get_workout_by_id", lambda wid: row)
+    monkeypatch.setattr(main, "get_user_by_id", lambda uid: ATHLETE)
+    monkeypatch.setattr(main, "coach_update_workout", lambda wid, uid, fields: {**row, **fields})
+    request = main.CoachWorkoutUpdateRequest(
+        title="Renamed trail run", type="Long Run", duration_minutes=130, target_zone="Zone 2"
+    )
+    updated = main.edit_athlete_workout(7, 1, 11, request, {"id": 8})
+    for key in ["duration_minutes", "distance_km", "elevation_gain_m", "target_pace"]:
+        assert updated[key] == row[key]
+
+
+@pytest.mark.parametrize("rate", [60, None])
+def test_normal_coach_edit_recalculates_trail_from_duration_and_zone(monkeypatch, rate):
+    from services.plan_generator import PlanGenerator
+    from services.trail_pace import trail_session
+
+    row = workout(distance_km=16.1, elevation_gain_m=966, mountain_climb_rate=rate)
+    monkeypatch.setattr(main, "get_plan_by_id", lambda pid: PLAN)
+    monkeypatch.setattr(main, "get_workout_by_id", lambda wid: row)
+    monkeypatch.setattr(main, "get_user_by_id", lambda uid: ATHLETE)
+    monkeypatch.setattr(main, "coach_update_workout", lambda wid, uid, fields: {**row, **fields})
+    request = main.CoachWorkoutUpdateRequest(duration_minutes=180, target_zone="Zone 1", distance_km=16.1)
+    updated = main.edit_athlete_workout(7, 1, 11, request, {"id": 8})
+    zones = PlanGenerator.resolve_pace_zones(ATHLETE, None)
+    flat, _ = PlanGenerator.pace_and_distance_for_zone("Zone 1", 1, zones)
+    pace, km, gain = trail_session(flat, 180, 60)
+    assert updated["duration_minutes"] == 180
+    assert (updated["target_pace"], updated["distance_km"], updated["elevation_gain_m"]) == (pace, km, gain)
+    assert updated["mountain_climb_rate"] == pytest.approx(60)

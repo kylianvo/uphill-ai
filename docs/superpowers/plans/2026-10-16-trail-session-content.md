@@ -19,6 +19,8 @@
 - Task 5 persists the original climb rate in nullable `workouts.mountain_climb_rate` so skip → mountain/chill restores the original estimate without requiring a selected mountain. Update both schema definitions.
 - Task 6 uses the shared `coros_workouts.py` mapper; `coros_push.py` delegates payload construction there.
 - Push completed tasks as work progresses, as requested, rather than waiting until Task 12.
+- Final review: ordinary coach edits without an explicit km + D+ pair retain climb rate and recalculate from duration/zone; an explicit pair takes priority (user approved).
+- Final iOS verification uses a locally ad-hoc-signed simulator build and `test-without-building` so the existing Keychain test has its required entitlements (user approved); source/tests are unchanged for signing.
 - Task 11 distinguishes omitted mountain fields from explicit null: "Other / none" clears the mountain, and Dalat/Sapa clears an old minimum (user approved). Both client creation flows and schedule request bodies must carry these fields.
 
 ## Global Constraints
@@ -254,6 +256,11 @@ Rules in `post_process_workouts` for `type in ("Easy", "Long Run")` and trail te
 
 ### Task 12: Finish the branch
 
-- [ ] **Step 1:** `cd backend && .venv/bin/pytest tests/unit -q`; `cd frontend && npx vitest run && npm run lint`; iOS full `UphillAITests` — all pass.
-- [ ] **Step 2:** Update PR #142 title/body: scope is now the full design; include the llm-change-process checklist, screenshots, and "plan 108 rows untouched".
-- [ ] **Step 3:** Push. Deploy and TestFlight are separate, user-approved steps.
+- [x] **Step 1:** `cd backend && .venv/bin/pytest tests/unit -q`; `cd frontend && npx vitest run && npm run lint`; iOS full `UphillAITests` — all pass.
+- [x] **Step 2:** Update PR #142 title/body: scope is now the full design; include the llm-change-process checklist, screenshots, and "plan 108 rows untouched".
+- [x] **Step 3:** Push. Deploy and TestFlight are separate, user-approved steps.
+
+
+Final verification (2026-10-17): backend 1,413 tests passed; frontend 530 passed, lint 0 errors (127 existing warnings), TypeScript passed; iOS 505 tests in 77 suites passed. iOS used the approved local ad-hoc `build-for-testing CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=-`, then full `test-without-building ... CODE_SIGNING_ALLOWED=NO`, because the unsigned build lacks simulator Keychain entitlements. No signing source/test changes were committed.
+
+The fresh whole-branch review's three P2 findings are closed with RED→GREEN regressions: normal coach edits preserve trail calculations, Easy rep fields survive ordinary edits, and aerobic trail pace remains visible separately from sprint reps. Screenshots are in `docs/evidence/trail-session-content/`; PR #142 contains the LLM checklist, test results, complete deviation list and plan/spec rulings. Synthetic UI rows were removed from the scratch DB. Plan 108 rows untouched; no merge, deploy, TestFlight release or production prompt promotion.
