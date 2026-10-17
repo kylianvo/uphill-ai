@@ -84,9 +84,10 @@ export function TrainingVenueFields({ lang, t, value, useTreadmill, onChange }: 
       </div>
       <div style={{ marginTop: "12px" }}>
         <label htmlFor="mountain-min-minutes" style={labelStyle}>{t("plan_mountain_min_minutes")}</label>
-        <input id="mountain-min-minutes" className="chat-input" type="number" min="0" step="1"
+        <input id="mountain-min-minutes" aria-describedby="mountain-min-help" className="chat-input" type="number" min="0" step="1"
           value={value.mountain_min_minutes ?? ""}
           onChange={e => onChange({ mountain_min_minutes: e.target.value === "" ? null : Number(e.target.value) })} />
+        <p id="mountain-min-help" style={helpStyle}>{t("plan_mountain_min_minutes_help")}</p>
       </div>
       <div style={{ marginTop: "12px" }}>
         <label style={labelStyle}>{t("plan_mountain_days")}</label>

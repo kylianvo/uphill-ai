@@ -33,17 +33,21 @@ struct TrainingVenueSection: View {
             .tint(UH.Palette.accentInk)
             if loadError { Text("Mountains unavailable").foregroundStyle(UH.Palette.secondary) }
             HStack {
-                Text("Minimum minutes").font(UH.TextStyle.label)
+                Text("Trail minimum (min)").font(UH.TextStyle.label)
                 Spacer()
-                TextField("Minimum minutes", value: $mountainMinMinutes, format: .number)
+                TextField("Trail minimum (min)", value: $mountainMinMinutes, format: .number)
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.trailing)
                     .frame(width: 90)
                     .accessibilityIdentifier("mountain.minimum")
             }
+            Text("Minimum time for Long Runs on trail training days, in minutes. For example, 180 means 3 hours.")
+                .font(UH.TextStyle.caption)
+                .foregroundStyle(UH.Palette.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: UH.Space.compact) {
-                Text("Hill or trail days").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                Text("Trail training days").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 8) {
                     ForEach(Weekday.allCases) { day in
                         let isSelected = mountainDays.contains(day)
@@ -60,11 +64,11 @@ struct TrainingVenueSection: View {
                                     .stroke(isSelected ? UH.Palette.accent : UH.Palette.line, lineWidth: 1))
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(L("%@ hill or trail day", L(day.rawValue)))
+                        .accessibilityLabel(L("%@ trail training day", L(day.rawValue)))
                         .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }
                 }
-                Text("Days you can reach real hills or trails, like weekend trips. Climbing long runs and hill sessions go on these days.")
+                Text("Choose days when you can train on hills or trails. Climbing Long Runs and hill sessions will be scheduled on these days.")
                     .font(UH.TextStyle.caption)
                     .foregroundStyle(UH.Palette.secondary)
                     .fixedSize(horizontal: false, vertical: true)

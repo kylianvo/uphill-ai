@@ -709,7 +709,7 @@ struct WorkoutDetailSheet: View {
                         Text("Connect COROS in Profile")
                             .font(.system(size: 13, weight: .semibold))
                     case .idle, .error:
-                        Text("Send next 4 weeks to COROS")
+                        Text("Send to COROS")
                             .font(.system(size: 13, weight: .semibold))
                     }
                 }

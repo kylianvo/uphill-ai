@@ -36,11 +36,11 @@ it("selects the shared mountain and its default minimum", async () => {
   await screen.findByRole("option", { name: "Núi Dinh · 60 m D+/km" });
   fireEvent.change(screen.getByLabelText("Training mountain"), { target: { value: "nui_dinh" } });
   expect(onChange).toHaveBeenCalledWith({ training_mountain: "nui_dinh", mountain_min_minutes: 180 });
-  expect(screen.getByLabelText("Minimum minutes")).toHaveValue(180);
+  expect(screen.getByLabelText("Trail minimum (min)")).toHaveValue(180);
   fireEvent.change(screen.getByLabelText("Training mountain"), { target: { value: "dalat" } });
   expect(onChange).toHaveBeenLastCalledWith({ training_mountain: "dalat", mountain_min_minutes: null });
   fireEvent.change(screen.getByLabelText("Training mountain"), { target: { value: "" } });
   expect(onChange).toHaveBeenLastCalledWith({ training_mountain: null, mountain_min_minutes: null });
-  expect(screen.getByLabelText("Minimum minutes")).toHaveValue(null);
+  expect(screen.getByLabelText("Trail minimum (min)")).toHaveValue(null);
   vi.unstubAllGlobals();
 });

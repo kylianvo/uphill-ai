@@ -21,16 +21,6 @@
         }
       }
     },
-    "%@ hill or trail day": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ ngày có dốc/trail"
-          }
-        }
-      }
-    },
     "%@ invited you to be coached": {
       "localizations": {
         "vi": {
@@ -2991,16 +2981,6 @@
         }
       }
     },
-    "Days you can reach real hills or trails, like weekend trips. Climbing long runs and hill sessions go on these days.": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Những ngày bạn tới được dốc hoặc trail thật, như chuyến cuối tuần. Long Run leo dốc và buổi tập dốc sẽ xếp vào các ngày này."
-          }
-        }
-      }
-    },
     "Decline": {
       "localizations": {
         "vi": {
@@ -4697,16 +4677,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Đi bộ"
-          }
-        }
-      }
-    },
-    "Hill or trail days": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ngày có dốc/trail"
           }
         }
       }
@@ -8247,16 +8217,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gửi tin nhắn"
-          }
-        }
-      }
-    },
-    "Send next 4 weeks to COROS": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gửi 4 tuần tới sang COROS"
           }
         }
       }
@@ -14101,16 +14061,6 @@
         }
       }
     },
-    "Minimum minutes": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Phút tối thiểu"
-          }
-        }
-      }
-    },
     "Mountains unavailable": {
       "localizations": {
         "vi": {
@@ -14127,6 +14077,56 @@
           "stringUnit": {
             "state": "translated",
             "value": "Số phút tối thiểu phải từ 0 trở lên."
+          }
+        }
+      }
+    },
+    "Trail minimum (min)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trail tối thiểu"
+          }
+        }
+      }
+    },
+    "Trail training days": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày tập Trail"
+          }
+        }
+      }
+    },
+    "%@ trail training day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ tập Trail"
+          }
+        }
+      }
+    },
+    "Minimum time for Long Runs on trail training days, in minutes. For example, 180 means 3 hours.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian tối thiểu cho Long Run vào ngày tập Trail. 180 phút = 3 giờ."
+          }
+        }
+      }
+    },
+    "Choose days when you can train on hills or trails. Climbing Long Runs and hill sessions will be scheduled on these days.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn ngày bạn có thể tập ở đồi núi hoặc đường Trail. Long Run leo dốc và bài dốc sẽ được xếp vào những ngày này."
           }
         }
       }
