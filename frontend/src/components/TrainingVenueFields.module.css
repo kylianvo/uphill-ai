@@ -1,0 +1,101 @@
+.section {
+  margin-top: 24px;
+  color: var(--text-primary);
+}
+
+.heading {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.steps {
+  display: grid;
+  gap: 20px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.steps > li { padding-left: 4px; }
+.steps > li::marker { font-weight: 600; }
+
+.question {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.choice[aria-pressed="true"], .choice:has(input:checked) {
+  border-color: var(--accent-primary);
+  background: var(--workspace-active, rgba(25, 206, 139, .16));
+  font-weight: 600;
+}
+
+.choice:hover, .quiet:hover { background: var(--workspace-hover, rgba(25, 206, 139, .08)); }
+.choice:focus-visible, .choice:focus-within, .quiet:focus-visible, .input:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 3px;
+}
+.choice input { accent-color: var(--accent-primary); margin: 0; }
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--workspace-glass, rgba(255, 255, 255, .85));
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+}
+
+.help { margin: 8px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.duration, .alternatives { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); }
+.duration strong { font-size: 14px; font-weight: 600; }
+.quiet {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.override { margin-top: 8px; }
+.toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; cursor: pointer; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--accent-primary); }
+.incline { margin-top: 12px; }
+
+/* Keep global form styling from changing these guided controls. */
+.section label { text-transform: none; letter-spacing: normal; color: inherit; margin-bottom: 0; }
+.section .input, .section .input:focus { background: var(--workspace-glass, rgba(255, 255, 255, .85)); }
+.input option { background: Canvas; color: CanvasText; }
+.toggle input { flex-shrink: 0; }

@@ -517,15 +517,6 @@ export function AdaptWeekModal({
                 />
                 {t("plan_gym_access")}
               </label>
-              <label style={{ display: "flex", alignItems: "center", gap: "7px", cursor: "pointer", fontSize: "12px", color: "var(--text-primary)" }}>
-                <input
-                  type="checkbox"
-                  checked={schedule.use_treadmill}
-                  onChange={(e) => setSchedule({ ...schedule, use_treadmill: e.target.checked })}
-                  style={{ width: "15px", height: "15px", accentColor: "var(--accent-primary)" }}
-                />
-                {t("plan_use_treadmill")}
-              </label>
             </div>
 
             <TrainingVenueFields
@@ -533,6 +524,7 @@ export function AdaptWeekModal({
               t={t}
               value={schedule}
               useTreadmill={schedule.use_treadmill}
+              onTreadmillChange={enabled => setSchedule({ ...schedule, use_treadmill: enabled })}
               onChange={(patch) => setSchedule({ ...schedule, ...patch })}
             />
           </div>

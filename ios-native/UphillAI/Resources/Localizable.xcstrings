@@ -14130,6 +14130,176 @@
           }
         }
       }
+    },
+    "Somewhere else": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nơi khác"
+          }
+        }
+      }
+    },
+    "Which days can you get there?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đi được ngày nào?"
+          }
+        }
+      }
+    },
+    "Coach will schedule Trail sessions on these days.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach sẽ xếp bài Trail vào những ngày này."
+          }
+        }
+      }
+    },
+    "Minimum duration (min)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tối thiểu (phút)"
+          }
+        }
+      }
+    },
+    "For Long Runs on Trail days only. This is a minimum, not the maximum time you have available.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉ áp dụng cho Long Run vào ngày tập Trail. Đây là mức tối thiểu, không phải thời gian tối đa."
+          }
+        }
+      }
+    },
+    "Trail training": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tập Trail"
+          }
+        }
+      }
+    },
+    "Can you get out to train on Trail?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có thể tập Trail không?"
+          }
+        }
+      }
+    },
+    "Not right now": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa thể"
+          }
+        }
+      }
+    },
+    "Where do you usually train?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn thường tập ở đâu?"
+          }
+        }
+      }
+    },
+    "Choose a place": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn địa điểm"
+          }
+        }
+      }
+    },
+    "Saved Trail location": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Địa điểm Trail đã lưu"
+          }
+        }
+      }
+    },
+    "Retry locations": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tải lại"
+          }
+        }
+      }
+    },
+    "Coach plans the session duration": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời lượng do Coach sắp xếp"
+          }
+        }
+      }
+    },
+    "Minimum Long Run duration: %lld min": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Long Run tối thiểu: %lld phút"
+          }
+        }
+      }
+    },
+    "Duration settings": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉnh thời lượng"
+          }
+        }
+      }
+    },
+    "Use location default": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theo địa điểm"
+          }
+        }
+      }
+    },
+    "Alternative training": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tập thay thế"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
