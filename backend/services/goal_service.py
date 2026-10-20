@@ -8,6 +8,7 @@ from datetime import date
 from typing import Any
 
 import db
+import telemetry
 from config import settings
 from log_utils import get_logger
 from services import goal_anchors, goal_context, goal_judge, observability, plan_adequacy, plan_lint
@@ -301,6 +302,7 @@ def feasibility_for(plan: dict[str, Any], assessment: dict[str, Any] | None = No
         return None
     if verdict is None:
         return None
+    telemetry.goal_feasibility_total.labels(verdict=verdict.verdict).inc()
     return {
         "verdict": verdict.verdict,
         "capacity_h": round(verdict.capacity_h, 1),

@@ -54,3 +54,20 @@ plan_job_duration_seconds = Histogram(
 password_reset_email_failures_total = Counter(
     "password_reset_email_failures_total", "Password reset emails that failed to send"
 )
+
+
+# Plan reliability (services/plan_generator.py lint loop, goal_service, coach_nudge, fitness_tracking).
+# Closed label sets only: issue codes, outcomes, verdicts, tones. Never a user or plan id.
+plan_lint_total = Counter(
+    "plan_lint_total",
+    "Lint findings on a generated week and what the corrective retry did with them",
+    ["code", "outcome"],  # outcome: found | retry_kept | retry_discarded | retry_off
+)
+goal_feasibility_total = Counter("goal_feasibility_total", "Feasibility verdicts served", ["verdict"])
+coach_nudge_total = Counter("coach_nudge_total", "Coach messages produced", ["tone", "source"])
+aerobic_path_total = Counter("aerobic_path_total", "Aerobic-speed path statuses computed", ["b", "a", "confidence"])
+
+
+def record_lint(codes, outcome: str) -> None:
+    for code in set(codes):
+        plan_lint_total.labels(code=code, outcome=outcome).inc()

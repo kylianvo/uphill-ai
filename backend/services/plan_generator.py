@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from typing import Any
 
+import telemetry
 from config import settings
 from db import block_number_for_week, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
@@ -1100,7 +1101,9 @@ class PlanGenerator:
             if not issues:
                 return workouts, tier
             codes = ",".join(sorted({i.code for i in issues}))
+            telemetry.record_lint([i.code for i in issues], "found")
             if not settings.PLAN_LINT_RETRY:
+                telemetry.record_lint([i.code for i in issues], "retry_off")
                 _logger.info(f"[PlanLint] plan={plan_id} week={target_week} issues={codes} (retry off)")
                 return workouts, tier
             feedback = (
@@ -1113,6 +1116,7 @@ class PlanGenerator:
             )
             retry_issues = PlanGenerator._lint_issues(retry_workouts, retry_tier, **kwargs)
             better = len(retry_issues) < len(issues)
+            telemetry.record_lint([i.code for i in issues], "retry_kept" if better else "retry_discarded")
             _logger.info(
                 f"[PlanLint] plan={plan_id} week={target_week} issues={codes} -> {len(issues)}->{len(retry_issues)}"
                 f" kept={'retry' if better else 'first'}"
