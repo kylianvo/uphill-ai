@@ -109,11 +109,22 @@ export interface Feasibility {
   confidence: "measured" | "estimated";
 }
 
+/** Is training on the path to B and A, from measured aerobic speed (services/aerobic_speed.py). */
+export interface GoalPath {
+  b: "ahead" | "on" | "behind";
+  a: "ahead" | "on" | "behind";
+  measured_pct: number;
+  expected_pct: number;
+  weeks: number;
+  confidence: "low" | "medium" | "high";
+}
+
 export interface PlanGoal {
   assessment: GoalAssessment | null;
   status: { state: GoalState; suggested_mins: number | null; a_supported?: boolean };
   target_time_hours: number | null;
   feasibility?: Feasibility | null;
+  path?: GoalPath | null;
 }
 
 function authHeaders(): Record<string, string> {
@@ -266,4 +277,23 @@ export function feasibilityNotice(f: Feasibility | null | undefined, lang: Lang)
     .slice(0, MAX_LEVERS_SHOWN);
   const tail = f.confidence === "estimated" ? (en ? "(pace estimated)" : "(pace ước tính)") : "";
   return [head, ...levers, tail].filter(Boolean).join(" ");
+}
+
+const PATH_WORD: Record<GoalPath["b"], [string, string]> = {
+  ahead: ["ahead", "vượt lộ trình"],
+  on: ["on track", "đúng lộ trình"],
+  behind: ["behind", "chậm lộ trình"],
+};
+
+/** One line on whether aerobic speed is on the B and A paths; null until there is data. */
+export function pathNotice(path: GoalPath | null | undefined, lang: Lang): string | null {
+  if (!path) return null;
+  const i = lang === "en" ? 0 : 1;
+  const pct = Math.abs(path.measured_pct).toFixed(1);
+  const speed =
+    lang === "en"
+      ? `Aerobic speed is ${pct}% ${path.measured_pct >= 0 ? "faster" : "slower"} than at the start.`
+      : `Tốc độ aerobic ${path.measured_pct >= 0 ? "nhanh" : "chậm"} hơn ${pct}% so với lúc bắt đầu.`;
+  const early = path.confidence === "low" ? (lang === "en" ? " (early read)" : " (mới đo sơ bộ)") : "";
+  return `B ${PATH_WORD[path.b][i]} · A ${PATH_WORD[path.a][i]}. ${speed}${early}`;
 }

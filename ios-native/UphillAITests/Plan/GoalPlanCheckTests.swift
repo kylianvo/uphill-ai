@@ -66,3 +66,23 @@ struct GoalPlanCheckTests {
         #expect(try assessment(supported: true).planSupportNotice == nil)
     }
 }
+
+struct GoalPathTests {
+    private func path(_ extra: [String: Any] = [:]) throws -> GoalPath {
+        var o: [String: Any] = ["b": "on", "a": "behind", "measured_pct": 2.14, "expected_pct": 1.5, "weeks": 6, "confidence": "medium"]
+        o.merge(extra) { $1 }
+        return try JSONCoding.decoder.decode(GoalPath.self, from: JSONSerialization.data(withJSONObject: o))
+    }
+
+    @Test func wordsAndLine() throws {
+        let p = try path()
+        #expect(GoalPath.word(p.b) == "on track" && GoalPath.word(p.a) == "behind" && GoalPath.word("ahead") == "ahead")
+        #expect(p.line == "Aerobic speed is 2.1% faster than at the start.")
+        #expect(try path(["measured_pct": -1.0]).line == "Aerobic speed is 1% slower than at the start.")
+    }
+
+    @Test func earlyReadsAreFlagged() throws {
+        #expect(try path(["confidence": "low"]).note == "Early read: only a few weeks of runs.")
+        #expect(try path().note == nil)
+    }
+}

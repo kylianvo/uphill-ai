@@ -12,6 +12,7 @@ import {
   Lang,
   PlanGoal,
   feasibilityNotice,
+  pathNotice,
   planSupportNotice,
   reassessPlanGoal,
 } from "@/lib/goalAssessment";
@@ -51,6 +52,7 @@ export function GoalPill({
   const supportNotice = planSupportNotice(assessment, lang);
   const feasibility = goal.feasibility;
   const feasibilityText = feasibilityNotice(feasibility, lang);
+  const pathText = pathNotice(goal.path, lang);
 
   const target = goal.target_time_hours ? goal.target_time_hours * 60 : null;
   let highlight: GoalKey | null = null;
@@ -146,6 +148,20 @@ export function GoalPill({
           {supportNotice && (
             <p data-testid="goal-plan-support" style={{ fontSize: "12px", color: "#b45309", margin: 0, lineHeight: 1.5 }}>
               {supportNotice}
+            </p>
+          )}
+
+          {pathText && (
+            <p
+              data-testid="goal-path"
+              style={{
+                fontSize: "12px",
+                color: goal.path?.b === "behind" ? "#b45309" : "var(--text-secondary)",
+                margin: 0,
+                lineHeight: 1.5,
+              }}
+            >
+              {pathText}
             </p>
           )}
 

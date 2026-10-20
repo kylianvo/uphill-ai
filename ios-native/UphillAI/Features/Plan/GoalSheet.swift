@@ -64,6 +64,8 @@ struct GoalSheet: View {
                             .trainingCard()
                     }
 
+                    GoalPathRow(path: model.goal?.path)
+
                     GoalPlanCheckCard(feasibility: model.goal?.feasibility, assessment: model.goal?.assessment)
 
                     // Goal Context & Reasoning
