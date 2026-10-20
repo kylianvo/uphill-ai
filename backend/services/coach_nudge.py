@@ -87,6 +87,7 @@ def facts_for(
     readiness_flag: str | None,
     feasibility_verdict: str | None,
     plan_supported: bool,
+    path: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     total = int(plan.get("total_weeks") or 0)
     start = _monday(plan["start_date"]) if plan.get("start_date") else today - timedelta(days=today.weekday())
@@ -130,6 +131,7 @@ def facts_for(
         "readiness_flag": readiness_flag,
         "feasibility_verdict": feasibility_verdict,
         "plan_supported": plan_supported,
+        "path": {k: path[k] for k in ("b", "a", "measured_pct", "weeks", "confidence")} if path else None,
     }
 
 
@@ -140,11 +142,15 @@ def tone_for(f: dict[str, Any]) -> str | None:
         or not f.get("plan_supported", True)
     ):
         return "heads_up"
+    path = f.get("path")
+    if path and path["confidence"] != "low" and path["b"] == "behind":
+        return "heads_up"  # B is the promise: say so plainly when training is not on its path
     last = f.get("last_week")
     meaningful = bool(last) and last["planned"] >= MIN_SESSIONS
     if meaningful and last["adherence"] < SLIPPED_BELOW:
         return "push"
-    if f.get("milestones_just_done") or (meaningful and last["adherence"] >= SOLID_FROM):
+    ahead = bool(path) and path["confidence"] != "low" and "ahead" in (path["a"], path["b"])
+    if f.get("milestones_just_done") or ahead or (meaningful and last["adherence"] >= SOLID_FROM):
         return "encourage"
     return None
 
@@ -157,6 +163,12 @@ def fallback_text(f: dict[str, Any], tone: str, lang: str) -> str:
     vi = lang == "vi"
     last = f.get("last_week") or {}
     ratio = f"{last.get('completed')}/{last.get('planned')}" if last else ""
+    if tone == "encourage" and not f.get("milestones_just_done") and (f.get("path") or {}).get("a") == "ahead":
+        return (
+            "Tốc độ aerobic của bạn đang nhanh hơn lộ trình. Giữ nhịp này nhé."
+            if vi
+            else "Your aerobic speed is ahead of the path. Keep this rhythm."
+        )
     if tone == "encourage":
         ms = (f.get("milestones_just_done") or [None])[0]
         if ms and ms["key"] in _MILESTONE:
@@ -175,6 +187,13 @@ def fallback_text(f: dict[str, Any], tone: str, lang: str) -> str:
             f"Tuần trước chỉ được {ratio} buổi{reason}. Không sao: chọn buổi kế tiếp và chạy nhẹ, hoặc điều chỉnh tuần này."
             if vi
             else f"Last week held {ratio} sessions{reason}. That happens: pick the next session and keep it easy, or adapt this week."
+        )
+    path = f.get("path")
+    if path and path["b"] == "behind" and path["confidence"] != "low":
+        return (
+            "Tốc độ aerobic của bạn chưa theo kịp lộ trình mục tiêu B. Giữ đều các buổi Zone 2 và xem mục Goal."
+            if vi
+            else "Your aerobic speed is not yet on the path to your B goal. Keep the Zone 2 sessions steady and see Goal."
         )
     if f.get("readiness_flag") in _FATIGUE:
         return (

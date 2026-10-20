@@ -2631,6 +2631,21 @@ async def _generate_next_block_for_athlete(
         brief_decision_log.extend(plan_adequacy.summary_lines(goal_service.plan_adequacy_for(plan)))
     except Exception:
         _goal_logger.exception("plan support for brief failed", extra={"fields": {"plan_id": request.plan_id}})
+    try:
+        from services import a_gate, fitness_tracking, goal_service
+
+        adequacy = goal_service.plan_adequacy_for(plan)
+        gate = a_gate.evaluate(
+            fitness_tracking.refresh(plan, get_user_by_id(athlete_id)),
+            readiness_flag=get_recent_readiness_summary(athlete_id).get("readiness_flag"),
+            workouts=all_workouts,
+            before_week=block_start,
+            plan_supported=adequacy.a_supported if adequacy else True,
+        )
+        context_lines.append(f"  {a_gate.prompt_line(gate)}")
+        brief_decision_log.append(a_gate.log_line(gate))
+    except Exception:
+        _goal_logger.exception("A-goal gate failed", extra={"fields": {"plan_id": request.plan_id}})
     if context_lines:
         block_context = "\n".join(context_lines)
 
@@ -4312,6 +4327,7 @@ def _reassess_plan_goal(plan_id: int, owner_id: int, request: GoalReassessReques
         "status": goal_service.status(assessment, plan.get("target_time_hours")),
         "target_time_hours": plan.get("target_time_hours"),
         "feasibility": goal_service.feasibility_for(plan, assessment),
+        "path": goal_service.path_for(plan),
     }
 
 
@@ -4382,6 +4398,7 @@ async def _plan_nudge(plan_id: int, owner_id: int, lang: str) -> dict[str, Any]:
         readiness_flag=db.get_recent_readiness_summary(owner_id).get("readiness_flag"),
         feasibility_verdict=(feasibility or {}).get("verdict"),
         plan_supported=support["a_supported"] if support else True,
+        path=goal_service.path_for(plan),
     )
     tone = coach_nudge.tone_for(facts)
     if tone is None:
