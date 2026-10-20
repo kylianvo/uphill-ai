@@ -171,6 +171,8 @@ struct ProfileSettingsScreen: View {
                     statChip(title: "ANAEROBIC (AnT)", value: "\(model.draft.antHr) bpm", color: Color(hex: "#f97316"))
                     statChip(title: L("MAX HR"), value: "\(model.draft.maxHr) bpm", color: Color(hex: "#ef4444"))
                 }
+
+                adsCheck
             }
             .trainingCard()
 
@@ -207,6 +209,26 @@ struct ProfileSettingsScreen: View {
             }
             .buttonStyle(.plain)
             .trainingCard()
+        }
+    }
+
+    @ViewBuilder private var adsCheck: some View {
+        if let gap = model.draft.adsGap {
+            let ads = model.draft.hasADS
+            HStack(alignment: .top, spacing: UH.Space.small) {
+                Image(systemName: ads ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                    .foregroundStyle(ads ? Color(hex: "#f59e0b") : Color(hex: "#10b981"))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L("ADS check: AeT–AnT gap %lld%%", Int((gap * 100).rounded())))
+                        .font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                    Text(ads
+                        ? L("Above 10% suggests Aerobic Deficiency Syndrome. Your plan keeps running in Zones 1–2 until the gap closes. Only a tested AeT confirms it.")
+                        : L("10% or less: no sign of Aerobic Deficiency Syndrome. Watch estimates can hide it, so test AeT to be sure."))
+                        .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .accessibilityElement(children: .combine)
         }
     }
 

@@ -34,6 +34,16 @@ struct ProfileSettingsTests {
         #expect(draft.heartRateError == nil)
     }
 
+    @Test func adsCheckFlagsGapAboveTenPercent() throws {
+        var draft = ProfileDraft(user: try Fixture.decode(User.self, "auth_me.json"))
+        draft.aetHr = 130; draft.antHr = 160
+        #expect(draft.hasADS)
+        draft.aetHr = 150
+        #expect(!draft.hasADS)
+        draft.aetHr = 160
+        #expect(draft.adsGap == nil)
+    }
+
     @Test func offlineSaveDoesNotCallNetwork() async throws {
         let user = try Fixture.decode(User.self, "auth_me.json")
         let session = SessionStore(tokenStore: InMemoryTokenStore())
