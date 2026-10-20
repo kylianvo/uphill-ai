@@ -7,7 +7,7 @@ from typing import Any
 from config import settings
 from db import block_number_for_week, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
-from services import observability, plan_lint, race_readiness, recovery_baseline
+from services import observability, plan_lint, race_readiness, recovery_baseline, week_layout
 from services.athlete_tier import MEASURED_THRESHOLD_SOURCES, TIER_PROFILES, get_profile, resolve_tier
 from services.plan_rules import build_rules_block, me_runway, me_status_block
 from services.training_mountains import default_min_minutes, long_run_climb_rate
@@ -395,6 +395,17 @@ class PlanGenerator:
         return wc, wc
 
     @staticmethod
+    def flat_zone2_pace(user_profile: dict[str, Any], goal_type: str | None, tier: str | None) -> float | None:
+        """The athlete's flat Zone 2 mid pace in decimal min/km (what duration -> distance uses on flat
+        ground), or None when it cannot be resolved."""
+        try:
+            zones = PlanGenerator.resolve_pace_zones(user_profile, goal_type, tier)
+            pace = PlanGenerator.parse_pace_to_decimal(zones["zone2_pace_mid"])
+        except Exception:  # noqa: BLE001
+            return None
+        return pace if pace and pace > 0 else None
+
+    @staticmethod
     def pace_and_distance_for_zone(zone: str, duration_minutes: float, est_zones: dict[str, str]) -> tuple[str, float]:
         """Maps a target_zone label to its display pace range and computed distance_km."""
         zone_lower = (zone or "").lower()
@@ -413,7 +424,7 @@ class PlanGenerator:
         distance_km = round(duration_minutes / pace_dec, 1) if pace_dec > 0 else 0.0
         return f"{pace_str} /km", distance_km
 
-    ELEVATION_ELIGIBLE_TYPES = ("Easy", "Tempo", "Interval", "Long Run")
+    ELEVATION_ELIGIBLE_TYPES = ("Easy", "Tempo", "Interval", "Long Run", "Aerobic Capacity")
 
     @staticmethod
     def resolve_elevation_and_grade(
@@ -949,6 +960,7 @@ class PlanGenerator:
                     cutoff_time_hours=cutoff_time_hours,
                     block_context=block_context,
                     target_week=target_week,
+                    flat_pace_min_km=PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), tier),
                 )
             from services import fitness_snapshot, plan_signals
 
@@ -976,6 +988,7 @@ class PlanGenerator:
         total_weeks: int,
         cutoff_time_hours: float | None,
         target_week: int | None,
+        flat_pace_min_km: float | None = None,
     ) -> list[plan_lint.Issue]:
         """Structural problems in the drafted weeks, judged against the plan's earlier weeks and the
         tier's own caps; a new block (not an adapt) is also judged on the race-readiness path."""
@@ -1002,8 +1015,11 @@ class PlanGenerator:
                     total_weeks=total_weeks,
                     distance_km=race_info.get("course_distance_km"),
                     max_prog=profile.max_weekly_progression,
+                    flat_pace_min_km=flat_pace_min_km,
                 )
-                week_km = race_readiness.weekly_km([w for w in workouts if w.get("week_number") == wk])
+                week_km = race_readiness.weekly_km(
+                    [w for w in workouts if w.get("week_number") == wk], flat_pace_min_km
+                )
                 if issue := race_readiness.readiness_issue(r, wk, week_km):
                     issues.append(issue)
         return issues
@@ -1020,6 +1036,7 @@ class PlanGenerator:
         cutoff_time_hours: float | None,
         block_context: str | None,
         target_week: int | None,
+        flat_pace_min_km: float | None = None,
     ) -> tuple[list[dict[str, Any]], str]:
         """Lint the draft; when it breaks a rule, regenerate once with the problems spelled out and
         keep whichever draft has fewer. Never raises: a failure here must not lose a good draft."""
@@ -1029,6 +1046,7 @@ class PlanGenerator:
             total_weeks=total_weeks,
             cutoff_time_hours=cutoff_time_hours,
             target_week=target_week,
+            flat_pace_min_km=flat_pace_min_km,
         )
         try:
             issues = PlanGenerator._lint_issues(workouts, tier, **kwargs)
@@ -2059,6 +2077,12 @@ class PlanGenerator:
         base_weekly_minutes = current_weekly_km * 6.0
         if base_weekly_minutes < 120.0:
             base_weekly_minutes = 180.0
+        try:
+            race_weekday = datetime.strptime(
+                str(race_info.get("date") or race_info.get("race_date"))[:10], "%Y-%m-%d"
+            ).strftime("%A")
+        except ValueError:
+            race_weekday = None
 
         workouts: list[dict[str, Any]] = []
         # ME sessions already done, so a late or promoted starter still gets the soft-start dose.
@@ -2083,21 +2107,27 @@ class PlanGenerator:
             else:
                 return "Base"
 
-        for week in range(block_start_week, block_end_week + 1):
-            phase = get_phase_for_week(week)
-            if phase == "Base":
-                volume_multiplier = 1.0 + (0.05 * (week - 1))
-            elif phase == "Build":
-                volume_multiplier = 1.2 + (0.05 * (week - num_base_weeks - 1))
-            elif phase == "Peak":
-                volume_multiplier = 1.4 - (0.05 * (week - num_base_weeks - num_build_weeks - 1))
-            elif phase == "Taper":
-                volume_multiplier = 0.5  # Reduced load — pre-race freshening
-            elif phase == "Race Week":
-                volume_multiplier = 0.6
-            else:
-                volume_multiplier = 0.4
+        def multiplier_for(w: int) -> float:
+            ph = get_phase_for_week(w)
+            if ph == "Base":
+                return 1.0 + (0.05 * (w - 1))
+            if ph == "Build":
+                return 1.2 + (0.05 * (w - num_base_weeks - 1))
+            if ph == "Peak":
+                return 1.4 - (0.05 * (w - num_base_weeks - num_build_weeks - 1))
+            if ph == "Taper":
+                return 0.5  # Reduced load — pre-race freshening
+            if ph == "Race Week":
+                return 0.6
+            return 0.4
 
+        for week in range(block_start_week, block_end_week + 1):
+            week_start_idx = len(workouts)
+            phase = get_phase_for_week(week)
+            volume_multiplier = multiplier_for(week)
+
+            # A recovery week after every three builds (week_layout scales it to 80%).
+            is_recovery_week = phase in ("Base", "Build", "Peak") and week % 4 == 0 and week > 1
             week_minutes = base_weekly_minutes * volume_multiplier
             easy_minutes = week_minutes * 0.8
             quality_minutes = week_minutes * 0.2
@@ -2137,6 +2167,7 @@ class PlanGenerator:
 
             # Day 3: Wednesday
             wed_dur = quality_minutes if quality_minutes > 0 else easy_minutes * 0.2
+            wed_dur = min(wed_dur, float(tier_profile.weekday_minutes[1]))  # a 20%-of-the-week tempo ran to 144 min
             is_interval = week % 2 == 0
 
             if phase == "Recovery":
@@ -2148,6 +2179,15 @@ class PlanGenerator:
                 desc = "No running. Focus on full-body mobility, gentle stretching, and hydration."
                 fuel_tip = "Eat high-protein, nutrient-dense foods to rebuild muscle tissues."
                 wed_dur = 0.0
+            elif phase in ("Base", "Race Week") or not tier_profile.allows_intensity:
+                # Base is aerobic (Zone 1-2); a race week is not the week for a hard session.
+                title = "Aerobic Capacity Run"
+                w_type = "Aerobic Capacity"
+                zone = "Zone 2"
+                hr_range = z2_range
+                pace = f"{p_z2} /km"
+                desc = "Steady continuous run. Targets mitochondrial development and fat oxidation efficiency."
+                fuel_tip = "Practice gut-training: take 30g carbs per hour if workout exceeds 60 minutes."
             elif is_interval:
                 title = "Aerobic Power Intervals"
                 w_type = "Interval"
@@ -2198,7 +2238,7 @@ class PlanGenerator:
                 "description": desc,
                 "fueling_tip": fuel_tip,
             }
-            if is_interval:
+            if w_type == "Interval":
                 wo["interval_reps"] = reps
                 wo["interval_rep_value"] = float(work_per_rep)
                 wo["interval_rep_unit"] = "min"
@@ -2282,7 +2322,7 @@ class PlanGenerator:
                 workouts.append(
                     {
                         "week_number": week,
-                        "day_of_week": "Saturday",
+                        "day_of_week": "Saturday",  # moved to the real race weekday below
                         "phase": phase,
                         "title": f"TARGET EVENT: {race_info.get('name', 'Race Day')}",
                         "type": "Race",
@@ -2441,6 +2481,26 @@ class PlanGenerator:
                             "fueling_tip": fuel_tip,
                         }
                     )
+
+            # Put the week's sessions on the athlete's days (the template's weekdays are fixed): their
+            # training days and long-run day, strength 48 h clear of the long run and hard sessions.
+            if phase == "Race Week" and week == W:
+                workouts[week_start_idx:] = week_layout.fit_race_week(
+                    workouts[week_start_idx:], week=week, phase=phase, race_weekday=race_weekday
+                )
+            elif phase != "Recovery":
+                workouts[week_start_idx:] = week_layout.layout_week(
+                    workouts[week_start_idx:],
+                    week=week,
+                    phase=phase,
+                    preferred_days=preferred_run_days,
+                    long_run_day=long_run_day,
+                    days_per_week=days_per_week,
+                    week_minutes=week_minutes,
+                    long_run_share_cap=tier_profile.long_run_share_cap,
+                    weekday_max_minutes=tier_profile.weekday_minutes[1],
+                    recovery=is_recovery_week,
+                )
 
         # Localization dictionary for rule-based fallback
         if lang == "vi":

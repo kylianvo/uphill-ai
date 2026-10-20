@@ -51,6 +51,7 @@ def assess(
     distance_km: float | None,
     profile: TierProfile,
     prefs: plan_lint.Prefs | None = None,
+    flat_pace_min_km: float | None = None,
 ) -> Adequacy | None:
     """None when there is nothing to judge (no date, no distance, or the race is past)."""
     if weeks_to_race is None or weeks_to_race <= 0 or not distance_km or total_weeks < 4:
@@ -67,9 +68,14 @@ def assess(
     for wk in generated:
         codes = [i.code for i in plan_lint.lint_week(workouts, wk, profile, prefs)]
         r = race_readiness.assess_week(
-            workouts, wk, total_weeks=total_weeks, distance_km=distance_km, max_prog=profile.max_weekly_progression
+            workouts,
+            wk,
+            total_weeks=total_weeks,
+            distance_km=distance_km,
+            max_prog=profile.max_weekly_progression,
+            flat_pace_min_km=flat_pace_min_km,
         )
-        if race_readiness.readiness_issue(r, wk, race_readiness.weekly_km(by_week[wk])):
+        if race_readiness.readiness_issue(r, wk, race_readiness.weekly_km(by_week[wk], flat_pace_min_km)):
             codes.append("READINESS_BEHIND")
         if codes:
             problems[wk] = codes
@@ -82,7 +88,12 @@ def assess(
     if ungenerated:
         first = (max(generated) + 1) if generated else current_week
         r = race_readiness.assess_week(
-            workouts, first, total_weeks=total_weeks, distance_km=distance_km, max_prog=profile.max_weekly_progression
+            workouts,
+            first,
+            total_weeks=total_weeks,
+            distance_km=distance_km,
+            max_prog=profile.max_weekly_progression,
+            flat_pace_min_km=flat_pace_min_km,
         )
         if r and r.status == "at_risk":
             reach_ratio = max(0.0, min(1.0, r.reachable_km / r.peak_lo))

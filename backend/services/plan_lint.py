@@ -21,6 +21,7 @@ LONG_SHARE_TOLERANCE = 0.02  # planned minutes are rounded
 MAX_VERT_GROWTH = 0.25
 MIN_VERT_STEP_M = 300  # ignore growth on tiny bases
 BACK_TO_BACK_SHARE = 0.50  # two consecutive big days may hold at most half the week
+BACK_TO_BACK_MIN_DAY = 0.25  # ...and a "big" day is one holding a quarter of the week (a long run + a short recovery run is not a back-to-back)
 MAX_SESSION_MIN = 300  # KB: the longest single session is capped at four to five hours
 # No doctrine number for one session; this catches the gross spikes (130 -> 213 min) the weekly cap misses.
 MAX_LONG_RUN_GROWTH = 0.25
@@ -154,7 +155,12 @@ def lint_week(
         )
 
     prev_vert = _vert(prev_ws)
-    if prev_vert and _vert(ws) > prev_vert * (1 + MAX_VERT_GROWTH) and _vert(ws) - prev_vert > MIN_VERT_STEP_M:
+    if (
+        prev_vert
+        and not _is_down(weeks, week - 1)  # rebuilding after a down week, like the volume rule
+        and _vert(ws) > prev_vert * (1 + MAX_VERT_GROWTH)
+        and _vert(ws) - prev_vert > MIN_VERT_STEP_M
+    ):
         issues.append(
             Issue(
                 "VERT_JUMP",
@@ -184,7 +190,7 @@ def lint_week(
     for d in sorted(day_min):
         if d + 1 in day_min and len(ws) >= 3:
             pair = day_min[d] + day_min[d + 1]
-            if pair > total * BACK_TO_BACK_SHARE and min(day_min[d], day_min[d + 1]) >= 0.2 * total:
+            if pair > total * BACK_TO_BACK_SHARE and min(day_min[d], day_min[d + 1]) >= BACK_TO_BACK_MIN_DAY * total:
                 issues.append(
                     Issue(
                         "BACK_TO_BACK",
@@ -212,7 +218,10 @@ def lint_week(
             )
         )
     training_days = {_day(w) for w in ws if _day(w) is not None}
-    if prefs and prefs.days_per_week and len(training_days) < prefs.days_per_week:
+    in_down_phase = any(
+        (w.get("phase") or "") in DOWN_PHASES for w in ws
+    )  # race/taper/recovery weeks are short on purpose
+    if prefs and prefs.days_per_week and len(training_days) < prefs.days_per_week and not in_down_phase:
         issues.append(
             Issue(
                 "DAYS_SHORT",
@@ -242,7 +251,7 @@ def lint_week(
         )
 
     for w in ws:
-        if _min(w) > MAX_SESSION_MIN:
+        if _min(w) > MAX_SESSION_MIN and w.get("type") != "Race":  # the race is not a training session
             issues.append(
                 Issue(
                     "SESSION_TOO_LONG",

@@ -14,6 +14,7 @@ progression and recovery rules, and what this week must total to stay on that pa
 from dataclasses import dataclass
 from typing import Any
 
+from services.coros_workouts import NON_RUN_TYPES
 from services.plan_lint import Issue, _by_week, _is_down
 
 TAPER_WEEKS = 2
@@ -50,8 +51,18 @@ def race_class(distance_km: float) -> tuple[str, float, float, float]:
     raise ValueError("unreachable")
 
 
-def weekly_km(ws: list[dict[str, Any]]) -> float:
-    return sum(float(w.get("distance_km") or 0) for w in ws if w.get("type") != "Rest")
+def weekly_km(ws: list[dict[str, Any]], flat_pace_min_km: float | None = None) -> float:
+    """Weekly running volume in km. With the athlete's flat Zone 2 pace it is flat-equivalent km
+    (run minutes / pace), so a slow mountain pace does not make a hard plan read as light against
+    the book's km benchmarks; without it, the plan's own distance_km."""
+    if not flat_pace_min_km:
+        return sum(float(w.get("distance_km") or 0) for w in ws if w.get("type") != "Rest")
+    run_minutes = sum(
+        float(w.get("duration_minutes") or 0)
+        for w in ws
+        if w.get("type") != "Rest" and (w.get("type") or "").strip().lower() not in NON_RUN_TYPES
+    )
+    return run_minutes / flat_pace_min_km
 
 
 def max_reachable(v: float, steps: int, builds_so_far: int, max_prog: float) -> float:
@@ -78,19 +89,25 @@ def _builds_through(weeks: dict[int, list[dict[str, Any]]], week: int) -> int:
 
 
 def assess_week(
-    workouts: list[dict[str, Any]], week: int, *, total_weeks: int, distance_km: float | None, max_prog: float
+    workouts: list[dict[str, Any]],
+    week: int,
+    *,
+    total_weeks: int,
+    distance_km: float | None,
+    max_prog: float,
+    flat_pace_min_km: float | None = None,
 ) -> Readiness | None:
     """Readiness for generating `week`, from the weeks before it. None when there is nothing
     to judge (no race distance, no earlier week, or the week is already in the taper)."""
     if not distance_km or total_weeks < 4:
         return None
     weeks = _by_week(workouts)
-    prior = [wk for wk in sorted(weeks) if wk < week and weekly_km(weeks[wk]) > 0]
+    prior = [wk for wk in sorted(weeks) if wk < week and weekly_km(weeks[wk], flat_pace_min_km) > 0]
     peak_week = total_weeks - TAPER_WEEKS
     if not prior or week >= peak_week:
         return None
     base_wk = next((wk for wk in reversed(prior) if not _is_down(weeks, wk)), prior[-1])
-    base = weekly_km(weeks[base_wk])
+    base = weekly_km(weeks[base_wk], flat_pace_min_km)
     label, _avg, lo, hi = race_class(distance_km)
     cap = base * (1 + max_prog)
     steps = peak_week - week
