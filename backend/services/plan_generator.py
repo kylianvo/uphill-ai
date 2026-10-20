@@ -16,6 +16,7 @@ from services.athlete_tier import (
     get_profile,
     graduated_profile,
     resolve_tier,
+    session_cap_minutes,
     week_capacity_parts,
 )
 from services.plan_rules import build_rules_block, me_runway, me_status_block
@@ -1394,19 +1395,42 @@ class PlanGenerator:
                 for wo in rows:
                     if wo.get("type") == "Race" or not plan_lint.is_hard(wo):
                         continue
-                    wo["type"], wo["target_zone"] = "Easy", "Zone 2"
-                    wo["target_hr_range"] = z2_range
-                    wo["title"] = "Easy Aerobic Run (recovery week)" if lang != "vi" else "Easy Run nhẹ (tuần recovery)"
-                    wo["description"] = (
-                        "Recovery week: keep this run easy and conversational, Zone 2 only, no intensity."
-                        if lang != "vi"
-                        else "Tuần recovery: giữ buổi chạy này nhẹ nhàng, nói chuyện được, chỉ Zone 2, không chạy cường độ."
+                    _to_easy(
+                        wo,
+                        "Easy Aerobic Run (recovery week)",
+                        "Easy Run nhẹ (tuần recovery)",
+                        "Recovery week: keep this run easy and conversational, Zone 2 only, no intensity.",
+                        "Tuần recovery: giữ buổi chạy này nhẹ nhàng, nói chuyện được, chỉ Zone 2, không chạy cường độ.",
                     )
-                    for key in ("interval_reps", "interval_rep_value", "interval_rep_unit", "walk_interval_value"):
-                        wo[key] = None
-                    wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
-                        "Zone 2", float(wo.get("duration_minutes") or 0), est_zones
-                    )
+
+        def _cap_hard_dose(wos: list[dict[str, Any]]) -> None:
+            """Book: a session carries at most ~60 min of Zone 3 or ~30 min of Zone 4 work. A longer one from the
+            model becomes an easy Zone 2 run of the same length (the lint catches repeats on its retry)."""
+            for wo in wos:
+                minutes = float(wo.get("duration_minutes") or 0)
+                zone = wo.get("target_zone")
+                if wo.get("type") == "Race" or not (
+                    (zone == "Zone 3" and minutes > 75) or (zone in ("Zone 4", "Zone 5") and minutes > 70)
+                ):
+                    continue
+                _to_easy(
+                    wo,
+                    "Easy Aerobic Run",
+                    "Easy Run nhẹ",
+                    "Keep this run easy and conversational, Zone 2: a hard session this long is more than a week can absorb.",
+                    "Giữ buổi chạy này nhẹ nhàng, nói chuyện được, Zone 2: buổi cường độ dài như vậy vượt quá sức một tuần.",
+                )
+
+        def _to_easy(wo: dict[str, Any], title_en: str, title_vi: str, desc_en: str, desc_vi: str) -> None:
+            wo["type"], wo["target_zone"] = "Easy", "Zone 2"
+            wo["target_hr_range"] = z2_range
+            wo["title"] = title_en if lang != "vi" else title_vi
+            wo["description"] = desc_en if lang != "vi" else desc_vi
+            for key in ("interval_reps", "interval_rep_value", "interval_rep_unit", "walk_interval_value"):
+                wo[key] = None
+            wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                "Zone 2", float(wo.get("duration_minutes") or 0), est_zones
+            )
 
         def _add_climb_session(wos: list[dict[str, Any]]) -> None:
             """A race with real climbing needs weekly vert. An athlete with a treadmill or stairs but no hills that
@@ -1621,6 +1645,7 @@ class PlanGenerator:
             for wo in wos:
                 if isinstance(wo.get("week_number"), int):
                     wo["phase"] = PlanGenerator.phase_for_week(wo["week_number"], total_weeks)
+            _cap_hard_dose(wos)
             _add_climb_session(wos)
             _soften_recovery_weeks(wos)
             if lang == "vi":
@@ -2564,7 +2589,7 @@ class PlanGenerator:
             if course_distance_km and course_distance_km > 0:
                 scale_factor = min(1.5, max(1.0, course_distance_km / 42.2))
                 sat_dur = sat_dur * scale_factor
-            sat_dur = min(300.0, sat_dur)
+            sat_dur = min(float(session_cap_minutes(tier_profile, course_distance_km)), sat_dur)
 
             if phase == "Recovery":
                 workouts.append(
@@ -2780,6 +2805,7 @@ class PlanGenerator:
                     week_minutes=week_minutes,
                     long_run_share_cap=week_caps.long_run_share_cap,
                     weekday_max_minutes=week_caps.weekday_minutes[1],
+                    max_long_minutes=session_cap_minutes(tier_profile, course_distance_km),
                     recovery=is_recovery_week,
                 )
 
