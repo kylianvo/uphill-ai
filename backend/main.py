@@ -4311,6 +4311,7 @@ def _reassess_plan_goal(plan_id: int, owner_id: int, request: GoalReassessReques
         "assessment": assessment,
         "status": goal_service.status(assessment, plan.get("target_time_hours")),
         "target_time_hours": plan.get("target_time_hours"),
+        "feasibility": goal_service.feasibility_for(plan, assessment),
     }
 
 

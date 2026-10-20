@@ -89,10 +89,31 @@ export interface PlanSupport {
 
 export type GoalState = "on_track" | "ahead" | "behind" | "not_assessed" | "no_target";
 
+export type FeasibilityLever =
+  | "more_days"
+  | "double_sessions"
+  | "more_weeks"
+  | "shorter_race"
+  | "finish_only"
+  | "steeper_venue"
+  | "mountain_access"
+  | "fewer_mountain_minimum";
+
+/** Whether the athlete's week, runway and training venue can hold the goal (services/goal_feasibility.py). */
+export interface Feasibility {
+  verdict: "supported" | "stretch" | "unsupported";
+  capacity_h: number;
+  needed_h: number;
+  weeks_needed: number | null;
+  levers: FeasibilityLever[];
+  confidence: "measured" | "estimated";
+}
+
 export interface PlanGoal {
   assessment: GoalAssessment | null;
   status: { state: GoalState; suggested_mins: number | null; a_supported?: boolean };
   target_time_hours: number | null;
+  feasibility?: Feasibility | null;
 }
 
 function authHeaders(): Record<string, string> {
@@ -193,4 +214,56 @@ export function planSupportNotice(assessment: GoalAssessment | null | undefined,
   return lang === "en"
     ? `The plan can't fully back the A goal yet: it delivers ${supported}% of the ${assumed}% improvement the goals assume, so the goal times moved ${later}% later (A ${from} → ${to}). Weeks that follow the plan rules bring it back.`
     : `Plan chưa đỡ hết mục tiêu A: chỉ mang lại ${supported}% trong ${assumed}% cải thiện mà mục tiêu giả định, nên thời gian lùi ${later}% (A ${from} → ${to}). Các tuần đúng nguyên tắc sẽ kéo lại.`;
+}
+
+const LEVER_TEXT: Record<FeasibilityLever, [string, string]> = {
+  more_days: ["More training days would close the gap.", "Thêm ngày tập sẽ thu hẹp khoảng cách."],
+  double_sessions: ["Double sessions would help.", "Có thể thêm buổi tập đôi."],
+  more_weeks: ["", ""], // needs the week count; built in feasibilityNotice
+  shorter_race: ["A shorter race would fit better.", "Race ngắn hơn sẽ hợp hơn."],
+  finish_only: ["Treat it as a finish-only goal.", "Hãy coi đây là mục tiêu về đích."],
+  steeper_venue: [
+    "Train on a steeper mountain to rehearse the climbing.",
+    "Tập ở núi dốc hơn để luyện leo.",
+  ],
+  mountain_access: [
+    "Add mountain trips, or stair and treadmill climbing.",
+    "Thêm buổi lên núi, hoặc leo cầu thang và treadmill.",
+  ],
+  fewer_mountain_minimum: [
+    "Your mountain Long Run minimum does not fit your week.",
+    "Mức tối thiểu của Long Run trên núi chưa vừa với tuần của bạn.",
+  ],
+};
+
+const MAX_LEVERS_SHOWN = 2;
+
+/** One short notice when the week cannot (or only just can) hold the goal; null when it can. */
+export function feasibilityNotice(f: Feasibility | null | undefined, lang: Lang): string | null {
+  if (!f || f.verdict === "supported") return null;
+  const en = lang === "en";
+  const cap = f.capacity_h.toFixed(1);
+  const need = f.needed_h.toFixed(1);
+  const head =
+    f.verdict === "unsupported"
+      ? en
+        ? `Your week can hold about ${cap}h; this goal needs about ${need}h.`
+        : `Tuần của bạn chứa được khoảng ${cap}h; mục tiêu này cần khoảng ${need}h.`
+      : en
+        ? `Possible but tight: your week holds about ${cap}h, the goal needs about ${need}h.`
+        : `Làm được nhưng sát: tuần chứa khoảng ${cap}h, mục tiêu cần khoảng ${need}h.`;
+  const levers = f.levers
+    .map((l) => {
+      if (l === "more_weeks") {
+        if (!f.weeks_needed) return en ? "It needs more weeks before the race." : "Cần thêm tuần trước race.";
+        return en
+          ? `Reaching the peak week takes about ${f.weeks_needed} weeks.`
+          : `Cần khoảng ${f.weeks_needed} tuần để đạt peak week.`;
+      }
+      return LEVER_TEXT[l]?.[en ? 0 : 1] ?? "";
+    })
+    .filter(Boolean)
+    .slice(0, MAX_LEVERS_SHOWN);
+  const tail = f.confidence === "estimated" ? (en ? "(pace estimated)" : "(pace ước tính)") : "";
+  return [head, ...levers, tail].filter(Boolean).join(" ");
 }

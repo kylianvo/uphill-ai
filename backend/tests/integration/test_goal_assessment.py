@@ -235,3 +235,24 @@ def test_context_is_returned_and_stored(client, auth_headers):
     client.post(f"/api/plans/{plan_id}/goal/reassess", json={}, headers=auth_headers["headers"])
     stored = client.get(f"/api/plans/{plan_id}/goal", headers=auth_headers["headers"]).json()
     assert stored["assessment"]["context"]["history"][0]["time"] == "7:00"
+
+
+def test_plan_goal_returns_a_feasibility_verdict(client, auth_headers):
+    uid, headers = auth_headers["user_id"], auth_headers["headers"]
+    plan_id = db.create_plan(
+        uid, "Unknown Test 100K", RACE_DATE, "time", 15.0, 12,
+        course_distance_km=104.0, course_elevation_gain_m=5500.0,
+        start_date=date.today().isoformat(), days_per_week=3,
+    )  # fmt: skip
+    goal = client.get(f"/api/plans/{plan_id}/goal", headers=headers).json()
+    f = goal["feasibility"]
+    assert f["verdict"] == "unsupported" and "more_days" in f["levers"]
+    assert f["needed_h"] > f["capacity_h"] > 0
+    reassessed = client.post(f"/api/plans/{plan_id}/goal/reassess", json={}, headers=headers).json()
+    assert reassessed["feasibility"]["verdict"] == "unsupported"
+
+
+def test_plan_goal_feasibility_is_null_without_a_course(client, auth_headers):
+    uid, headers = auth_headers["user_id"], auth_headers["headers"]
+    plan_id = db.create_plan(uid, "No Course", RACE_DATE, "time", 5.0, 12, start_date=date.today().isoformat())
+    assert client.get(f"/api/plans/{plan_id}/goal", headers=headers).json()["feasibility"] is None

@@ -11,6 +11,7 @@ import {
   goalPillLabel,
   Lang,
   PlanGoal,
+  feasibilityNotice,
   planSupportNotice,
   reassessPlanGoal,
 } from "@/lib/goalAssessment";
@@ -48,6 +49,8 @@ export function GoalPill({
   const assessment = goal.assessment;
   const suggested = goal.status.suggested_mins;
   const supportNotice = planSupportNotice(assessment, lang);
+  const feasibility = goal.feasibility;
+  const feasibilityText = feasibilityNotice(feasibility, lang);
 
   const target = goal.target_time_hours ? goal.target_time_hours * 60 : null;
   let highlight: GoalKey | null = null;
@@ -143,6 +146,20 @@ export function GoalPill({
           {supportNotice && (
             <p data-testid="goal-plan-support" style={{ fontSize: "12px", color: "#b45309", margin: 0, lineHeight: 1.5 }}>
               {supportNotice}
+            </p>
+          )}
+
+          {feasibilityText && (
+            <p
+              data-testid="goal-feasibility"
+              style={{
+                fontSize: "12px",
+                color: feasibility?.verdict === "unsupported" ? "#b91c1c" : "#b45309",
+                margin: 0,
+                lineHeight: 1.5,
+              }}
+            >
+              {feasibilityText}
             </p>
           )}
 
