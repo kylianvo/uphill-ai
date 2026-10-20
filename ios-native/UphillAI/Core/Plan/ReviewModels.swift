@@ -131,6 +131,8 @@ struct PlanGoal: Decodable, Sendable, Equatable {
     let targetTimeHours: Double?
     /// Whether the athlete's week and training venue can hold the goal; nil without a course or a time.
     var feasibility: GoalFeasibility?
+    /// Measured aerobic speed against the B and A paths; nil until there are a few weeks of runs.
+    var path: GoalPath?
 }
 
 struct GoalStatus: Decodable, Sendable, Equatable {

@@ -294,6 +294,15 @@ def feasibility_for(plan: dict[str, Any], assessment: dict[str, Any] | None = No
     }
 
 
+def path_for(plan: dict[str, Any]) -> dict[str, Any] | None:
+    """B and A path status from the athlete's measured aerobic speed (services/aerobic_speed); None until
+    there is enough history."""
+    from services import fitness_tracking
+
+    athlete = db.get_user_by_id(plan["user_id"]) if plan.get("user_id") else None
+    return fitness_tracking.path_payload(fitness_tracking.refresh(plan, athlete))
+
+
 def status(assessment: dict[str, Any] | None, target_time_hours: float | None) -> dict[str, Any]:
     """Plan-header pill state from the latest assessment vs Time Target."""
     goals = (assessment or {}).get("goals")
@@ -342,4 +351,5 @@ def plan_goal(plan: dict[str, Any]) -> dict[str, Any]:
         "status": status(assessment, plan.get("target_time_hours")),
         "target_time_hours": plan.get("target_time_hours"),
         "feasibility": feasibility_for(plan, assessment),
+        "path": path_for(plan),
     }

@@ -14770,6 +14770,66 @@
           }
         }
       }
+    },
+    "ahead": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vượt lộ trình"
+          }
+        }
+      }
+    },
+    "on track": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "đúng lộ trình"
+          }
+        }
+      }
+    },
+    "behind": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "chậm lộ trình"
+          }
+        }
+      }
+    },
+    "Aerobic speed is %@%% faster than at the start.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tốc độ aerobic nhanh hơn %@%% so với lúc bắt đầu."
+          }
+        }
+      }
+    },
+    "Aerobic speed is %@%% slower than at the start.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tốc độ aerobic chậm hơn %@%% so với lúc bắt đầu."
+          }
+        }
+      }
+    },
+    "Early read: only a few weeks of runs.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mới đo sơ bộ: mới có vài tuần chạy."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

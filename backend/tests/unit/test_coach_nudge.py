@@ -95,3 +95,14 @@ def test_a_vietnamese_push_names_the_reason_in_vietnamese():
     assert "(bận)" in coach_nudge.fallback_text(f, "push", "vi") and "(busy)" in coach_nudge.fallback_text(
         f, "push", "en"
     )
+
+
+def test_training_behind_the_b_path_is_a_plain_heads_up_and_ahead_is_encouraged():
+    behind = {"b": "behind", "a": "behind", "measured_pct": 0.1, "weeks": 6, "confidence": "medium"}
+    ahead = {"b": "ahead", "a": "on", "measured_pct": 3.0, "weeks": 6, "confidence": "medium"}
+    ws = _week(1, 3) + _week(2, 3)
+    assert coach_nudge.tone_for(facts(ws, path=behind)) == "heads_up"
+    assert coach_nudge.tone_for(facts(ws, path={**behind, "confidence": "low"})) is None
+    f = facts(ws, path=ahead)
+    assert coach_nudge.tone_for(f) == "encourage"
+    assert coach_nudge.grounded(coach_nudge.fallback_text(f, "encourage", "en"), f)
