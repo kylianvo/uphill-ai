@@ -206,14 +206,24 @@ struct PlanView: View {
                         // 1. Race and goal header
                         raceGoalHeader
 
-                        // 2. Summary carousel
+                        // 2. Today, journey and the coach message
+                        TodayCard(focus: model.todayFocus, onOpen: { selectedWorkout = $0 })
+                            .padding(.horizontal, UH.Space.regular)
+                        if let journey = model.journey {
+                            JourneyStrip(journey: journey).padding(.horizontal, UH.Space.regular)
+                        }
+                        if let nudge = model.coachNudge {
+                            CoachNudgeCard(nudge: nudge).padding(.horizontal, UH.Space.regular)
+                        }
+
+                        // 3. Summary carousel
                         SummaryCarousel(model: model,
                                         adapting: generation.running?.kind == .adaptWeek ? model.selectedWeek : nil,
                                         onReview: { showReview = true }, onAdapt: { showAdapt = true },
                                         onGoal: { showGoal = true },
                                         initialVolumeMode: initialVolumeMode)
 
-                        // 3. Coach review card
+                        // 4. Coach review card
                         CoachReviewCard(model: model, onOpenReview: { showReview = true }, initialExpanded: initialCoachExpanded)
                             .padding(.horizontal, UH.Space.regular)
 
@@ -567,6 +577,19 @@ struct PlanView: View {
                         }
                         .accessibilityIdentifier("plan.goalpill")
                     }
+                }
+                if let journey = model.journey, !journey.builtAroundYou.isEmpty {
+                    Button { showSchedule = true } label: {
+                        Label {
+                            Text(verbatim: journey.followsSchedule ? journey.builtAroundYou : L("Some upcoming weeks don't follow your schedule."))
+                        } icon: {
+                            Image(systemName: journey.followsSchedule ? "slider.horizontal.3" : "exclamationmark.circle")
+                        }
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(journey.followsSchedule ? UH.Palette.secondary : UH.Palette.warningInk)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("plan.builtAroundYou")
                 }
             }
         }

@@ -77,6 +77,7 @@ _SPAN_NAMES = frozenset(
         "_tools_condition",
         "block_narrative",
         "week_brief",
+        "coach_nudge",
         "chat_summary",
         "coach_chat.turn",
         "final_generate",
@@ -116,6 +117,7 @@ _FEATURES = frozenset(
         "workout_ai_create",
         "block_narrative",
         "week_brief",
+        "coach_nudge",
         "gear_finder",
         "nutrition_lab",
         "kb_distill",
@@ -201,6 +203,7 @@ _PROMPT_NAMES = frozenset(
         "plan_single_workout",
         "block_narrative",
         "week_brief",
+        "coach_nudge",
         "llm_judge",
     }
 )
