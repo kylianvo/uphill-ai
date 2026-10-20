@@ -2623,6 +2623,34 @@ async def _generate_next_block_for_athlete(
     if readiness and readiness.message:
         context_lines.append(f"  RACE READINESS: {readiness.message}")
         brief_decision_log.append(readiness.message)
+    # The generator works in minutes, the benchmark is in km: say what the path means for this week in minutes
+    # and how long the long run should be, so a flat or shrinking build is asked for, not just linted.
+    try:
+        from services import goal_demands, goal_service
+        from services.athlete_tier import week_capacity_parts
+        from services.plan_generator import PlanGenerator
+
+        profile = get_profile(plan.get("athlete_tier"))
+        owner_row = get_user_by_id(athlete_id) or {}
+        flat = PlanGenerator.flat_zone2_pace(owner_row, plan.get("goal_type"), plan.get("athlete_tier"))
+        if readiness and readiness.floor_km and flat:
+            context_lines.append(
+                f"  WEEK TARGET: build this week to about {readiness.floor_km * flat:.0f}+ minutes of running "
+                f"(at most {readiness.cap_km * flat:.0f}); a build week must not total less than the last build week."
+            )
+        goal_demand = goal_service.demands_for(plan, None)
+        if goal_demand:
+            line = goal_demands.long_run_line(
+                all_workouts,
+                block_start,
+                total_weeks,
+                goal_demand,
+                week_capacity_parts(profile, plan.get("days_per_week"))[1],
+            )
+            if line:
+                context_lines.append(f"  {line}")
+    except Exception:
+        _goal_logger.exception("week target lines failed", extra={"fields": {"plan_id": request.plan_id}})
     # Whether the goal times are backed by what this plan can deliver: the athlete's brief says so
     # in plain words (the generator already gets the readiness path above).
     try:
@@ -2631,6 +2659,21 @@ async def _generate_next_block_for_athlete(
         brief_decision_log.extend(plan_adequacy.summary_lines(goal_service.plan_adequacy_for(plan)))
     except Exception:
         _goal_logger.exception("plan support for brief failed", extra={"fields": {"plan_id": request.plan_id}})
+    try:
+        from services import a_gate, fitness_tracking, goal_service
+
+        adequacy = goal_service.plan_adequacy_for(plan)
+        gate = a_gate.evaluate(
+            fitness_tracking.refresh(plan, get_user_by_id(athlete_id)),
+            readiness_flag=get_recent_readiness_summary(athlete_id).get("readiness_flag"),
+            workouts=all_workouts,
+            before_week=block_start,
+            plan_supported=adequacy.a_supported if adequacy else True,
+        )
+        context_lines.append(f"  {a_gate.prompt_line(gate)}")
+        brief_decision_log.append(a_gate.log_line(gate))
+    except Exception:
+        _goal_logger.exception("A-goal gate failed", extra={"fields": {"plan_id": request.plan_id}})
     if context_lines:
         block_context = "\n".join(context_lines)
 
@@ -2647,6 +2690,21 @@ async def _generate_next_block_for_athlete(
 
     readiness_summary = get_recent_readiness_summary(athlete_id, days=7)
     historical_ceiling = get_user_activity_ceiling(athlete_id)
+
+    # The athlete's level follows the volume they actually train. The stored weekly km is what they typed at
+    # onboarding; once the plan has built past it (no watch to say so), the generator must see the real number.
+    try:
+        from services.plan_generator import PlanGenerator
+
+        trained_km = race_readiness.completed_weekly_km(
+            all_workouts,
+            block_start,
+            PlanGenerator.flat_zone2_pace(fresh_user, plan.get("goal_type"), plan.get("athlete_tier")),
+        )
+        if trained_km and trained_km > float(fresh_user.get("current_weekly_km") or 0):
+            fresh_user = {**fresh_user, "current_weekly_km": round(trained_km, 1)}
+    except Exception:
+        _goal_logger.exception("trained volume failed", extra={"fields": {"plan_id": request.plan_id}})
 
     race_info = {
         "name": plan.get("race_name", "Training Plan"),
@@ -4312,6 +4370,7 @@ def _reassess_plan_goal(plan_id: int, owner_id: int, request: GoalReassessReques
         "status": goal_service.status(assessment, plan.get("target_time_hours")),
         "target_time_hours": plan.get("target_time_hours"),
         "feasibility": goal_service.feasibility_for(plan, assessment),
+        "path": goal_service.path_for(plan),
     }
 
 
@@ -4338,6 +4397,69 @@ def get_plan_goal(
     plan_id: int, background_tasks: BackgroundTasks, lang: str = "en", user: dict[str, Any] = Depends(get_current_user)
 ):
     return _get_plan_goal(plan_id, user["id"], background_tasks, lang)
+
+
+def _plan_journey(plan_id: int, owner_id: int) -> dict[str, Any]:
+    from datetime import date
+
+    from services import plan_journey
+
+    plan = _goal_plan(plan_id, owner_id)
+    return plan_journey.journey(plan, get_plan_workouts(plan_id), date.today())
+
+
+@app.get("/api/plans/{plan_id}/journey")
+def get_plan_journey(plan_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    return _plan_journey(plan_id, user["id"])
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/journey")
+def coach_get_plan_journey(
+    athlete_id: int, plan_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)
+):
+    return _plan_journey(plan_id, athlete_id)
+
+
+async def _plan_nudge(plan_id: int, owner_id: int, lang: str) -> dict[str, Any]:
+    from datetime import date
+
+    import db
+    from services import coach_nudge, goal_service
+
+    lang = "vi" if lang == "vi" else "en"
+    plan = _goal_plan(plan_id, owner_id)
+    today = date.today()
+    workouts = get_plan_workouts(plan_id)
+    latest = db.get_latest_goal_assessment(plan_id)
+    shown = goal_service.with_plan_support(goal_service._present(latest), plan) if latest else None
+    feasibility = goal_service.feasibility_for(plan, shown)
+    support = (shown or {}).get("plan_support")
+    facts = coach_nudge.facts_for(
+        plan,
+        workouts,
+        today,
+        readiness_flag=db.get_recent_readiness_summary(owner_id).get("readiness_flag"),
+        feasibility_verdict=(feasibility or {}).get("verdict"),
+        plan_supported=support["a_supported"] if support else True,
+        path=goal_service.path_for(plan),
+    )
+    tone = coach_nudge.tone_for(facts)
+    if tone is None:
+        return {"nudge": None}
+    cached = db.get_coach_nudge(plan_id, today, lang)
+    if cached and cached["facts_hash"] == coach_nudge.facts_hash(facts, tone, lang):
+        return {"nudge": cached}
+    owner = get_user_by_id(owner_id) or {}
+    made = await coach_nudge.nudge(facts, lang, owner.get("gemini_api_key") or settings.GEMINI_API_KEY)
+    if made is None:
+        return {"nudge": None}
+    db.upsert_coach_nudge(plan_id, today, lang, made)
+    return {"nudge": made}
+
+
+@app.get("/api/plans/{plan_id}/coach-nudge")
+async def get_plan_coach_nudge(plan_id: int, lang: str = "en", user: dict[str, Any] = Depends(get_current_user)):
+    return await _plan_nudge(plan_id, user["id"], lang)
 
 
 @app.post("/api/plans/{plan_id}/goal/reassess")

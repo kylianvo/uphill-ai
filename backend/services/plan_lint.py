@@ -40,6 +40,7 @@ class Prefs:
     days_per_week: int | None = None
     demands: "Demands | None" = None  # the goal's physical demands (enables the specificity checks)
     flat_only: bool = False  # no training mountain or local hills: climbing cannot be judged on gain
+    total_weeks: int | None = None  # lets the specificity checks find the last pre-taper week
 
 
 @dataclass(frozen=True)
@@ -285,6 +286,7 @@ def lint_week(
 
 TIME_ON_FEET_SHARE = 0.90  # the longest session must reach 90% of the target (or of what the days can hold)
 GRADIENT_SHARE = 0.60  # long runs must reach 60% of the course steepness (or of the training mountain's)
+SPECIFICITY_WEEKS_BEFORE_END = 3  # taper, race week and the recovery week close the plan
 MIN_STEEP_M_PER_KM = 25.0  # flatter courses need no climbing rehearsal
 LATE_WEEKS = 4
 _NO_CLIMB_MODES = {"skip", "indoor", "chill"}
@@ -297,9 +299,13 @@ def _specificity(
     d = prefs.demands if prefs else None
     by = _by_week(workouts)
     peaks = sorted(w for w in weeks if any(x.get("phase") == "Peak" for x in by.get(w, [])))
-    if d is None or not peaks:
+    last_build = prefs.total_weeks - SPECIFICITY_WEEKS_BEFORE_END if prefs and prefs.total_weeks else None
+    if d is None:
         return []
-    anchor = peaks[-1]
+    # Models rarely label a "Peak" phase: the last pre-taper week is the anchor when the plan length is known.
+    anchor = last_build if last_build in weeks else (peaks[-1] if peaks else None)
+    if anchor is None:
+        return []
     training = [w for w in sorted(by) if w <= anchor and any(x.get("phase") in ("Build", "Peak") for x in by[w])]
     if not training:
         return []

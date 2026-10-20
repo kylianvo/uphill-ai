@@ -69,7 +69,9 @@ def test_a_timeline_that_cannot_reach_the_benchmark_is_at_risk_and_says_so():
     r = assess_week(history(20, 22, 24, 18, 25, 26), 7, total_weeks=12, distance_km=56.4, max_prog=0.10)
     assert r.status == "at_risk" and r.floor_km == r.cap_km
     assert "cannot reach" in r.message and r.reachable_km < 80
-    assert readiness_issue(r, 7, 1) is None  # at_risk is reported, not forced past the cap
+    assert readiness_issue(r, 7, 1) is not None  # a flat week is still asked to build as the cap allows
+    assert readiness_issue(r, 7, 1, push_at_risk=False) is None  # goal adequacy is not penalised for it
+    assert readiness_issue(r, 7, 28.0) is None  # at the cap (within tolerance) is the best feasible path
 
 
 def test_nothing_to_judge_without_distance_history_or_in_the_taper():
@@ -163,3 +165,86 @@ def test_flat_zone2_pace_reads_the_athletes_stored_zone_and_never_raises():
     assert (
         PlanGenerator.flat_zone2_pace({}, "time", None) is None or PlanGenerator.flat_zone2_pace({}, "time", None) > 0
     )
+
+
+def test_an_unreachable_benchmark_still_demands_the_best_reachable_build():
+    from services import race_readiness as rr
+
+    r = rr.Readiness("at_risk", "100K", 120.0, 130.0, 60.0, 64.2, 64.2, 90.0, 9, "msg")
+    assert rr.readiness_issue(r, 5, 55.0) is not None  # flat week: should build at the cap
+    assert rr.readiness_issue(r, 5, 63.0) is None  # within tolerance of the cap
+    assert rr.readiness_issue(r, 5, 55.0, capacity_km=50.0) is None  # the athlete's week cannot hold more
+
+
+def test_a_recovery_week_has_no_floor_even_when_at_risk():
+    from services import race_readiness as rr
+
+    r = rr.Readiness("at_risk", "100K", 120.0, 130.0, 60.0, 0.0, 64.2, 90.0, 9, "msg")
+    assert rr.readiness_issue(r, 4, 40.0) is None
+
+
+def _ws(*rows):
+    return [{"week_number": 3, "day_of_week": d, "type": t, "duration_minutes": m} for d, t, m in rows]
+
+
+def test_suggested_minutes_scale_easy_and_long_runs_within_the_caps_and_leave_quality_and_strength_alone():
+    from services.race_readiness import suggest_minutes
+
+    ws = _ws(("Tuesday", "Easy", 60), ("Wednesday", "Tempo", 50), ("Thursday", "Muscular Endurance", 45),
+             ("Friday", "Easy", 60), ("Sunday", "Long Run", 110))  # fmt: skip
+    # run minutes now: 60 + 50 + 60 + 110 = 280 (ME is not run time); ask for 340
+    text = suggest_minutes(ws, 340, weekday_max=75, long_share_cap=0.5)
+    assert text.startswith("Set these sessions to")
+    assert "Tempo" not in text and "Muscular" not in text
+    for token in ("Tuesday Easy", "Friday Easy", "Sunday Long Run"):
+        assert token in text
+    nums = {part.split(" min")[0].rsplit(" ", 1)[1]: 1 for part in text.split(", ")}  # every figure is a number
+    assert all(n.isdigit() for n in nums)
+
+
+def test_suggested_minutes_never_exceed_the_weekday_maximum():
+    from services.race_readiness import suggest_minutes
+
+    ws = _ws(("Tuesday", "Easy", 60), ("Sunday", "Long Run", 100))
+    text = suggest_minutes(ws, 400, weekday_max=70, long_share_cap=0.40)
+    assert "Tuesday Easy 70 min" in text
+
+
+def test_no_suggestion_when_nothing_can_be_scaled():
+    from services.race_readiness import suggest_minutes
+
+    assert suggest_minutes(_ws(("Tuesday", "Tempo", 50)), 300, weekday_max=75, long_share_cap=0.33) == ""
+
+
+def test_completed_weekly_km_follows_what_the_athlete_actually_ran():
+    from services.race_readiness import completed_weekly_km
+
+    def wk(week, minutes, done=True):
+        return [
+            {
+                "week_number": week,
+                "day_of_week": "Tuesday",
+                "type": "Easy",
+                "duration_minutes": minutes,
+                "is_completed": int(done),
+            },
+            {
+                "week_number": week,
+                "day_of_week": "Sunday",
+                "type": "Long Run",
+                "duration_minutes": minutes,
+                "is_completed": int(done),
+            },
+            {
+                "week_number": week,
+                "day_of_week": "Friday",
+                "type": "Strength",
+                "duration_minutes": 45,
+                "is_completed": 1,
+            },
+        ]
+
+    ws = wk(1, 100) + wk(2, 120) + wk(3, 90, done=False)
+    assert completed_weekly_km(ws, before_week=3, flat_pace_min_km=5.0) == (240 + 200) / 2 / 5.0  # weeks 1-2 only
+    assert completed_weekly_km(ws, before_week=1, flat_pace_min_km=5.0) is None
+    assert completed_weekly_km(ws, before_week=3, flat_pace_min_km=None) is None

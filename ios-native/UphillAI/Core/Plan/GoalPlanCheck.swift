@@ -76,3 +76,29 @@ extension GoalAssessment {
         )
     }
 }
+
+/// Is the athlete getting faster on the path to B and A (`services/aerobic_speed.py`)?
+struct GoalPath: Decodable, Sendable, Equatable {
+    let b: String  // ahead | on | behind
+    let a: String
+    let measuredPct: Double
+    let expectedPct: Double
+    let weeks: Int
+    let confidence: String  // low | medium | high
+
+    static func word(_ status: String) -> String {
+        switch status {
+        case "ahead": L("ahead")
+        case "on": L("on track")
+        default: L("behind")
+        }
+    }
+
+    var line: String {
+        measuredPct >= 0
+            ? L("Aerobic speed is %@%% faster than at the start.", RaceDisplay.number(measuredPct))
+            : L("Aerobic speed is %@%% slower than at the start.", RaceDisplay.number(-measuredPct))
+    }
+
+    var note: String? { confidence == "low" ? L("Early read: only a few weeks of runs.") : nil }
+}
