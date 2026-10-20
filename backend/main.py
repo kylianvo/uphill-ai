@@ -2649,6 +2649,16 @@ async def _generate_next_block_for_athlete(
             )
             if line:
                 context_lines.append(f"  {line}")
+            from services.training_venues import Venues
+
+            venues = Venues.from_race_info(plan)
+            flat_only = not venues.local_hills and not venues.training_mountain and not venues.mountain_days
+            for extra in (
+                goal_demands.back_to_back_line(block_start, total_weeks, goal_demand, plan.get("days_per_week")),
+                goal_demands.climb_line(block_start, total_weeks, goal_demand, flat_only),
+            ):
+                if extra:
+                    context_lines.append(f"  {extra}")
     except Exception:
         _goal_logger.exception("week target lines failed", extra={"fields": {"plan_id": request.plan_id}})
     # Whether the goal times are backed by what this plan can deliver: the athlete's brief says so

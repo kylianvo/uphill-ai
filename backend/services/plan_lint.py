@@ -106,6 +106,40 @@ def _is_down(weeks: dict[int, list[dict[str, Any]]], wk: int) -> bool:
     return bool(prev) and week_minutes(ws) <= prev * 0.9
 
 
+def _day_minutes(ws: list[dict[str, Any]]) -> dict[int, float]:
+    out: dict[int, float] = {}
+    for w in ws:
+        if _day(w) is not None:
+            out[_day(w)] = out.get(_day(w), 0.0) + _min(w)
+    return out
+
+
+def is_b2b_week(ws: list[dict[str, Any]]) -> bool:
+    """Two consecutive days that each hold a long day's running (a back-to-back weekend)."""
+    dm = _day_minutes(_active(ws))
+    return any(d + 1 in dm and dm[d] >= B2B_DAY_MIN and dm[d + 1] >= B2B_DAY_MIN for d in dm)
+
+
+def in_ultra_window(prefs: Prefs | None, week: int) -> bool:
+    """Is `week` one of the last build weeks of an ultra plan, where a back-to-back weekend belongs?"""
+    d = prefs.demands if prefs else None
+    if d is None or not prefs.total_weeks or d.distance_km < ULTRA_KM or (prefs.days_per_week or 5) < 5:
+        return False
+    lo, hi = _B2B_WINDOW_FROM_END
+    return prefs.total_weeks - lo <= week <= prefs.total_weeks - hi
+
+
+def _climbs(w: dict[str, Any]) -> bool:
+    if (
+        float(w.get("treadmill_incline") or 0) > 0
+        if str(w.get("treadmill_incline") or "").replace(".", "").isdigit()
+        else False
+    ):
+        return True
+    text = f"{w.get('title') or ''} {w.get('description') or ''}".lower()
+    return any(k in text for k in CLIMB_KEYWORDS)
+
+
 def lint_week(
     workouts: list[dict[str, Any]], week: int, profile: TierProfile, prefs: Prefs | None = None
 ) -> list[Issue]:
@@ -177,24 +211,45 @@ def lint_week(
             )
         )
 
+    # An ultra's last build weeks may hold a back-to-back weekend (at most twice), with a larger long-run share.
+    b2b_ok = False
+    if in_ultra_window(prefs, week) and is_b2b_week(ws):
+        lo, hi = _B2B_WINDOW_FROM_END
+        earlier = sum(1 for wk in range(prefs.total_weeks - lo, week) if wk in weeks and is_b2b_week(weeks[wk]))
+        b2b_ok = earlier < B2B_MAX_WEEKS
+    long_cap = profile.long_run_share_cap + (B2B_LONG_SHARE_BONUS if b2b_ok else 0.0)
+
+    # A recovery week is for recovering: no Zone 3+ session. (Taper and race weeks have their own shape.)
+    phase_now = next((w.get("phase") for w in ws if w.get("phase")), "")
+    planned_recovery = bool(prev_total) and total <= prev_total * RECOVERY_DROP
+    if phase_now not in ("Taper", "Race Week") and (phase_now == "Recovery" or planned_recovery) and week > 1:
+        for w in ws:
+            if is_hard(w) and w.get("type") != "Race":
+                issues.append(
+                    Issue(
+                        "HARD_IN_DOWN_WEEK",
+                        week,
+                        f"Week {week} is a recovery week: replace {_label(w)} with an easy Zone 1-2 session. "
+                        f"A recovery week has no Zone 3+ work.",
+                    )
+                )
+                break
+
     longest = max((_min(w) for w in ws if _is_long(w)), default=0.0)
-    if longest and longest / total > profile.long_run_share_cap + LONG_SHARE_TOLERANCE:
+    if longest and longest / total > long_cap + LONG_SHARE_TOLERANCE:
         issues.append(
             Issue(
                 "LONG_SHARE",
                 week,
                 f"Week {week}: the long run is {longest / total * 100:.0f}% of weekly time; the cap for this "
-                f"athlete is {profile.long_run_share_cap * 100:.0f}%. Shorten the long run or lengthen the "
+                f"athlete is {long_cap * 100:.0f}%. Shorten the long run or lengthen the "
                 f"other sessions.",
             )
         )
 
-    day_min: dict[int, float] = {}
-    for w in ws:
-        if _day(w) is not None:
-            day_min[_day(w)] = day_min.get(_day(w), 0.0) + _min(w)
+    day_min = _day_minutes(ws)
     for d in sorted(day_min):
-        if d + 1 in day_min and len(ws) >= 3:
+        if d + 1 in day_min and len(ws) >= 3 and not b2b_ok:
             pair = day_min[d] + day_min[d + 1]
             if pair > total * BACK_TO_BACK_SHARE and min(day_min[d], day_min[d + 1]) >= BACK_TO_BACK_MIN_DAY * total:
                 issues.append(
@@ -286,6 +341,14 @@ def lint_week(
 
 TIME_ON_FEET_SHARE = 0.90  # the longest session must reach 90% of the target (or of what the days can hold)
 GRADIENT_SHARE = 0.60  # long runs must reach 60% of the course steepness (or of the training mountain's)
+RECOVERY_DROP = 0.85  # a week this far under the one before is a planned recovery week (not a phase-change dip)
+ULTRA_KM = 80  # races at or above this get back-to-back weekends and climbing-specific work
+B2B_DAY_MIN = 90  # each day of a back-to-back weekend holds at least this much running
+B2B_LONG_SHARE_BONUS = 0.10  # a back-to-back week may put more of its time into the long run
+B2B_MAX_WEEKS = 2  # ...in at most this many of the last build weeks
+CLIMB_KEYWORDS = ("stair", "incline", "carry", "carries", "uphill", "hill")
+MIN_CLIMB_SESSIONS = 2  # climbing-load sessions in the build for a steep race without hills
+_B2B_WINDOW_FROM_END = (6, 3)  # the last four pre-taper weeks: total-6 .. total-3
 SPECIFICITY_WEEKS_BEFORE_END = 3  # taper, race week and the recovery week close the plan
 MIN_STEEP_M_PER_KM = 25.0  # flatter courses need no climbing rehearsal
 LATE_WEEKS = 4
@@ -339,6 +402,24 @@ def _specificity(
                     anchor,
                     f"Give the late long runs about {need:.0f} m D+/km of climbing (the steepest now climbs {best:.0f}): "
                     f"the course needs it.",
+                )
+            )
+    if d.steepness_m_per_km >= MIN_STEEP_M_PER_KM and prefs.flat_only:
+        build_weeks = [w for w in training if any(x.get("phase") in ("Build", "Peak") for x in by[w])]
+        climbing = [
+            x
+            for w in build_weeks
+            for x in by[w]
+            if (x.get("type") or "").lower() in ("muscular endurance", "strength", "interval", "tempo") and _climbs(x)
+        ]
+        if build_weeks and len(climbing) < MIN_CLIMB_SESSIONS:
+            issues.append(
+                Issue(
+                    "CLIMB_SPECIFICITY",
+                    anchor,
+                    f"The course climbs {d.steepness_m_per_km:.0f} m D+/km and the athlete has no hills: make the "
+                    f"Muscular Endurance session outdoor weighted carries, stair climbing or incline-treadmill "
+                    f"laps (not gym straight sets) in the build weeks.",
                 )
             )
     if profile.allows_intensity:

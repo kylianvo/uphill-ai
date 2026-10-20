@@ -78,3 +78,23 @@ def test_long_run_line_is_silent_without_history_or_after_the_build():
     assert goal_demands.long_run_line([], week=1, total_weeks=11, demands=d, profile_long_cap_min=185) is None
     ws = _plan_with_long_runs([110, 115, 120])
     assert goal_demands.long_run_line(ws, week=9, total_weeks=11, demands=d, profile_long_cap_min=185) is None
+
+
+def test_back_to_back_line_names_the_weekend_only_for_ultras_in_the_last_build_weeks():
+    d = goal_demands.compute(104.2, 5533, 14.67, 29)
+    on = goal_demands.back_to_back_line(week=6, total_weeks=11, demands=d, days_per_week=6)
+    assert on and "Saturday" in on and "Sunday" in on and "recovery week" in on
+    assert goal_demands.back_to_back_line(week=2, total_weeks=11, demands=d, days_per_week=6) is None
+    assert goal_demands.back_to_back_line(week=6, total_weeks=11, demands=d, days_per_week=4) is None
+    fifty = goal_demands.compute(56.4, 2946, 9.0, 12)
+    assert goal_demands.back_to_back_line(week=6, total_weeks=11, demands=fifty, days_per_week=6) is None
+
+
+def test_climb_line_only_for_steep_courses_without_hills():
+    d = goal_demands.compute(104.2, 5533, 14.67, 29)
+    line = goal_demands.climb_line(week=5, total_weeks=11, demands=d, flat_only=True)
+    assert line and "stair" in line and "53 m D+/km" in line
+    assert goal_demands.climb_line(week=5, total_weeks=11, demands=d, flat_only=False) is None
+    assert goal_demands.climb_line(week=1, total_weeks=11, demands=d, flat_only=True) is None
+    rolling = goal_demands.compute(42.0, 300, None, 7)
+    assert rolling is None

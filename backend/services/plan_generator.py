@@ -2246,8 +2246,8 @@ class PlanGenerator:
                 desc = "No running. Focus on full-body mobility, gentle stretching, and hydration."
                 fuel_tip = "Eat high-protein, nutrient-dense foods to rebuild muscle tissues."
                 wed_dur = 0.0
-            elif phase in ("Base", "Race Week") or not tier_profile.allows_intensity:
-                # Base is aerobic (Zone 1-2); a race week is not the week for a hard session.
+            elif phase in ("Base", "Race Week") or not tier_profile.allows_intensity or is_recovery_week:
+                # Base is aerobic (Zone 1-2); a race week or a recovery week is not for a hard session.
                 title = "Aerobic Capacity Run"
                 w_type = "Aerobic Capacity"
                 zone = "Zone 2"
@@ -2453,6 +2453,13 @@ class PlanGenerator:
                     # forbid ME or intensity get general strength instead.
                     me_ok = tier_profile.allows_me_blocks
                     sprint_ok = tier_profile.allows_intensity
+                    steep_climb_hint = (
+                        " Use stairs or an incline treadmill with a weighted pack when you can: climbing laps, not just a box."
+                        if course_distance_km
+                        and course_elevation_gain_m
+                        and course_elevation_gain_m / course_distance_km >= 25
+                        else ""
+                    )
                     zone = "Zone 1"
                     if phase == "Base" and me_ok:
                         title = "Muscular Endurance: Gym ME (Straight Sets)"
@@ -2467,7 +2474,9 @@ class PlanGenerator:
                             f"in the quads and glutes; ignore heart rate. Keep the next two days easy."
                         )
                         fuel_tip = "Drink amino acids post-workout for protein synthesis."
-                    elif phase == "Base" or (phase in ("Build", "Peak") and not me_ok and not sprint_ok):
+                    elif phase == "Base" or (
+                        phase in ("Build", "Peak") and not me_ok and (not sprint_ok or is_recovery_week)
+                    ):
                         title = "General Base Strength"
                         w_type = "Strength"
                         desc = (
@@ -2487,7 +2496,10 @@ class PlanGenerator:
                         if has_gym_access:
                             title = "Muscular Endurance: Weighted Step-Ups"
                             weight_pct = 10 if soft_start or week <= 6 else 15
-                            desc = f"Execute {steps} step-ups holding {weight_pct}% of your body weight on a 30cm box. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
+                            desc = (
+                                f"Execute {steps} step-ups holding {weight_pct}% of your body weight on a 30cm box. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
+                                + steep_climb_hint
+                            )
                             fuel_tip = "Consume electrolytes. Keep hydration nearby during strength efforts."
 
                             incline_pct = 12.0
@@ -2503,7 +2515,10 @@ class PlanGenerator:
                                 treadmill_sp = treadmill_settings_calc["speed_kph"]
                         else:
                             title = "Muscular Endurance: Bodyweight Step-Ups"
-                            desc = f"Execute {steps} bodyweight step-ups on a 30cm box, no added weight. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
+                            desc = (
+                                f"Execute {steps} bodyweight step-ups on a 30cm box, no added weight. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
+                                + steep_climb_hint
+                            )
                             fuel_tip = "Consume electrolytes. Keep hydration nearby during strength efforts."
                     elif phase in ("Build", "Peak"):
                         # Peak, or Build for a tier without ME: neuromuscular power.

@@ -259,3 +259,87 @@ def test_specificity_runs_on_the_last_pre_taper_week_when_no_peak_phase_is_label
     got = codes(lint_weeks(plan, {8}, SUB, prefs))
     assert "TIME_ON_FEET" in got
     assert "TIME_ON_FEET" not in codes(lint_weeks(plan, {5}, SUB, prefs))  # earlier weeks are not judged yet
+
+
+# --- ultra specificity: down weeks, back-to-back weekends, climbing load ----------------------------
+
+D100_ULTRA = goal_demands.compute(104.2, 5533, 14.67, 29)
+
+
+def _week(wk, rows, phase="Build"):
+    return [
+        s(wk, day, kind, minutes, zone=zone, phase=phase, title=title or kind)
+        for day, kind, minutes, zone, title in rows
+    ]
+
+
+def test_a_hard_session_in_a_recovery_week_is_flagged_but_not_in_a_build_week():
+    build = _week(
+        3,
+        [
+            ("Tuesday", "Easy", 80, "Zone 2", None),
+            ("Friday", "Tempo", 55, "Zone 3", None),
+            ("Sunday", "Long Run", 150, "Zone 2", None),
+        ],
+    )
+    deload = _week(
+        4,
+        [
+            ("Tuesday", "Easy", 60, "Zone 2", None),
+            ("Friday", "Tempo", 55, "Zone 3", None),
+            ("Sunday", "Long Run", 105, "Zone 2", None),
+        ],
+    )
+    plan = build + deload
+    assert "HARD_IN_DOWN_WEEK" in codes(lint_weeks(plan, {4}, SUB, Prefs()))
+    assert "HARD_IN_DOWN_WEEK" not in codes(lint_weeks(plan, {3}, SUB, Prefs()))
+
+
+def test_ultra_back_to_back_weekend_is_allowed_in_the_last_build_weeks_with_a_larger_long_run_share():
+    rows5 = [
+        ("Tuesday", "Easy", 90, "Zone 2", None),
+        ("Wednesday", "Easy", 80, "Zone 2", None),
+        ("Thursday", "Easy", 80, "Zone 2", None),
+        ("Saturday", "Easy", 120, "Zone 2", None),
+        ("Sunday", "Long Run", 175, "Zone 2", None),
+    ]
+    rows6 = [
+        ("Tuesday", "Easy", 80, "Zone 2", None),
+        ("Wednesday", "Easy", 70, "Zone 2", None),
+        ("Thursday", "Easy", 60, "Zone 2", None),
+        ("Saturday", "Easy", 150, "Zone 2", None),
+        ("Sunday", "Long Run", 240, "Zone 2", None),
+    ]
+    plan = _week(5, rows5) + _week(6, rows6)
+    prefs = Prefs(demands=D100_ULTRA, total_weeks=11)
+    got = codes(lint_weeks(plan, {6}, SUB, prefs))
+    assert "BACK_TO_BACK" not in got and "LONG_SHARE" not in got
+    early = codes(lint_weeks(plan, {6}, SUB, Prefs(demands=D100_ULTRA, total_weeks=20)))
+    assert "BACK_TO_BACK" in early  # far from the race it is still a defect
+
+
+def test_climbing_load_is_required_for_a_steep_race_when_there_are_no_hills():
+    flat = [
+        w
+        for wk in range(1, 9)
+        for w in _week(
+            wk,
+            [
+                ("Wednesday", "Muscular Endurance", 50, "Zone 2", "Gym ME box step-ups"),
+                ("Sunday", "Long Run", 150, "Zone 2", None),
+            ],
+            "Build" if wk > 3 else "Base",
+        )
+    ]
+    prefs = Prefs(days_per_week=6, demands=D100_ULTRA, total_weeks=11, flat_only=True)
+    assert "CLIMB_SPECIFICITY" in codes(lint_weeks(flat, {8}, SUB, prefs))
+    stairs = [
+        {**w, "title": "Weighted stair climbing laps"}
+        if w["type"] == "Muscular Endurance" and w["week_number"] >= 5
+        else w
+        for w in flat
+    ]
+    assert "CLIMB_SPECIFICITY" not in codes(lint_weeks(stairs, {8}, SUB, prefs))
+    assert "CLIMB_SPECIFICITY" not in codes(
+        lint_weeks(flat, {8}, SUB, Prefs(days_per_week=6, demands=D100_ULTRA, total_weeks=11))
+    )  # hills nearby
