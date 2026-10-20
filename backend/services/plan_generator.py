@@ -60,7 +60,7 @@ OUTPUT CONTRACT — this is the most important instruction and applies no matter
 You MUST return ONLY a JSON array of workout objects. NEVER wrap it in markdown fences like ```json, NEVER add prose before or after it. Each workout object MUST follow this exact schema:
    - `week_number` (integer: MUST be within the block range specified below)
    - `day_of_week` (string: 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
-   - `phase` (string: 'Base', 'Build', 'Peak', 'Taper', 'Race Week', 'Recovery'. IMPORTANT: Follow this exact progression — Base (early weeks) → Build (mid weeks) → Peak (highest intensity week, 1-2 weeks before taper) → Taper (the week immediately before Race Week, reduce volume to ~50%) → Race Week (the week containing the actual race event) → Recovery (final week after the race).)
+   - `phase` (string: 'Base', 'Build', 'Peak', 'Taper', 'Race Week', 'Recovery'. IMPORTANT: Follow this exact progression — Base (early weeks) → Build (mid weeks) → Peak (highest intensity week, 1-2 weeks before taper) → Taper (the 1-2 weeks immediately before Race Week: plans of 12+ weeks taper over two weeks, about -30% then -50% of peak volume; shorter plans one week at ~50%) → Race Week (the week containing the actual race event) → Recovery (final week after the race).)
    - `title` (string: name of workout)
    - `type` (string: 'Easy', 'Tempo', 'Interval', 'Long Run', 'Strength', 'Rest', 'Race', 'Recovery', 'Muscular Endurance', 'Walk/Run'. Use 'Walk/Run' for ANY session built from alternating jog and walk intervals — never label such a session 'Interval', which means high-intensity repeats and is displayed to the athlete as hard, maximal work.)
    - `duration_minutes` (number: duration of workout)
@@ -468,18 +468,24 @@ class PlanGenerator:
         return f"{pace_str} /km", distance_km
 
     @staticmethod
+    def taper_weeks(total_weeks: int) -> int:
+        """Book: taper over 2-3 weeks (40-60% less volume). Plans of 12+ weeks get two steps, shorter ones one."""
+        return 2 if total_weeks >= 12 else 1
+
+    @staticmethod
     def phase_for_week(w: int, total_weeks: int) -> str:
         """The plan's phase for week `w`: structural, so it is set here and never left to the model."""
         last = total_weeks - 1  # race week
+        taper = PlanGenerator.taper_weeks(total_weeks)
         peak_weeks = 2 if last >= 6 else (1 if last >= 2 else 0)
-        remaining = last - 1 - peak_weeks
+        remaining = last - taper - peak_weeks
         builds = remaining // 2
         bases = remaining - builds
         if w == total_weeks:
             return "Recovery"
         if w == last:
             return "Race Week"
-        if w == last - 1:
+        if w >= last - taper:
             return "Taper"
         if w > bases + builds:
             return "Peak"
@@ -1402,6 +1408,76 @@ class PlanGenerator:
                         "Zone 2", float(wo.get("duration_minutes") or 0), est_zones
                     )
 
+        def _add_climb_session(wos: list[dict[str, Any]]) -> None:
+            """A race with real climbing needs weekly vert. An athlete with a treadmill or stairs but no hills that
+            day gets one easy weekday run per Base/Build/Peak week turned into a climb session (book: incline
+            treadmill or stairs substitute for the mountain). Mountain days and ME already count as climbing."""
+            if terrain != "trail" or not (course_elevation_gain_m and course_distance_km):
+                return
+            rate = float(course_elevation_gain_m) / float(course_distance_km)
+            if rate < 20 or not (venues.use_treadmill or venues.stair_access):
+                return
+            by_week: dict[int, list[dict[str, Any]]] = {}
+            for wo in wos:
+                if isinstance(wo.get("week_number"), int):
+                    by_week.setdefault(wo["week_number"], []).append(wo)
+            for week_no, rows in by_week.items():
+                if rows[0].get("phase") not in ("Base", "Build", "Peak"):
+                    continue
+                if any(
+                    float(str(r.get("treadmill_incline") or 0).split("-")[0] or 0) >= 6 or r.get("mountain_climb_rate")
+                    for r in rows
+                    if r.get("type") != "Rest"
+                ):
+                    continue
+                long_day = next((r["day_of_week"] for r in rows if r.get("type") == "Long Run"), None)
+                days = list(_PRIORITY_DAY_ORDER)
+                eve = days[(days.index(long_day) - 1) % 7] if long_day in days else None
+                pool = [
+                    r
+                    for r in rows
+                    if r.get("type") in ("Easy", "Aerobic Capacity")
+                    and r.get("day_of_week") != eve
+                    and not venues.hills_on(r["day_of_week"])
+                    and float(r.get("duration_minutes") or 0) >= 40
+                ]
+                if not pool:
+                    continue
+                wo = max(pool, key=lambda r: float(r["duration_minutes"]))
+                minutes = round(min(float(wo["duration_minutes"]), 75 + 2 * week_no))
+                main = max(20, minutes - 15)
+                wo["duration_minutes"] = float(minutes)
+                wo["target_zone"], wo["target_hr_range"] = "Zone 2", z2_range
+                if venues.use_treadmill:
+                    incline = min(venues.treadmill_incline_cap, 12.0)
+                    slower, faster = PlanGenerator.parse_pace_range(est_zones["zone2_pace"])
+                    speed = TrainingRules.calculate_treadmill_settings((slower + faster) / 2, incline)["speed_kph"]
+                    wo["treadmill_incline"] = f"{incline - 1:g}-{incline:g}"
+                    wo["treadmill_speed"] = f"{speed - 0.4:.1f}-{speed:.1f}"
+                    wo["target_pace"] = f"{PlanGenerator.decimal_to_pace_str(60 / speed)} /km"
+                    wo["distance_km"] = round(speed * main / 60, 1)
+                    wo["elevation_gain_m"] = round(wo["distance_km"] * incline * 10)
+                    wo["grade_percent"] = incline
+                    where_en, where_vi = (
+                        f"at {incline:g}% incline on the treadmill",
+                        f"ở độ dốc {incline:g}% trên treadmill",
+                    )
+                else:
+                    wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
+                    wo["target_pace"], wo["distance_km"] = "", 0.0
+                    wo["elevation_gain_m"], wo["grade_percent"] = round(main / 60 * 600), 0.0
+                    where_en, where_vi = "on stairs (up, then walk down)", "trên cầu thang (leo lên, đi bộ xuống)"
+                wo["mountain_climb_rate"] = None
+                wo["title"] = "Climb Session (Zone 2)" if lang != "vi" else "Buổi Climb (Zone 2)"
+                wo["description"] = (
+                    f"Warm up 10 min easy flat → {main} min steady Zone 2 climbing {where_en}, power-hike the steep parts "
+                    f"→ 5 min cool-down flat. Keep HR in Zone 2; this is your weekly stand-in for the mountain."
+                    if lang != "vi"
+                    else f"Warm-up 10 phút nhẹ trên mặt phẳng → {main} phút Zone 2 đều, leo {where_vi}, đi bộ nhanh đoạn dốc "
+                    f"→ 5 phút cool-down trên mặt phẳng. Giữ HR trong Zone 2; đây là buổi thay cho chạy núi hằng tuần."
+                )
+                wo["interval_reps"] = wo["interval_rep_value"] = wo["interval_rep_unit"] = None
+
         # Helper function to post-process and estimate target pace and distance for all workouts
         def post_process_workouts(wos: list[dict[str, Any]]) -> list[dict[str, Any]]:
             # Safety net: strip any week-1 workouts that land before the plan start day
@@ -1484,8 +1560,8 @@ class PlanGenerator:
                 wo["elevation_gain_m"], wo["grade_percent"] = PlanGenerator.resolve_elevation_and_grade(
                     wo, w_type, terrain, wo["distance_km"], course_elevation_gain_m, course_distance_km
                 )
-                if not venues.outdoor_climbing:
-                    # No hills, mountain days or mountain declared: an outdoor run has no climbing to report.
+                if not (venues.hills_on(wo["day_of_week"]) or (not venues.mountain_days and venues.outdoor_climbing)):
+                    # No hills that day (not a mountain day, no hills at home): an outdoor run has no climbing.
                     wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0
                 # Treadmill speed applies its own incline slowdown, so it must start from the flat pace.
                 flat_pace = wo["target_pace"]
@@ -1494,7 +1570,13 @@ class PlanGenerator:
                 on_mountain = venues.is_mountain_day(wo["day_of_week"]) or (
                     not venues.mountain_days and venues.outdoor_climbing
                 )
-                if terrain == "trail" and w_type in ("Easy", "Long Run") and flat_pace and dur > 0 and on_mountain:
+                if (
+                    terrain == "trail"
+                    and w_type in ("Easy", "Long Run", "Aerobic Capacity")
+                    and flat_pace
+                    and dur > 0
+                    and on_mountain
+                ):
                     from services.trail_pace import trail_session
 
                     rate = PlanGenerator.resolve_climb_rate(
@@ -1539,6 +1621,7 @@ class PlanGenerator:
             for wo in wos:
                 if isinstance(wo.get("week_number"), int):
                     wo["phase"] = PlanGenerator.phase_for_week(wo["week_number"], total_weeks)
+            _add_climb_session(wos)
             _soften_recovery_weeks(wos)
             if lang == "vi":
                 for wo in wos:
@@ -2265,7 +2348,7 @@ class PlanGenerator:
         me_seen = (race_info.get("me_history") or {}).get("done") or 0
         W = total_weeks - 1
         num_peak_weeks = 2 if W >= 6 else (1 if W >= 2 else 0)
-        remaining_weeks = W - 1 - num_peak_weeks
+        remaining_weeks = W - PlanGenerator.taper_weeks(total_weeks) - num_peak_weeks
         num_build_weeks = remaining_weeks // 2
         num_base_weeks = remaining_weeks - num_build_weeks
 
@@ -2293,7 +2376,8 @@ class PlanGenerator:
             if ph == "Peak":
                 return max(1.4 - (0.05 * (w - num_base_weeks - num_build_weeks - 1)), ramp(w))
             if ph == "Taper":
-                return 0.5  # Reduced load — pre-race freshening
+                # Two-step taper on long plans: about -30% then -50% of the peak.
+                return 0.7 if w < total_weeks - 2 and PlanGenerator.taper_weeks(total_weeks) == 2 else 0.5
             if ph == "Race Week":
                 return 0.6
             return 0.4
@@ -2374,12 +2458,14 @@ class PlanGenerator:
                 # Reps/recovery fixed; warmup+cooldown scale with the day's
                 # actual duration, and cooldown absorbs any rounding
                 # remainder so the stated minutes always sum to wed_dur.
+                # Book: 30-40 min of Zone 4 a week is the ceiling, so one session carries at most ~30 min of work.
+                wed_dur = min(wed_dur, 65.0)
                 total_dur = round(wed_dur)
                 warmup, cooldown = PlanGenerator._warmup_cooldown_minutes(total_dur)
                 main_minutes = max(6, total_dur - warmup - cooldown)
-                reps = 4
+                reps = 5 if main_minutes >= 36 else 4
                 recovery_per_gap = 2
-                work_per_rep = max(1, round((main_minutes - (reps - 1) * recovery_per_gap) / reps))
+                work_per_rep = min(6, max(1, round((main_minutes - (reps - 1) * recovery_per_gap) / reps)))
                 main_actual = reps * work_per_rep + (reps - 1) * recovery_per_gap
                 cooldown = max(1, cooldown + (main_minutes - main_actual))
                 desc = (
@@ -2396,6 +2482,7 @@ class PlanGenerator:
                 # Warmup/cooldown scale with the day's actual duration; main
                 # is the exact remainder, so the stated minutes always sum
                 # to wed_dur.
+                wed_dur = min(wed_dur, 75.0)  # at most ~60 min of Zone 3 work in one session
                 total_dur = round(wed_dur)
                 warmup, cooldown = PlanGenerator._warmup_cooldown_minutes(total_dur)
                 main_minutes = max(5, total_dur - warmup - cooldown)

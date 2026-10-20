@@ -1346,7 +1346,9 @@ class TestPersonaFindings:
     def test_phase_labels_are_structural(self):
         phases = [PlanGenerator.phase_for_week(w, 12) for w in range(1, 13)]
         assert phases[-1] == "Recovery" and phases[-2] == "Race Week" and phases[-3] == "Taper"
-        assert phases[0] == "Base" and "Build" in phases and phases.count("Taper") == 1
+        assert phases[0] == "Base" and "Build" in phases and phases.count("Taper") == 2  # 12+ weeks: two-step taper
+        short = [PlanGenerator.phase_for_week(w, 8) for w in range(1, 9)]
+        assert short.count("Taper") == 1 and short[0] == "Base"
 
     def test_a_hard_session_in_a_recovery_week_becomes_an_easy_run_and_the_models_phase_label_is_overwritten(self):
         import json
