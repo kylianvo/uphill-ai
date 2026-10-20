@@ -2,7 +2,8 @@ from unittest.mock import patch
 
 from google.genai import types as genai_types
 
-from main import _resolve_course_match, _session_review_status
+from main import _resolve_course_match
+from services.block_history import session_review_status as _session_review_status
 from services.race_matcher import MatchedRace
 
 

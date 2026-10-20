@@ -4419,12 +4419,26 @@ def get_block_actual_volume(
             "matched_hours": round(matched_sec / 3600.0, 1),
             "matched_vert_m": round(matched_vert, 0),
             "matched_count": len(matched_rows),
+            "matched_workout_ids": {r.matched_workout_id for r in matched_rows},
             "unplanned_km": round(unplanned_km, 1),
             "unplanned_hours": round(unplanned_sec / 3600.0, 1),
             "unplanned_vert_m": round(unplanned_vert, 0),
             "unplanned_count": len(unplanned_rows),
             "total_activities_count": len(matched_rows) + len(unplanned_rows),
         }
+
+
+def actual_volume_with_ticked(actual_vol: dict[str, Any], completed_workouts: list[dict]) -> tuple[float, float, float]:
+    """(km, minutes, vert_m) for a prompt: watch totals plus sessions the athlete ticked
+    complete that have no matched activity (done without the watch). Counting watch data
+    alone read a mostly-done week as ~half done and triggered the under-80% hold band."""
+    matched_ids = actual_vol.get("matched_workout_ids", set())
+    ticked = [w for w in completed_workouts if w.get("id") not in matched_ids]
+    return (
+        actual_vol["total_actual_km"] + sum(w.get("distance_km") or 0 for w in ticked),
+        actual_vol["total_actual_minutes"] + sum(w.get("duration_minutes") or 0 for w in ticked),
+        actual_vol["total_actual_vert_m"] + sum(w.get("elevation_gain_m") or 0 for w in ticked),
+    )
 
 
 def get_week_planned_volume(plan_id: int, week_number: int) -> dict[str, Any]:

@@ -600,6 +600,32 @@ class TestAdaptWeekVolumeBounds:
         assert "do NOT progress volume" in ctx
         assert "do NOT " in ctx and "punishment" in ctx
 
+    def test_an_incomplete_week_with_hard_fatigue_uses_the_reduced_band_not_the_hold(self, client, auth_headers):
+        """Missing sessions and reporting Hard used to get the 0.95-1.02 hold, while the
+        prompt said to trim 10-15%. The lower feeling band must win."""
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [40, 40, 40], week1_completed=1)
+
+        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="hard")
+
+        assert "Prior-Week Adherence" in ctx
+        assert "follow the reduced volume bounds below, not a hold" in ctx
+        # hard 0.85-0.90 of Week 1's 120 planned min
+        assert "Target Full Week Total: 102-108 min" in ctx
+
+    def test_adapt_prompt_carries_the_same_session_history_as_next_block(self, client, auth_headers):
+        """Adapt used to see last week only as totals; it must now see each session's status."""
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [40, 40, 40], week1_completed=1)
+
+        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="moderate")
+
+        assert "Training history (most recent first):" in ctx
+        assert "Block 1 (Wk 1-1): 1/3 sessions (33%)" in ctx
+        assert "Session-by-session" in ctx
+        assert ": completed" in ctx
+        assert ": not logged" in ctx or ": MISSED" in ctx
+
     def test_a_peak_week_keeps_its_own_planned_volume(self, client, auth_headers):
         """Production report: adapting a Peak week sized it off the lighter week before
         (60.9 km -> 65 km) instead of the 81.6 km the plan had for it. The week being
