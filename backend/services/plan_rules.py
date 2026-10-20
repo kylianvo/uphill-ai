@@ -403,10 +403,13 @@ def missed_reason_rules(
             "Reason - busy/work/travel: everyday life stress counts as training load; resume the plan at its "
             "planned volume with no make-up [UA-R2]."
         )
+    # Computed outside the f-strings: reusing the quote character inside one is a 3.12-only syntax.
+    sick_tag = ", ongoing" if "sick" in ongoing else ""
+    pain_tag = ", ongoing" if "pain" in ongoing else ""
     if "sick" in by_reason:
         n = len({w.get("day_of_week") for w in by_reason["sick"]})
         lines.append(
-            f"Reason - illness ({n} day(s) missed{', ongoing' if "sick" in ongoing else ''}): the first {n} training day(s) back are easy aerobic Zone 1-2 only "
+            f"Reason - illness ({n} day(s) missed{sick_tag}): the first {n} training day(s) back are easy aerobic Zone 1-2 only "
             f"with no Zone 3+ work; run the first 2 sessions back at about 50% of their planned duration; do not "
             f"train through a cold [UA-R3, R4, R5, R7]."
         )
@@ -414,7 +417,7 @@ def missed_reason_rules(
     if "pain" in by_reason:
         n = len({w.get("day_of_week") for w in by_reason["pain"]})
         lines.append(
-            f"Reason - pain/injury ({n} day(s) missed{', ongoing' if "pain" in ongoing else ''}): no running while it hurts; use non-impact cross-training "
+            f"Reason - pain/injury ({n} day(s) missed{pain_tag}): no running while it hurts; use non-impact cross-training "
             f"(bike, swim) instead; take {n} gradual easy day(s) before any intensity; first sessions back at about "
             f"50% duration; no volume progression [UA-R6, R7, R4]. Coach safety note (not from the book): if the "
             f"pain persists, advise seeing a physio."
