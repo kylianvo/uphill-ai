@@ -719,3 +719,60 @@ class TestAdaptWeekVolumeBounds:
         ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="very_light")
 
         assert "a beginner's weekday run may be 20-30 minutes and that is correct" in ctx
+
+
+class TestMissedReason:
+    """update_workout_log keeps missed_reason in step with the missed flag."""
+
+    def _row(self, workout_id):
+        from sqlalchemy import text
+
+        import db
+
+        with db.engine.connect() as conn:
+            return conn.execute(
+                text("SELECT is_missed, is_completed, missed_reason FROM workouts WHERE id = :id"), {"id": workout_id}
+            ).fetchone()
+
+    def _workout(self, client, auth_headers):
+        import db
+
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [], week1_completed=0)
+        return db.get_plan_workouts(plan_id)[0]["id"]
+
+    def test_reason_is_saved_with_a_miss_and_cleared_on_unmiss_or_complete(self, client, auth_headers):
+        import db
+
+        wid = self._workout(client, auth_headers)
+        db.update_workout_log(wid, is_missed=1, missed_reason="sick")
+        assert tuple(self._row(wid)) == (1, 0, "sick")
+
+        db.update_workout_log(wid, is_missed=0)
+        assert tuple(self._row(wid)) == (0, 0, None)
+
+        db.update_workout_log(wid, is_missed=1, missed_reason="busy")
+        db.update_workout_log(wid, is_completed=1)
+        assert tuple(self._row(wid)) == (0, 1, None)
+
+    def test_reason_is_ignored_when_the_session_is_not_missed(self, client, auth_headers):
+        import db
+
+        wid = self._workout(client, auth_headers)
+        db.update_workout_log(wid, missed_reason="busy")
+        assert self._row(wid).missed_reason is None
+
+    def test_adapt_prompt_names_the_reason_and_applies_the_ceiling(self, client, auth_headers):
+        import db
+
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [40, 40, 40], week1_completed=2)
+        missed = [w for w in db.get_plan_workouts(plan_id) if w["week_number"] == 1 and not w["is_completed"]][0]
+        db.update_workout_log(missed["id"], is_missed=1, missed_reason="sick")
+
+        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="very_light")
+
+        assert "(reason: sick)" in ctx
+        assert "Reason - illness (1 day(s) missed)" in ctx
+        # 67% adherence -> hold band 0.95-1.02 of 120 min; the illness ceiling lowers it to 1.00.
+        assert "Target Full Week Total: 114-120 min" in ctx

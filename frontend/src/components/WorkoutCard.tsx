@@ -66,12 +66,21 @@ function hideRepPace(wo: { title?: string; target_zone?: string; interval_reps?:
   return Boolean(formatIntervalSummary(wo)) && (wo.target_zone === "Zone 5" || /hill[ -]?sprints?|strides/i.test(wo.title || ""));
 }
 
+const MISSED_REASON_CHIPS = [
+  { key: "busy", en: "Busy", vi: "Bận" },
+  { key: "sick", en: "Sick", vi: "Ốm" },
+  { key: "pain", en: "Pain", vi: "Đau" },
+  { key: "tired", en: "Tired", vi: "Mệt" },
+  { key: "weather", en: "Weather", vi: "Thời tiết" },
+  { key: "other", en: "Other", vi: "Khác" },
+] as const;
+
 interface WorkoutCardProps {
   wo: any;
   isMobile: boolean;
   lang: string;
   onToggleComplete?: (id: number, completed: boolean) => void;
-  onMarkMissed?: (id: number, missed: boolean) => void;
+  onMarkMissed?: (id: number, missed: boolean, reason?: string) => void;
   onLogWorkout?: (id: number, rpe: number | null, notes: string) => Promise<void>;
   getWorkoutDate: (wo: any) => string;
   defaultExpanded?: boolean;
@@ -625,6 +634,37 @@ export default function WorkoutCard({
             )}
           </div>
         </div>
+
+        {/* ── Why was it missed? Feeds the next week's plan ── */}
+        {!readOnly && !isRest && !isCoachActingAsAthlete && onMarkMissed && wo.is_missed ? (
+          <div
+            style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}
+            data-testid="missed-reason-chips"
+          >
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{lang === "en" ? "Why?" : "Lý do"}</span>
+            {MISSED_REASON_CHIPS.map(({ key, en, vi }) => {
+              const selected = wo.missed_reason === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => onMarkMissed(wo.id, true, key)}
+                  aria-pressed={selected}
+                  style={{
+                    border: `1px solid ${selected ? "#ef4444" : "var(--border-color, rgba(0,0,0,0.12))"}`,
+                    background: selected ? "rgba(239,68,68,0.12)" : "none",
+                    color: selected ? "#ef4444" : "var(--text-muted)",
+                    borderRadius: "999px",
+                    padding: "3px 10px",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {lang === "en" ? en : vi}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
         {/* ── Coach edit form ── */}
         {!readOnly && editing && (

@@ -49,8 +49,11 @@ export interface Workout {
   fueling_tip?: string;
   is_completed: number;
   is_missed: number;
+  missed_reason?: MissedReason | null;
   is_priority?: boolean;
 }
+
+export type MissedReason = "busy" | "sick" | "pain" | "tired" | "weather" | "other";
 
 export interface ActivePlan {
   id: number;

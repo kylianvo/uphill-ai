@@ -340,3 +340,110 @@ def me_status_block(
             f"- TIER CHANGE: the athlete moved up from {tier_changed_from} this block. ME starts from zero: apply the soft start."
         )
     return "\n".join(lines) + "\n"
+
+
+# --- Missed-session reasons (Uphill Athlete doctrine, NotebookLM extraction 2026-10-20) ---
+# [UA-Rn] tags point at that extraction's rule ids. Our own additions are labelled as such.
+
+MISSED_REASONS = ("busy", "sick", "pain", "tired", "weather", "other")
+
+
+def weeks_off(workouts: list[dict], target_week: int) -> int:
+    """Consecutive weeks before target_week with sessions planned and none completed."""
+    n = 0
+    for wk in range(target_week - 1, 0, -1):
+        planned = [w for w in workouts if w.get("week_number") == wk and w.get("type") != "Rest"]
+        if not planned or any(w.get("is_completed") == 1 for w in planned):
+            break
+        n += 1
+    return n
+
+
+def repeated_miss_days(workouts: list[dict], target_week: int, lookback: int = 3) -> list[str]:
+    """Weekdays missed in 2+ of the last `lookback` weeks before target_week."""
+    weeks_by_day: dict[str, set[int]] = {}
+    for w in workouts:
+        wk = w.get("week_number") or 0
+        if target_week - lookback <= wk < target_week and w.get("is_missed") == 1 and w.get("day_of_week"):
+            weeks_by_day.setdefault(w["day_of_week"], set()).add(wk)
+    return sorted(day for day, wks in weeks_by_day.items() if len(wks) >= 2)
+
+
+def missed_reason_rules(
+    prev_workouts: list[dict],
+    *,
+    weeks_off_count: int = 0,
+    days_to_race: int | None = None,
+    repeat_days: list[str] | tuple[str, ...] = (),
+    rhr_elevated: bool = False,
+) -> tuple[list[str], float | None]:
+    """(prompt_lines, ceiling_cap): rules for the week after missed sessions, and the
+    highest allowed multiple of the reference volume (None = no cap beyond the usual band).
+    The caller takes the lowest of this cap and the feeling band."""
+    missed = [w for w in prev_workouts if w.get("is_missed") == 1]
+    lines: list[str] = []
+    caps: list[float] = []
+    by_reason: dict[str, list[dict]] = {}
+    for w in missed:
+        by_reason.setdefault(w.get("missed_reason") or "other", []).append(w)
+
+    if missed:
+        lines.append(
+            "Missed-Session Rule: never make up missed sessions or volume and never double up sessions "
+            "to compensate [UA-R1]."
+        )
+    if "busy" in by_reason:
+        lines.append(
+            "Reason - busy/work/travel: everyday life stress counts as training load; resume the plan at its "
+            "planned volume with no make-up [UA-R2]."
+        )
+    if "sick" in by_reason:
+        n = len({w.get("day_of_week") for w in by_reason["sick"]})
+        lines.append(
+            f"Reason - illness ({n} day(s) missed): the first {n} training day(s) back are easy aerobic Zone 1-2 only "
+            f"with no Zone 3+ work; run the first 2 sessions back at about 50% of their planned duration; do not "
+            f"train through a cold [UA-R3, R4, R5, R7]."
+        )
+        caps.append(1.0)
+    if "pain" in by_reason:
+        n = len({w.get("day_of_week") for w in by_reason["pain"]})
+        lines.append(
+            f"Reason - pain/injury ({n} day(s) missed): no running while it hurts; use non-impact cross-training "
+            f"(bike, swim) instead; take {n} gradual easy day(s) before any intensity; first sessions back at about "
+            f"50% duration; no volume progression [UA-R6, R7, R4]. Coach safety note (not from the book): if the "
+            f"pain persists, advise seeing a physio."
+        )
+        caps.append(1.0)
+    if "tired" in by_reason:
+        lines.append(
+            "Reason - fatigue/poor recovery: remove the long run, high-intensity work and muscular endurance "
+            "sessions until the legs feel fresh [UA-R10]."
+        )
+        caps.append(0.90)
+    if "weather" in by_reason:
+        lines.append(
+            "Reason - weather/logistics: substitute treadmill, stair machine or stairs for outdoor terrain and "
+            "keep the volume [UA-R12]."
+        )
+    if rhr_elevated:
+        lines.append(
+            "Resting heart rate is 10%+ above baseline: make the first session of the week an easy recovery "
+            "day [UA-R9]."
+        )
+    if weeks_off_count >= 5:
+        lines.append("Returning after more than 4 weeks off: restart at 50% of the previous load [UA-R14].")
+        caps.append(0.50)
+    elif weeks_off_count >= 1:
+        lines.append(
+            f"Returning after {weeks_off_count} week(s) with no completed training: start at about 80% of recent "
+            f"volume [UA-R15]."
+        )
+        caps.append(0.80)
+    if days_to_race is not None and 0 <= days_to_race <= 14 and missed:
+        lines.append("Final 14 days before the race: never add missed or extra quality workouts [UA-R17].")
+    if repeat_days:
+        lines.append(
+            f"Pattern: sessions were missed on {', '.join(repeat_days)} in 2+ of the last 3 weeks. Plan around the "
+            f"athlete's real schedule: move or drop sessions on those days rather than repeat the same plan [UA-R24]."
+        )
+    return lines, (min(caps) if caps else None)

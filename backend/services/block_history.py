@@ -2,11 +2,18 @@
 re-plan sees the same past weeks (per-session status, RPE, feedback, coach evaluation)
 as a fresh block does."""
 
+import datetime as dt
 from typing import Any
 
-from db import actual_volume_with_ticked, get_block_actual_volume, get_week_planned_volume
+from db import (
+    actual_volume_with_ticked,
+    get_block_actual_volume,
+    get_resting_hr_elevation,
+    get_week_planned_volume,
+)
 from services.calendar_rules import is_upcoming, start_monday, upcoming_note
 from services.matching.block_evaluator import evaluate_block_performance
+from services.plan_rules import missed_reason_rules, repeated_miss_days, weeks_off
 
 
 def session_review_status(w: dict[str, Any]) -> str:
@@ -179,6 +186,8 @@ def build_history_lines(
                         detail += f', feedback: "{w["notes"]}"'
                 else:
                     detail = status
+                    if status == "MISSED" and w.get("missed_reason"):
+                        detail += f" (reason: {w['missed_reason']})"
                 context_lines.append(
                     f"    W{w.get('week_number', '?')} {w.get('day_of_week', '?')} — {planned}: {detail}"
                 )
@@ -198,3 +207,28 @@ def build_history_lines(
                 )
 
     return context_lines, coach_notes
+
+
+def missed_rules_for_week(
+    *,
+    plan: dict[str, Any],
+    athlete_id: int,
+    all_workouts: list[dict[str, Any]],
+    target_week: int,
+    today: dt.date | None,
+) -> tuple[list[str], float | None]:
+    """missed_reason_rules for the week before target_week, with its inputs gathered."""
+    prev_wos = [w for w in all_workouts if w.get("week_number") == target_week - 1 and w.get("type") != "Rest"]
+    days_to_race = None
+    race_date = plan.get("race_date")
+    if race_date and today:
+        race = race_date if isinstance(race_date, dt.date) else dt.date.fromisoformat(str(race_date)[:10])
+        days_to_race = (race - today).days
+    rhr = get_resting_hr_elevation(athlete_id)
+    return missed_reason_rules(
+        prev_wos,
+        weeks_off_count=weeks_off(all_workouts, target_week),
+        days_to_race=days_to_race,
+        repeat_days=repeated_miss_days(all_workouts, target_week),
+        rhr_elevated=rhr is not None and rhr >= 1.10,
+    )
