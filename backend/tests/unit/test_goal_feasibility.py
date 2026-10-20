@@ -99,5 +99,5 @@ def test_flat_city_athlete_on_steep_course_needs_mountain_access():
     d = goal_demands.compute(104.2, 5533, None, 29)
     f = _assess(d, profile=ELITE, days=6, weeks=26, current=80.0, flat_only=True)
     assert "mountain_access" in f.levers and f.verdict != "supported"
-    flat_race = goal_demands.compute(42.2, 200, None, 7)
+    flat_race = goal_demands.compute(50.0, 100, None, 8)
     assert "mountain_access" not in _assess(flat_race, profile=ELITE, flat_only=True).levers

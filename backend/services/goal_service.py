@@ -264,14 +264,18 @@ def feasibility_for(plan: dict[str, Any], assessment: dict[str, Any] | None = No
             PlanGenerator.flat_zone2_pace(athlete, plan.get("goal_type"), plan.get("athlete_tier")) if athlete else None
         )
         venues = Venues.from_race_info(plan)
+        # The runway and the stored weekly volume describe the athlete before the plan starts; once it has
+        # started, volume is built by the plan and a shrinking runway is not a defect.
+        started = bool(plan.get("start_date")) and str(plan["start_date"])[:10] <= date.today().isoformat()
+        pace_is_estimated = not (athlete or {}).get("zone2_pace_min")
         verdict = goal_feasibility.assess(
             demands,
             get_profile(plan.get("athlete_tier")),
             plan.get("days_per_week"),
             flat or 6.0,
             float((athlete or {}).get("current_weekly_km") or 30.0),
-            _weeks_until(plan.get("race_date")),
-            flat is None,
+            None if started else _weeks_until(plan.get("race_date")),
+            pace_is_estimated,
             mountain_min_minutes=plan.get("mountain_min_minutes"),
             flat_only=not venues.local_hills and not venues.training_mountain and not venues.mountain_days,
         )

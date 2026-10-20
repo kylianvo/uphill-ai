@@ -44,3 +44,10 @@ def test_prompt_block_mentions_the_demands_in_both_languages():
     en, vi = goal_demands.prompt_block(d, "en"), goal_demands.prompt_block(d, "vi")
     assert "5533" in en or str(round(d.climb_rate_m_per_h)) in en
     assert str(round(d.longest_session_min)) in en and str(round(d.longest_session_min)) in vi
+
+
+def test_races_below_ultra_distance_get_no_demands():
+    # the book's peak-week benchmarks start at the 50K; a half or full marathon must not inherit them
+    assert goal_demands.compute(21.1, 100, None, 3.5) is None
+    assert goal_demands.compute(42.2, 300, None, 7) is None
+    assert goal_demands.compute(50.0, 2000, None, 10) is not None

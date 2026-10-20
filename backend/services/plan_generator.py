@@ -1019,7 +1019,8 @@ class PlanGenerator:
         prefs = plan_lint.Prefs(
             long_run_day=race_info.get("long_run_day"),
             days_per_week=days_per_week,
-            demands=PlanGenerator.goal_demands_for(race_info, cutoff_time_hours),
+            # an adapted week is the athlete's own call: never ask it to build toward the peak long run
+            demands=None if target_week is not None else PlanGenerator.goal_demands_for(race_info, cutoff_time_hours),
             flat_only=not venues.local_hills and not venues.training_mountain and not venues.mountain_days,
         )
         issues = plan_lint.lint_weeks(combined, weeks, profile, prefs)

@@ -12,6 +12,7 @@ from services.pacing_calculator import PacingCalculator
 from services.race_estimator import RaceEstimator
 from services.race_readiness import race_class
 
+MIN_ULTRA_KM = 48.0  # the book benchmarks start at the 50K; shorter races get no demand block
 CUTOFF_SAFE_SHARE = 0.85  # a finish goal targets 85% of the cutoff (same rule as the plan prompt)
 LONGEST_SESSION_SHARE = 0.40  # my call: the longest training session reaches ~40% of race time
 
@@ -41,7 +42,7 @@ def compute(
     checkpoints: list[dict[str, Any]] | None = None,
     venue_climb_rate: float | None = None,
 ) -> Demands | None:
-    if not distance_km or float(distance_km) <= 0:
+    if not distance_km or float(distance_km) < MIN_ULTRA_KM:
         return None
     if target_time_h:
         minutes, source = float(target_time_h) * 60, "target"
