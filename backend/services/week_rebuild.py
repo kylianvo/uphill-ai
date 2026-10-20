@@ -209,6 +209,7 @@ class RebuildRequest:
     fatigue_notes: str | None = None
     athlete_notes: str | None = None
     coach_notes: str | None = None
+    health_issue: str | None = None  # "sick" | "pain": reported by the athlete right now
     preferred_days: list[str] | None = None
     long_run_day: str | None = None
     days_per_week: int | None = None
@@ -431,7 +432,12 @@ def build_rebuild_inputs(
         context_lines.append("  Training history (most recent first):")
         context_lines.extend(history_lines)
     reason_lines, reason_cap = missed_rules_for_week(
-        plan=plan, athlete_id=athlete_id, all_workouts=all_workouts, target_week=request.week_number, today=today
+        plan=plan,
+        athlete_id=athlete_id,
+        all_workouts=all_workouts,
+        target_week=request.week_number,
+        today=today,
+        current_issue=request.health_issue,
     )
     context_lines.extend(f"  {line}" for line in reason_lines)
     decision_log: list[str] = list(reason_lines)

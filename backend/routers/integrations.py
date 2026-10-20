@@ -38,6 +38,7 @@ from services.plan_generator import PlanGenerator
 from services.providers.base import CanonicalActivity, CanonicalDailyMetric
 from services.providers.coros import PROVIDER, CorosDailyMetricsUnavailableError
 from services.providers.coros_parsers import CorosParseError
+from services.week_context import attach_week_context
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 logger = get_logger(__name__)
@@ -854,6 +855,7 @@ async def matching_list(
         since = until - timedelta(days=days)
         until = until + timedelta(days=1)
     activities = db.get_matches_for_review(user["id"], since, until, plan_id=plan_id)
+    attach_week_context(activities)
     return {"activities": activities}
 
 

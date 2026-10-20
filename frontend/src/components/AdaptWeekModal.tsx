@@ -5,6 +5,8 @@ import { translations } from "../app/translations";
 import { describeGuard, localToday, tr } from "../lib/scheduleProposals";
 import ConfirmActionModal from "./ConfirmActionModal";
 import { TrainingVenueFields } from "./TrainingVenueFields";
+import MissedReasonChips from "./MissedReasonChips";
+import { dayLabel } from "../utils/dayLabels";
 
 const API_BASE_URL =
   (typeof window !== "undefined" && localStorage.getItem("UPHILL_API_URL_OVERRIDE")) ||
@@ -37,17 +39,16 @@ export interface AdaptWeekModalProps {
   isMobile: boolean;
   onAdaptSuccess: (jobId: string) => void;
   actingAsAthleteId?: number | null;
+  /** Last week's sessions marked missed, so the athlete can say why before the week is rebuilt. */
+  missedLastWeek?: { id: number; day_of_week: string; title: string; missed_reason?: string | null }[];
+  onSetMissedReason?: (workoutId: number, reason: string) => void;
 }
 
 const FULL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHORT_DAYS_VI = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
-import {
-  FeelingSelector,
-  FeelingId,
-  feelingIdToRpe,
-} from "./FeelingSelector";
+import { FeelingSelector, FeelingId } from "./FeelingSelector";
 
 export type FatigueLevel = FeelingId;
 
@@ -62,10 +63,13 @@ export function AdaptWeekModal({
   isMobile,
   onAdaptSuccess,
   actingAsAthleteId,
+  missedLastWeek = [],
+  onSetMissedReason,
 }: AdaptWeekModalProps) {
   const [fatigueLevel, setFatigueLevel] = useState<FatigueLevel>("moderate");
   const [fatigueNotes, setFatigueNotes] = useState<string>("");
   const [coachNotes, setCoachNotes] = useState<string>("");
+  const [healthIssue, setHealthIssue] = useState<"sick" | "pain" | null>(null);
   const [schedule, setSchedule] = useState({
     ...initialSchedule,
     double_session_days: initialSchedule.double_session_days || [],
@@ -104,15 +108,14 @@ export function AdaptWeekModal({
         ? `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/adapt-week`
         : `${API_BASE_URL}/api/coach/adapt-week`;
 
-      const rpe = feelingIdToRpe(fatigueLevel);
-
       const body = {
         plan_id: planId,
         week_number: weekNumber,
-        overall_rpe: rpe,
+        // One feeling and one note: the backend derives RPE from the feeling, and
+        // athlete_notes already carries the free text into the prompt.
         fatigue_level: fatigueLevel,
-        fatigue_notes: fatigueNotes.trim() || null,
         athlete_notes: fatigueNotes.trim() || null,
+        health_issue: healthIssue,
         coach_notes: actingAsAthleteId ? (coachNotes.trim() || null) : null,
         preferred_days: schedule.preferred_days,
         long_run_day: schedule.long_run_day,
@@ -299,6 +302,60 @@ export function AdaptWeekModal({
               variant="cards"
               showDescription={true}
             />
+          </div>
+
+          {/* Last week's missed sessions: why? Feeds the missed-session rules. */}
+          {missedLastWeek.length > 0 && onSetMissedReason && (
+            <div style={{ marginBottom: "16px" }} data-testid="adapt-missed-sessions">
+              <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "2px" }}>
+                {t("adapt_week_missed_label")}
+              </label>
+              <p style={{ margin: "0 0 8px", fontSize: "11.5px", color: "var(--text-muted)" }}>{t("adapt_week_missed_help")}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {missedLastWeek.map((m) => (
+                  <div key={m.id} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <span style={{ fontSize: "12.5px", color: "var(--text-primary)" }}>
+                      {dayLabel(m.day_of_week, lang)} · {m.title}
+                    </span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      <MissedReasonChips reason={m.missed_reason} onSelect={(r) => onSetMissedReason(m.id, r)} lang={lang} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Illness or pain right now */}
+          <div style={{ marginBottom: "16px" }}>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "6px" }}>
+              {t("adapt_week_health_label")}
+            </label>
+            <div style={{ display: "flex", gap: "6px" }} role="group" aria-label={t("adapt_week_health_label")}>
+              {([null, "sick", "pain"] as const).map((v) => {
+                const selected = healthIssue === v;
+                return (
+                  <button
+                    key={v ?? "none"}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setHealthIssue(v)}
+                    style={{
+                      border: `1px solid ${selected ? "var(--accent-primary)" : "var(--border-color, rgba(0,0,0,0.12))"}`,
+                      background: selected ? "rgba(25, 206, 139, 0.12)" : "none",
+                      color: selected ? "var(--accent-primary)" : "var(--text-muted)",
+                      borderRadius: "999px",
+                      padding: "4px 14px",
+                      fontSize: "12.5px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t(v === null ? "adapt_week_health_none" : v === "sick" ? "adapt_week_health_sick" : "adapt_week_health_pain")}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Reason / Fatigue Notes */}
