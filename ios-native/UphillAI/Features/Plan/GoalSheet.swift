@@ -64,6 +64,8 @@ struct GoalSheet: View {
                             .trainingCard()
                     }
 
+                    GoalPlanCheckCard(feasibility: model.goal?.feasibility, assessment: model.goal?.assessment)
+
                     // Goal Context & Reasoning
                     if let assessment = model.goal?.assessment {
                         if !assessment.reasoning.isEmpty {

@@ -178,3 +178,69 @@ def test_long_run_growth_is_measured_against_the_last_two_weeks_so_a_recovery_di
     ctx = [s(1, "Sunday", "Long Run", 120), s(2, "Sunday", "Long Run", 80)] + filler(3, 300)
     assert "LONG_RUN_JUMP" not in codes(lint_week(ctx + [s(3, "Sunday", "Long Run", 125)], 3, SUB))  # +4% on 120
     assert "LONG_RUN_JUMP" in codes(lint_week(ctx + [s(3, "Sunday", "Long Run", 170)], 3, SUB))  # +42% on 120
+
+
+# --- specificity against the goal's demands -------------------------------------------------
+
+from services import goal_demands  # noqa: E402
+
+D100 = goal_demands.compute(104.2, 5533, 14.67, 29)  # 53 m D+/km, longest session 300 min
+
+
+def _build(long_min, long_gain, long_dist=None, hard=True, weeks=(1, 2, 3, 4, 5, 6, 7, 8)):
+    out = []
+    for wk in weeks:
+        phase = "Peak" if wk >= 7 else "Build"
+        out.append(s(wk, "Saturday", "Long Run", long_min, gain=long_gain, dist=long_dist, phase=phase))
+        out.append(s(wk, "Tuesday", "Easy", 60, phase=phase))
+        if hard:
+            out.append(s(wk, "Wednesday", "Tempo", 50, zone="Zone 3", phase=phase))
+    return out
+
+
+def test_time_on_feet_flags_a_plan_whose_longest_session_stays_short():
+    plan = _build(120, 600, long_dist=20)
+    issues = lint_weeks(plan, {7, 8}, SUB, Prefs(days_per_week=6, demands=D100))
+    assert "TIME_ON_FEET" in codes(issues)
+    good = _build(280, 900, long_dist=30)
+    assert "TIME_ON_FEET" not in codes(lint_weeks(good, {7, 8}, SUB, Prefs(days_per_week=6, demands=D100)))
+
+
+def test_time_on_feet_respects_what_the_athletes_days_can_hold():
+    plan = _build(70, 600, long_dist=10)  # a 3-day novice cannot do better than this
+    issues = lint_weeks(plan, {7, 8}, NOV, Prefs(days_per_week=3, demands=D100))
+    assert "TIME_ON_FEET" not in codes(issues)
+
+
+def test_long_run_gradient_flags_flat_long_runs_on_a_steep_course():
+    flat = _build(280, 0, long_dist=30)
+    assert "LONG_RUN_GRADIENT" in codes(lint_weeks(flat, {7, 8}, SUB, Prefs(demands=D100)))
+    steep = _build(280, 1100, long_dist=30)  # 37 m D+/km >= 60% of 53
+    assert "LONG_RUN_GRADIENT" not in codes(lint_weeks(steep, {7, 8}, SUB, Prefs(demands=D100)))
+
+
+def test_gradient_is_judged_against_the_athletes_training_mountain():
+    d = goal_demands.compute(104.2, 5533, 14.67, 29, venue_climb_rate=28.0)  # Núi Châu Thới
+    plan = _build(280, 520, long_dist=30)  # 17 m D+/km: below 60% of 28 -> 16.8? just above
+    assert "LONG_RUN_GRADIENT" not in codes(lint_weeks(plan, {7, 8}, SUB, Prefs(demands=d)))
+    assert "LONG_RUN_GRADIENT" in codes(lint_weeks(_build(280, 200, long_dist=30), {7, 8}, SUB, Prefs(demands=d)))
+
+
+def test_flat_only_athletes_and_skipped_mountain_days_are_not_a_gradient_defect():
+    flat = _build(280, 0, long_dist=30)
+    assert "LONG_RUN_GRADIENT" not in codes(lint_weeks(flat, {7, 8}, SUB, Prefs(demands=D100, flat_only=True)))
+    skipped = [{**w, "mountain_mode": "skip"} if w["type"] == "Long Run" else w for w in flat]
+    assert "LONG_RUN_GRADIENT" not in codes(lint_weeks(skipped, {7, 8}, SUB, Prefs(demands=D100)))
+
+
+def test_specificity_late_flags_a_build_with_no_hard_or_hill_work():
+    plan = _build(280, 0, long_dist=30, hard=False)
+    assert "SPECIFICITY_LATE" in codes(lint_weeks(plan, {7, 8}, SUB, Prefs(demands=D100, flat_only=True)))
+    assert "SPECIFICITY_LATE" not in codes(lint_weeks(_build(280, 900, long_dist=30), {7, 8}, SUB, Prefs(demands=D100)))
+
+
+def test_no_demands_no_new_codes_and_blocks_without_a_peak_are_skipped():
+    plan = _build(120, 0, long_dist=20)
+    new = {"TIME_ON_FEET", "LONG_RUN_GRADIENT", "SPECIFICITY_LATE"}
+    assert not new & set(codes(lint_weeks(plan, {7, 8}, SUB, Prefs())))
+    assert not new & set(codes(lint_weeks(plan, {1, 2}, SUB, Prefs(demands=D100))))

@@ -7,7 +7,7 @@ from typing import Any
 from config import settings
 from db import block_number_for_week, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
-from services import observability, plan_lint, race_readiness, recovery_baseline, week_layout
+from services import goal_demands, observability, plan_lint, race_readiness, recovery_baseline, week_layout
 from services.athlete_tier import MEASURED_THRESHOLD_SOURCES, TIER_PROFILES, get_profile, resolve_tier
 from services.plan_rules import build_rules_block, me_runway, me_status_block
 from services.training_mountains import default_min_minutes, long_run_climb_rate
@@ -979,6 +979,21 @@ class PlanGenerator:
             return workouts, tier
 
     @staticmethod
+    def goal_demands_for(race_info: dict[str, Any], cutoff_time_hours: float | None) -> "goal_demands.Demands | None":
+        """The goal's physical demands, or None when disabled or the race has no course. A time target
+        applies only to a 'time' goal; anything else plans to the cutoff-safe time."""
+        if not settings.PLAN_DEMANDS_ENABLED:
+            return None
+        target = race_info.get("target_time_hours") if race_info.get("goal_type") == "time" else None
+        return goal_demands.compute(
+            race_info.get("course_distance_km"),
+            race_info.get("course_elevation_gain_m"),
+            target,
+            cutoff_time_hours,
+            venue_climb_rate=long_run_climb_rate(race_info.get("training_mountain")),
+        )
+
+    @staticmethod
     def _lint_issues(
         workouts: list[dict[str, Any]],
         tier: str,
@@ -1000,7 +1015,14 @@ class PlanGenerator:
             days_per_week = int(race_info.get("days_per_week") or 0) or None
         except (TypeError, ValueError):
             days_per_week = None
-        prefs = plan_lint.Prefs(long_run_day=race_info.get("long_run_day"), days_per_week=days_per_week)
+        venues = Venues.from_race_info(race_info)
+        prefs = plan_lint.Prefs(
+            long_run_day=race_info.get("long_run_day"),
+            days_per_week=days_per_week,
+            # an adapted week is the athlete's own call: never ask it to build toward the peak long run
+            demands=None if target_week is not None else PlanGenerator.goal_demands_for(race_info, cutoff_time_hours),
+            flat_only=not venues.local_hills and not venues.training_mountain and not venues.mountain_days,
+        )
         issues = plan_lint.lint_weeks(combined, weeks, profile, prefs)
         first = min(weeks) if weeks else 1
         if cutoff := race_readiness.target_vs_cutoff_issue(
@@ -1181,6 +1203,7 @@ class PlanGenerator:
         # real top incline) -- see services/training_venues.py. Hill Sprint/Hill Repeat/
         # Hill Bound sessions need hills, stairs or a treadmill to substitute for them.
         venues = Venues.from_race_info(race_info)
+        demands = PlanGenerator.goal_demands_for(race_info, cutoff_time_hours)
 
         course_distance_km = race_info.get("course_distance_km")
         course_elevation_gain_m = race_info.get("course_elevation_gain_m")
@@ -1580,7 +1603,7 @@ class PlanGenerator:
                     "on active recovery, resting, and very light movement (mostly Zone 1 or Rest). "
                     "Gradually reintroduce short, easy Zone 2 runs in the remaining weeks. No workouts above Zone 2."
                 )
-            elif cutoff_time_hours:
+            elif cutoff_time_hours and not (demands and demands.source == "target"):
                 cutoff_h = int(cutoff_time_hours)
                 cutoff_m = int(round((cutoff_time_hours - cutoff_h) * 60))
                 safe_hours = cutoff_time_hours * 0.85
@@ -1609,6 +1632,9 @@ class PlanGenerator:
                 else:
                     terrain_category = "Extreme technical mountain vert / Skyrunning (> 50 m D+/km). Emphasize sustained power-hiking with poles, heavy weighted box step-ups (15-20% bodyweight), and eccentric downhill resistance repeats."
                 steepness_ratio_str = f"Course Steepness Ratio: {steepness} m D+/km — {terrain_category}\n"
+
+            if demands and is_event_goal:
+                goal_description += "\n" + goal_demands.prompt_block(demands, lang)
 
             if is_event_goal:
                 program_summary = (
@@ -2107,14 +2133,25 @@ class PlanGenerator:
             else:
                 return "Base"
 
+        # With a known goal the volume climbs toward the weekly time the race needs, at 90% of the
+        # tier's weekly progression cap; week_layout then holds every week within the tier's caps.
+        want_multiplier = 1.0
+        if demands:
+            flat = PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier) or 6.0
+            share = 0.8 if demands.source == "cutoff_safe" else 1.0
+            want_multiplier = demands.peak_week_km_lo * share * flat / base_weekly_minutes
+
+        def ramp(w: int) -> float:
+            return min(want_multiplier, (1 + 0.9 * tier_profile.max_weekly_progression) ** (w - 1))
+
         def multiplier_for(w: int) -> float:
             ph = get_phase_for_week(w)
             if ph == "Base":
-                return 1.0 + (0.05 * (w - 1))
+                return max(1.0 + (0.05 * (w - 1)), ramp(w))
             if ph == "Build":
-                return 1.2 + (0.05 * (w - num_base_weeks - 1))
+                return max(1.2 + (0.05 * (w - num_base_weeks - 1)), ramp(w))
             if ph == "Peak":
-                return 1.4 - (0.05 * (w - num_base_weeks - num_build_weeks - 1))
+                return max(1.4 - (0.05 * (w - num_base_weeks - num_build_weeks - 1)), ramp(w))
             if ph == "Taper":
                 return 0.5  # Reduced load — pre-race freshening
             if ph == "Race Week":

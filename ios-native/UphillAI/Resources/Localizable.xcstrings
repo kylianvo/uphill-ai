@@ -14550,6 +14550,146 @@
           }
         }
       }
+    },
+    "Not enough room in your week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần tập chưa đủ chỗ"
+          }
+        }
+      }
+    },
+    "Possible, but tight": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Làm được nhưng sát"
+          }
+        }
+      }
+    },
+    "Your week holds about %@h; this goal needs about %@h.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần của bạn chứa được khoảng %@h; mục tiêu cần khoảng %@h."
+          }
+        }
+      }
+    },
+    "More training days would close the gap.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm ngày tập sẽ thu hẹp khoảng cách."
+          }
+        }
+      }
+    },
+    "Double sessions would help.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có thể thêm buổi tập đôi."
+          }
+        }
+      }
+    },
+    "Reaching peak week takes about %lld weeks.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần khoảng %lld tuần để đạt peak week."
+          }
+        }
+      }
+    },
+    "It needs more weeks before the race.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần thêm tuần trước race."
+          }
+        }
+      }
+    },
+    "A shorter race would fit better.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race ngắn hơn sẽ hợp hơn."
+          }
+        }
+      }
+    },
+    "Treat it as a finish-only goal.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hãy coi đây là mục tiêu về đích."
+          }
+        }
+      }
+    },
+    "Train on a steeper mountain to rehearse the climbing.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tập ở núi dốc hơn để luyện leo."
+          }
+        }
+      }
+    },
+    "Add mountain trips, or stair and treadmill climbing.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm buổi lên núi, hoặc leo cầu thang và treadmill."
+          }
+        }
+      }
+    },
+    "Your mountain Long Run minimum does not fit your week.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mức tối thiểu của Long Run trên núi chưa vừa với tuần của bạn."
+          }
+        }
+      }
+    },
+    "Pace is estimated.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace đang ước tính."
+          }
+        }
+      }
+    },
+    "Goals moved %@%% later: the plan delivers %@%% of the %@%% improvement they assume.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu lùi %@%%: plan mang lại %@%% trong %@%% cải thiện mà mục tiêu giả định."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -129,6 +129,8 @@ struct PlanGoal: Decodable, Sendable, Equatable {
     let assessment: GoalAssessment?
     let status: GoalStatus
     let targetTimeHours: Double?
+    /// Whether the athlete's week and training venue can hold the goal; nil without a course or a time.
+    var feasibility: GoalFeasibility?
 }
 
 struct GoalStatus: Decodable, Sendable, Equatable {
@@ -165,8 +167,10 @@ struct GoalAssessment: Decodable, Sendable, Equatable {
     let createdAt: String?
     let context: GoalContext?
     let anchors: [GoalAnchor]
+    /// How far the plan can back the goals' assumed improvement; the goals are already moved later when it cannot.
+    let planSupport: PlanSupport?
 
-    private enum CodingKeys: String, CodingKey { case id, goals, confidence, reasoning, missing, engine, createdAt, context, anchors }
+    private enum CodingKeys: String, CodingKey { case id, goals, confidence, reasoning, missing, engine, createdAt, context, anchors, planSupport }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -180,6 +184,7 @@ struct GoalAssessment: Decodable, Sendable, Equatable {
         context = try c.decodeIfPresent(GoalContext.self, forKey: .context)
         anchors = try c.decodeIfPresent([GoalAnchor].self, forKey: .anchors) ?? []
         createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt)
+        planSupport = try? c.decodeIfPresent(PlanSupport.self, forKey: .planSupport)
     }
 }
 

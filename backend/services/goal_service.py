@@ -235,6 +235,65 @@ def with_plan_support(assessment: dict[str, Any] | None, plan: dict[str, Any] | 
     return out
 
 
+def feasibility_for(plan: dict[str, Any], assessment: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """Whether the athlete's days, weeks and training venue can hold what the goal demands
+    (services/goal_feasibility). A time goal uses the plan's target; any other goal uses the assessed B time
+    as the safe finish time, because the plan does not store the race cutoff. None without a course or time."""
+    from services import goal_demands, goal_feasibility
+    from services.plan_generator import PlanGenerator
+    from services.training_mountains import long_run_climb_rate
+    from services.training_venues import Venues
+
+    try:
+        target_h = plan.get("target_time_hours") if plan.get("goal_type") == "time" else None
+        cutoff_h = None
+        goals = (assessment or {}).get("goals_unadjusted") or (assessment or {}).get("goals")
+        if not target_h and goals:
+            cutoff_h = goals["b"] / 60 / goal_demands.CUTOFF_SAFE_SHARE
+        demands = goal_demands.compute(
+            plan.get("course_distance_km"),
+            plan.get("course_elevation_gain_m"),
+            target_h,
+            cutoff_h,
+            venue_climb_rate=long_run_climb_rate(plan.get("training_mountain")),
+        )
+        if demands is None:
+            return None
+        athlete = db.get_user_by_id(plan["user_id"]) if plan.get("user_id") else None
+        flat = (
+            PlanGenerator.flat_zone2_pace(athlete, plan.get("goal_type"), plan.get("athlete_tier")) if athlete else None
+        )
+        venues = Venues.from_race_info(plan)
+        # The runway and the stored weekly volume describe the athlete before the plan starts; once it has
+        # started, volume is built by the plan and a shrinking runway is not a defect.
+        started = bool(plan.get("start_date")) and str(plan["start_date"])[:10] <= date.today().isoformat()
+        pace_is_estimated = not (athlete or {}).get("zone2_pace_min")
+        verdict = goal_feasibility.assess(
+            demands,
+            get_profile(plan.get("athlete_tier")),
+            plan.get("days_per_week"),
+            flat or 6.0,
+            float((athlete or {}).get("current_weekly_km") or 30.0),
+            None if started else _weeks_until(plan.get("race_date")),
+            pace_is_estimated,
+            mountain_min_minutes=plan.get("mountain_min_minutes"),
+            flat_only=not venues.local_hills and not venues.training_mountain and not venues.mountain_days,
+        )
+    except Exception:
+        _logger.exception("feasibility failed", extra={"fields": {"plan_id": plan.get("id")}})
+        return None
+    if verdict is None:
+        return None
+    return {
+        "verdict": verdict.verdict,
+        "capacity_h": round(verdict.capacity_h, 1),
+        "needed_h": round(verdict.needed_h, 1),
+        "weeks_needed": verdict.weeks_needed,
+        "levers": list(verdict.levers),
+        "confidence": verdict.confidence,
+    }
+
+
 def status(assessment: dict[str, Any] | None, target_time_hours: float | None) -> dict[str, Any]:
     """Plan-header pill state from the latest assessment vs Time Target."""
     goals = (assessment or {}).get("goals")
@@ -282,4 +341,5 @@ def plan_goal(plan: dict[str, Any]) -> dict[str, Any]:
         "assessment": assessment,
         "status": status(assessment, plan.get("target_time_hours")),
         "target_time_hours": plan.get("target_time_hours"),
+        "feasibility": feasibility_for(plan, assessment),
     }

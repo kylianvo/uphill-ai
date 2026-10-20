@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { goalPillLabel, missingHints, PlanGoal, planSupportNotice } from "./goalAssessment";
+import { Feasibility, feasibilityNotice, goalPillLabel, missingHints, PlanGoal, planSupportNotice } from "./goalAssessment";
 
 const goal = (state: PlanGoal["status"]["state"], suggested: number | null = null, hours: number | null = 7 + 40 / 60): PlanGoal => ({
   assessment: null,
@@ -56,5 +56,44 @@ describe("planSupportNotice", () => {
     expect(planSupportNotice(a({ a_supported: true, shortfall_pct: 0 }), "en")).toBeNull();
     expect(planSupportNotice(null, "en")).toBeNull();
     expect(planSupportNotice({ goals: base.goals } as never, "en")).toBeNull();
+  });
+});
+
+describe("feasibilityNotice", () => {
+  const f = (over: Partial<Feasibility> = {}): Feasibility => ({
+    verdict: "unsupported",
+    capacity_h: 3.7,
+    needed_h: 10.9,
+    weeks_needed: null,
+    levers: ["more_days", "double_sessions", "shorter_race"],
+    confidence: "measured",
+    ...over,
+  });
+
+  it("says what the week holds against what the goal needs, with the first two levers", () => {
+    const en = feasibilityNotice(f(), "en")!;
+    expect(en).toContain("about 3.7h; this goal needs about 10.9h");
+    expect(en).toContain("More training days would close the gap.");
+    expect(en).toContain("Double sessions would help.");
+    expect(en).not.toContain("shorter race");
+  });
+
+  it("speaks Vietnamese with the technical terms kept in English and no banned words", () => {
+    const vi = feasibilityNotice(f({ verdict: "stretch", levers: ["steeper_venue", "fewer_mountain_minimum"] }), "vi")!;
+    expect(vi).toContain("Làm được nhưng sát");
+    expect(vi).toContain("Long Run");
+    expect(vi).not.toMatch(/thể tích|sinh lý|kiến tạo|bảo chứng|tối ưu hóa/);
+  });
+
+  it("uses the week count for more_weeks and flags an estimated pace", () => {
+    const n = feasibilityNotice(f({ levers: ["more_weeks"], weeks_needed: 18, confidence: "estimated" }), "en")!;
+    expect(n).toContain("takes about 18 weeks");
+    expect(n).toContain("(pace estimated)");
+  });
+
+  it("stays quiet when the goal is supported or there is no verdict", () => {
+    expect(feasibilityNotice(f({ verdict: "supported" }), "en")).toBeNull();
+    expect(feasibilityNotice(null, "vi")).toBeNull();
+    expect(feasibilityNotice(undefined, "en")).toBeNull();
   });
 });
