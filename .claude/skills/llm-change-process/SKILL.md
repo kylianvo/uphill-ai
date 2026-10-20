@@ -12,7 +12,7 @@ A change is not done until the eval ran and its Langfuse run is linked in the PR
 ## Ground rules (never break these)
 
 - `services/observability.py` is the only module that imports `langfuse` / `opentelemetry`.
-  Everything else goes through `observability.trace/span/generation/get_prompt_template`.
+  Everything else goes through `observability.trace/span/generation/load_prompt`.
 - Export is metadata-only (`LANGFUSE_EXPORT_CONTENT=false`). Prompts are fetched from Langfuse,
   but variables are compiled **locally** — athlete data never goes to the prompt API or into spans.
 - `services/observability_policy.py` is a default-deny allowlist. A new span name, feature,
@@ -69,8 +69,9 @@ steps 3–6 as well and ship the code before promoting the template.
 2. **Allowlist:** add the trace name, feature and any metadata keys to `observability_policy.py`
    (plus a policy test).
 3. **Prompt in Langfuse:** keep the template as a module constant with `{{variables}}`, fetch it
-   with `observability.get_prompt_template(name, label=settings.COACH_CHAT_PROMPT_LABEL, fallback=CONSTANT)`,
-   compile locally, and pass the `PromptTemplate` to `generation(prompt=...)` so traces carry the
+   with `observability.load_prompt(name, CONSTANT)` (it applies the configured label and cache TTL
+   and rejects a Langfuse version that drops a variable), compile locally with
+   `observability.compile_prompt`, and pass the `PromptTemplate` to `generation(prompt=...)` so traces carry the
    prompt version. Add the name to `_PROMPT_NAMES` in `observability_policy.py`.
    Create the prompt in Langfuse with the **same text as the constant** and labels `staging` +
    `production` **before** the production deploy — otherwise prod silently runs the fallback.

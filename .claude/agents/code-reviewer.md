@@ -12,7 +12,7 @@ what actually changed, not the whole file.
 
 ## Known trouble spots in this codebase — weight your review toward these
 
-- **`backend/main.py` (~1600+ lines)**: most routes still live here rather
+- **`backend/main.py` (several thousand lines)**: most routes still live here rather
   than in `backend/routers/`. Plan generation is job-based: `POST
   /api/coach/generate-plan` creates an entry in the in-memory `plan_jobs`
   dict, and `GET /api/coach/plan-status/{job_id}` polls it. This dict is

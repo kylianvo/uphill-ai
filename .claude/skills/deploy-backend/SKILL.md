@@ -59,7 +59,8 @@ that upgrade via `alembic upgrade head` instead; keep both in sync per the
 
 **Seed-data-only change?** If you only edited `backend/kb_seed/*.json` by
 hand and no backend code changed, skip this whole script and use
-`./deploy_kb.sh [--domain gear|nutrition|scheduler|all]` instead. It rsyncs
+`./deploy_kb.sh [--domain gear|nutrition|scheduler|race_courses|all]` instead
+(`all` excludes the hand-curated `race_courses`; deploy it explicitly). It rsyncs
 just the changed seed file(s) and reloads them via `scripts/load_kb.py` —
 no full backend rsync, no preflight test suite, no container restart
 (`kb_chunks` is read at request time, so there's nothing to restart). Commit
