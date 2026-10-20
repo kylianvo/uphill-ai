@@ -579,3 +579,24 @@ async def test_stored_thresholds_with_unknown_source_never_trigger_ads():
     prompt = mock_client.models.generate_content.call_args_list[0].kwargs.get("contents", "")
     assert "AEROBIC DEFICIENCY SYNDROME (ADS) DETECTED" not in prompt
     assert "ADS cannot be assessed" in prompt
+
+
+def test_actual_volume_with_ticked_adds_unwatched_ticked_sessions():
+    """Plan 117: watch had gym+Thu+Sat (203 min); Fri and Sun were ticked by hand."""
+    from db import actual_volume_with_ticked
+
+    vol = {
+        "total_actual_km": 26.3,
+        "total_actual_minutes": 203,
+        "total_actual_vert_m": 284,
+        "matched_workout_ids": {1, 2, 3},
+    }
+    ticked = [
+        {"id": 1, "duration_minutes": 65, "distance_km": 10.9},  # already in the watch totals
+        {"id": 4, "duration_minutes": 45, "distance_km": 7.5},
+        {"id": 5, "duration_minutes": 105, "distance_km": 19.4, "elevation_gain_m": 0},
+    ]
+    km, minutes, vert = actual_volume_with_ticked(vol, ticked)
+    assert minutes == 203 + 45 + 105
+    assert km == pytest.approx(26.3 + 7.5 + 19.4)
+    assert vert == 284

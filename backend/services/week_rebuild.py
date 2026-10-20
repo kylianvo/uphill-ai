@@ -16,6 +16,7 @@ from typing import Any
 import db
 from config import settings
 from services import calendar_ops
+from services.block_history import build_history_lines
 from services.calendar_rules import (
     DAYS,
     FINGERPRINT_FIELDS,
@@ -392,14 +393,7 @@ def build_rebuild_inputs(
             wk_end=prev_wk,
             plan_start_date=plan.get("start_date"),
         )
-        if actual_vol.get("total_activities_count", 0) > 0:
-            actual_km = actual_vol["total_actual_km"]
-            actual_min = actual_vol["total_actual_minutes"]
-            actual_vert = actual_vol["total_actual_vert_m"]
-        else:
-            actual_km = sum(w.get("distance_km") or 0 for w in completed_prev)
-            actual_min = sum(w.get("duration_minutes") or 0 for w in completed_prev)
-            actual_vert = sum(w.get("elevation_gain_m") or 0 for w in completed_prev)
+        actual_km, actual_min, actual_vert = db.actual_volume_with_ticked(actual_vol, completed_prev)
         planned_km = sum(w.get("distance_km") or 0 for w in prev_wos)
         planned_min = sum(w.get("duration_minutes") or 0 for w in prev_wos)
         context_lines.append(
@@ -414,6 +408,25 @@ def build_rebuild_inputs(
                 "  ME Progression Adjustment (Scott Johnston Rule 7): Athlete missed a scheduled Muscular Endurance (ME) session in the prior week. "
                 "Drop the ME progression back by 2 workouts (reduce rounds, reps, or pack weight) to allow safe tendon and joint re-adaptation."
             )
+
+    # The same training history next-block generation gets: per-session status, RPE and
+    # feedback for the most recent past weeks, plus the coach evaluation of finished blocks.
+    target_block = db.block_number_for_week(request.week_number)
+    block_first_wk, _ = db.week_range_for_block(target_block)
+    history_ranges = [(blk, *db.week_range_for_block(blk), True) for blk in range(target_block - 1, 0, -1)]
+    if request.week_number > block_first_wk:  # earlier weeks of this same block, newest detail first
+        history_ranges.insert(0, (target_block, block_first_wk, request.week_number - 1, False))
+    history_lines, _ = build_history_lines(
+        plan=plan,
+        athlete_id=athlete_id,
+        all_workouts=all_workouts,
+        reviews=db.get_block_reviews(plan["id"]) if history_ranges else None,
+        ranges=history_ranges,
+        today=today,
+    )
+    if history_lines:
+        context_lines.append("  Training history (most recent first):")
+        context_lines.extend(history_lines)
 
     # Note any workouts already completed/matched in the target week
     curr_completed = [
@@ -498,8 +511,16 @@ def build_rebuild_inputs(
                     f"so the athlete gets a second chance at the same stimulus. Say so plainly "
                     f"in the workout descriptions -- name it as a repeat, not a setback.\n"
                 )
-                # Repeat the week rather than progress off an incomplete one.
-                floor_mult, ceil_mult = 0.95, 1.02
+                # Repeat the week rather than progress off an incomplete one -- unless the
+                # athlete reports hard/max fatigue, where the lower feeling band must win
+                # (the hold band used to override it, contradicting "trim 10-15%").
+                if (fatigue_level or "").lower().replace(" ", "_") in ("hard", "heavy", "max_effort", "exhausted"):
+                    adherence_note += (
+                        "  The athlete also reports high fatigue: follow the reduced volume bounds below, not a hold.\n"
+                    )
+                    floor_mult, ceil_mult = None, None
+                else:
+                    floor_mult, ceil_mult = 0.95, 1.02
             else:
                 floor_mult, ceil_mult = None, None
         else:
