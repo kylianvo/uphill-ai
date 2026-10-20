@@ -305,6 +305,10 @@ def is_quality(w: dict[str, Any]) -> bool:
     return any(marker in t for marker in QUALITY_MARKERS)
 
 
+SPRINT_MAX_SECONDS = 30
+SPRINT_RECOVERY_SECONDS = 150
+
+
 def _interval_group(w: dict[str, Any], main: dict[str, int]) -> dict[str, Any] | None:
     reps = _int(w.get("interval_reps"))
     value = _float(w.get("interval_rep_value"))
@@ -314,7 +318,12 @@ def _interval_group(w: dict[str, Any], main: dict[str, int]) -> dict[str, Any] |
     target_type, mult = UNIT_TARGET[unit]
     work = max(1, int(round(value * mult)))
     walk = _float(w.get("walk_interval_value"))
-    recovery = max(1, int(round(walk * mult))) if walk > 0 else max(1, work // 2)
+    if walk > 0:
+        recovery = max(1, int(round(walk * mult)))
+    elif unit == "s" and value <= SPRINT_MAX_SECONDS:
+        recovery = SPRINT_RECOVERY_SECONDS  # doctrine: full 2-3 min rest between max-effort sprints
+    else:
+        recovery = max(1, work // 2)
     return {
         "intervalGroup": True,
         "repeats": min(reps, MAX_REPEATS),
