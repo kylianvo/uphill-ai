@@ -1295,7 +1295,8 @@ class PlanGenerator:
                 max_hr=max_hr,
                 gender=gender,
             )
-        tier_profile = get_profile(athlete_tier)
+        # Session caps follow the volume the athlete trains (like the lint), not only the level resolved at the start.
+        tier_profile = graduated_profile(get_profile(athlete_tier), current_weekly_km)
 
         # Extract Zone 2 bounds and calculate personalized pacing zone ranges.
         # goal_type comes from the PLAN, not the user: the same athlete can hold a

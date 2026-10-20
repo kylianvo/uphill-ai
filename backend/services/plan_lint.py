@@ -235,6 +235,44 @@ def lint_week(
                 )
                 break
 
+    # A steep race without hills: every build-phase Muscular Endurance session is climbing work (stairs, incline
+    # treadmill, weighted carries), not gym straight sets.
+    d = prefs.demands if prefs else None
+    if (
+        d is not None
+        and prefs.flat_only
+        and d.steepness_m_per_km >= MIN_STEEP_M_PER_KM
+        and phase_now in ("Build", "Peak")
+    ):
+        for w in ws:
+            if _is_me(w) and not _climbs(w):
+                issues.append(
+                    Issue(
+                        "CLIMB_SPECIFICITY",
+                        week,
+                        f"Week {week}: the course climbs {d.steepness_m_per_km:.0f} m D+/km and the athlete has no "
+                        f"hills. Make {_label(w)} outdoor weighted carries, stair climbing or incline-treadmill laps "
+                        f"(a 5-15% bodyweight pack, laps of 5+ min), not gym straight sets.",
+                    )
+                )
+                break
+
+    # An ultra's back-to-back weekend belongs in the first two weeks of the window: if neither has one, the
+    # second one asks for it (a recovery week is excused).
+    if in_ultra_window(prefs, week) and d is not None and week == prefs.total_weeks - _B2B_WINDOW_FROM_END[0] + 2:
+        first = prefs.total_weeks - _B2B_WINDOW_FROM_END[0] + 1
+        done_before = first in weeks and is_b2b_week(weeks[first])
+        if not done_before and not planned_recovery and not is_b2b_week(ws):
+            issues.append(
+                Issue(
+                    "B2B_MISSING",
+                    week,
+                    f"Week {week}: this ultra has no back-to-back weekend in its last build weeks. Make Saturday "
+                    f"about {min(d.longest_session_min * 0.5, 180):.0f} min and Sunday's Long Run about "
+                    f"{min(d.longest_session_min * 0.8, 300):.0f} min, both Zone 2, practising race fueling.",
+                )
+            )
+
     longest = max((_min(w) for w in ws if _is_long(w)), default=0.0)
     if longest and longest / total > long_cap + LONG_SHARE_TOLERANCE:
         issues.append(
@@ -402,24 +440,6 @@ def _specificity(
                     anchor,
                     f"Give the late long runs about {need:.0f} m D+/km of climbing (the steepest now climbs {best:.0f}): "
                     f"the course needs it.",
-                )
-            )
-    if d.steepness_m_per_km >= MIN_STEEP_M_PER_KM and prefs.flat_only:
-        build_weeks = [w for w in training if any(x.get("phase") in ("Build", "Peak") for x in by[w])]
-        climbing = [
-            x
-            for w in build_weeks
-            for x in by[w]
-            if (x.get("type") or "").lower() in ("muscular endurance", "strength", "interval", "tempo") and _climbs(x)
-        ]
-        if build_weeks and len(climbing) < MIN_CLIMB_SESSIONS:
-            issues.append(
-                Issue(
-                    "CLIMB_SPECIFICITY",
-                    anchor,
-                    f"The course climbs {d.steepness_m_per_km:.0f} m D+/km and the athlete has no hills: make the "
-                    f"Muscular Endurance session outdoor weighted carries, stair climbing or incline-treadmill "
-                    f"laps (not gym straight sets) in the build weeks.",
                 )
             )
     if profile.allows_intensity:

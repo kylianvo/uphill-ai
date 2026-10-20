@@ -318,28 +318,47 @@ def test_ultra_back_to_back_weekend_is_allowed_in_the_last_build_weeks_with_a_la
     assert "BACK_TO_BACK" in early  # far from the race it is still a defect
 
 
-def test_climbing_load_is_required_for_a_steep_race_when_there_are_no_hills():
-    flat = [
-        w
-        for wk in range(1, 9)
-        for w in _week(
+def test_every_build_me_session_is_climbing_work_for_a_steep_race_without_hills():
+    gym = _week(
+        6,
+        [
+            ("Wednesday", "Muscular Endurance", 50, "Zone 2", "Gym ME box step-ups"),
+            ("Sunday", "Long Run", 150, "Zone 2", None),
+        ],
+    )
+    prefs = Prefs(days_per_week=6, demands=D100_ULTRA, total_weeks=11, flat_only=True)
+    assert "CLIMB_SPECIFICITY" in codes(lint_weeks(gym, {6}, SUB, prefs))
+    stairs = [{**w, "title": "Weighted stair climbing laps"} if w["type"] == "Muscular Endurance" else w for w in gym]
+    assert "CLIMB_SPECIFICITY" not in codes(lint_weeks(stairs, {6}, SUB, prefs))
+    assert "CLIMB_SPECIFICITY" not in codes(
+        lint_weeks(gym, {6}, SUB, Prefs(days_per_week=6, demands=D100_ULTRA, total_weeks=11))
+    )  # hills nearby
+    base = _week(2, [("Wednesday", "Muscular Endurance", 50, "Zone 2", "Gym ME")], phase="Base")
+    assert "CLIMB_SPECIFICITY" not in codes(lint_weeks(base, {2}, SUB, prefs))  # gym ME is right early in the base
+
+
+def test_the_second_ultra_window_week_asks_for_a_back_to_back_weekend_when_none_happened():
+    def quiet(wk):
+        return _week(
             wk,
             [
-                ("Wednesday", "Muscular Endurance", 50, "Zone 2", "Gym ME box step-ups"),
+                ("Tuesday", "Easy", 80, "Zone 2", None),
+                ("Wednesday", "Easy", 70, "Zone 2", None),
+                ("Saturday", "Easy", 60, "Zone 2", None),
                 ("Sunday", "Long Run", 150, "Zone 2", None),
             ],
-            "Build" if wk > 3 else "Base",
         )
-    ]
-    prefs = Prefs(days_per_week=6, demands=D100_ULTRA, total_weeks=11, flat_only=True)
-    assert "CLIMB_SPECIFICITY" in codes(lint_weeks(flat, {8}, SUB, prefs))
-    stairs = [
-        {**w, "title": "Weighted stair climbing laps"}
-        if w["type"] == "Muscular Endurance" and w["week_number"] >= 5
-        else w
-        for w in flat
-    ]
-    assert "CLIMB_SPECIFICITY" not in codes(lint_weeks(stairs, {8}, SUB, prefs))
-    assert "CLIMB_SPECIFICITY" not in codes(
-        lint_weeks(flat, {8}, SUB, Prefs(days_per_week=6, demands=D100_ULTRA, total_weeks=11))
-    )  # hills nearby
+
+    plan = quiet(6) + quiet(7)
+    prefs = Prefs(demands=D100_ULTRA, total_weeks=11)
+    assert "B2B_MISSING" in codes(lint_weeks(plan, {7}, SUB, prefs))
+    assert "B2B_MISSING" not in codes(lint_weeks(plan, {6}, SUB, prefs))  # the first week may still do it
+    done = _week(
+        6,
+        [
+            ("Tuesday", "Easy", 80, "Zone 2", None),
+            ("Saturday", "Easy", 150, "Zone 2", None),
+            ("Sunday", "Long Run", 240, "Zone 2", None),
+        ],
+    ) + quiet(7)
+    assert "B2B_MISSING" not in codes(lint_weeks(done, {7}, SUB, prefs))
