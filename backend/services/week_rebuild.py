@@ -380,8 +380,10 @@ def build_rebuild_inputs(
     prev_wk = request.week_number - 1
     # Week 1 has no prior week; the volume bounds below still read prev_wos.
     prev_wos = []
+    prior_full_planned_min = 0.0  # the whole prior week's plan, for the hold reference
     if prev_wk >= 1:
         prev_wos = [w for w in all_workouts if w.get("week_number") == prev_wk and w.get("type") != "Rest"]
+        prior_full_planned_min = sum(w.get("duration_minutes") or 0 for w in prev_wos)
         # Adapting next week before this one ends: sessions still ahead are not due,
         # so they count neither as planned volume nor against adherence.
         monday = start_monday(plan.get("start_date"))
@@ -504,8 +506,8 @@ def build_rebuild_inputs(
         prior_planned_min = planned_min if prev_wos else 0.0
         if target_planned_min > 0:
             ref_min, ref_label = target_planned_min, f"Week {request.week_number} as planned"
-        elif prior_planned_min > 0:
-            ref_min, ref_label = prior_planned_min, f"Week {prev_wk} planned"
+        elif prior_full_planned_min > 0:
+            ref_min, ref_label = prior_full_planned_min, f"Week {prev_wk} planned"
         else:
             ref_min = user_weekly_min if user_weekly_min > 0 else 180.0
             ref_label = "Current weekly volume"
@@ -514,15 +516,22 @@ def build_rebuild_inputs(
         adherence_note = ""
         if prev_wos and prior_planned_min > 0:
             adherence = (actual_min or 0.0) / prior_planned_min
+            # Adherence is judged on the sessions already due; the hold reference below is the
+            # whole prior week, so a week still in progress does not shrink the plan.
+            scope = (
+                f"the {prior_planned_min:.0f} of {prior_full_planned_min:.0f} planned min due so far"
+                if prior_full_planned_min > prior_planned_min
+                else f"{prior_planned_min:.0f} planned min"
+            )
             decision_log.append(
-                f"Week {prev_wk} was {adherence * 100:.0f}% complete ({actual_min:.0f} of {prior_planned_min:.0f} planned min)."
+                f"Week {prev_wk}: {actual_min:.0f} min done of {scope} ({adherence * 100:.0f}% complete)."
             )
             if adherence < 0.8:
-                if prior_planned_min <= ref_min:
-                    ref_min, ref_label = prior_planned_min, f"Week {prev_wk} planned"
+                if prior_full_planned_min <= ref_min:
+                    ref_min, ref_label = prior_full_planned_min, f"Week {prev_wk} planned"
                 adherence_note = (
                     f"  Prior-Week Adherence: the athlete completed {adherence * 100:.0f}% of Week {prev_wk}'s "
-                    f"planned time ({actual_min:.0f} of {prior_planned_min:.0f} min).\n"
+                    f"planned time ({actual_min:.0f} min done of {scope}).\n"
                     f"  IMPORTANT: do NOT progress volume on top of a week that was not completed, and do NOT "
                     f"shrink the plan as a punishment either. HOLD this week at the reference volume below "
                     f"so the athlete gets a second chance at the same stimulus. Say so plainly "

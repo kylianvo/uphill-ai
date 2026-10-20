@@ -220,15 +220,18 @@ def missed_rules_for_week(
 ) -> tuple[list[str], float | None]:
     """missed_reason_rules for the week before target_week, with its inputs gathered."""
     prev_wos = [w for w in all_workouts if w.get("week_number") == target_week - 1 and w.get("type") != "Rest"]
+    plan_monday = start_monday(plan.get("start_date"))
     days_to_race = None
     race_date = plan.get("race_date")
     if race_date and today:
         race = race_date if isinstance(race_date, dt.date) else dt.date.fromisoformat(str(race_date)[:10])
         days_to_race = (race - today).days
     rhr = get_resting_hr_elevation(athlete_id)
+    # A prior week with sessions still ahead is in progress, not a week off.
+    pending = lambda w: today is not None and is_upcoming(w, plan_monday, today)  # noqa: E731
     return missed_reason_rules(
         prev_wos,
-        weeks_off_count=weeks_off(all_workouts, target_week),
+        weeks_off_count=weeks_off(all_workouts, target_week, pending),
         days_to_race=days_to_race,
         repeat_days=repeated_miss_days(all_workouts, target_week),
         rhr_elevated=rhr is not None and rhr >= 1.10,
