@@ -112,6 +112,7 @@ from services import (
     coros_sync,
     fitness_snapshot,
     observability,
+    plan_adequacy,
     race_history,
     race_readiness,
     race_review,
@@ -2622,6 +2623,14 @@ async def _generate_next_block_for_athlete(
     if readiness and readiness.message:
         context_lines.append(f"  RACE READINESS: {readiness.message}")
         brief_decision_log.append(readiness.message)
+    # Whether the goal times are backed by what this plan can deliver: the athlete's brief says so
+    # in plain words (the generator already gets the readiness path above).
+    try:
+        from services import goal_service
+
+        brief_decision_log.extend(plan_adequacy.summary_lines(goal_service.plan_adequacy_for(plan)))
+    except Exception:
+        _goal_logger.exception("plan support for brief failed", extra={"fields": {"plan_id": request.plan_id}})
     if context_lines:
         block_context = "\n".join(context_lines)
 
@@ -4297,6 +4306,7 @@ def _reassess_plan_goal(plan_id: int, owner_id: int, request: GoalReassessReques
         lang=request.lang,
         trigger="manual",
     )
+    assessment = goal_service.with_plan_support(assessment, plan)
     return {
         "assessment": assessment,
         "status": goal_service.status(assessment, plan.get("target_time_hours")),
