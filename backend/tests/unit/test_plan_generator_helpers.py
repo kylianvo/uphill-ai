@@ -1399,3 +1399,23 @@ class TestPersonaFindings:
             thursday["type"] == "Easy" and thursday["target_zone"] == "Zone 2" and "recovery week" in thursday["title"]
         )
         assert {w["phase"] for w in workouts} == {"Base"}  # the model's "Taper" label is not trusted
+
+
+class TestLanguageDetection:
+    def test_place_names_do_not_switch_an_english_plan_to_vietnamese(self):
+        from services.plan_generator import has_vietnamese_text, narrative_lang_instruction
+
+        info = {"lang": "en", "name": "Vietnam Highlands Trail by UTMB"}
+        block = "Week 3: Long Run at Núi Dinh (Núi Chứa Chan next), coach evaluation: on track."
+        assert not has_vietnamese_text(block, info)
+        assert narrative_lang_instruction(info, block) == "Respond in English."
+        assert (
+            narrative_lang_instruction({"lang": "en", "name": "Đà Lạt Ultra"}, "race Đà Lạt Ultra long run")
+            == "Respond in English."
+        )
+
+    def test_vietnamese_prose_still_switches_the_language(self):
+        from services.plan_generator import has_vietnamese_text
+
+        assert has_vietnamese_text("Tuần này tôi mệt, đau gối nhẹ", {"name": "x"})
+        assert has_vietnamese_text("Chạy Núi Dinh nhưng tôi bận việc", {})  # prose around a place name still counts

@@ -140,14 +140,28 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
 "this_week_description": "2-3 sentences describing this new block's focus and why, addressed directly to the athlete"}"""
 
 
+_VI_CHARS = set(
+    "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
+)
+
+
+def has_vietnamese_text(text: str, race_info: dict[str, Any] | None = None) -> bool:
+    """Is `text` Vietnamese prose? Place names do not count: an English-language athlete who trains at "Núi Dinh"
+    or races "Vietnam Mountain Marathon" must not get a plan that flips to Vietnamese."""
+    from services.training_mountains import MOUNTAINS
+
+    names = [m.name_vi for m in MOUNTAINS.values()] + [m.name_en for m in MOUNTAINS.values()]
+    names += [str((race_info or {}).get("name") or "")]
+    for name in sorted(filter(None, names), key=len, reverse=True):
+        text = text.replace(name, " ")
+    return any(c in _VI_CHARS for c in text)
+
+
 def narrative_lang_instruction(race_info: dict[str, Any], text_sample: str) -> str:
     """Language + style contract for athlete-facing narrative text. Vietnamese is chosen
     when the race info says so, or when the athlete's own text (text_sample) is Vietnamese."""
     lang = (race_info.get("lang") or "en").lower()
-    vi_chars = set(
-        "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
-    )
-    if lang != "vi" and any(c in vi_chars for c in str(text_sample or "")):
+    if lang != "vi" and has_vietnamese_text(str(text_sample or ""), race_info):
         lang = "vi"
     if lang == "vi":
         lang_instruction = (
@@ -1202,15 +1216,12 @@ class PlanGenerator:
 
         # 1. Base Variables Extract
         lang = (race_info.get("lang") or user_profile.get("lang") or "en").lower()
-        vi_chars = set(
-            "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
-        )
         all_notes = (
             str(race_info.get("athlete_notes") or "")
             + str(race_info.get("coach_notes") or "")
             + str(block_context or "")
         )
-        if lang != "vi" and any(c in vi_chars for c in all_notes):
+        if lang != "vi" and has_vietnamese_text(all_notes, race_info):
             lang = "vi"
         age = int(user_profile.get("age", 30))
         max_hr = int(user_profile.get("max_hr", 220 - age))
