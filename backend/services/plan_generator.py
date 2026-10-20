@@ -1053,7 +1053,16 @@ class PlanGenerator:
                     sum(week_capacity_parts(profile, days_per_week)) / flat_pace_min_km if flat_pace_min_km else None
                 )
                 if issue := race_readiness.readiness_issue(r, wk, week_km, capacity_km):
-                    issues.append(issue)
+                    hint = ""
+                    if flat_pace_min_km and r and r.floor_km:
+                        target_min = min(r.floor_km, capacity_km or r.floor_km) * flat_pace_min_km
+                        hint = race_readiness.suggest_minutes(
+                            [w for w in workouts if w.get("week_number") == wk],
+                            target_min,
+                            profile.weekday_minutes[1],
+                            profile.long_run_share_cap,
+                        )
+                    issues.append(plan_lint.Issue(issue.code, issue.week, f"{issue.message} {hint}".strip()))
         return issues
 
     @staticmethod

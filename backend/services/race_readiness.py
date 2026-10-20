@@ -179,3 +179,47 @@ def target_vs_cutoff_issue(target_h: float | None, cutoff_h: float | None, week:
             f"would not be a finish. Re-run the Goal Determiner.",
         )
     return None
+
+
+_QUALITY = {"tempo", "interval", "threshold", "race"}
+
+
+def suggest_minutes(
+    ws: list[dict[str, Any]], target_run_minutes: float, weekday_max: float, long_share_cap: float
+) -> str:
+    """Concrete durations that bring a week's running up to `target_run_minutes`: easy and long runs are scaled
+    up in proportion, each inside the tier's weekday maximum and the long run inside its share of the week.
+    Quality sessions, strength and Muscular Endurance are left as drafted. "" when nothing can be scaled."""
+    runs = [
+        w
+        for w in ws
+        if w.get("type") != "Rest" and (w.get("type") or "").strip().lower() not in NON_RUN_TYPES | _QUALITY
+    ]
+    if not runs:
+        return ""
+    current = sum(
+        float(w.get("duration_minutes") or 0)
+        for w in ws
+        if (w.get("type") or "").strip().lower() not in NON_RUN_TYPES and w.get("type") != "Rest"
+    )
+    minutes = {id(w): float(w.get("duration_minutes") or 0) for w in runs}
+    is_long = lambda w: (w.get("type") or "").strip().lower() == "long run"  # noqa: E731
+    cap = lambda w: min(300.0, long_share_cap * target_run_minutes) if is_long(w) else weekday_max  # noqa: E731
+    need = target_run_minutes - current
+    for _ in range(4):  # redistribute what the caps refuse
+        room = [w for w in runs if minutes[id(w)] < cap(w)]
+        base = sum(minutes[id(w)] for w in room)
+        if need <= 0.5 or not room or not base:
+            break
+        for w in room:
+            add = need * minutes[id(w)] / base
+            minutes[id(w)] = min(cap(w), minutes[id(w)] + add)
+        need = target_run_minutes - (
+            current + sum(minutes[id(w)] - float(w.get("duration_minutes") or 0) for w in runs)
+        )
+    parts = [
+        f"{w.get('day_of_week')} {w.get('type')} {int(round(minutes[id(w)] / 5) * 5)} min"
+        for w in runs
+        if abs(minutes[id(w)] - float(w.get("duration_minutes") or 0)) >= 2.5
+    ]
+    return ("Set these sessions to " + ", ".join(parts) + ".") if parts else ""
