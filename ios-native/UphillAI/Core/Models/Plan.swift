@@ -40,6 +40,18 @@ struct Plan: Codable, Sendable, Equatable, Identifiable {
     var maxContinuousJogMin: Int? = nil
 }
 
+/// Week-to-date for a matched workout's week, from GET /api/integrations/matching.
+struct WeekContext: Codable, Sendable, Equatable {
+    struct NextKey: Codable, Sendable, Equatable {
+        let dayOfWeek: String
+        let title: String?
+        let type: String?
+    }
+    let doneMin: Int
+    let plannedMin: Int
+    let nextKey: NextKey?
+}
+
 /// Mirrors a `workouts` row.
 struct Workout: Codable, Sendable, Equatable, Identifiable {
     let id: Int
@@ -80,12 +92,15 @@ struct Workout: Codable, Sendable, Equatable, Identifiable {
     var matchedDurationSeconds: Double?
     var matchedAvgHr: Int?
     var matchedSourceProvider: String?
+    var matchedWeekContext: WeekContext?
+    /// Why a missed session was missed (busy, sick, pain, tired, weather, other).
+    var missedReason: String?
 
     enum CodingKeys: String, CodingKey {
         case id, planId, weekNumber, dayOfWeek, phase, title, type, durationMinutes, distanceKm, targetZone
         case targetHrRange, targetPace, treadmillIncline, treadmillSpeed, elevationGainM, gradePercent
         case intervalReps, intervalRepValue, intervalRepUnit, walkIntervalValue, description, fuelingTip
-        case source, isCompleted, isMissed, approvedAt, rpe, notes, sessionSlot, isPriority, matchedActivityId, matchedDeviceModel, matchedDistanceKm, matchedDurationSeconds, matchedAvgHr, matchedSourceProvider
+        case source, isCompleted, isMissed, approvedAt, rpe, notes, sessionSlot, isPriority, matchedActivityId, matchedDeviceModel, matchedDistanceKm, matchedDurationSeconds, matchedAvgHr, matchedSourceProvider, matchedWeekContext, missedReason
     }
 
     init(from decoder: any Decoder) throws {
@@ -127,6 +142,8 @@ struct Workout: Codable, Sendable, Equatable, Identifiable {
         matchedDurationSeconds = try c.decodeIfPresent(Double.self, forKey: .matchedDurationSeconds)
         matchedAvgHr = try c.decodeIfPresent(Int.self, forKey: .matchedAvgHr)
         matchedSourceProvider = try c.decodeIfPresent(String.self, forKey: .matchedSourceProvider)
+        matchedWeekContext = try c.decodeIfPresent(WeekContext.self, forKey: .matchedWeekContext)
+        missedReason = try c.decodeIfPresent(String.self, forKey: .missedReason)
     }
 
     /// The web defaults unknown days to Monday; so do we.

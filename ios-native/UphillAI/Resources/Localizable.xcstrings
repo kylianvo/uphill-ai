@@ -14300,6 +14300,226 @@
           }
         }
       }
+    },
+    "Busy": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bận"
+          }
+        }
+      }
+    },
+    "Sick": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ốm"
+          }
+        }
+      }
+    },
+    "Pain": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đau"
+          }
+        }
+      }
+    },
+    "Tired": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mệt"
+          }
+        }
+      }
+    },
+    "Weather": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời tiết"
+          }
+        }
+      }
+    },
+    "vs last week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "So với tuần trước"
+          }
+        }
+      }
+    },
+    "Why this week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lý do tuần này"
+          }
+        }
+      }
+    },
+    "Watch out": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu ý"
+          }
+        }
+      }
+    },
+    "Why was it missed?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vì sao bạn bỏ lỡ buổi này?"
+          }
+        }
+      }
+    },
+    "Missed last week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ lỡ tuần trước"
+          }
+        }
+      }
+    },
+    "Tell the coach why. It shapes this week.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cho Coach biết lý do để chỉnh tuần này."
+          }
+        }
+      }
+    },
+    "Illness or pain right now": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang ốm hoặc đau"
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không"
+          }
+        }
+      }
+    },
+    "Week so far: %lld of %lld min.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần này: %lld/%lld phút."
+          }
+        }
+      }
+    },
+    "Next key session: %@, %@.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi quan trọng tiếp theo: %@, %@."
+          }
+        }
+      }
+    },
+    "Week %lld of %lld in %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần %lld/%lld của giai đoạn %@"
+          }
+        }
+      }
+    },
+    "Build aerobic endurance with easy, consistent running.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xây sức bền hiếu khí bằng những buổi chạy nhẹ, đều đặn."
+          }
+        }
+      }
+    },
+    "Add race-specific fitness on top of your aerobic base.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm thể lực đặc thù cho race lên nền hiếu khí của bạn."
+          }
+        }
+      }
+    },
+    "Sharpen with your hardest, most race-like sessions.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mài sắc bằng những buổi khó nhất, giống race nhất."
+          }
+        }
+      }
+    },
+    "Cut volume to arrive at the start line fresh.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giảm khối lượng để đến vạch xuất phát thật tươi."
+          }
+        }
+      }
+    },
+    "Absorb the work; rest is the training.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hấp thụ bài tập; nghỉ ngơi cũng là tập luyện."
+          }
+        }
+      }
+    },
+    "Ease back into structured training.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ từ quay lại giáo án bài bản."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

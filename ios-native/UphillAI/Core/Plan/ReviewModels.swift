@@ -51,6 +51,22 @@ struct WeekActualVolume: Decodable, Sendable {
     let unplannedCount: Int?
 }
 
+/// The coach's short explanation of a week (week_briefs row).
+struct WeekBrief: Decodable, Sendable, Equatable {
+    let why: String
+    let benefits: [String]
+    let watch: String?
+
+    private enum CodingKeys: String, CodingKey { case why, benefits, watch }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        why = try c.decode(String.self, forKey: .why)
+        benefits = try c.decodeIfPresent([String].self, forKey: .benefits) ?? []
+        watch = try c.decodeIfPresent(String.self, forKey: .watch)
+    }
+}
+
 struct WeekReview: Decodable, Sendable {
     let weekNumber: Int
     let completionPct: Double
@@ -59,9 +75,10 @@ struct WeekReview: Decodable, Sendable {
     let narrative: WeekNarrative?
     let planned: WeekPlannedVolume?
     let actual: WeekActualVolume?
+    let brief: WeekBrief?
 
     private enum CodingKeys: String, CodingKey {
-        case weekNumber, completionPct, checkboxCompletionPct, perWorkout, narrative, planned, actual
+        case weekNumber, completionPct, checkboxCompletionPct, perWorkout, narrative, planned, actual, brief
     }
 
     init(from decoder: Decoder) throws {
@@ -73,6 +90,7 @@ struct WeekReview: Decodable, Sendable {
         narrative = try c.decodeIfPresent(WeekNarrative.self, forKey: .narrative)
         planned = try c.decodeIfPresent(WeekPlannedVolume.self, forKey: .planned)
         actual = try c.decodeIfPresent(WeekActualVolume.self, forKey: .actual)
+        brief = try? c.decodeIfPresent(WeekBrief.self, forKey: .brief)
     }
 }
 
