@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from typing import Any
 
+import telemetry
 from config import settings
 from db import block_number_for_week, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
@@ -1100,7 +1101,9 @@ class PlanGenerator:
             if not issues:
                 return workouts, tier
             codes = ",".join(sorted({i.code for i in issues}))
+            telemetry.record_lint([i.code for i in issues], "found")
             if not settings.PLAN_LINT_RETRY:
+                telemetry.record_lint([i.code for i in issues], "retry_off")
                 _logger.info(f"[PlanLint] plan={plan_id} week={target_week} issues={codes} (retry off)")
                 return workouts, tier
             feedback = (
@@ -1113,6 +1116,7 @@ class PlanGenerator:
             )
             retry_issues = PlanGenerator._lint_issues(retry_workouts, retry_tier, **kwargs)
             better = len(retry_issues) < len(issues)
+            telemetry.record_lint([i.code for i in issues], "retry_kept" if better else "retry_discarded")
             _logger.info(
                 f"[PlanLint] plan={plan_id} week={target_week} issues={codes} -> {len(issues)}->{len(retry_issues)}"
                 f" kept={'retry' if better else 'first'}"
@@ -1291,7 +1295,8 @@ class PlanGenerator:
                 max_hr=max_hr,
                 gender=gender,
             )
-        tier_profile = get_profile(athlete_tier)
+        # Session caps follow the volume the athlete trains (like the lint), not only the level resolved at the start.
+        tier_profile = graduated_profile(get_profile(athlete_tier), current_weekly_km)
 
         # Extract Zone 2 bounds and calculate personalized pacing zone ranges.
         # goal_type comes from the PLAN, not the user: the same athlete can hold a
@@ -1381,10 +1386,16 @@ class PlanGenerator:
                 wo["elevation_gain_m"], wo["grade_percent"] = PlanGenerator.resolve_elevation_and_grade(
                     wo, w_type, terrain, wo["distance_km"], course_elevation_gain_m, course_distance_km
                 )
+                if not venues.outdoor_climbing:
+                    # No hills, mountain days or mountain declared: an outdoor run has no climbing to report.
+                    wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0
                 # Treadmill speed applies its own incline slowdown, so it must start from the flat pace.
                 flat_pace = wo["target_pace"]
-                # Only mountain days are on the mountain; with no mountain days set, every trail run may be.
-                on_mountain = venues.is_mountain_day(wo["day_of_week"]) or not venues.mountain_days
+                # Only mountain days are on the mountain; with none set, every trail run may be -- but only for an
+                # athlete who has a mountain or hills at all.
+                on_mountain = venues.is_mountain_day(wo["day_of_week"]) or (
+                    not venues.mountain_days and venues.outdoor_climbing
+                )
                 if terrain == "trail" and w_type in ("Easy", "Long Run") and flat_pace and dur > 0 and on_mountain:
                     from services.trail_pace import trail_session
 
@@ -1564,7 +1575,14 @@ class PlanGenerator:
                 f"{'every day' if venues.local_hills else (', '.join(venues.mountain_days) or 'no')}), "
                 f"Stair Access: {venues.stair_access}, Treadmill Max Incline: "
                 f"{f'{venues.treadmill_max_incline}%' if use_treadmill else 'n/a'}\n"
-                f"Custom Pace Zones (min/km):\n"
+                + (
+                    ""
+                    if venues.outdoor_climbing
+                    else "NO OUTDOOR CLIMBING: the athlete has no hills or mountain access, so every outdoor run has "
+                    "elevation_gain_m 0 and grade_percent 0; climbing comes only from stair or treadmill-incline "
+                    "sessions.\n"
+                )
+                + f"Custom Pace Zones (min/km):\n"
                 f"- Zone 1 (Recovery): {p_z1}\n"
                 f"- Zone 2 (Easy Range): {p_z2}\n"
                 f"- Zone 3 (Tempo): {p_z3}\n"
@@ -2242,8 +2260,8 @@ class PlanGenerator:
                 desc = "No running. Focus on full-body mobility, gentle stretching, and hydration."
                 fuel_tip = "Eat high-protein, nutrient-dense foods to rebuild muscle tissues."
                 wed_dur = 0.0
-            elif phase in ("Base", "Race Week") or not tier_profile.allows_intensity:
-                # Base is aerobic (Zone 1-2); a race week is not the week for a hard session.
+            elif phase in ("Base", "Race Week") or not tier_profile.allows_intensity or is_recovery_week:
+                # Base is aerobic (Zone 1-2); a race week or a recovery week is not for a hard session.
                 title = "Aerobic Capacity Run"
                 w_type = "Aerobic Capacity"
                 zone = "Zone 2"
@@ -2449,6 +2467,13 @@ class PlanGenerator:
                     # forbid ME or intensity get general strength instead.
                     me_ok = tier_profile.allows_me_blocks
                     sprint_ok = tier_profile.allows_intensity
+                    steep_climb_hint = (
+                        " Use stairs or an incline treadmill with a weighted pack when you can: climbing laps, not just a box."
+                        if course_distance_km
+                        and course_elevation_gain_m
+                        and course_elevation_gain_m / course_distance_km >= 25
+                        else ""
+                    )
                     zone = "Zone 1"
                     if phase == "Base" and me_ok:
                         title = "Muscular Endurance: Gym ME (Straight Sets)"
@@ -2463,7 +2488,9 @@ class PlanGenerator:
                             f"in the quads and glutes; ignore heart rate. Keep the next two days easy."
                         )
                         fuel_tip = "Drink amino acids post-workout for protein synthesis."
-                    elif phase == "Base" or (phase in ("Build", "Peak") and not me_ok and not sprint_ok):
+                    elif phase == "Base" or (
+                        phase in ("Build", "Peak") and not me_ok and (not sprint_ok or is_recovery_week)
+                    ):
                         title = "General Base Strength"
                         w_type = "Strength"
                         desc = (
@@ -2483,7 +2510,10 @@ class PlanGenerator:
                         if has_gym_access:
                             title = "Muscular Endurance: Weighted Step-Ups"
                             weight_pct = 10 if soft_start or week <= 6 else 15
-                            desc = f"Execute {steps} step-ups holding {weight_pct}% of your body weight on a 30cm box. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
+                            desc = (
+                                f"Execute {steps} step-ups holding {weight_pct}% of your body weight on a 30cm box. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
+                                + steep_climb_hint
+                            )
                             fuel_tip = "Consume electrolytes. Keep hydration nearby during strength efforts."
 
                             incline_pct = 12.0
@@ -2499,7 +2529,10 @@ class PlanGenerator:
                                 treadmill_sp = treadmill_settings_calc["speed_kph"]
                         else:
                             title = "Muscular Endurance: Bodyweight Step-Ups"
-                            desc = f"Execute {steps} bodyweight step-ups on a 30cm box, no added weight. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
+                            desc = (
+                                f"Execute {steps} bodyweight step-ups on a 30cm box, no added weight. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
+                                + steep_climb_hint
+                            )
                             fuel_tip = "Consume electrolytes. Keep hydration nearby during strength efforts."
                     elif phase in ("Build", "Peak"):
                         # Peak, or Build for a tier without ME: neuromuscular power.

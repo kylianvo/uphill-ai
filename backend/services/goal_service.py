@@ -8,6 +8,7 @@ from datetime import date
 from typing import Any
 
 import db
+import telemetry
 from config import settings
 from log_utils import get_logger
 from services import goal_anchors, goal_context, goal_judge, observability, plan_adequacy, plan_lint
@@ -184,6 +185,14 @@ def _benchmarks(race_name: str | None, distance_km: float) -> list[dict[str, Any
     return bench["results"] if bench else None
 
 
+def _calendar_week(start_date: str | None, total_weeks: int) -> int:
+    """The plan's current week, Monday-aligned like the calendar (db.compute_current_week is not)."""
+    from services import calendar_rules
+
+    monday = calendar_rules.start_monday(start_date)
+    return max(1, min(calendar_rules.current_week(monday, date.today()), total_weeks or 1)) if monday else 1
+
+
 def plan_adequacy_for(plan: dict[str, Any]) -> plan_adequacy.Adequacy | None:
     """What the plan can deliver of the training improvement the goals assume (services/plan_adequacy)."""
     total_weeks = int(plan.get("total_weeks") or 0)
@@ -196,7 +205,7 @@ def plan_adequacy_for(plan: dict[str, Any]) -> plan_adequacy.Adequacy | None:
     return plan_adequacy.assess(
         db.get_plan_workouts(plan["id"]),
         total_weeks=total_weeks,
-        current_week=db.compute_current_week(plan.get("start_date"), total_weeks),
+        current_week=_calendar_week(plan.get("start_date"), total_weeks),
         weeks_to_race=_weeks_until(plan.get("race_date")),
         distance_km=plan.get("course_distance_km"),
         profile=get_profile(plan.get("athlete_tier")),
@@ -293,6 +302,7 @@ def feasibility_for(plan: dict[str, Any], assessment: dict[str, Any] | None = No
         return None
     if verdict is None:
         return None
+    telemetry.goal_feasibility_total.labels(verdict=verdict.verdict).inc()
     return {
         "verdict": verdict.verdict,
         "capacity_h": round(verdict.capacity_h, 1),

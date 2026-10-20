@@ -86,3 +86,28 @@ struct GoalPathTests {
         #expect(try path().note == nil)
     }
 }
+
+struct ClimbVenuePromptTests {
+    private func section(steepness: Double?, mountain: String? = nil, stairs: Bool = false, treadmill: Bool = false) -> TrainingVenueSection {
+        TrainingVenueSection(
+            mountainDays: .constant([]), trainingMountain: .constant(mountain), mountainMinMinutes: .constant(nil),
+            stairAccess: .constant(stairs), useTreadmill: .constant(treadmill), treadmillMaxIncline: nil,
+            courseSteepness: steepness
+        )
+    }
+
+    @Test func aSteepCourseWithNoPlaceToClimbAsksWhere() {
+        #expect(section(steepness: 53).needsClimbVenue)
+    }
+
+    @Test func aMountainStairsOrTreadmillSilencesIt() {
+        #expect(!section(steepness: 53, mountain: "nui_dinh").needsClimbVenue)
+        #expect(!section(steepness: 53, stairs: true).needsClimbVenue)
+        #expect(!section(steepness: 53, treadmill: true).needsClimbVenue)
+    }
+
+    @Test func aFlatOrUnknownCourseNeverAsks() {
+        #expect(!section(steepness: 8).needsClimbVenue)
+        #expect(!section(steepness: nil).needsClimbVenue)
+    }
+}

@@ -77,3 +77,11 @@ def test_journey_payload_shape():
         "deviations",
     }
     assert j["days_to_race"] == 11 and j["preferences"]["mountain"] == "chau_thoi"
+
+
+def test_current_week_is_monday_aligned_like_the_calendar():
+    # a plan that starts on a Wednesday: Monday 19 Oct already belongs to week 2, even 6 days after the start
+    p = {"race_date": "2027-01-02", "total_weeks": 10, "start_date": "2026-10-14", "athlete_tier": "recreational"}
+    assert plan_journey.journey(p, plan(), today=date(2026, 10, 20))["current_week"] == 2
+    assert plan_journey.journey(p, plan(), today=date(2026, 10, 18))["current_week"] == 1
+    assert plan_journey.journey(p, plan(), today=date(2030, 1, 1))["current_week"] == 10

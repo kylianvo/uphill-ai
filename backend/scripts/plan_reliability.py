@@ -47,7 +47,7 @@ RACES = {"50K": (56.4, 2946, 12.0, 9.0), "100K": (104.2, 5533, 29.0, 14.67)}
 START = date(2026, 10, 19)  # a Monday, fixed: the plan must not depend on the day the scorecard runs
 MOUNTAIN = "nui_dinh"  # 60 m D+/km, minimum long run 180 min
 MOUNTAIN_MIN = 180
-HARD_RULES = {"ME_SPACING", "HARD_ADJACENT", "SESSION_TOO_LONG", "LONG_RUN_DAY", "DAYS_SHORT"}
+HARD_RULES = {"ME_SPACING", "HARD_ADJACENT", "SESSION_TOO_LONG", "LONG_RUN_DAY", "DAYS_SHORT", "HARD_IN_DOWN_WEEK"}
 # A plan the athlete's week cannot hold is best effort: feasibility says so, and these may then appear.
 CAPACITY_CODES = {"LONG_SHARE", "BACK_TO_BACK", "RECOVERY_DUE", "VOLUME_JUMP", "VERT_JUMP", "LONG_RUN_JUMP"}
 MOUNTAIN_MINIMUM_CODES = {
@@ -56,7 +56,7 @@ MOUNTAIN_MINIMUM_CODES = {
     "VOLUME_JUMP",
     "VERT_JUMP",
 }  # the 180-min mountain long run (owner-kept, #142)
-DEMAND_CODES = {"TIME_ON_FEET", "SPECIFICITY_LATE"}
+DEMAND_CODES = {"TIME_ON_FEET", "SPECIFICITY_LATE", "CLIMB_SPECIFICITY"}
 
 
 @dataclass(frozen=True)

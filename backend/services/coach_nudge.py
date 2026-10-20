@@ -13,6 +13,7 @@ from collections import Counter
 from datetime import date, timedelta
 from typing import Any
 
+import telemetry
 from config import settings
 from log_utils import get_logger
 from services import observability, plan_journey
@@ -273,6 +274,7 @@ async def nudge(f: dict[str, Any], lang: str, api_key: str | None) -> dict[str, 
                 text, source = candidate, "model"
         except Exception as ex:  # noqa: BLE001
             _logger.warning(f"[CoachNudge] Gemini FAILED: {type(ex).__name__}: {ex}")
+    telemetry.coach_nudge_total.labels(tone=tone, source=source).inc()
     return {
         "tone": tone,
         "text": text or fallback_text(f, tone, lang),

@@ -8,8 +8,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-from db import compute_current_week
-from services import plan_lint
+from services import calendar_rules, plan_lint
 from services.athlete_tier import TierProfile, get_profile
 
 LONG_RUN_MILESTONE_MIN = 180  # the first long run of three hours or more
@@ -94,7 +93,9 @@ def deviations(
 
 def journey(plan: dict[str, Any], workouts: list[dict[str, Any]], today: date) -> dict[str, Any]:
     total = int(plan.get("total_weeks") or 0)
-    current = compute_current_week(plan.get("start_date"), total)
+    monday = calendar_rules.start_monday(plan.get("start_date"))
+    # Monday-aligned like the calendar and the clients (db.compute_current_week counts 7-day periods from the start date)
+    current = max(1, min(calendar_rules.current_week(monday, today), total or 1)) if monday else 1
     prefs = Preferences(plan.get("long_run_day"), plan.get("days_per_week"))
     return {
         "current_week": current,

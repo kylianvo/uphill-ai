@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 import db
+import telemetry
 from log_utils import get_logger
 from services import aerobic_speed
 
@@ -28,7 +29,10 @@ def refresh(
         points = aerobic_speed.weekly_points(activities, float(aet), monday, through)
         for p in points:
             db.upsert_fitness_checkpoint(plan["id"], p.week, p.pace_min_km, p.n)
-        return aerobic_speed.path(points, int(plan.get("total_weeks") or 0))
+        status = aerobic_speed.path(points, int(plan.get("total_weeks") or 0))
+        if status:
+            telemetry.aerobic_path_total.labels(b=status.b, a=status.a, confidence=status.confidence).inc()
+        return status
     except Exception:
         _logger.exception("fitness tracking failed", extra={"fields": {"plan_id": plan.get("id")}})
         return None

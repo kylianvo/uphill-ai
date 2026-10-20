@@ -1571,7 +1571,11 @@ export default function OnboardingWizard() {
                     stair_access: !!onboardingAnswers.stair_access,
                     treadmill_max_incline: 15,
                   }}
-                  useTreadmill={false}
+                  useTreadmill={!!onboardingAnswers.use_treadmill}
+                  courseSteepness={
+                    (parseFloat(onboardingAnswers.course_elevation_gain_m) || 0) /
+                    (parseFloat(onboardingAnswers.course_distance_km) || Infinity)
+                  }
                   onChange={(patch) => Object.entries(patch).forEach(([k, v]) => setAns(k, v))}
                 />
 

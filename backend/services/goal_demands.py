@@ -126,3 +126,40 @@ def long_run_line(
         f"LONG RUN TARGET: the goal needs the longest session to reach about {target:.0f} min by week {last_build}; "
         f"this week's Long Run should be at least {ask:.0f} min (last week's was {recent:.0f})."
     )
+
+
+ULTRA_KM = 80
+B2B_WINDOW = (6, 3)  # last four pre-taper weeks
+B2B_DAYS = 5
+
+
+def back_to_back_line(
+    workouts: list[dict[str, Any]], week: int, total_weeks: int, demands: Demands, days_per_week: int | None
+) -> str | None:
+    """Ask for a back-to-back weekend in the first two weeks of the ultra window (total-5 and total-4)."""
+    if demands.distance_km < ULTRA_KM or (days_per_week or B2B_DAYS) < B2B_DAYS or not total_weeks:
+        return None
+    lo, _hi = B2B_WINDOW
+    if week not in (total_weeks - lo + 1, total_weeks - lo + 2):
+        return None
+    from services.plan_lint import b2b_targets
+
+    sat, sun = b2b_targets(workouts, week, demands.longest_session_min)
+    return (
+        f"BACK-TO-BACK WEEKEND (ultra specificity): if this is not a recovery week, make Saturday about {sat} min and "
+        f"Sunday's Long Run about {sun} min, both Zone 2 (on trail or with climbing where you can), practising race "
+        f"fueling and the race pack; keep Friday easy and shorten the midweek easy runs so the week total stays "
+        f"within the weekly cap."
+    )
+
+
+def climb_line(week: int, total_weeks: int, demands: Demands, flat_only: bool) -> str | None:
+    """Ask for climbing-specific Muscular Endurance when the course is steep and the athlete has no hills."""
+    if not flat_only or demands.steepness_m_per_km < 25 or week < 3 or week > total_weeks - 3:
+        return None
+    return (
+        f"CLIMB SPECIFICITY: the course climbs {demands.gain_m:.0f} m D+ ({demands.steepness_m_per_km:.0f} m D+/km) "
+        f"and the athlete has no hills: make this week's Muscular Endurance session the outdoor weighted carries, "
+        f"stair or incline-treadmill format (climbing laps of 5+ min with a 5-15% bodyweight pack), not gym straight "
+        f"sets, and finish with eccentric step-downs."
+    )

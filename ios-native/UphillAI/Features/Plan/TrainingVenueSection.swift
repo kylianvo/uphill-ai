@@ -8,6 +8,8 @@ struct TrainingVenueSection: View {
     @Binding var stairAccess: Bool
     @Binding var useTreadmill: Bool
     var treadmillMaxIncline: Binding<Int>?
+    /// The course's climb in m D+/km, when known: a steep course with no place to train climbing gets a prompt.
+    var courseSteepness: Double?
     @State private var mountains: [TrainingMountain] = []
     @State private var loadError = false
     @State private var loadAttempt = 0
@@ -19,6 +21,12 @@ struct TrainingVenueSection: View {
 
     private var hasAccess: Bool? {
         access ?? ((trainingMountain != nil || !mountainDays.isEmpty) ? true : nil)
+    }
+    static let steepCourseMPerKm = 25.0
+    /// Steep course, and the athlete named no mountain, no stairs and no treadmill.
+    var needsClimbVenue: Bool {
+        (courseSteepness ?? 0) >= Self.steepCourseMPerKm && trainingMountain == nil && mountainDays.isEmpty
+            && !stairAccess && !useTreadmill
     }
     private var hasLocation: Bool { trainingMountain != nil || !mountainDays.isEmpty || choseOther }
     private var mountain: TrainingMountain? { mountains.first { $0.key == trainingMountain } }
@@ -136,6 +144,13 @@ struct TrainingVenueSection: View {
             Divider()
             VStack(alignment: .leading, spacing: UH.Space.small) {
                 Text("Alternative training").font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
+                if needsClimbVenue, let courseSteepness {
+                    Label(L("This course climbs about %lld m D+ per km. Add a place to train climbing (a mountain, stairs, or a treadmill with incline) or your plan will have no climbing work.", Int(courseSteepness.rounded())),
+                          systemImage: "exclamationmark.circle")
+                        .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.warningInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("trail.climbVenueNeeded")
+                }
                 Toggle("I can use stairs (fire stairs or a Stairmaster)", isOn: $stairAccess)
                 Toggle("I can use a treadmill", isOn: $useTreadmill)
                 if let treadmillMaxIncline, useTreadmill {
