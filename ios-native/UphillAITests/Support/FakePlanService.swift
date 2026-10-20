@@ -72,6 +72,16 @@ final class FakePlanService: PlanServicing {
         return try reviewResult.withLock { $0 }.get()
     }
 
+    func journey(planID: Int) async throws -> PlanJourney {
+        record("journey \(planID)")
+        throw URLError(.notConnectedToInternet)
+    }
+
+    func coachNudge(planID: Int) async throws -> CoachNudge? {
+        record("nudge \(planID)")
+        return nil
+    }
+
     func goal(planID: Int) async throws -> PlanGoal {
         record("goal \(planID)")
         return try goalResult.withLock { $0 }.get()

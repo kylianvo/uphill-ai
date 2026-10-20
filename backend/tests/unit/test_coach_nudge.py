@@ -88,3 +88,10 @@ def test_hash_changes_with_facts_tone_and_language():
     b = facts(_week(1, 5) + _week(2, 4, missed=1))
     assert coach_nudge.facts_hash(a, "encourage", "en") != coach_nudge.facts_hash(b, "encourage", "en")
     assert coach_nudge.facts_hash(a, "encourage", "en") != coach_nudge.facts_hash(a, "encourage", "vi")
+
+
+def test_a_vietnamese_push_names_the_reason_in_vietnamese():
+    f = facts(_week(1, 5) + _week(2, 1, missed=2, reason="busy"))
+    assert "(bận)" in coach_nudge.fallback_text(f, "push", "vi") and "(busy)" in coach_nudge.fallback_text(
+        f, "push", "en"
+    )

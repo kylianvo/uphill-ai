@@ -14660,6 +14660,116 @@
           }
         }
       }
+    },
+    "First 3-hour Long Run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Long Run 3 giờ đầu tiên"
+          }
+        }
+      }
+    },
+    "First recovery week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần recovery đầu tiên"
+          }
+        }
+      }
+    },
+    "Peak week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần peak"
+          }
+        }
+      }
+    },
+    "Taper starts": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bắt đầu Taper"
+          }
+        }
+      }
+    },
+    "%lld days a week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ngày mỗi tuần"
+          }
+        }
+      }
+    },
+    "long run %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "long run %@"
+          }
+        }
+      }
+    },
+    "Mountain training": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tập trên núi"
+          }
+        }
+      }
+    },
+    "Rest day · next": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nghỉ hôm nay · tiếp theo"
+          }
+        }
+      }
+    },
+    "Nothing left this week. Rest and recover.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần này hết buổi tập. Nghỉ và hồi phục."
+          }
+        }
+      }
+    },
+    "%@ · week %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · tuần %lld"
+          }
+        }
+      }
+    },
+    "Some upcoming weeks don't follow your schedule.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vài tuần sắp tới chưa đúng lịch của bạn."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

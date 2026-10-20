@@ -78,6 +78,8 @@ final class PlanViewModel {
     private(set) var blockCompletion: BlockCompletionResponse?
     private(set) var nextWeekOffer: NextWeekOffer?
     private(set) var goal: PlanGoal?
+    private(set) var journey: PlanJourney?
+    private(set) var coachNudge: CoachNudge?
     private(set) var isSyncingWatch = false
     private(set) var watchSyncNotice: String?
     private(set) var contextKnowledgeCard: KnowledgeCardModel?
@@ -250,7 +252,7 @@ final class PlanViewModel {
         cachedAt = nil
         actionError = nil
         if isSignedIn() && usesCache { cache.save(snapshot, as: .plan) }
-        Task { await loadBlockCompletion(); await loadGoal(); await loadKnowledgeCard() }
+        Task { await loadBlockCompletion(); await loadGoal(); await loadJourney(); await loadKnowledgeCard() }
     }
 
     /// Switches between the signed-in user's plan and a coached athlete's, then reloads.
@@ -274,6 +276,8 @@ final class PlanViewModel {
         blockCompletion = nil
         nextWeekOffer = nil
         goal = nil
+        journey = nil
+        coachNudge = nil
         state = .loading
         snapshot = nil
         cachedAt = nil
@@ -718,6 +722,19 @@ final class PlanViewModel {
         }
 
         contextKnowledgeCard = await service.knowledgeCard(topic: topic, lang: AppLanguage.code)
+    }
+
+    /// Best effort: the Today card works without them, so a failure just leaves the strip and message out.
+    func loadJourney() async {
+        let revision = scopeRevision
+        guard let plan = snapshot?.plan, cachedAt == nil else { return }
+        if let fresh = try? await service.journey(planID: plan.id), revision == scopeRevision { journey = fresh }
+        if let nudge = try? await service.coachNudge(planID: plan.id), revision == scopeRevision { coachNudge = nudge }
+    }
+
+    var todayFocus: TodayFocus {
+        let week = currentWeek
+        return TodayFocus.make(days: days(for: week), nextWeek: days(for: week + 1))
     }
 
     func loadGoal() async {
