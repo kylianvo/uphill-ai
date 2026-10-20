@@ -31,9 +31,10 @@ def test_two_sick_days_give_n_equals_two_and_a_no_progression_ceiling():
     assert cap == 1.0
 
 
-def test_pain_adds_cross_training_and_our_own_physio_note():
+def test_pain_reduces_running_without_prescribing_cross_training_and_adds_our_own_physio_note():
     lines, cap = missed_reason_rules([_missed("Monday", "pain")])
-    assert "non-impact" in _text(lines) and "physio" in _text(lines)
+    assert "Reduce running" in _text(lines) and "do not prescribe cross-training sessions" in _text(lines)
+    assert "physio" in _text(lines)
     assert cap == 1.0
 
 
@@ -93,9 +94,9 @@ def test_a_current_illness_is_an_ongoing_one_day_miss_with_the_same_rules_and_ca
     assert cap == 1.0
 
 
-def test_a_current_pain_adds_cross_training_and_caps():
+def test_a_current_pain_reduces_running_and_caps():
     lines, cap = missed_reason_rules([], current_issue="pain")
-    assert "non-impact" in _text(lines) and "ongoing" in _text(lines)
+    assert "Reduce running" in _text(lines) and "ongoing" in _text(lines)
     assert cap == 1.0
 
 
@@ -106,3 +107,12 @@ def test_a_current_issue_does_not_double_count_a_recorded_miss_with_the_same_rea
 
 def test_an_unknown_current_issue_is_ignored():
     assert missed_reason_rules([], current_issue="other") == ([], None)
+
+
+def test_a_prior_week_still_in_progress_is_not_a_week_off():
+    wos = [{"week_number": w, "type": "Easy", "is_completed": 0} for w in (1, 2, 3)]
+    assert weeks_off(wos, 4) == 3
+    # week 3 still has a session that can happen, so nothing is known about a gap
+    assert weeks_off(wos, 4, is_pending=lambda w: w["week_number"] == 3) == 0
+    # earlier finished weeks do not count past an in-progress one
+    assert weeks_off(wos, 4, is_pending=lambda w: w["week_number"] == 1) == 2

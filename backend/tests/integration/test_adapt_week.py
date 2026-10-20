@@ -675,6 +675,32 @@ class TestAdaptWeekVolumeBounds:
         assert "vs Planned 0.0km / 2.0h" in ctx
         assert "Reference: Week 2 as planned 180 min" in ctx
 
+    def test_a_week_still_in_progress_holds_at_the_whole_prior_week_not_the_sessions_due_so_far(
+        self, client, auth_headers
+    ):
+        """Prod (plan 119): adapting week 2 on Tuesday of week 1 with Monday missed counted only the
+        40 min due so far as the hold reference, giving a ~40 min week. The reference is the whole
+        prior week (4 x 40 = 160 min); adherence stays judged on what was due."""
+        import db
+
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        # week 2 (3 x 60 = 180) is larger than week 1 (160): the reference is the prior week only when it is smaller
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40, 40], [60, 60, 60], week1_completed=0)
+        monday_session = sorted(get_plan_workouts(plan_id), key=lambda w: w["id"])[0]
+        db.update_workout_log(monday_session["id"], is_missed=1)
+
+        ctx = _adapt_and_capture(
+            client, auth_headers["headers"], plan_id, today=dt.date(2027, 3, 30), fatigue_level="moderate"
+        )
+
+        assert "Prior-Week Adherence" in ctx
+        assert "0 min done of the 40 of 160 planned min due so far" in ctx
+        assert "Reference: Week 1 planned 160 min" in ctx
+        # a week still in progress is not "a week off" (that rule capped the week at 80% on prod)
+        assert "Returning after" not in ctx
+        # hold band 0.95-1.02 of 160, not of 40
+        assert "Target Full Week Total: 152-163 min" in ctx
+
     def test_the_athlete_request_is_given_explicit_precedence_over_the_cap(self, client, auth_headers):
         """The 5-tier RPE table used to sit as prose above a MUST/DO-NOT-EXCEED
         ceiling with nothing saying which wins, so the number always won."""
@@ -806,7 +832,7 @@ class TestWeekBrief:
 
         assert db.get_week_brief(plan_id, 2) == brief
         log = mock.call_args.kwargs["decision_log"]
-        assert any("Week 1 was 33% complete" in line for line in log)
+        assert any("Week 1: 40 min done of 120 planned min (33% complete)." in line for line in log)
         assert any("holds near the same volume" in line for line in log)
         assert any(line.startswith("Reported feeling: very_light. Allowed volume") for line in log)
 

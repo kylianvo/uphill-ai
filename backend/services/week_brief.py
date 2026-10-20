@@ -74,7 +74,7 @@ def _clean(parsed: Any) -> dict[str, Any] | None:
     return {"why": str(parsed["why"]).strip(), "benefits": benefits, "watch": watch}
 
 
-async def generate_week_brief(
+async def _generate_week_brief(
     *,
     race_info: dict[str, Any],
     block_context: str,
@@ -134,3 +134,28 @@ async def generate_week_brief(
     except Exception as ex:  # noqa: BLE001
         _logger.warning(f"[WeekBrief] Gemini FAILED: {type(ex).__name__}: {ex}")
         return None
+
+
+async def generate_week_brief(
+    *,
+    race_info: dict[str, Any],
+    block_context: str,
+    week_number: int,
+    workouts: list[dict[str, Any]],
+    prev_workouts: list[dict[str, Any]],
+    decision_log: list[str],
+    api_key: str | None,
+) -> dict[str, Any] | None:
+    """{why, benefits[], watch} for this week, or None (no key, bad output, any failure)."""
+    if not api_key or not decision_log:
+        return None
+    with observability.trace("week_brief", feature="week_brief"):
+        return await _generate_week_brief(
+            race_info=race_info,
+            block_context=block_context,
+            week_number=week_number,
+            workouts=workouts,
+            prev_workouts=prev_workouts,
+            decision_log=decision_log,
+            api_key=api_key,
+        )

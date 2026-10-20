@@ -29,6 +29,8 @@ PROVENANCE
     cross-training rather than nothing at all.
 """
 
+from collections.abc import Callable
+
 from services.athlete_tier import TierProfile
 
 
@@ -348,12 +350,15 @@ def me_status_block(
 MISSED_REASONS = ("busy", "sick", "pain", "tired", "weather", "other")
 
 
-def weeks_off(workouts: list[dict], target_week: int) -> int:
-    """Consecutive weeks before target_week with sessions planned and none completed."""
+def weeks_off(workouts: list[dict], target_week: int, is_pending: Callable[[dict], bool] | None = None) -> int:
+    """Consecutive weeks before target_week with sessions planned and none completed. A week that
+    still has a session that can happen (is_pending) is not over, so it is no evidence of a gap."""
     n = 0
     for wk in range(target_week - 1, 0, -1):
         planned = [w for w in workouts if w.get("week_number") == wk and w.get("type") != "Rest"]
         if not planned or any(w.get("is_completed") == 1 for w in planned):
+            break
+        if is_pending and any(is_pending(w) for w in planned):
             break
         n += 1
     return n
@@ -417,10 +422,11 @@ def missed_reason_rules(
     if "pain" in by_reason:
         n = len({w.get("day_of_week") for w in by_reason["pain"]})
         lines.append(
-            f"Reason - pain/injury ({n} day(s) missed{pain_tag}): no running while it hurts; use non-impact cross-training "
-            f"(bike, swim) instead; take {n} gradual easy day(s) before any intensity; first sessions back at about "
-            f"50% duration; no volume progression [UA-R6, R7, R4]. Coach safety note (not from the book): if the "
-            f"pain persists, advise seeing a physio."
+            f"Reason - pain/injury ({n} day(s) missed{pain_tag}): do not run through pain. Reduce running: keep any "
+            f"run short, easy and flat, and only while pain-free; if it hurts the athlete walks or skips it (the book "
+            f"suggests bike or swim instead, but do not prescribe cross-training sessions) [UA-R6]. Take {n} gradual "
+            f"easy day(s) before any intensity; first sessions back at about 50% duration; no volume progression "
+            f"[UA-R7, R4]. Coach safety note (not from the book): if the pain persists, advise seeing a physio."
         )
         caps.append(1.0)
     if "tired" in by_reason:
