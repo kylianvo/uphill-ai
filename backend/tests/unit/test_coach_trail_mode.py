@@ -137,3 +137,14 @@ def test_normal_coach_edit_recalculates_trail_from_duration_and_zone(monkeypatch
     assert updated["duration_minutes"] == 180
     assert (updated["target_pace"], updated["distance_km"], updated["elevation_gain_m"]) == (pace, km, gain)
     assert updated["mountain_climb_rate"] == pytest.approx(60)
+
+
+def test_coach_edit_on_climbing_row_without_distance_does_not_crash(monkeypatch):
+    # A row with D+ but no distance (and no stored climb rate) used to divide by zero.
+    row = workout(distance_km=0, mountain_climb_rate=None)
+    monkeypatch.setattr(main, "get_plan_by_id", lambda pid: PLAN)
+    monkeypatch.setattr(main, "get_workout_by_id", lambda wid: row)
+    monkeypatch.setattr(main, "get_user_by_id", lambda uid: ATHLETE)
+    monkeypatch.setattr(main, "coach_update_workout", lambda wid, uid, fields: {**row, **fields})
+    updated = main.edit_athlete_workout(7, 1, 11, main.CoachWorkoutUpdateRequest(duration_minutes=150), {"id": 8})
+    assert updated["duration_minutes"] == 150

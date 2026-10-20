@@ -1726,16 +1726,18 @@ def edit_athlete_workout(
             fields["target_pace"] = trail_pace_range(flat_pace, rate)
         else:
             rate = workout.get("mountain_climb_rate")
-            if rate is None:
+            if rate is None and workout.get("distance_km"):
                 rate = workout["elevation_gain_m"] / workout["distance_km"]
             duration = fields.get("duration_minutes")
             if duration is None:
                 duration = workout["duration_minutes"]
-            fields["target_pace"], fields["distance_km"], fields["elevation_gain_m"] = trail_session(
-                flat_pace, duration, rate
-            )
-        fields["grade_percent"] = rate / 10
-        fields["mountain_climb_rate"] = rate
+            if rate is not None:  # no distance and no stored rate: nothing to derive a trail pace from
+                fields["target_pace"], fields["distance_km"], fields["elevation_gain_m"] = trail_session(
+                    flat_pace, duration, rate
+                )
+        if rate is not None:
+            fields["grade_percent"] = rate / 10
+            fields["mountain_climb_rate"] = rate
     updated = coach_update_workout(workout_id, acting_user["id"], fields)
     return updated
 
