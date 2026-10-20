@@ -244,3 +244,18 @@ def test_no_demands_no_new_codes_and_blocks_without_a_peak_are_skipped():
     new = {"TIME_ON_FEET", "LONG_RUN_GRADIENT", "SPECIFICITY_LATE"}
     assert not new & set(codes(lint_weeks(plan, {7, 8}, SUB, Prefs())))
     assert not new & set(codes(lint_weeks(plan, {1, 2}, SUB, Prefs(demands=D100))))
+
+
+def test_specificity_runs_on_the_last_pre_taper_week_when_no_peak_phase_is_labelled():
+    # an 11-week plan: Base 1-4, Build 5-8, Taper 9, Race 10, Recovery 11; the model never writes "Peak"
+    plan = []
+    for wk in range(1, 9):
+        phase = "Base" if wk <= 4 else "Build"
+        plan += [
+            s(wk, "Sunday", "Long Run", 120, gain=0, dist=20, phase=phase),
+            s(wk, "Tuesday", "Easy", 60, phase=phase),
+        ]
+    prefs = Prefs(days_per_week=6, demands=D100, flat_only=True, total_weeks=11)
+    got = codes(lint_weeks(plan, {8}, SUB, prefs))
+    assert "TIME_ON_FEET" in got
+    assert "TIME_ON_FEET" not in codes(lint_weeks(plan, {5}, SUB, prefs))  # earlier weeks are not judged yet

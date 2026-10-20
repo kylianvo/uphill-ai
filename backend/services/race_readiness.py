@@ -146,9 +146,21 @@ def assess_week(
     return Readiness("behind", label, lo, hi, base, high, cap, reach_at_cap, peak_week, msg)
 
 
-def readiness_issue(r: Readiness | None, week: int, week_km: float) -> Issue | None:
-    """A lint issue when a generated week sits under the floor on a reachable path."""
-    if r and r.status == "behind" and week_km < r.floor_km * PATH_TOLERANCE:
+def readiness_issue(
+    r: Readiness | None,
+    week: int,
+    week_km: float,
+    capacity_km: float | None = None,
+    push_at_risk: bool = True,
+) -> Issue | None:
+    """A lint issue when a generated week sits under the floor. On a reachable path the floor is what keeps the
+    benchmark reachable; when the benchmark is out of reach it is the cap itself (best feasible build), so a
+    flat plan is still pushed upward (`push_at_risk`). `capacity_km` is what the athlete's days can hold: never
+    ask for more."""
+    if r and (r.status == "behind" or (push_at_risk and r.status == "at_risk")) and r.floor_km:
+        floor = min(r.floor_km, capacity_km) if capacity_km else r.floor_km
+        if week_km >= floor * PATH_TOLERANCE:
+            return None
         return Issue(
             "READINESS_BEHIND",
             week,
