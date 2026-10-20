@@ -20,7 +20,8 @@
     "name": "National 100K Championship",
     "date": "2026-12-15",
     "course_distance_km": 100,
-    "course_elevation_gain_m": 5500
+    "course_elevation_gain_m": 5500,
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 16
 }

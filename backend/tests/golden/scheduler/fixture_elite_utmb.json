@@ -20,7 +20,8 @@
     "name": "UTMB",
     "date": "2026-12-15",
     "course_distance_km": 170,
-    "course_elevation_gain_m": 10000
+    "course_elevation_gain_m": 10000,
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 20
 }

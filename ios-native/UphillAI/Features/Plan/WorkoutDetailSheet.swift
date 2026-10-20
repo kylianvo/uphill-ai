@@ -315,10 +315,7 @@ struct WorkoutDetailSheet: View {
             return w.distanceKm.flatMap { $0 > 0 ? String(format: "%.1f km", $0) : nil } ?? "—"
         }()
 
-        let paceValue: String = {
-            if w.isStrengthOrME { return "—" }
-            return WorkoutTypePresentation.paceTileValue(w.targetPace)
-        }()
+        let paceValue = WorkoutTypePresentation.sessionPaceValue(for: w)
 
         return HStack(spacing: UH.Space.small) {
             statTile(
@@ -332,7 +329,7 @@ struct WorkoutDetailSheet: View {
             )
 
             statTile(
-                label: L("PACE (/KM)"),
+                label: (w.elevationGainM ?? 0) > 0 ? L("TRAIL PACE") : L("PACE (/KM)"),
                 value: paceValue
             )
         }
@@ -368,7 +365,7 @@ struct WorkoutDetailSheet: View {
             items.append(zone)
         }
         if let gain = w.elevationGainM, gain > 0 {
-            items.append(L("+%lld m elevation gain", Int(gain)))
+            items.append(L("Estimated D+: ~%lld m", Int(gain.rounded())))
         }
 
         return HStack(spacing: 6) {
@@ -712,7 +709,7 @@ struct WorkoutDetailSheet: View {
                         Text("Connect COROS in Profile")
                             .font(.system(size: 13, weight: .semibold))
                     case .idle, .error:
-                        Text("Send next 4 weeks to COROS")
+                        Text("Send to COROS")
                             .font(.system(size: 13, weight: .semibold))
                     }
                 }

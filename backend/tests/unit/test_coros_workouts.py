@@ -220,3 +220,12 @@ def test_validate_course_catches_rule_breaks():
     assert "rest_sections" in validate_course(
         {"sportType": 4, "courseName": "R", "courseDescription": "d", "sections": [{"sectionType": 2}]}
     )
+
+
+def test_short_sprint_reps_get_full_recovery():
+    # 8 x 10s hill sprints need 2-3 min rest, not half the rep time.
+    c = build_course(wo(interval_reps=8, interval_rep_value=10, interval_rep_unit="s", duration_minutes=65), "en")
+    group = next(s for s in c["sections"] if s.get("intervalGroup"))
+    work, rec = group["sets"]
+    assert (work["targetValue"], rec["targetValue"]) == (10, 150)
+    assert validate_course(c) == []

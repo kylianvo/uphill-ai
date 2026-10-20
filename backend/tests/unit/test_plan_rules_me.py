@@ -84,3 +84,15 @@ def test_fallback_first_me_sessions_are_a_reduced_dose():
     _, workouts = _run(REC_PROFILE, {**TRAIL_RACE, "me_history": {"done": 0}}, total_weeks=20, block_number=5)
     me = [w for w in workouts if w["type"] == "Muscular Endurance"]
     assert me and "4x10" in me[0]["description"]
+
+
+def test_me_decision_cutoff_overrides_short_block_and_catch_up():
+    text = me_status_block(0, 0, 2, 13)
+    assert "ME DECISION: Do NOT schedule ME in this block" in text
+    assert "overrides" in text
+    assert "ME DECISION: Start" not in text
+
+
+def test_me_decision_with_short_runway_starts_now():
+    assert "ME DECISION: Start" in me_status_block(0, 0, 10, 1)
+    assert "ME DECISION: Start" in me_status_block(0, 0, 3, 11)

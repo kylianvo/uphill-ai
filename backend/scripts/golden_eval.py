@@ -117,6 +117,24 @@ def _week_km(workouts: list[dict], week: int) -> float:
     return round(sum(float(w.get("distance_km") or 0) for w in workouts if w.get("week_number") == week), 1)
 
 
+def _week_flat_equivalent_km(workouts: list[dict], week: int) -> float:
+    from services.trail_pace import TRAIL_CLIMB_FACTOR
+
+    return round(
+        sum(
+            float(w.get("distance_km") or 0)
+            + (
+                TRAIL_CLIMB_FACTOR * float(w.get("elevation_gain_m") or 0)
+                if w.get("type") in ("Easy", "Long Run")
+                else 0
+            )
+            for w in workouts
+            if w.get("week_number") == week
+        ),
+        1,
+    )
+
+
 async def _run_scheduler(fixture: dict) -> tuple[list[dict], str]:
     """Runs the generator on a fixture. A fixture may carry a `fitness_snapshot`; the
     resolved tier is left on the fixture as `_resolved_tier` for compare's scoring
@@ -138,7 +156,7 @@ async def _run_scheduler(fixture: dict) -> tuple[list[dict], str]:
         # one-week blocks, so these offline cases must explicitly include week 2.
         weeks_per_block=(
             max(2, settings.WEEKS_PER_BLOCK)
-            if (fixture.get("expect") or {}).get("week2_km")
+            if any((fixture.get("expect") or {}).get(key) for key in ("week2_km", "week2_flat_equivalent_km"))
             else settings.WEEKS_PER_BLOCK
         ),
     )
@@ -470,9 +488,16 @@ def compare(
             tier = fixture.pop("_resolved_tier", None)
             expect = fixture.get("expect") or {}
             week2 = _week_km(result, 2)
-            lo, hi = expect.get("week2_km") or [None, None]
+            flat_equivalent = _week_flat_equivalent_km(result, 2) if expect.get("week2_flat_equivalent_km") else None
+            volume = flat_equivalent if flat_equivalent is not None else week2
+            lo, hi = expect.get("week2_flat_equivalent_km") or expect.get("week2_km") or [None, None]
             lines.append(f"- Tier: **{tier}**" + (f" (expected {expect['tier']})" if expect.get("tier") else ""))
-            lines.append(f"- Week-2 volume: **{week2} km**" + (f" (expected {lo}-{hi})" if lo is not None else ""))
+            lines.append(
+                f"- Week-2 volume: **{week2} km**"
+                + (f" (expected {lo}-{hi})" if lo is not None and flat_equivalent is None else "")
+            )
+            if flat_equivalent is not None:
+                lines.append(f"- Week-2 flat-equivalent volume: **{flat_equivalent} km** (expected {lo}-{hi})")
             venue_violations = _venue_violations(result, fixture.get("race_info") or {})
             long_runs_on_hills = _long_runs_on_mountain_days(result, fixture.get("race_info") or {})
             for violation in venue_violations:
@@ -488,7 +513,8 @@ def compare(
                 "tier": tier,
                 "tier_match": (tier == expect["tier"]) if expect.get("tier") else None,
                 "week2_km": week2,
-                "week2_in_range": (lo <= week2 <= hi) if lo is not None else None,
+                "week2_flat_equivalent_km": flat_equivalent,
+                "week2_in_range": (lo <= volume <= hi) if lo is not None else None,
                 "venue_violations": len(venue_violations),
                 "me_sessions": summary["me_sessions"],
                 "me_in_range": (
@@ -635,7 +661,11 @@ def gate_failures(service: str, items: list[dict], scores: list[dict]) -> list[s
         if service == "scheduler" and s.get("tier_match") is False:
             failures.append(f"{item['id']}: tier {s.get('tier')} differs from the expected tier")
         if service == "scheduler" and s.get("week2_in_range") is False:
-            failures.append(f"{item['id']}: week-2 volume {s.get('week2_km')} km outside the expected range")
+            volume = s.get("week2_flat_equivalent_km")
+            label = "flat-equivalent" if volume is not None else "actual"
+            failures.append(
+                f"{item['id']}: week-2 {label} volume {volume if volume is not None else s.get('week2_km')} km outside the expected range"
+            )
         if service == "scheduler" and s.get("me_in_range") is False:
             failures.append(f"{item['id']}: {s.get('me_sessions')} ME session(s) outside the expected range")
         if service == "scheduler" and s.get("venue_violations"):

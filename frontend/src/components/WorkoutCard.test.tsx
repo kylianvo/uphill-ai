@@ -21,10 +21,10 @@ describe("formatIntervalSummary", () => {
     ).toBe("4x3min");
   });
 
-  it("returns null for non-Interval types", () => {
+  it("formats rep fields on other run types", () => {
     expect(
       formatIntervalSummary({ type: "Tempo", interval_reps: 8, interval_rep_value: 12, interval_rep_unit: "s" })
-    ).toBeNull();
+    ).toBe("8x12s");
   });
 
   it("returns null when any field is missing", () => {
@@ -185,5 +185,45 @@ describe("WorkoutCard priority", () => {
     fireEvent.click(screen.getByLabelText("Priority"));
     fireEvent.click(screen.getByText("Save"));
     expect(onEdit).toHaveBeenCalledWith(9, expect.objectContaining({ is_priority: true }));
+  });
+});
+
+describe("trail and sprint metrics", () => {
+  const trail = { id: 111, day_of_week: "Saturday", title: "Núi Dinh Long Run", type: "Long Run", target_zone: "Zone 2", duration_minutes: 210,
+    distance_km: 26, elevation_gain_m: 1560, target_pace: "8:26 - 7:44 /km", approved_at: "2026-10-17" };
+  it("renders rep chips on Easy runs and omits maximum-effort pace", () => {
+    render(<WorkoutCard wo={{ ...trail, title: "Hill Sprints", type: "Easy", target_zone: "Zone 5", interval_reps: 8, interval_rep_value: 10, interval_rep_unit: "s" }} isMobile={false} lang="en" getWorkoutDate={() => ""} readOnly />);
+    expect(screen.getByText("8x10s")).toBeInTheDocument();
+    expect(screen.queryByText(trail.target_pace)).not.toBeInTheDocument();
+  });
+  it("labels trail pace and estimated climbing on the card", () => {
+    render(<WorkoutCard wo={trail} isMobile={false} lang="en" getWorkoutDate={() => ""} readOnly />);
+    expect(screen.getByText(/Trail pace/)).toBeInTheDocument();
+    expect(screen.getByText(/1560.*m/)).toBeInTheDocument();
+    expect(screen.getByText(/~26.*km/)).toBeInTheDocument();
+  });
+  it("renders Vietnamese trail labels", () => {
+    render(<WorkoutCard wo={trail} isMobile={false} lang="vi" getWorkoutDate={() => ""} readOnly />);
+    expect(screen.getByText(/Pace trail/)).toBeInTheDocument();
+    expect(screen.getByText(/D\+ ước tính/)).toBeInTheDocument();
+  });
+});
+
+describe("Easy hill-sprint editing and aerobic pace", () => {
+  const wo = { id: 112, day_of_week: "Saturday", title: "Easy + Hill Sprints", type: "Easy", target_zone: "Zone 2",
+    duration_minutes: 80, distance_km: 9.9, elevation_gain_m: 594, target_pace: "8:26 - 7:44 /km",
+    interval_reps: 8, interval_rep_value: 10, interval_rep_unit: "s", approved_at: "2026-10-17" };
+  it("keeps the aerobic trail pace separate from the sprint rep chip", () => {
+    render(<WorkoutCard wo={wo} isMobile={false} lang="en" getWorkoutDate={() => ""} readOnly />);
+    expect(screen.getByText("8x10s")).toBeInTheDocument();
+    expect(screen.getByText(`Trail pace: ${wo.target_pace}`)).toBeInTheDocument();
+  });
+  it("preserves Easy-run reps through ordinary coach edits", () => {
+    const onEdit = vi.fn();
+    render(<WorkoutCard wo={wo} isMobile={false} lang="en" getWorkoutDate={() => ""} isCoachActingAsAthlete onEditWorkout={onEdit} />);
+    fireEvent.click(screen.getByTitle("Edit"));
+    fireEvent.click(screen.getByLabelText("Priority"));
+    fireEvent.click(screen.getByText("Save"));
+    expect(onEdit).toHaveBeenCalledWith(112, expect.objectContaining({ interval_reps: 8, interval_rep_value: 10, interval_rep_unit: "s" }));
   });
 });

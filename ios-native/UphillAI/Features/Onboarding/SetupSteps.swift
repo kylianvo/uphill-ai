@@ -519,7 +519,10 @@ struct SetupSteps: View {
             }
             TrainingVenueSection(
                 mountainDays: $model.draft.mountainDays,
+                trainingMountain: $model.draft.trainingMountain,
+                mountainMinMinutes: $model.draft.mountainMinMinutes,
                 stairAccess: $model.draft.stairAccess,
+                useTreadmill: $model.draft.useTreadmill,
                 treadmillMaxIncline: model.draft.useTreadmill ? $model.draft.treadmillMaxIncline : nil
             )
         }
@@ -527,8 +530,6 @@ struct SetupSteps: View {
 
         VStack(spacing: UH.Space.small) {
             Toggle("I can use a gym", isOn: $model.draft.hasGymAccess)
-            Divider()
-            Toggle("I can use a treadmill", isOn: $model.draft.useTreadmill)
         }
         .font(UH.TextStyle.label)
         .tint(UH.Palette.accent)

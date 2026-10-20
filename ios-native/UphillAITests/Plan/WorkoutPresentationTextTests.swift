@@ -21,6 +21,17 @@ struct WorkoutPresentationTextTests {
         #expect(WorkoutTypePresentation.zoneShort("Rest") == nil)
     }
 
+    @Test func easyHillSprintsKeepAerobicPaceSeparateFromMaximalReps() {
+        let w = TestData.workout(["type": "Easy", "title": "Easy + Hill Sprints", "target_zone": "Zone 2",
+                                 "target_pace": "8:26 - 7:44 /km", "elevation_gain_m": 594.0,
+                                 "interval_reps": 8, "interval_rep_value": 10.0, "interval_rep_unit": "s"])
+        #expect(WorkoutTypePresentation.sessionPaceValue(for: w) == "8:26–7:44")
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: WorkoutStepParser.parseDescription(w.description), isTreadmill: false)
+        #expect(steps[1].target == "8 × 10 s")
+        let sprint = TestData.workout(["type": "Interval", "title": "Hill Sprints", "target_zone": "Zone 5", "target_pace": "4:00 /km"])
+        #expect(WorkoutTypePresentation.sessionPaceValue(for: sprint) == "—")
+    }
+
     @Test func paceTileDropsUnitAndTightensRange() {
         #expect(WorkoutTypePresentation.paceTileValue("6:24 - 5:42 /km") == "6:24–5:42")
         #expect(WorkoutTypePresentation.paceTileValue("5:30 /km") == "5:30")

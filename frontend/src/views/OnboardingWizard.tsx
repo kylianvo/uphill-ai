@@ -129,6 +129,8 @@ export default function OnboardingWizard() {
         training_environment: onboardingAnswers.training_environment || "flat",
 
         mountain_days: onboardingAnswers.mountain_days || [],
+        training_mountain: onboardingAnswers.training_mountain ?? null,
+        mountain_min_minutes: onboardingAnswers.mountain_min_minutes ?? null,
 
         stair_access: !!onboardingAnswers.stair_access,
 
@@ -1564,6 +1566,8 @@ export default function OnboardingWizard() {
                   t={t}
                   value={{
                     mountain_days: onboardingAnswers.mountain_days || [],
+                    training_mountain: onboardingAnswers.training_mountain ?? null,
+                    mountain_min_minutes: onboardingAnswers.mountain_min_minutes ?? null,
                     stair_access: !!onboardingAnswers.stair_access,
                     treadmill_max_incline: 15,
                   }}

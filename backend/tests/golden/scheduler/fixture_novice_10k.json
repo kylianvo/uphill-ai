@@ -17,7 +17,8 @@
     "name": "City 10K",
     "date": "2026-12-15",
     "course_distance_km": 10,
-    "course_elevation_gain_m": 50
+    "course_elevation_gain_m": 50,
+    "plan_start_date": "2026-10-12"
   },
   "total_weeks": 10
 }

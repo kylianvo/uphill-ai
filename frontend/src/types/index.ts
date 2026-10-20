@@ -66,6 +66,8 @@ export interface ActivePlan {
   has_gym_access?: boolean;
   use_treadmill?: boolean;
   training_environment?: "flat" | "hilly" | "mixed";
+  training_mountain?: string | null;
+  mountain_min_minutes?: number | null;
   mountain_days?: string; // JSON-encoded array of weekdays with hill/trail access
   stair_access?: boolean;
   treadmill_max_incline?: number;
@@ -140,4 +142,14 @@ export interface User {
   zone2_pace_max?: string;
   provider?: string;
   has_password?: boolean;
+}
+
+export interface TrainingMountain {
+  key: string;
+  area: string;
+  name_en: string;
+  name_vi: string;
+  climb_rate: number;
+  repeats_only: boolean;
+  default_min_minutes: number | null;
 }

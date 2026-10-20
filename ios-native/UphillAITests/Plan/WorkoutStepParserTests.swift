@@ -36,6 +36,39 @@ struct WorkoutStepParserTests {
         return try! JSONCoding.decoder.decode(Workout.self, from: json)
     }
 
+    @Test func quangHillSprintsUseEveryMainStepWithoutPace() {
+        let w = TestData.workout(["type": "Easy", "title": "Easy Run + Hill Sprints", "target_zone": "Zone 2",
+                                 "target_pace": "6:00 /km", "description": "Process: Khởi động 10 phút xoay khớp → Chạy 40 phút Zone 2 → 8 x 10s Hill Sprints dốc >20%, nghỉ đi bộ thả lỏng 2 phút 30 giây giữa mỗi rep → Hạ nhiệt 5 phút chạy thả lỏng."])
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: WorkoutStepParser.parseDescription(w.description), isTreadmill: false)
+        #expect(steps[1].target == "8 × 10 s")
+        #expect(steps[1].steps.count == 2)
+        #expect(steps[2].target.hasPrefix("Hạ nhiệt"))
+    }
+
+    @Test func fractionalDistanceIsNotTruncated() {
+        let w = makeWorkout(pace: nil, reps: 5, repVal: 0.4, repUnit: "km", walkVal: nil)
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: WorkoutStepParser.parseDescription(w.description), isTreadmill: false)
+        #expect(steps[1].target == "5 × 0.4 km")
+    }
+
+    @Test(arguments: [("3 x 5 phút", "3 × 5 min"), ("5 x 400m", "5 × 400 m"),
+                       ("8 reps of 10s", "8 × 10 s"), ("8 x 10-second", "8 × 10 s"),
+                       ("8 × 10 giây", "8 × 10 s")])
+    func detectsRepUnits(text: String, expected: String) {
+        let w = makeWorkout(pace: nil, reps: nil, repVal: nil, repUnit: nil, walkVal: nil,
+                            desc: "Process: Warm-up 10 min → Easy running → \(text) → Cool-down 5 min")
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: WorkoutStepParser.parseDescription(w.description), isTreadmill: false)
+        #expect(steps[1].target == expected)
+    }
+
+    @Test(arguments: [("Intervals", "Zone 5"), ("Hill-Sprint session", "Zone 2"), ("Easy + Strides", "Zone 2")])
+    func maximalRepsHidePace(title: String, zone: String) {
+        let w = TestData.workout(["title": title, "target_zone": zone, "target_pace": "4:00 /km",
+                                 "interval_reps": 8, "interval_rep_value": 10.0, "interval_rep_unit": "s"])
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: WorkoutStepParser.parseDescription(w.description), isTreadmill: false)
+        #expect(steps[1].target == "8 × 10 s")
+    }
+
     @Test func parseStructuredDescription() {
         let w = makeWorkout()
         let parsed = WorkoutStepParser.parseDescription(w.description)
@@ -169,5 +202,17 @@ struct WorkoutStepParserTests {
         #expect(steps.map(\.phase) == [.warmup, .main, .cooldown])
         #expect(steps.first?.target.contains("Khởi động") == true)
         #expect(steps.last?.duration == "10 phút")
+    }
+}
+
+@Suite("WorkoutStepParser hill sprint steps")
+struct WorkoutStepParserSprintTests {
+    // Vietnamese sprint step contains "thả lỏng" mid-sentence; it must stay in Main Set.
+    @Test func vietnameseSprintStepIsNotTreatedAsCooldown() {
+        let process = "Khởi động 10 phút xoay khớp → Chạy 40 phút duy trì nhịp nhàng Zone 2 → 8 x 10s Hill Sprints dốc >20% bung hết sức, nghỉ đi bộ thả lỏng 2 phút 30 giây giữa mỗi rep → Hạ nhiệt 5 phút chạy thả lỏng cực nhẹ."
+        let parts = WorkoutStepParser.splitProcess(process)
+        #expect(parts.main.count == 2)
+        #expect(parts.main.last?.contains("Hill Sprints") == true)
+        #expect(parts.cooldown?.hasPrefix("Hạ nhiệt") == true)
     }
 }

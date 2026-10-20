@@ -111,11 +111,11 @@ export interface ExecutionSteps {
 export function parseExecutionSteps(execution: string): ExecutionSteps {
   const isWarmup = (s: string) => {
     const l = s.toLowerCase();
-    return l.includes("warm") || (l.includes("easy jog") && l.includes("start"));
+    return l.includes("warm") || l.trimStart().startsWith("khởi động") || (l.includes("easy jog") && l.includes("start"));
   };
   const isCooldown = (s: string) => {
     const l = s.toLowerCase();
-    return l.includes("cool") || l.includes("stretch");
+    return l.includes("cool") || l.includes("stretch") || /^(thả lỏng|hạ nhiệt)/.test(l.trimStart());
   };
 
   const arrowParts = execution.split(/\s*→\s*/).map((s) => s.trim()).filter(Boolean);
