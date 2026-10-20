@@ -1331,3 +1331,71 @@ class TestNoInventedClimbing:
             )
         prompt = fake_client.models.generate_content.call_args_list[0].kwargs["contents"]
         assert "NO OUTDOOR CLIMBING" in prompt
+
+
+class TestPersonaFindings:
+    def test_vietnamese_sanitizer_replaces_banned_words_but_keeps_stroke_volume(self):
+        from services.plan_generator import sanitize_vi
+
+        text = "Tăng thể tích hiếu khí, tối ưu hóa mỡ, chạy nước rút bứt phá, giáo án chuyên sâu; thể tích tâm thu."
+        out = sanitize_vi(text)
+        assert "khối lượng hiếu khí" in out and "cải thiện mỡ" in out and "tăng tốc" in out
+        assert "lịch tập chuyên biệt" in out and "thể tích tâm thu" in out
+        assert not any(b in out for b in ("tối ưu hóa", "bứt phá", "chuyên sâu", "giáo án"))
+
+    def test_phase_labels_are_structural(self):
+        phases = [PlanGenerator.phase_for_week(w, 12) for w in range(1, 13)]
+        assert phases[-1] == "Recovery" and phases[-2] == "Race Week" and phases[-3] == "Taper"
+        assert phases[0] == "Base" and "Build" in phases and phases.count("Taper") == 1
+
+    def test_a_hard_session_in_a_recovery_week_becomes_an_easy_run_and_the_models_phase_label_is_overwritten(self):
+        import json
+
+        prior = [
+            {"week_number": 1, "day_of_week": d, "type": "Easy", "duration_minutes": 100.0, "phase": "Base"}
+            for d in ("Tuesday", "Thursday", "Saturday")
+        ]
+        reply = [
+            {"week_number": 2, "day_of_week": "Tuesday", "title": "Easy", "type": "Easy", "duration_minutes": 50, "target_zone": "Zone 2", "phase": "Taper", "description": "x"},
+            {"week_number": 2, "day_of_week": "Thursday", "title": "Sub-Threshold Tempo", "type": "Tempo", "duration_minutes": 50, "target_zone": "Zone 3", "phase": "Taper", "description": "x"},
+            {"week_number": 2, "day_of_week": "Saturday", "title": "Long", "type": "Long Run", "duration_minutes": 80, "target_zone": "Zone 2", "phase": "Taper", "description": "x"},
+        ]  # fmt: skip
+        client = MagicMock()
+        client.models.generate_content.return_value = MagicMock(text=json.dumps(reply))
+        profile = {
+            "max_hr": 185,
+            "resting_hr": 55,
+            "aet_hr": 145,
+            "ant_hr": 168,
+            "zone2_pace_min": "6:30",
+            "zone2_pace_max": "5:45",
+            "current_weekly_km": 40.0,
+        }
+        with (
+            patch("google.genai.Client", return_value=client),
+            patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+            patch("services.plan_generator.get_plan_workouts", return_value=prior),
+        ):
+            workouts, _ = asyncio.run(
+                PlanGenerator.generate_plan_workouts(
+                    plan_id=5,
+                    user_profile=profile,
+                    race_info={
+                        "name": "R",
+                        "date": "2027-03-27",
+                        "plan_start_date": "2026-10-19",
+                        "terrain": "road",
+                        "goal_type": "finish",
+                        "days_per_week": 3,
+                    },
+                    total_weeks=12,
+                    api_key="k",
+                    block_number=2,
+                    weeks_per_block=1,
+                )  # fmt: skip
+            )
+        thursday = next(w for w in workouts if w["day_of_week"] == "Thursday")
+        assert (
+            thursday["type"] == "Easy" and thursday["target_zone"] == "Zone 2" and "recovery week" in thursday["title"]
+        )
+        assert {w["phase"] for w in workouts} == {"Base"}  # the model's "Taper" label is not trusted

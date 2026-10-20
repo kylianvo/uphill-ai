@@ -162,6 +162,26 @@ def narrative_lang_instruction(race_info: dict[str, Any], text_sample: str) -> s
     return lang_instruction
 
 
+_VI_REPLACEMENTS = (  # the app's Vietnamese copy contract: never these words for training volume or hype
+    (r"thể tích(?! tâm thu)", "khối lượng"),  # "thể tích tâm thu" is stroke volume and stays
+    (r"tối ưu hóa", "cải thiện"),
+    (r"bứt phá", "tăng tốc"),
+    (r"chuyên sâu", "chuyên biệt"),
+    (r"đột phá", "cải thiện rõ rệt"),
+    (r"giáo án", "lịch tập"),
+    (r"sinh lý", "thể chất"),
+)
+
+
+def sanitize_vi(text: str) -> str:
+    """Replaces the banned Vietnamese words (skill: uphill-ai-vietnamese-copy) the model still writes."""
+    import re
+
+    for pattern, replacement in _VI_REPLACEMENTS:
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    return text
+
+
 class PlanGenerator:
     @staticmethod
     def parse_pace_to_decimal(pace_str: str) -> float:
@@ -431,6 +451,26 @@ class PlanGenerator:
         pace_dec = PlanGenerator.parse_pace_to_decimal(est_zones[mid_key])
         distance_km = round(duration_minutes / pace_dec, 1) if pace_dec > 0 else 0.0
         return f"{pace_str} /km", distance_km
+
+    @staticmethod
+    def phase_for_week(w: int, total_weeks: int) -> str:
+        """The plan's phase for week `w`: structural, so it is set here and never left to the model."""
+        last = total_weeks - 1  # race week
+        peak_weeks = 2 if last >= 6 else (1 if last >= 2 else 0)
+        remaining = last - 1 - peak_weeks
+        builds = remaining // 2
+        bases = remaining - builds
+        if w == total_weeks:
+            return "Recovery"
+        if w == last:
+            return "Race Week"
+        if w == last - 1:
+            return "Taper"
+        if w > bases + builds:
+            return "Peak"
+        if w > bases:
+            return "Build"
+        return "Base"
 
     ELEVATION_ELIGIBLE_TYPES = ("Easy", "Tempo", "Interval", "Long Run", "Aerobic Capacity")
 
@@ -1313,6 +1353,40 @@ class PlanGenerator:
         p_z4 = est_zones["zone4_pace"]
         p_z5 = est_zones["zone5_pace"]
 
+        def _soften_recovery_weeks(wos: list[dict[str, Any]]) -> None:
+            """A planned recovery week has no Zone 3+ work. The model keeps a tempo or hill sprints in it despite
+            the rule and the retry, so the session becomes an easy Zone 2 run of the same length (in place)."""
+            try:
+                prior = plan_lint._by_week(get_plan_workouts(plan_id)) if plan_id else {}
+            except Exception:  # noqa: BLE001
+                prior = {}
+            by_week: dict[int, list[dict[str, Any]]] = {}
+            for wo in wos:
+                if isinstance(wo.get("week_number"), int):
+                    by_week.setdefault(wo["week_number"], []).append(wo)
+            for week_no, rows in by_week.items():
+                if week_no <= 1 or rows[0].get("phase") in ("Taper", "Race Week", "Recovery"):
+                    continue
+                prev_total = plan_lint.week_minutes(by_week.get(week_no - 1) or prior.get(week_no - 1) or [])
+                if not prev_total or plan_lint.week_minutes(rows) > prev_total * plan_lint.RECOVERY_DROP:
+                    continue
+                for wo in rows:
+                    if wo.get("type") == "Race" or not plan_lint.is_hard(wo):
+                        continue
+                    wo["type"], wo["target_zone"] = "Easy", "Zone 2"
+                    wo["target_hr_range"] = z2_range
+                    wo["title"] = "Easy Aerobic Run (recovery week)" if lang != "vi" else "Easy Run nhẹ (tuần recovery)"
+                    wo["description"] = (
+                        "Recovery week: keep this run easy and conversational, Zone 2 only, no intensity."
+                        if lang != "vi"
+                        else "Tuần recovery: giữ buổi chạy này nhẹ nhàng, nói chuyện được, chỉ Zone 2, không chạy cường độ."
+                    )
+                    for key in ("interval_reps", "interval_rep_value", "interval_rep_unit", "walk_interval_value"):
+                        wo[key] = None
+                    wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                        "Zone 2", float(wo.get("duration_minutes") or 0), est_zones
+                    )
+
         # Helper function to post-process and estimate target pace and distance for all workouts
         def post_process_workouts(wos: list[dict[str, Any]]) -> list[dict[str, Any]]:
             # Safety net: strip any week-1 workouts that land before the plan start day
@@ -1438,6 +1512,15 @@ class PlanGenerator:
                 wo["interval_reps"], wo["interval_rep_value"], wo["interval_rep_unit"] = (
                     PlanGenerator.resolve_interval_summary(wo, w_type)
                 )
+            for wo in wos:
+                if isinstance(wo.get("week_number"), int):
+                    wo["phase"] = PlanGenerator.phase_for_week(wo["week_number"], total_weeks)
+            _soften_recovery_weeks(wos)
+            if lang == "vi":
+                for wo in wos:
+                    for field in ("title", "description", "fueling_tip"):
+                        if wo.get(field):
+                            wo[field] = sanitize_vi(wo[field])
             return apply_priority_guard(wos)
 
         # 2. AI Plan Generation (Gemini → reduced-prompt retry → Rule-Based)
@@ -2163,18 +2246,7 @@ class PlanGenerator:
         num_base_weeks = remaining_weeks - num_build_weeks
 
         def get_phase_for_week(w: int) -> str:
-            if w == total_weeks:
-                return "Recovery"
-            elif w == W:
-                return "Race Week"
-            elif w == W - 1:
-                return "Taper"
-            elif w > num_base_weeks + num_build_weeks:
-                return "Peak"
-            elif w > num_base_weeks:
-                return "Build"
-            else:
-                return "Base"
+            return PlanGenerator.phase_for_week(w, total_weeks)
 
         # With a known goal the volume climbs toward the weekly time the race needs, at 90% of the
         # tier's weekly progression cap; week_layout then holds every week within the tier's caps.

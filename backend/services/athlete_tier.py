@@ -326,15 +326,29 @@ class TierDecision:
 
 DEFAULT_TRAINING_DAYS = 5  # used when the athlete set no days per week
 MAX_SESSION_MIN = 300  # the book caps a single session at four to five hours
+# Scott Johnston's elite 100-mile example (Tom Evans' longest build run was one 8-hour day; Ruth Croft built on
+# weekly volume and weighted climbing, never race-length runs): sub-elite athletes training for 100 miles may
+# run a single day up to 8 hours in the build weeks. It is a ceiling, never a target.
+ELITE_ULTRA_SESSION_MIN = 480
+ELITE_ULTRA_KM = 150.0
 
 
-def week_capacity_parts(profile: TierProfile, days_per_week: int | None) -> tuple[float, float]:
+def session_cap_minutes(profile: TierProfile, race_km: float | None) -> int:
+    """The longest single session this athlete's plan may hold."""
+    if profile.key == "sub_elite" and race_km and race_km >= ELITE_ULTRA_KM:
+        return ELITE_ULTRA_SESSION_MIN
+    return MAX_SESSION_MIN
+
+
+def week_capacity_parts(
+    profile: TierProfile, days_per_week: int | None, session_cap: int = MAX_SESSION_MIN
+) -> tuple[float, float]:
     """(minutes of the other run sessions, minutes of the long run) the tier's own caps allow in a week.
     From four training days one day is strength, which is not run time (my call: conservative)."""
     n = max(1, days_per_week or DEFAULT_TRAINING_DAYS)
     others = (n - 1 - (1 if n >= 4 else 0)) * profile.weekday_minutes[1]
     cap = profile.long_run_share_cap
-    long_run = min(MAX_SESSION_MIN, cap / (1 - cap) * others) if n > 1 else MAX_SESSION_MIN
+    long_run = min(session_cap, cap / (1 - cap) * others) if n > 1 else session_cap
     return others, long_run
 
 

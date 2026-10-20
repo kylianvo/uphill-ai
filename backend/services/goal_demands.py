@@ -7,7 +7,7 @@ plan is built from the race's demands instead of one goal sentence.
 from dataclasses import dataclass
 from typing import Any
 
-from services.athlete_tier import MAX_SESSION_MIN
+from services.athlete_tier import ELITE_ULTRA_KM, ELITE_ULTRA_SESSION_MIN, MAX_SESSION_MIN
 from services.pacing_calculator import PacingCalculator
 from services.race_estimator import RaceEstimator
 from services.race_readiness import race_class
@@ -62,7 +62,9 @@ def compute(
         climb_rate_m_per_h=gain / (minutes / 60),
         steepness_m_per_km=gain / distance,
         time_on_feet_min=minutes,
-        longest_session_min=min(MAX_SESSION_MIN, LONGEST_SESSION_SHARE * minutes),
+        longest_session_min=min(
+            ELITE_ULTRA_SESSION_MIN if distance >= ELITE_ULTRA_KM else MAX_SESSION_MIN, LONGEST_SESSION_SHARE * minutes
+        ),
         peak_week_km_lo=lo,
         peak_week_km_hi=hi,
         race_class=label,
@@ -140,7 +142,7 @@ def back_to_back_line(
     if demands.distance_km < ULTRA_KM or (days_per_week or B2B_DAYS) < B2B_DAYS or not total_weeks:
         return None
     lo, _hi = B2B_WINDOW
-    if week not in (total_weeks - lo + 1, total_weeks - lo + 2):
+    if week not in (total_weeks - lo + 1, total_weeks - lo + 2, total_weeks - lo + 3):
         return None
     from services.plan_lint import b2b_targets
 
