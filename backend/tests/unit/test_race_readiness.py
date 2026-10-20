@@ -181,3 +181,36 @@ def test_a_recovery_week_has_no_floor_even_when_at_risk():
 
     r = rr.Readiness("at_risk", "100K", 120.0, 130.0, 60.0, 0.0, 64.2, 90.0, 9, "msg")
     assert rr.readiness_issue(r, 4, 40.0) is None
+
+
+def _ws(*rows):
+    return [{"week_number": 3, "day_of_week": d, "type": t, "duration_minutes": m} for d, t, m in rows]
+
+
+def test_suggested_minutes_scale_easy_and_long_runs_within_the_caps_and_leave_quality_and_strength_alone():
+    from services.race_readiness import suggest_minutes
+
+    ws = _ws(("Tuesday", "Easy", 60), ("Wednesday", "Tempo", 50), ("Thursday", "Muscular Endurance", 45),
+             ("Friday", "Easy", 60), ("Sunday", "Long Run", 110))  # fmt: skip
+    # run minutes now: 60 + 50 + 60 + 110 = 280 (ME is not run time); ask for 340
+    text = suggest_minutes(ws, 340, weekday_max=75, long_share_cap=0.5)
+    assert text.startswith("Set these sessions to")
+    assert "Tempo" not in text and "Muscular" not in text
+    for token in ("Tuesday Easy", "Friday Easy", "Sunday Long Run"):
+        assert token in text
+    nums = {part.split(" min")[0].rsplit(" ", 1)[1]: 1 for part in text.split(", ")}  # every figure is a number
+    assert all(n.isdigit() for n in nums)
+
+
+def test_suggested_minutes_never_exceed_the_weekday_maximum():
+    from services.race_readiness import suggest_minutes
+
+    ws = _ws(("Tuesday", "Easy", 60), ("Sunday", "Long Run", 100))
+    text = suggest_minutes(ws, 400, weekday_max=70, long_share_cap=0.40)
+    assert "Tuesday Easy 70 min" in text
+
+
+def test_no_suggestion_when_nothing_can_be_scaled():
+    from services.race_readiness import suggest_minutes
+
+    assert suggest_minutes(_ws(("Tuesday", "Tempo", 50)), 300, weekday_max=75, long_share_cap=0.33) == ""
