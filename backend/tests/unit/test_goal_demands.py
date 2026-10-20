@@ -82,12 +82,14 @@ def test_long_run_line_is_silent_without_history_or_after_the_build():
 
 def test_back_to_back_line_names_the_weekend_only_for_ultras_in_the_last_build_weeks():
     d = goal_demands.compute(104.2, 5533, 14.67, 29)
-    on = goal_demands.back_to_back_line(week=6, total_weeks=11, demands=d, days_per_week=6)
+    on = goal_demands.back_to_back_line(
+        _plan_with_long_runs([110, 120, 130, 140, 145]), week=6, total_weeks=11, demands=d, days_per_week=6
+    )
     assert on and "Saturday" in on and "Sunday" in on and "recovery week" in on
-    assert goal_demands.back_to_back_line(week=2, total_weeks=11, demands=d, days_per_week=6) is None
-    assert goal_demands.back_to_back_line(week=6, total_weeks=11, demands=d, days_per_week=4) is None
+    assert goal_demands.back_to_back_line([], week=2, total_weeks=11, demands=d, days_per_week=6) is None
+    assert goal_demands.back_to_back_line([], week=6, total_weeks=11, demands=d, days_per_week=4) is None
     fifty = goal_demands.compute(56.4, 2946, 9.0, 12)
-    assert goal_demands.back_to_back_line(week=6, total_weeks=11, demands=fifty, days_per_week=6) is None
+    assert goal_demands.back_to_back_line([], week=6, total_weeks=11, demands=fifty, days_per_week=6) is None
 
 
 def test_climb_line_only_for_steep_courses_without_hills():
@@ -98,3 +100,11 @@ def test_climb_line_only_for_steep_courses_without_hills():
     assert goal_demands.climb_line(week=1, total_weeks=11, demands=d, flat_only=True) is None
     rolling = goal_demands.compute(42.0, 300, None, 7)
     assert rolling is None
+
+
+def test_back_to_back_targets_keep_the_long_run_near_last_weeks_and_add_a_long_saturday():
+    from services.plan_lint import b2b_targets
+
+    ws = _plan_with_long_runs([120, 140, 145])
+    sat, sun = b2b_targets(ws, week=6, longest_target=300)
+    assert 145 <= sun <= 145 * 1.25 and 90 <= sat <= sun  # within the 25% weekly long-run growth cap

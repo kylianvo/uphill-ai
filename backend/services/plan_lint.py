@@ -120,6 +120,16 @@ def is_b2b_week(ws: list[dict[str, Any]]) -> bool:
     return any(d + 1 in dm and dm[d] >= B2B_DAY_MIN and dm[d + 1] >= B2B_DAY_MIN for d in dm)
 
 
+def b2b_targets(workouts: list[dict[str, Any]], week: int, longest_target: float) -> tuple[int, int]:
+    """(Saturday, Sunday) minutes for a back-to-back weekend: the Sunday long run stays close to last week's
+    (the growth cap still applies) and Saturday is almost as long, so the pair is what adds the volume."""
+    prior = [_min(w) for w in workouts if (w.get("week_number") or 0) < week and _is_long(w)]
+    recent = max(prior[-2:], default=120.0)
+    sun = min(recent * (1 + MAX_LONG_RUN_GROWTH) * 0.9, longest_target, MAX_SESSION_MIN)
+    sat = min(max(sun * 0.85, B2B_DAY_MIN), 180.0)
+    return int(round(sat / 5) * 5), int(round(sun / 5) * 5)
+
+
 def in_ultra_window(prefs: Prefs | None, week: int) -> bool:
     """Is `week` one of the last build weeks of an ultra plan, where a back-to-back weekend belongs?"""
     d = prefs.demands if prefs else None
@@ -263,13 +273,14 @@ def lint_week(
         first = prefs.total_weeks - _B2B_WINDOW_FROM_END[0] + 1
         done_before = first in weeks and is_b2b_week(weeks[first])
         if not done_before and not planned_recovery and not is_b2b_week(ws):
+            sat, sun = b2b_targets(workouts, week, d.longest_session_min)
             issues.append(
                 Issue(
                     "B2B_MISSING",
                     week,
                     f"Week {week}: this ultra has no back-to-back weekend in its last build weeks. Make Saturday "
-                    f"about {min(d.longest_session_min * 0.5, 180):.0f} min and Sunday's Long Run about "
-                    f"{min(d.longest_session_min * 0.8, 300):.0f} min, both Zone 2, practising race fueling.",
+                    f"about {sat} min and Sunday's Long Run about {sun} min, both Zone 2, practising race fueling; "
+                    f"shorten the midweek easy runs so the week total stays within the weekly cap.",
                 )
             )
 
@@ -448,7 +459,9 @@ def _specificity(
             x
             for w in recent
             for x in by[w]
-            if is_hard(x) or (x.get("type") in ("Easy", "Long Run") and float(x.get("elevation_gain_m") or 0) > 0)
+            if is_hard(x)
+            or (x.get("type") in ("Easy", "Long Run") and float(x.get("elevation_gain_m") or 0) > 0)
+            or (_is_me(x) and _climbs(x))  # weighted climbing is the specific work for an athlete without hills
         ]
         if not work:
             issues.append(

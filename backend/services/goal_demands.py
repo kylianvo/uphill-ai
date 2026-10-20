@@ -133,20 +133,23 @@ B2B_WINDOW = (6, 3)  # last four pre-taper weeks
 B2B_DAYS = 5
 
 
-def back_to_back_line(week: int, total_weeks: int, demands: Demands, days_per_week: int | None) -> str | None:
+def back_to_back_line(
+    workouts: list[dict[str, Any]], week: int, total_weeks: int, demands: Demands, days_per_week: int | None
+) -> str | None:
     """Ask for a back-to-back weekend in the first two weeks of the ultra window (total-5 and total-4)."""
     if demands.distance_km < ULTRA_KM or (days_per_week or B2B_DAYS) < B2B_DAYS or not total_weeks:
         return None
     lo, _hi = B2B_WINDOW
     if week not in (total_weeks - lo + 1, total_weeks - lo + 2):
         return None
-    sun = min(demands.longest_session_min * 0.8, 300)
-    sat = min(demands.longest_session_min * 0.5, 180)
+    from services.plan_lint import b2b_targets
+
+    sat, sun = b2b_targets(workouts, week, demands.longest_session_min)
     return (
-        f"BACK-TO-BACK WEEKEND (ultra specificity): if this is not a recovery week, make Saturday about "
-        f"{round(sat / 5) * 5:.0f} min and Sunday's Long Run about {round(sun / 5) * 5:.0f} min, both Zone 2 on trail or "
-        f"with climbing, practising race fueling and the race pack; keep Friday easy and trim the midweek runs "
-        f"so the week does not jump more than the cap."
+        f"BACK-TO-BACK WEEKEND (ultra specificity): if this is not a recovery week, make Saturday about {sat} min and "
+        f"Sunday's Long Run about {sun} min, both Zone 2 (on trail or with climbing where you can), practising race "
+        f"fueling and the race pack; keep Friday easy and shorten the midweek easy runs so the week total stays "
+        f"within the weekly cap."
     )
 
 

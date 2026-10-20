@@ -2654,7 +2654,9 @@ async def _generate_next_block_for_athlete(
             venues = Venues.from_race_info(plan)
             flat_only = not venues.local_hills and not venues.training_mountain and not venues.mountain_days
             for extra in (
-                goal_demands.back_to_back_line(block_start, total_weeks, goal_demand, plan.get("days_per_week")),
+                goal_demands.back_to_back_line(
+                    all_workouts, block_start, total_weeks, goal_demand, plan.get("days_per_week")
+                ),
                 goal_demands.climb_line(block_start, total_weeks, goal_demand, flat_only),
             ):
                 if extra:
