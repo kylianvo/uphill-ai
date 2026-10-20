@@ -375,6 +375,18 @@ def init_db():
 
         conn.execute(
             text("""
+        CREATE TABLE IF NOT EXISTS week_briefs (
+            plan_id       INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            week_number   INTEGER NOT NULL,
+            brief         JSONB NOT NULL,  -- {why, benefits[], watch}: AI-written, from the week's decision log
+            created_at    TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (plan_id, week_number)
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS athlete_connections (
             id                SERIAL PRIMARY KEY,
             user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -4220,6 +4232,28 @@ def _pick_readiness_provider(rows: list[Any]) -> str:
     newest = rows[0].metric_date
     on_newest = {r.source_provider for r in rows if r.metric_date == newest}
     return "coros" if "coros" in on_newest else sorted(on_newest)[0]
+
+
+def upsert_week_brief(plan_id: int, week_number: int, brief: dict[str, Any]) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO week_briefs (plan_id, week_number, brief)
+                VALUES (:plan_id, :week, CAST(:brief AS JSONB))
+                ON CONFLICT (plan_id, week_number) DO UPDATE SET brief = EXCLUDED.brief, created_at = NOW()
+            """),
+            {"plan_id": plan_id, "week": week_number, "brief": json.dumps(brief)},
+        )
+        conn.commit()
+
+
+def get_week_brief(plan_id: int, week_number: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT brief FROM week_briefs WHERE plan_id = :plan_id AND week_number = :week"),
+            {"plan_id": plan_id, "week": week_number},
+        ).fetchone()
+    return row.brief if row else None
 
 
 def get_resting_hr_elevation(user_id: int) -> float | None:

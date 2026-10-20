@@ -35,6 +35,8 @@ import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { GoalPill } from "../components/GoalPill";
 import PlanSummaryCarousel from "../components/PlanSummaryCarousel";
 import { weekVolume } from "../utils/planSummary";
+import { weekDiffChips } from "../utils/weekDiff";
+import WeekBrief from "../components/WeekBrief";
 import { triggerHaptic } from "../utils/native";
 import { resolveCurrentWeek } from "../utils/planDate";
 
@@ -2030,6 +2032,12 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                         </button>
                       )}
                     </div>
+
+                    <WeekBrief
+                      chips={selectedWeek > 1 ? weekDiffChips(getWeekWorkouts(selectedWeek - 1), weekWorkouts) : []}
+                      brief={currentWeekReview?.brief}
+                      lang={lang}
+                    />
 
                     {/* Actual-so-far: small ring + figures, plus the details toggle.
                         The loading skeleton keeps the same padding/border-top and minHeight as the

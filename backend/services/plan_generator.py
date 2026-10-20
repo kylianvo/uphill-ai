@@ -129,6 +129,29 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
 "this_week_description": "2-3 sentences describing this new block's focus and why, addressed directly to the athlete"}"""
 
 
+def narrative_lang_instruction(race_info: dict[str, Any], text_sample: str) -> str:
+    """Language + style contract for athlete-facing narrative text. Vietnamese is chosen
+    when the race info says so, or when the athlete's own text (text_sample) is Vietnamese."""
+    lang = (race_info.get("lang") or "en").lower()
+    vi_chars = set(
+        "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
+    )
+    if lang != "vi" and any(c in vi_chars for c in str(text_sample or "")):
+        lang = "vi"
+    if lang == "vi":
+        lang_instruction = (
+            "Respond in natural Vietnamese as spoken by authentic Vietnamese trail runners:\n"
+            "- Coach tone: direct, concise, second-person 'bạn', no marketing puffery or exclamation marks.\n"
+            "- Keep technical terms in English: Pace, Easy Run, Long Run, Tempo, Threshold, Interval, Recovery Run, Muscular Endurance, ME, Strength, Zone 1-5, AeT, AnT, HR, Deload, Taper, D+, GPX, Race, Ultra, Trail, Road, Treadmill, Fueling, Carbs, Sodium, Plan, Coach, Aerobic, Anaerobic, RPE.\n"
+            "- Fixed mappings: 'khối lượng' (never 'thể tích'), 'thể chất' (never 'sinh lý'), 'plan' / 'lịch tập' (never 'giáo án'), 'buổi tập' / 'bài chạy' (never 'bài tập thể dục'), 'điều chỉnh tuần' (never 'tối ưu hóa').\n"
+            "- Banned words: 'kiến tạo', 'bảo chứng', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'chuyên sâu', 'đột phá', 'giáo án', 'sinh lý', 'thể tích'."
+        )
+    else:
+        lang_instruction = "Respond in English."
+
+    return lang_instruction
+
+
 class PlanGenerator:
     @staticmethod
     def parse_pace_to_decimal(pace_str: str) -> float:
@@ -2522,22 +2545,7 @@ class PlanGenerator:
             from google import genai as _genai
             from google.genai import types as _genai_types
 
-            lang = (race_info.get("lang") or "en").lower()
-            vi_chars = set(
-                "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
-            )
-            if lang != "vi" and any(c in vi_chars for c in str(block_context or "")):
-                lang = "vi"
-            if lang == "vi":
-                lang_instruction = (
-                    "Respond in natural Vietnamese as spoken by authentic Vietnamese trail runners:\n"
-                    "- Coach tone: direct, concise, second-person 'bạn', no marketing puffery or exclamation marks.\n"
-                    "- Keep technical terms in English: Pace, Easy Run, Long Run, Tempo, Threshold, Interval, Recovery Run, Muscular Endurance, ME, Strength, Zone 1-5, AeT, AnT, HR, Deload, Taper, D+, GPX, Race, Ultra, Trail, Road, Treadmill, Fueling, Carbs, Sodium, Plan, Coach, Aerobic, Anaerobic, RPE.\n"
-                    "- Fixed mappings: 'khối lượng' (never 'thể tích'), 'thể chất' (never 'sinh lý'), 'plan' / 'lịch tập' (never 'giáo án'), 'buổi tập' / 'bài chạy' (never 'bài tập thể dục'), 'điều chỉnh tuần' (never 'tối ưu hóa').\n"
-                    "- Banned words: 'kiến tạo', 'bảo chứng', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'chuyên sâu', 'đột phá', 'giáo án', 'sinh lý', 'thể tích'."
-                )
-            else:
-                lang_instruction = "Respond in English."
+            lang_instruction = narrative_lang_instruction(race_info, block_context)
 
             workout_lines = "\n".join(
                 f"- {w.get('day_of_week', '?')}: {w.get('title') or w.get('type', '?')} "
