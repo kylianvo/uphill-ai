@@ -2627,10 +2627,10 @@ async def _generate_next_block_for_athlete(
     # and how long the long run should be, so a flat or shrinking build is asked for, not just linted.
     try:
         from services import goal_demands, goal_service
-        from services.athlete_tier import week_capacity_parts
+        from services.athlete_tier import for_race, week_capacity_parts
         from services.plan_generator import PlanGenerator
 
-        profile = get_profile(plan.get("athlete_tier"))
+        profile = for_race(get_profile(plan.get("athlete_tier")), plan.get("course_distance_km"))
         owner_row = get_user_by_id(athlete_id) or {}
         flat = PlanGenerator.flat_zone2_pace(owner_row, plan.get("goal_type"), plan.get("athlete_tier"))
         if readiness and readiness.floor_km and flat:

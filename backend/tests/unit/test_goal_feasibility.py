@@ -101,3 +101,15 @@ def test_flat_city_athlete_on_steep_course_needs_mountain_access():
     assert "mountain_access" in f.levers and f.verdict != "supported"
     flat_race = goal_demands.compute(50.0, 100, None, 8)
     assert "mountain_access" not in _assess(flat_race, profile=ELITE, flat_only=True).levers
+
+
+def test_sub_elite_hundred_milers_get_longer_weekday_runs_and_a_larger_long_run_share():
+    from services.athlete_tier import for_race
+
+    assert for_race(ELITE, 161).weekday_minutes[1] == 150 and for_race(ELITE, 161).long_run_share_cap == 0.35
+    assert for_race(ELITE, 104) is ELITE  # a 100K athlete keeps the standard caps
+    assert for_race(REC, 161) is REC  # and so does everyone below sub-elite
+    mile100 = goal_demands.compute(161, 8000, None, 36)
+    with_exception = _assess(mile100, profile=ELITE, days=6, weeks=30, current=90.0)
+    plain = _assess(goal_demands.compute(104.2, 5533, None, 29), profile=ELITE, days=6, weeks=30, current=90.0)
+    assert with_exception.capacity_h > plain.capacity_h

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from services.athlete_tier import (
     DEFAULT_TRAINING_DAYS,
     TierProfile,
+    for_race,
     get_profile,
     session_cap_minutes,
     tier_for_weekly_km,
@@ -59,6 +60,7 @@ def assess(
 ) -> Feasibility | None:
     if demands is None:
         return None
+    profile = for_race(profile, demands.distance_km)
     peak_km = demands.peak_week_km_lo * (FINISH_PEAK_SHARE if demands.source == "cutoff_safe" else 1.0)
     # An athlete who builds toward the peak graduates to the caps of the tier that volume belongs to.
     peak_profile = get_profile(tier_for_weekly_km(peak_km))

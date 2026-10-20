@@ -274,7 +274,7 @@ def _mins(w):
     return float(w.get("duration_minutes") or 0)
 
 
-def evaluate(name: str, persona: dict, ws: list[dict], plan: dict) -> list[dict]:
+def evaluate(name: str, persona: dict, ws: list[dict], plan: dict, feasibility: dict | None = None) -> list[dict]:
     """(check, ok, detail) rows."""
     exp, p = persona["expect"], persona["plan"]
     rows: list[dict] = []
@@ -303,7 +303,18 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict) -> list[dict]
         "HARD_IN_DOWN_WEEK",
         "LONG_SHARE",
     }
-    bad = sorted({(i.week, i.code) for i in issues if i.code in hard and i.week < plan["total_weeks"] - 1})
+    # The #142 mountain minimum (and a week that cannot hold the goal) legitimately breaks the long-run share: the
+    # verdict must then say so (lever fewer_mountain_minimum / unsupported) instead.
+    share_excused = (exp.get("mountain") and "fewer_mountain_minimum" in (feasibility or {}).get("levers", [])) or (
+        (feasibility or {}).get("verdict") == "unsupported"
+    )
+    bad = sorted(
+        {
+            (i.week, i.code)
+            for i in issues
+            if i.code in hard and i.week < plan["total_weeks"] - 1 and not (i.code == "LONG_SHARE" and share_excused)
+        }
+    )
     add("no hard-rule lint (weeks before race week)", not bad, str(bad))
     soft = sorted({(i.week, i.code) for i in issues if i.code not in hard})
     add("soft lint (informational)", True, str(soft) or "clean")
@@ -314,10 +325,12 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict) -> list[dict]
     phases = {wk: (active[wk][0].get("phase") if active[wk] else "") for wk in weeks}
     build = [wk for wk in weeks if phases[wk] in ("Base", "Build", "Peak")]
     peak = max((minutes[wk] for wk in build), default=0)
+    capacity_min = ((feasibility or {}).get("capacity_h") or 0) * 60
+    at_capacity = bool(capacity_min) and minutes[weeks[0]] >= 0.9 * capacity_min  # nothing left to progress into
     add(
-        "progression: peak week >= 1.15 x week 1",
-        peak >= 1.15 * minutes[weeks[0]],
-        f"wk1 {minutes[weeks[0]]:.0f} -> peak {peak:.0f} min",
+        "progression: peak week >= 1.15 x week 1 (or week 1 already at the athlete's capacity)",
+        peak >= 1.15 * minutes[weeks[0]] or at_capacity,
+        f"wk1 {minutes[weeks[0]]:.0f} -> peak {peak:.0f} min (capacity {capacity_min:.0f})",
     )
     taper = [wk for wk in weeks if phases[wk] == "Taper"]
     add(
@@ -328,11 +341,13 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict) -> list[dict]
     race = [w for w in ws if w["type"] == "Race"]
     add("race on race week", bool(race), "")
     if p.get("long_run_day"):
+        on_day = {w["week_number"] for w in ws if w["type"] == "Long Run" and w["day_of_week"] == p["long_run_day"]}
         wrong = [
             w["week_number"]
             for w in ws
             if w["type"] == "Long Run"
             and w["day_of_week"] != p["long_run_day"]
+            and w["week_number"] not in on_day  # a Saturday long run in a back-to-back weekend is fine
             and phases.get(w["week_number"]) not in ("Recovery",)
         ]
         add("long run on the athlete's day", not wrong, str(wrong[:5]))
@@ -404,6 +419,7 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict) -> list[dict]
         add("mountain long runs carry a climb rate", len(rates) >= max(1, len(ml) // 2), f"{len(rates)}/{len(ml)}")
     if exp.get("vietnamese"):
         blob = " ".join(f"{w.get('title','')} {w.get('description','')}" for w in ws).lower()
+        blob = blob.replace("thể tích tâm thu", "")  # stroke volume is physiology, not training volume
         found = [b for b in VI_BANNED if b in blob]
         add("Vietnamese copy: no banned words", not found, str(found))
         add(
@@ -453,9 +469,9 @@ def run_persona(name: str, out: Path) -> dict:
                     db.update_workout_log(w["id"], is_completed=1)
         ws = db.get_plan_workouts(plan_id)
         plan = db.get_plan_by_id(plan_id)
-        checks = evaluate(name, persona, ws, plan)
         journey = client.get(f"/api/plans/{plan_id}/journey", headers=headers).json()
         goal = client.get(f"/api/plans/{plan_id}/goal?lang=en", headers=headers).json()
+        checks = evaluate(name, persona, ws, plan, goal.get("feasibility"))
     result = {"persona": name, "plan": {k: plan.get(k) for k in ("id", "total_weeks", "athlete_tier", "race_name", "race_date")},
               "weeks_status": status, "checks": checks, "feasibility": goal.get("feasibility"), "journey": {k: journey.get(k) for k in ("phases", "milestones", "deviations")},
               "workouts": ws}  # fmt: skip

@@ -29,7 +29,7 @@ WHERE THE NUMBERS COME FROM
 """
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 BEGINNER = "beginner"
@@ -331,6 +331,22 @@ MAX_SESSION_MIN = 300  # the book caps a single session at four to five hours
 # run a single day up to 8 hours in the build weeks. It is a ceiling, never a target.
 ELITE_ULTRA_SESSION_MIN = 480
 ELITE_ULTRA_KM = 150.0
+
+
+ELITE_ULTRA_WEEKDAY_MAX = 150  # weekday runs up to 2.5 h (doubles) in the 130-150 mile weeks of the elite example
+ELITE_ULTRA_LONG_SHARE = 0.35
+
+
+def for_race(profile: TierProfile, race_km: float | None) -> TierProfile:
+    """The caps for this race: sub-elite athletes training for 100 miles get longer weekday runs and a larger
+    long-run share (Johnston's elite example). Every other athlete keeps the standard tier caps."""
+    if profile.key == "sub_elite" and race_km and race_km >= ELITE_ULTRA_KM:
+        return replace(
+            profile,
+            weekday_minutes=(profile.weekday_minutes[0], ELITE_ULTRA_WEEKDAY_MAX),
+            long_run_share_cap=ELITE_ULTRA_LONG_SHARE,
+        )
+    return profile
 
 
 def session_cap_minutes(profile: TierProfile, race_km: float | None) -> int:

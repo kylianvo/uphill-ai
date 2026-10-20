@@ -12,6 +12,7 @@ from services import goal_demands, observability, plan_lint, race_readiness, rec
 from services.athlete_tier import (
     MEASURED_THRESHOLD_SOURCES,
     TIER_PROFILES,
+    for_race,
     get_profile,
     graduated_profile,
     resolve_tier,
@@ -1063,6 +1064,7 @@ class PlanGenerator:
             profile = graduated_profile(
                 profile, max((race_readiness.weekly_km(ws, flat_pace_min_km) for ws in built.values()), default=0)
             )
+        profile = for_race(profile, race_info.get("course_distance_km"))
         combined = prior + workouts
         try:
             days_per_week = int(race_info.get("days_per_week") or 0) or None
@@ -1336,7 +1338,9 @@ class PlanGenerator:
                 gender=gender,
             )
         # Session caps follow the volume the athlete trains (like the lint), not only the level resolved at the start.
-        tier_profile = graduated_profile(get_profile(athlete_tier), current_weekly_km)
+        tier_profile = for_race(
+            graduated_profile(get_profile(athlete_tier), current_weekly_km), race_info.get("course_distance_km")
+        )
 
         # Extract Zone 2 bounds and calculate personalized pacing zone ranges.
         # goal_type comes from the PLAN, not the user: the same athlete can hold a
