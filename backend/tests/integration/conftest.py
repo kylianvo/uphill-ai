@@ -25,6 +25,7 @@ ALL_TABLES = [
     "chat_daily_usage",
     "kb_chunks",
     "block_reviews",
+    "week_briefs",
     "knowledge_cards",
     "workout_types",
     "shoes",

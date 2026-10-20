@@ -40,6 +40,7 @@ export interface WeekReviewData {
   missed: Array<{ day_of_week: string; title: string }>;
   coverage: { completed_count: number; matched_count: number; checkbox_only_count: number };
   narrative?: { summary: string; highlights: string[]; watch: string[] };
+  brief?: { why: string; benefits: string[]; watch: string | null } | null;
 }
 
 export interface WeeklyReviewProps {

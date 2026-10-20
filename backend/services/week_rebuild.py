@@ -10,7 +10,7 @@ import asyncio
 import datetime as dt
 import threading
 from collections.abc import Callable, Coroutine
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 import db
@@ -236,6 +236,9 @@ class RebuildInputs:
     block_context: str
     api_key: str | None
     block_number: int
+    # Plain-English facts behind this week's volume, handed to the week-brief writer so it
+    # explains the real reasons instead of guessing.
+    decision_log: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -431,6 +434,7 @@ def build_rebuild_inputs(
         plan=plan, athlete_id=athlete_id, all_workouts=all_workouts, target_week=request.week_number, today=today
     )
     context_lines.extend(f"  {line}" for line in reason_lines)
+    decision_log: list[str] = list(reason_lines)
 
     # Note any workouts already completed/matched in the target week
     curr_completed = [
@@ -504,6 +508,9 @@ def build_rebuild_inputs(
         adherence_note = ""
         if prev_wos and prior_planned_min > 0:
             adherence = (actual_min or 0.0) / prior_planned_min
+            decision_log.append(
+                f"Week {prev_wk} was {adherence * 100:.0f}% complete ({actual_min:.0f} of {prior_planned_min:.0f} planned min)."
+            )
             if adherence < 0.8:
                 if prior_planned_min <= ref_min:
                     ref_min, ref_label = prior_planned_min, f"Week {prev_wk} planned"
@@ -522,8 +529,10 @@ def build_rebuild_inputs(
                     adherence_note += (
                         "  The athlete also reports high fatigue: follow the reduced volume bounds below, not a hold.\n"
                     )
+                    decision_log.append("Under 80% complete but you reported high fatigue, so volume is reduced.")
                     floor_mult, ceil_mult = None, None
                 else:
+                    decision_log.append("Under 80% complete, so this week holds near the same volume: no progression.")
                     floor_mult, ceil_mult = 0.95, 1.02
             else:
                 floor_mult, ceil_mult = None, None
@@ -545,9 +554,14 @@ def build_rebuild_inputs(
         if reason_cap is not None and reason_cap < ceil_mult:
             ceil_mult = reason_cap
             floor_mult = min(floor_mult, reason_cap - 0.05)
+            decision_log.append(f"A missed-session reason caps this week at {reason_cap:.2f}x of the reference volume.")
 
         target_floor_min = ref_min * floor_mult
         target_ceil_min = ref_min * ceil_mult
+        decision_log.append(
+            f"Reported feeling: {fatigue_level or 'moderate'}. Allowed volume {target_floor_min:.0f}-"
+            f"{target_ceil_min:.0f} min ({ref_label}, {ref_min:.0f} min)."
+        )
 
         rem_floor_min = max(0.0, target_floor_min - completed_min)
         rem_ceil_min = max(rem_floor_min + 15.0, target_ceil_min - completed_min)
@@ -681,6 +695,7 @@ def build_rebuild_inputs(
         block_context=block_context,
         api_key=model_api_key,
         block_number=block_num,
+        decision_log=decision_log,
     )
 
 

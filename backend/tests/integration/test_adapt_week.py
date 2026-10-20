@@ -776,3 +776,40 @@ class TestMissedReason:
         assert "Reason - illness (1 day(s) missed)" in ctx
         # 67% adherence -> hold band 0.95-1.02 of 120 min; the illness ceiling lowers it to 1.00.
         assert "Target Full Week Total: 114-120 min" in ctx
+
+
+class TestWeekBrief:
+    def test_brief_round_trips_and_is_replaced_per_week(self, client, auth_headers):
+        import db
+
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        assert db.get_week_brief(plan_id, 2) is None
+        db.upsert_week_brief(plan_id, 2, {"why": "a", "benefits": [], "watch": None})
+        db.upsert_week_brief(plan_id, 2, {"why": "b", "benefits": ["x"], "watch": "y"})
+        assert db.get_week_brief(plan_id, 2) == {"why": "b", "benefits": ["x"], "watch": "y"}
+        assert db.get_week_brief(plan_id, 3) is None
+
+    def test_adapt_stores_a_brief_built_from_the_decision_log_and_the_review_returns_it(self, client, auth_headers):
+        import db
+
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [40, 40, 40], week1_completed=1)
+        brief = {"why": "Held after a light week.", "benefits": ["Easy: base"], "watch": None}
+        mock = AsyncMock(return_value=brief)
+
+        with patch("main.generate_week_brief", new=mock):
+            _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="very_light")
+            for _ in range(60):
+                if db.get_week_brief(plan_id, 2):
+                    break
+                time.sleep(0.05)
+
+        assert db.get_week_brief(plan_id, 2) == brief
+        log = mock.call_args.kwargs["decision_log"]
+        assert any("Week 1 was 33% complete" in line for line in log)
+        assert any("holds near the same volume" in line for line in log)
+        assert any(line.startswith("Reported feeling: very_light. Allowed volume") for line in log)
+
+        resp = client.get(f"/api/coach/week-review/{plan_id}/2", headers=auth_headers["headers"])
+        assert resp.status_code == 200
+        assert resp.json()["brief"] == brief

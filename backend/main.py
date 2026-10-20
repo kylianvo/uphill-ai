@@ -64,6 +64,7 @@ from db import (
     get_user_by_email,
     get_user_by_id,
     get_user_by_provider,
+    get_week_brief,
     get_week_review,
     get_workout_by_id,
     get_workout_types,
@@ -94,6 +95,7 @@ from db import (
     update_workout_log,
     update_workout_mountain_mode,
     upsert_block_review_ai_fields,
+    upsert_week_brief,
     verify_session,
     week_range_for_block,
 )
@@ -130,6 +132,7 @@ from services.rag_service import RagService
 from services.training_mountains import MOUNTAINS
 from services.training_rules import TrainingRules, resolve_zone2_pace
 from services.weather_service import WeatherService
+from services.week_brief import generate_week_brief
 from services.week_review_narrative import generate_week_narrative
 from telemetry import plan_job_duration_seconds
 
@@ -2435,6 +2438,7 @@ def get_plan_week_review(plan_id: int, week_number: int, user: dict[str, Any] = 
     plan = get_plan_by_id(plan_id)
     review = get_week_review(user["id"], plan_id, week_number, plan.get("start_date") if plan else None)
     review["narrative"] = generate_week_narrative(review)
+    review["brief"] = get_week_brief(plan_id, week_number)
     return review
 
 
@@ -2595,6 +2599,13 @@ async def _generate_next_block_for_athlete(
         plan=plan, athlete_id=athlete_id, all_workouts=all_workouts, target_week=block_start, today=today
     )
     context_lines.extend(f"  {line}" for line in reason_lines)
+    # Facts the new block was planned on, for the week brief: the previous block's summary
+    # and coach evaluation lines from the same context the generator read, plus the rules.
+    brief_decision_log = [
+        line.strip()
+        for line in context_lines
+        if line.strip().startswith((f"Block {prev_block} ", "Coach evaluation", "Execution quality", "Coach takeaway"))
+    ] + reason_lines
     if context_lines:
         block_context = "\n".join(context_lines)
 
@@ -2706,6 +2717,20 @@ async def _generate_next_block_for_athlete(
                     )
             except Exception as ex:
                 print(f"[NextBlock][{job_id}] Week narrative FAILED (non-fatal): {ex}")
+            try:
+                brief = await generate_week_brief(
+                    race_info=race_info,
+                    block_context=block_context or "",
+                    week_number=block_start,
+                    workouts=[w for w in workouts if w.get("week_number") == block_start],
+                    prev_workouts=[w for w in all_workouts if w["week_number"] == block_start - 1],
+                    decision_log=brief_decision_log,
+                    api_key=model_api_key,
+                )
+                if brief:
+                    upsert_week_brief(request.plan_id, block_start, brief)
+            except Exception as ex:
+                print(f"[NextBlock][{job_id}] Week brief FAILED (non-fatal): {ex}")
         except Exception as ex:
             plan_jobs[job_id]["status"] = "error"
             plan_job_duration_seconds.labels(kind="next_block", status="error").observe(time.monotonic() - _t0)
@@ -2844,6 +2869,21 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
                     )
             except Exception as ex:
                 print(f"[AdaptWeek][{job_id}] Week narrative FAILED (non-fatal): {ex}")
+            try:
+                rows = get_plan_workouts(request.plan_id)
+                brief = await generate_week_brief(
+                    race_info=inputs.race_info,
+                    block_context=inputs.block_context,
+                    week_number=request.week_number,
+                    workouts=[w for w in rows if w["week_number"] == request.week_number],
+                    prev_workouts=[w for w in rows if w["week_number"] == request.week_number - 1],
+                    decision_log=inputs.decision_log,
+                    api_key=inputs.api_key,
+                )
+                if brief:
+                    upsert_week_brief(request.plan_id, request.week_number, brief)
+            except Exception as ex:
+                print(f"[AdaptWeek][{job_id}] Week brief FAILED (non-fatal): {ex}")
         except Exception as ex:
             plan_jobs[job_id]["status"] = "error"
             plan_job_duration_seconds.labels(kind="adapt_week", status="error").observe(time.monotonic() - _t0)
@@ -2925,6 +2965,7 @@ def get_athlete_week_review(
     plan = get_plan_by_id(plan_id)
     review = get_week_review(athlete_id, plan_id, week_number, plan.get("start_date") if plan else None)
     review["narrative"] = generate_week_narrative(review)
+    review["brief"] = get_week_brief(plan_id, week_number)
     return review
 
 
