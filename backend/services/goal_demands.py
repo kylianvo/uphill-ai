@@ -7,13 +7,13 @@ plan is built from the race's demands instead of one goal sentence.
 from dataclasses import dataclass
 from typing import Any
 
+from services.athlete_tier import MAX_SESSION_MIN
 from services.pacing_calculator import PacingCalculator
 from services.race_estimator import RaceEstimator
 from services.race_readiness import race_class
 
 CUTOFF_SAFE_SHARE = 0.85  # a finish goal targets 85% of the cutoff (same rule as the plan prompt)
 LONGEST_SESSION_SHARE = 0.40  # my call: the longest training session reaches ~40% of race time
-MAX_SESSION_MIN = 300  # the book caps a single session at four to five hours
 
 
 @dataclass(frozen=True)

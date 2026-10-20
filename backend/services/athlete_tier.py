@@ -324,6 +324,19 @@ class TierDecision:
     reasons: list[str] = field(default_factory=list)
 
 
+DEFAULT_TRAINING_DAYS = 5  # used when the athlete set no days per week
+MAX_SESSION_MIN = 300  # the book caps a single session at four to five hours
+
+
+def week_capacity_parts(profile: TierProfile, days_per_week: int | None) -> tuple[float, float]:
+    """(minutes of the non-long sessions, minutes of the long run) the tier's own caps allow in a week."""
+    n = max(1, days_per_week or DEFAULT_TRAINING_DAYS)
+    others = (n - 1) * profile.weekday_minutes[1]
+    cap = profile.long_run_share_cap
+    long_run = min(MAX_SESSION_MIN, cap / (1 - cap) * others) if n > 1 else MAX_SESSION_MIN
+    return others, long_run
+
+
 def get_profile(tier: str | None) -> TierProfile:
     """The profile for a tier, falling back to the default rather than raising: a plan
     built on slightly wrong assumptions still beats no plan, and the caller has nothing

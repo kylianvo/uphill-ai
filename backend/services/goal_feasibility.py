@@ -7,11 +7,10 @@ plan can reach, not a guess about the athlete.
 
 from dataclasses import dataclass
 
-from services.athlete_tier import TierProfile
-from services.goal_demands import MAX_SESSION_MIN, Demands
+from services.athlete_tier import DEFAULT_TRAINING_DAYS, TierProfile, week_capacity_parts
+from services.goal_demands import Demands
 from services.race_readiness import TAPER_WEEKS, max_reachable
 
-DEFAULT_DAYS = 5  # my call: used when the athlete set no days per week
 STRETCH_MARGIN = 0.10  # needed time may exceed capacity by 10% before the goal is unsupported
 FINISH_PEAK_SHARE = 0.80  # my call: a finish goal needs 80% of the book's peak-week benchmark
 VENUE_SHARE = 0.60  # a training mountain below 60% of the course steepness cannot rehearse it
@@ -30,11 +29,7 @@ class Feasibility:
 
 
 def week_capacity_minutes(profile: TierProfile, days_per_week: int | None) -> float:
-    n = max(1, days_per_week or DEFAULT_DAYS)
-    others = (n - 1) * profile.weekday_minutes[1]
-    cap = profile.long_run_share_cap
-    long_run = min(MAX_SESSION_MIN, cap / (1 - cap) * others) if n > 1 else MAX_SESSION_MIN
-    return others + long_run
+    return sum(week_capacity_parts(profile, days_per_week))
 
 
 def _weeks_needed(current_km: float, peak_km: float, max_prog: float) -> int | None:
@@ -66,7 +61,7 @@ def assess(
     short_runway = runway is not None and (weeks_needed is None or weeks_needed > runway)
     over_capacity = needed_h > capacity_h
     levers: list[str] = []
-    if over_capacity and (days_per_week or DEFAULT_DAYS) < 6:
+    if over_capacity and (days_per_week or DEFAULT_TRAINING_DAYS) < 6:
         levers.append("more_days")
     if short_runway:
         levers.append("more_weeks")

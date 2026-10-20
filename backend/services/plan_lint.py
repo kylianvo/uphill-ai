@@ -7,9 +7,12 @@ retry prompt. Caps come from the athlete's tier profile, not from one-size numbe
 """
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from services.athlete_tier import TierProfile
+from services.athlete_tier import TierProfile, week_capacity_parts
+
+if TYPE_CHECKING:  # goal_demands imports race_readiness, which imports this module
+    from services.goal_demands import Demands
 
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 DOWN_PHASES = {"Recovery", "Taper", "Race Week"}
@@ -35,6 +38,8 @@ class Prefs:
 
     long_run_day: str | None = None
     days_per_week: int | None = None
+    demands: "Demands | None" = None  # the goal's physical demands (enables the specificity checks)
+    flat_only: bool = False  # no training mountain or local hills: climbing cannot be judged on gain
 
 
 @dataclass(frozen=True)
@@ -278,7 +283,79 @@ def lint_week(
     return issues
 
 
+TIME_ON_FEET_SHARE = 0.90  # the longest session must reach 90% of the target (or of what the days can hold)
+GRADIENT_SHARE = 0.60  # long runs must reach 60% of the course steepness (or of the training mountain's)
+MIN_STEEP_M_PER_KM = 25.0  # flatter courses need no climbing rehearsal
+LATE_WEEKS = 4
+_NO_CLIMB_MODES = {"skip", "indoor", "chill"}
+
+
+def _specificity(
+    workouts: list[dict[str, Any]], weeks: set[int], profile: TierProfile, prefs: Prefs | None
+) -> list[Issue]:
+    """Plan-level checks against the goal's demands. Run only on a block that holds its Peak phase."""
+    d = prefs.demands if prefs else None
+    by = _by_week(workouts)
+    peaks = sorted(w for w in weeks if any(x.get("phase") == "Peak" for x in by.get(w, [])))
+    if d is None or not peaks:
+        return []
+    anchor = peaks[-1]
+    training = [w for w in sorted(by) if w <= anchor and any(x.get("phase") in ("Build", "Peak") for x in by[w])]
+    if not training:
+        return []
+    issues: list[Issue] = []
+    held = max((_min(x) for w in training for x in by[w]), default=0.0)
+    _, long_cap = week_capacity_parts(profile, prefs.days_per_week)
+    target = TIME_ON_FEET_SHARE * min(d.longest_session_min, long_cap)
+    if held < target:
+        issues.append(
+            Issue(
+                "TIME_ON_FEET",
+                anchor,
+                f"Build the longest session up to about {target:.0f} min before the race (the plan's longest is "
+                f"{held:.0f} min): the goal needs that much time on feet.",
+            )
+        )
+    if d.steepness_m_per_km >= MIN_STEEP_M_PER_KM and not prefs.flat_only:
+        need = GRADIENT_SHARE * min(d.steepness_m_per_km, d.venue_climb_rate or d.steepness_m_per_km)
+        late = training[len(training) // 2 :]
+        longs = [
+            x
+            for w in late
+            for x in by[w]
+            if _is_long(x) and x.get("mountain_mode") not in _NO_CLIMB_MODES and float(x.get("distance_km") or 0) > 0
+        ]
+        best = max((float(x.get("elevation_gain_m") or 0) / float(x["distance_km"]) for x in longs), default=need)
+        if longs and best < need:
+            issues.append(
+                Issue(
+                    "LONG_RUN_GRADIENT",
+                    anchor,
+                    f"Give the late long runs about {need:.0f} m D+/km of climbing (the steepest now climbs {best:.0f}): "
+                    f"the course needs it.",
+                )
+            )
+    if profile.allows_intensity:
+        recent = training[-LATE_WEEKS:]
+        work = [
+            x
+            for w in recent
+            for x in by[w]
+            if is_hard(x) or (x.get("type") in ("Easy", "Long Run") and float(x.get("elevation_gain_m") or 0) > 0)
+        ]
+        if not work:
+            issues.append(
+                Issue(
+                    "SPECIFICITY_LATE",
+                    anchor,
+                    "Add hard or climbing work in the last build weeks: the course needs race-specific work.",
+                )
+            )
+    return issues
+
+
 def lint_weeks(
     workouts: list[dict[str, Any]], weeks: set[int], profile: TierProfile, prefs: Prefs | None = None
 ) -> list[Issue]:
-    return [i for wk in sorted(weeks) for i in lint_week(workouts, wk, profile, prefs)]
+    found = [i for wk in sorted(weeks) for i in lint_week(workouts, wk, profile, prefs)]
+    return found + _specificity(workouts, weeks, profile, prefs)
