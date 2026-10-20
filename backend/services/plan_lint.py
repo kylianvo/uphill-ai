@@ -22,7 +22,18 @@ MAX_VERT_GROWTH = 0.25
 MIN_VERT_STEP_M = 300  # ignore growth on tiny bases
 BACK_TO_BACK_SHARE = 0.50  # two consecutive big days may hold at most half the week
 MAX_SESSION_MIN = 300  # KB: the longest single session is capped at four to five hours
+# No doctrine number for one session; this catches the gross spikes (130 -> 213 min) the weekly cap misses.
+MAX_LONG_RUN_GROWTH = 0.25
+MIN_LONG_RUN_STEP_MIN = 20
 BUILD_WEEKS_BEFORE_RECOVERY = 3  # 3 build : 1 recovery
+
+
+@dataclass(frozen=True)
+class Prefs:
+    """What the athlete asked for; a week that ignores it is a defect, not a style choice."""
+
+    long_run_day: str | None = None
+    days_per_week: int | None = None
 
 
 @dataclass(frozen=True)
@@ -88,7 +99,9 @@ def _is_down(weeks: dict[int, list[dict[str, Any]]], wk: int) -> bool:
     return bool(prev) and week_minutes(ws) <= prev * 0.9
 
 
-def lint_week(workouts: list[dict[str, Any]], week: int, profile: TierProfile) -> list[Issue]:
+def lint_week(
+    workouts: list[dict[str, Any]], week: int, profile: TierProfile, prefs: Prefs | None = None
+) -> list[Issue]:
     """Issues in `week`, judged against the weeks before it in `workouts`."""
     weeks = _by_week(workouts)
     ws = _active(weeks.get(week) or [])
@@ -183,6 +196,51 @@ def lint_week(workouts: list[dict[str, Any]], week: int, profile: TierProfile) -
                 )
                 break
 
+    long_runs = [w for w in ws if _is_long(w) and _day(w) is not None]
+    if (
+        prefs
+        and prefs.long_run_day in DAYS
+        and long_runs
+        and not any(_day(w) == DAYS.index(prefs.long_run_day) for w in long_runs)
+    ):
+        issues.append(
+            Issue(
+                "LONG_RUN_DAY",
+                week,
+                f"Week {week}: the long run is on {DAYS[_day(long_runs[0])]} but the athlete's long-run day is "
+                f"{prefs.long_run_day}. Put it on {prefs.long_run_day}.",
+            )
+        )
+    training_days = {_day(w) for w in ws if _day(w) is not None}
+    if prefs and prefs.days_per_week and len(training_days) < prefs.days_per_week:
+        issues.append(
+            Issue(
+                "DAYS_SHORT",
+                week,
+                f"Week {week} has {len(training_days)} training days; the athlete trains {prefs.days_per_week} days "
+                f"a week. Spread the week over {prefs.days_per_week} days.",
+            )
+        )
+    recent_long = max(
+        (_min(w) for back in (1, 2) for w in weeks.get(week - back, []) if _is_long(w)),
+        default=0.0,
+    )
+    longest_now = max((_min(w) for w in long_runs), default=0.0)
+    if (
+        recent_long
+        and longest_now > recent_long * (1 + MAX_LONG_RUN_GROWTH)
+        and longest_now - recent_long > MIN_LONG_RUN_STEP_MIN
+    ):
+        issues.append(
+            Issue(
+                "LONG_RUN_JUMP",
+                week,
+                f"Week {week}: the long run is {longest_now:.0f} min, up from {recent_long:.0f} min in the last two "
+                f"weeks (+{(longest_now / recent_long - 1) * 100:.0f}%). Grow the long run gradually "
+                f"(at most about +{MAX_LONG_RUN_GROWTH * 100:.0f}% per step).",
+            )
+        )
+
     for w in ws:
         if _min(w) > MAX_SESSION_MIN:
             issues.append(
@@ -211,5 +269,7 @@ def lint_week(workouts: list[dict[str, Any]], week: int, profile: TierProfile) -
     return issues
 
 
-def lint_weeks(workouts: list[dict[str, Any]], weeks: set[int], profile: TierProfile) -> list[Issue]:
-    return [i for wk in sorted(weeks) for i in lint_week(workouts, wk, profile)]
+def lint_weeks(
+    workouts: list[dict[str, Any]], weeks: set[int], profile: TierProfile, prefs: Prefs | None = None
+) -> list[Issue]:
+    return [i for wk in sorted(weeks) for i in lint_week(workouts, wk, profile, prefs)]

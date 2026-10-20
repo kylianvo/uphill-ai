@@ -1,7 +1,7 @@
 """Fixtures are the weeks the prod coach review found (Vietnam Highlands Trail test plans)."""
 
 from services.athlete_tier import TIER_PROFILES
-from services.plan_lint import lint_week, lint_weeks
+from services.plan_lint import Prefs, lint_week, lint_weeks
 
 REC = TIER_PROFILES["recreational"]
 NOV = TIER_PROFILES["novice"]
@@ -143,3 +143,38 @@ def test_lint_weeks_reports_only_the_requested_weeks():
     wks = filler(1, 300) + filler(2, 400)  # week 2 jumps, week 1 is context
     assert codes(lint_weeks(wks, {1}, REC)) == []
     assert "VOLUME_JUMP" in codes(lint_weeks(wks, {2}, REC))
+
+
+def test_plan_124_week_6_moves_the_long_run_jumps_it_and_drops_a_training_day():
+    """Prod 100K finish-only plan: long run Sunday -> Saturday at 213 min (was 130), ME the day after, 5 of 6 days."""
+    w5 = [
+        s(5, "Tuesday", "Easy", 70),
+        s(5, "Wednesday", "Easy", 75),
+        s(5, "Thursday", "Muscular Endurance", 55, "Zone 1"),
+        s(5, "Friday", "Tempo", 65, "Zone 3"),
+        s(5, "Saturday", "Easy", 45),
+        s(5, "Sunday", "Long Run", 130),
+    ]
+    w6 = [
+        s(6, "Tuesday", "Recovery", 71, "Zone 1"),
+        s(6, "Wednesday", "Interval", 71, "Zone 4"),
+        s(6, "Thursday", "Easy", 71),
+        s(6, "Saturday", "Long Run", 213),
+        s(6, "Sunday", "Muscular Endurance", 45, "Zone 1"),
+    ]
+    got = codes(lint_week(w5 + w6, 6, SUB, Prefs(long_run_day="Sunday", days_per_week=6)))
+    assert {"LONG_RUN_DAY", "LONG_RUN_JUMP", "DAYS_SHORT", "ME_SPACING"} <= set(got)
+
+
+def test_a_week_that_follows_the_athletes_schedule_has_no_preference_issues():
+    wk = [s(1, d, "Easy", 50) for d in ("Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")] + [
+        s(1, "Sunday", "Long Run", 90)
+    ]
+    got = codes(lint_week(wk, 1, SUB, Prefs(long_run_day="Sunday", days_per_week=6)))
+    assert not {"LONG_RUN_DAY", "DAYS_SHORT", "LONG_RUN_JUMP"} & set(got)
+
+
+def test_long_run_growth_is_measured_against_the_last_two_weeks_so_a_recovery_dip_is_not_a_trap():
+    ctx = [s(1, "Sunday", "Long Run", 120), s(2, "Sunday", "Long Run", 80)] + filler(3, 300)
+    assert "LONG_RUN_JUMP" not in codes(lint_week(ctx + [s(3, "Sunday", "Long Run", 125)], 3, SUB))  # +4% on 120
+    assert "LONG_RUN_JUMP" in codes(lint_week(ctx + [s(3, "Sunday", "Long Run", 170)], 3, SUB))  # +42% on 120

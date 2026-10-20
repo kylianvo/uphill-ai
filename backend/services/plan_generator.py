@@ -983,7 +983,12 @@ class PlanGenerator:
         weeks = {w["week_number"] for w in workouts if isinstance(w.get("week_number"), int)}
         prior = [w for w in get_plan_workouts(plan_id) if w.get("week_number") not in weeks] if plan_id else []
         combined = prior + workouts
-        issues = plan_lint.lint_weeks(combined, weeks, profile)
+        try:
+            days_per_week = int(race_info.get("days_per_week") or 0) or None
+        except (TypeError, ValueError):
+            days_per_week = None
+        prefs = plan_lint.Prefs(long_run_day=race_info.get("long_run_day"), days_per_week=days_per_week)
+        issues = plan_lint.lint_weeks(combined, weeks, profile, prefs)
         first = min(weeks) if weeks else 1
         if cutoff := race_readiness.target_vs_cutoff_issue(
             race_info.get("target_time_hours"), cutoff_time_hours, first

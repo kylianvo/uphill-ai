@@ -93,3 +93,11 @@ def test_target_time_past_the_cutoff_is_flagged_once_both_are_known():
     assert isinstance(target_vs_cutoff_issue(11.0, 10.0, 1), Issue)
     assert target_vs_cutoff_issue(9.5, 10.0, 1) is None
     assert target_vs_cutoff_issue(9.5, None, 1) is None
+
+
+def test_a_due_recovery_week_does_not_hide_an_unreachable_timeline():
+    # prod 100K plan: ~47 km weeks, no recovery in 6 weeks -> week 7 is a recovery week, yet the peak is out of reach
+    r = assess_week(history(43, 46, 49, 47, 45, 47), 7, total_weeks=13, distance_km=104.2, max_prog=0.10)
+    assert r.race_class == "100K" and r.status == "at_risk"
+    assert r.floor_km == 0  # it is a recovery week: no volume floor
+    assert "cannot reach" in r.message and r.reachable_km < 120

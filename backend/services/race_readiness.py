@@ -97,9 +97,16 @@ def assess_week(
     builds = _builds_through(weeks, week)
     if builds > BUILDS_BEFORE_RECOVERY:
         # This week is the recovery week (3 builds : 1 recovery): no floor, or the two rules would fight.
-        return Readiness(
-            "on_track", label, lo, hi, base, 0.0, cap, max_reachable(cap, steps, 0, max_prog), peak_week, ""
-        )
+        # An unreachable timeline is still reported: a recovery week does not make the peak reachable.
+        reach = max_reachable(cap, steps, 0, max_prog)
+        if reach < lo:
+            msg = (
+                f"The timeline cannot reach the {label} benchmark peak week ({lo:.0f}-{hi:.0f} km) within the "
+                f"{max_prog * 100:.0f}% weekly cap: the best reachable peak is about {reach:.0f} km by week "
+                f"{peak_week}. Build as fast as the cap allows."
+            )
+            return Readiness("at_risk", label, lo, hi, base, 0.0, cap, reach, peak_week, msg)
+        return Readiness("on_track", label, lo, hi, base, 0.0, cap, reach, peak_week, "")
     reach_at_cap = max_reachable(cap, steps, builds, max_prog)
     if max_reachable(base, steps, builds, max_prog) >= lo:
         return Readiness("on_track", label, lo, hi, base, 0.0, cap, reach_at_cap, peak_week, "")
