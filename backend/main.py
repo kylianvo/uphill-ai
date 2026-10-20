@@ -4340,6 +4340,27 @@ def get_plan_goal(
     return _get_plan_goal(plan_id, user["id"], background_tasks, lang)
 
 
+def _plan_journey(plan_id: int, owner_id: int) -> dict[str, Any]:
+    from datetime import date
+
+    from services import plan_journey
+
+    plan = _goal_plan(plan_id, owner_id)
+    return plan_journey.journey(plan, get_plan_workouts(plan_id), date.today())
+
+
+@app.get("/api/plans/{plan_id}/journey")
+def get_plan_journey(plan_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    return _plan_journey(plan_id, user["id"])
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/journey")
+def coach_get_plan_journey(
+    athlete_id: int, plan_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)
+):
+    return _plan_journey(plan_id, athlete_id)
+
+
 @app.post("/api/plans/{plan_id}/goal/reassess")
 def reassess_plan_goal(plan_id: int, request: GoalReassessRequest, user: dict[str, Any] = Depends(get_current_user)):
     return _reassess_plan_goal(plan_id, user["id"], request)
