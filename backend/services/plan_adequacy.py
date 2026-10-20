@@ -75,7 +75,9 @@ def assess(
             max_prog=profile.max_weekly_progression,
             flat_pace_min_km=flat_pace_min_km,
         )
-        if race_readiness.readiness_issue(r, wk, race_readiness.weekly_km(by_week[wk], flat_pace_min_km)):
+        if race_readiness.readiness_issue(
+            r, wk, race_readiness.weekly_km(by_week[wk], flat_pace_min_km), push_at_risk=False
+        ):
             codes.append("READINESS_BEHIND")
         if codes:
             problems[wk] = codes

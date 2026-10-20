@@ -146,9 +146,21 @@ def assess_week(
     return Readiness("behind", label, lo, hi, base, high, cap, reach_at_cap, peak_week, msg)
 
 
-def readiness_issue(r: Readiness | None, week: int, week_km: float) -> Issue | None:
-    """A lint issue when a generated week sits under the floor on a reachable path."""
-    if r and r.status == "behind" and week_km < r.floor_km * PATH_TOLERANCE:
+def readiness_issue(
+    r: Readiness | None,
+    week: int,
+    week_km: float,
+    capacity_km: float | None = None,
+    push_at_risk: bool = True,
+) -> Issue | None:
+    """A lint issue when a generated week sits under the floor. On a reachable path the floor is what keeps the
+    benchmark reachable; when the benchmark is out of reach it is the cap itself (best feasible build), so a
+    flat plan is still pushed upward (`push_at_risk`). `capacity_km` is what the athlete's days can hold: never
+    ask for more."""
+    if r and (r.status == "behind" or (push_at_risk and r.status == "at_risk")) and r.floor_km:
+        floor = min(r.floor_km, capacity_km) if capacity_km else r.floor_km
+        if week_km >= floor * PATH_TOLERANCE:
+            return None
         return Issue(
             "READINESS_BEHIND",
             week,
@@ -167,3 +179,61 @@ def target_vs_cutoff_issue(target_h: float | None, cutoff_h: float | None, week:
             f"would not be a finish. Re-run the Goal Determiner.",
         )
     return None
+
+
+_QUALITY = {"tempo", "interval", "threshold", "race"}
+
+
+def suggest_minutes(
+    ws: list[dict[str, Any]], target_run_minutes: float, weekday_max: float, long_share_cap: float
+) -> str:
+    """Concrete durations that bring a week's running up to `target_run_minutes`: easy and long runs are scaled
+    up in proportion, each inside the tier's weekday maximum and the long run inside its share of the week.
+    Quality sessions, strength and Muscular Endurance are left as drafted. "" when nothing can be scaled."""
+    runs = [
+        w
+        for w in ws
+        if w.get("type") != "Rest" and (w.get("type") or "").strip().lower() not in NON_RUN_TYPES | _QUALITY
+    ]
+    if not runs:
+        return ""
+    current = sum(
+        float(w.get("duration_minutes") or 0)
+        for w in ws
+        if (w.get("type") or "").strip().lower() not in NON_RUN_TYPES and w.get("type") != "Rest"
+    )
+    minutes = {id(w): float(w.get("duration_minutes") or 0) for w in runs}
+    is_long = lambda w: (w.get("type") or "").strip().lower() == "long run"  # noqa: E731
+    cap = lambda w: min(300.0, long_share_cap * target_run_minutes) if is_long(w) else weekday_max  # noqa: E731
+    need = target_run_minutes - current
+    for _ in range(4):  # redistribute what the caps refuse
+        room = [w for w in runs if minutes[id(w)] < cap(w)]
+        base = sum(minutes[id(w)] for w in room)
+        if need <= 0.5 or not room or not base:
+            break
+        for w in room:
+            add = need * minutes[id(w)] / base
+            minutes[id(w)] = min(cap(w), minutes[id(w)] + add)
+        need = target_run_minutes - (
+            current + sum(minutes[id(w)] - float(w.get("duration_minutes") or 0) for w in runs)
+        )
+    parts = [
+        f"{w.get('day_of_week')} {w.get('type')} {int(round(minutes[id(w)] / 5) * 5)} min"
+        for w in runs
+        if abs(minutes[id(w)] - float(w.get("duration_minutes") or 0)) >= 2.5
+    ]
+    return ("Set these sessions to " + ", ".join(parts) + ".") if parts else ""
+
+
+def completed_weekly_km(
+    ws: list[dict[str, Any]], before_week: int, flat_pace_min_km: float | None, weeks: int = 2
+) -> float | None:
+    """Flat-equivalent km per week over the last `weeks` weeks before `before_week`, counting only sessions the
+    athlete ticked complete: what they really trained, which is what their level should follow."""
+    if not flat_pace_min_km:
+        return None
+    by_week = _by_week([w for w in ws if w.get("is_completed") == 1 and (w.get("week_number") or 0) < before_week])
+    recent = sorted(by_week)[-weeks:]
+    if not recent:
+        return None
+    return sum(weekly_km(by_week[wk], flat_pace_min_km) for wk in recent) / len(recent)

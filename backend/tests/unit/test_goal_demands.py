@@ -51,3 +51,30 @@ def test_races_below_ultra_distance_get_no_demands():
     assert goal_demands.compute(21.1, 100, None, 3.5) is None
     assert goal_demands.compute(42.2, 300, None, 7) is None
     assert goal_demands.compute(50.0, 2000, None, 10) is not None
+
+
+def _plan_with_long_runs(longs):
+    return [
+        {
+            "week_number": i + 1,
+            "type": "Long Run",
+            "duration_minutes": m,
+            "day_of_week": "Sunday",
+            "phase": "Base" if i < 4 else "Build",
+        }  # fmt: skip
+        for i, m in enumerate(longs)
+    ]
+
+
+def test_long_run_line_grows_the_long_run_toward_the_target_within_the_weekly_cap():
+    d = goal_demands.compute(104.2, 5533, 14.67, 29)  # longest session target 300 min
+    ws = _plan_with_long_runs([110, 115, 120])
+    line = goal_demands.long_run_line(ws, week=4, total_weeks=11, demands=d, profile_long_cap_min=185)
+    assert line and "at least 131" in line and "185" in line  # the even climb from 120 to the 185 the days can hold
+
+
+def test_long_run_line_is_silent_without_history_or_after_the_build():
+    d = goal_demands.compute(104.2, 5533, 14.67, 29)
+    assert goal_demands.long_run_line([], week=1, total_weeks=11, demands=d, profile_long_cap_min=185) is None
+    ws = _plan_with_long_runs([110, 115, 120])
+    assert goal_demands.long_run_line(ws, week=9, total_weeks=11, demands=d, profile_long_cap_min=185) is None

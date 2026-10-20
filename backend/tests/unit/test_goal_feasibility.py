@@ -91,7 +91,7 @@ def test_mountain_minimum_must_fit_the_week():
     f = _assess(d, profile=REC, days=3, weeks=26, current=40.0, mountain_min_minutes=180)
     assert "fewer_mountain_minimum" in f.levers
     assert f.verdict != "supported"
-    ok = _assess(d, profile=ELITE, days=7, weeks=26, current=60.0, mountain_min_minutes=180)
+    ok = _assess(d, profile=ELITE, days=7, weeks=26, current=110.0, mountain_min_minutes=180)
     assert "fewer_mountain_minimum" not in ok.levers
 
 

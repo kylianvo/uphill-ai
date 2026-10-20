@@ -136,7 +136,9 @@ def run(s: Scenario) -> Result:
     prof = get_profile(tier)
     venue_rate = long_run_climb_rate(MOUNTAIN) if mountain else None
     demands = goal_demands.compute(dist, gain, target_h, cutoff, venue_climb_rate=venue_rate)
-    prefs = plan_lint.Prefs(long_run_day=long_day, days_per_week=dpw, demands=demands, flat_only=not mountain)
+    prefs = plan_lint.Prefs(
+        long_run_day=long_day, days_per_week=dpw, demands=demands, flat_only=not mountain, total_weeks=s.weeks
+    )
     found = plan_lint.lint_weeks(workouts, {w["week_number"] for w in workouts}, prof, prefs)
     codes = {i.code for i in found}
     flat_pace = PlanGenerator.flat_zone2_pace(profile, race_info["goal_type"], tier) or 6.0

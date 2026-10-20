@@ -8,7 +8,14 @@ from config import settings
 from db import block_number_for_week, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
 from services import goal_demands, observability, plan_lint, race_readiness, recovery_baseline, week_layout
-from services.athlete_tier import MEASURED_THRESHOLD_SOURCES, TIER_PROFILES, get_profile, resolve_tier
+from services.athlete_tier import (
+    MEASURED_THRESHOLD_SOURCES,
+    TIER_PROFILES,
+    get_profile,
+    graduated_profile,
+    resolve_tier,
+    week_capacity_parts,
+)
 from services.plan_rules import build_rules_block, me_runway, me_status_block
 from services.training_mountains import default_min_minutes, long_run_climb_rate
 from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
@@ -1010,6 +1017,11 @@ class PlanGenerator:
         profile = get_profile(tier)
         weeks = {w["week_number"] for w in workouts if isinstance(w.get("week_number"), int)}
         prior = [w for w in get_plan_workouts(plan_id) if w.get("week_number") not in weeks] if plan_id else []
+        if flat_pace_min_km and prior:  # caps follow the volume already built, like the generator's level
+            built = plan_lint._by_week(prior)
+            profile = graduated_profile(
+                profile, max((race_readiness.weekly_km(ws, flat_pace_min_km) for ws in built.values()), default=0)
+            )
         combined = prior + workouts
         try:
             days_per_week = int(race_info.get("days_per_week") or 0) or None
@@ -1022,6 +1034,7 @@ class PlanGenerator:
             # an adapted week is the athlete's own call: never ask it to build toward the peak long run
             demands=None if target_week is not None else PlanGenerator.goal_demands_for(race_info, cutoff_time_hours),
             flat_only=not venues.local_hills and not venues.training_mountain and not venues.mountain_days,
+            total_weeks=total_weeks,
         )
         issues = plan_lint.lint_weeks(combined, weeks, profile, prefs)
         first = min(weeks) if weeks else 1
@@ -1042,8 +1055,20 @@ class PlanGenerator:
                 week_km = race_readiness.weekly_km(
                     [w for w in workouts if w.get("week_number") == wk], flat_pace_min_km
                 )
-                if issue := race_readiness.readiness_issue(r, wk, week_km):
-                    issues.append(issue)
+                capacity_km = (
+                    sum(week_capacity_parts(profile, days_per_week)) / flat_pace_min_km if flat_pace_min_km else None
+                )
+                if issue := race_readiness.readiness_issue(r, wk, week_km, capacity_km):
+                    hint = ""
+                    if flat_pace_min_km and r and r.floor_km:
+                        target_min = min(r.floor_km, capacity_km or r.floor_km) * flat_pace_min_km
+                        hint = race_readiness.suggest_minutes(
+                            [w for w in workouts if w.get("week_number") == wk],
+                            target_min,
+                            profile.weekday_minutes[1],
+                            profile.long_run_share_cap,
+                        )
+                    issues.append(plan_lint.Issue(issue.code, issue.week, f"{issue.message} {hint}".strip()))
         return issues
 
     @staticmethod
@@ -2136,8 +2161,9 @@ class PlanGenerator:
         # With a known goal the volume climbs toward the weekly time the race needs, at 90% of the
         # tier's weekly progression cap; week_layout then holds every week within the tier's caps.
         want_multiplier = 1.0
+        flat_for_caps = PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier) or 6.0
         if demands:
-            flat = PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier) or 6.0
+            flat = flat_for_caps
             share = 0.8 if demands.source == "cutoff_safe" else 1.0
             want_multiplier = demands.peak_week_km_lo * share * flat / base_weekly_minutes
 
@@ -2526,6 +2552,8 @@ class PlanGenerator:
                     workouts[week_start_idx:], week=week, phase=phase, race_weekday=race_weekday
                 )
             elif phase != "Recovery":
+                # the caps follow the volume this week is built to, not only the level the plan started at
+                week_caps = graduated_profile(tier_profile, week_minutes / flat_for_caps)
                 workouts[week_start_idx:] = week_layout.layout_week(
                     workouts[week_start_idx:],
                     week=week,
@@ -2534,8 +2562,8 @@ class PlanGenerator:
                     long_run_day=long_run_day,
                     days_per_week=days_per_week,
                     week_minutes=week_minutes,
-                    long_run_share_cap=tier_profile.long_run_share_cap,
-                    weekday_max_minutes=tier_profile.weekday_minutes[1],
+                    long_run_share_cap=week_caps.long_run_share_cap,
+                    weekday_max_minutes=week_caps.weekday_minutes[1],
                     recovery=is_recovery_week,
                 )
 
