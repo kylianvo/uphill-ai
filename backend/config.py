@@ -139,6 +139,11 @@ class Config:
     # LLM goal judge (services/goal_judge.py). Off = deterministic A/B/C from the
     # anchors, same API and UI. Enable once golden_eval --service goal passes.
     GOAL_LLM_ENABLED: bool = os.getenv("GOAL_LLM_ENABLED", "false").lower() == "true"
+    # Structural lint + race-readiness check on every generated week (services/plan_lint.py,
+    # services/race_readiness.py). PLAN_LINT_RETRY adds one corrective regeneration when a week
+    # breaks a rule. Off in tests (it reads the plan's earlier weeks from the DB).
+    PLAN_LINT_ENABLED: bool = os.getenv("PLAN_LINT_ENABLED", "true").lower() == "true"
+    PLAN_LINT_RETRY: bool = os.getenv("PLAN_LINT_RETRY", "true").lower() == "true"
     # Assess a new plan's goal in a background thread at creation; off in tests
     # so the thread can't outlive a test and write into the next one's data.
     GOAL_ASSESS_ON_PLAN_CREATE: bool = os.getenv("GOAL_ASSESS_ON_PLAN_CREATE", "true").lower() == "true"

@@ -1,11 +1,13 @@
+import functools
 import time
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from typing import Any
 
 from config import settings
-from db import block_number_for_week, week_range_for_block
+from db import block_number_for_week, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
-from services import observability, recovery_baseline
+from services import observability, plan_lint, race_readiness, recovery_baseline
 from services.athlete_tier import MEASURED_THRESHOLD_SOURCES, TIER_PROFILES, get_profile, resolve_tier
 from services.plan_rules import build_rules_block, me_runway, me_status_block
 from services.training_mountains import default_min_minutes, long_run_climb_rate
@@ -923,7 +925,8 @@ class PlanGenerator:
             user_id = None
         with observability.trace("plan_generation", feature="plan_generation", user_id=user_id):
             trace_id = observability.current_trace_id()
-            workouts, tier = await PlanGenerator._generate_plan_workouts(
+            generate = functools.partial(
+                PlanGenerator._generate_plan_workouts,
                 plan_id=plan_id,
                 user_profile=user_profile,
                 race_info=race_info,
@@ -932,9 +935,21 @@ class PlanGenerator:
                 cutoff_time_hours=cutoff_time_hours,
                 block_number=block_number,
                 weeks_per_block=weeks_per_block,
-                block_context=block_context,
                 target_week=target_week,
             )
+            workouts, tier = await generate(block_context=block_context)
+            if settings.PLAN_LINT_ENABLED:
+                workouts, tier = await PlanGenerator._lint_and_correct(
+                    workouts,
+                    tier,
+                    generate=generate,
+                    plan_id=plan_id,
+                    race_info=race_info,
+                    total_weeks=total_weeks,
+                    cutoff_time_hours=cutoff_time_hours,
+                    block_context=block_context,
+                    target_week=target_week,
+                )
             from services import fitness_snapshot, plan_signals
 
             snap = race_info.get("fitness_snapshot")
@@ -949,6 +964,92 @@ class PlanGenerator:
                 if snap and snap.weekly_km_source in fitness_snapshot.DEVICE_PROVIDERS
                 else None,
             )
+            return workouts, tier
+
+    @staticmethod
+    def _lint_issues(
+        workouts: list[dict[str, Any]],
+        tier: str,
+        *,
+        plan_id: int,
+        race_info: dict[str, Any],
+        total_weeks: int,
+        cutoff_time_hours: float | None,
+        target_week: int | None,
+    ) -> list[plan_lint.Issue]:
+        """Structural problems in the drafted weeks, judged against the plan's earlier weeks and the
+        tier's own caps; a new block (not an adapt) is also judged on the race-readiness path."""
+        profile = get_profile(tier)
+        weeks = {w["week_number"] for w in workouts if isinstance(w.get("week_number"), int)}
+        prior = [w for w in get_plan_workouts(plan_id) if w.get("week_number") not in weeks] if plan_id else []
+        combined = prior + workouts
+        issues = plan_lint.lint_weeks(combined, weeks, profile)
+        first = min(weeks) if weeks else 1
+        if cutoff := race_readiness.target_vs_cutoff_issue(
+            race_info.get("target_time_hours"), cutoff_time_hours, first
+        ):
+            issues.append(cutoff)
+        if target_week is None:
+            for wk in sorted(weeks):
+                r = race_readiness.assess_week(
+                    combined,
+                    wk,
+                    total_weeks=total_weeks,
+                    distance_km=race_info.get("course_distance_km"),
+                    max_prog=profile.max_weekly_progression,
+                )
+                week_km = race_readiness.weekly_km([w for w in workouts if w.get("week_number") == wk])
+                if issue := race_readiness.readiness_issue(r, wk, week_km):
+                    issues.append(issue)
+        return issues
+
+    @staticmethod
+    async def _lint_and_correct(
+        workouts: list[dict[str, Any]],
+        tier: str,
+        *,
+        generate: Callable[..., Awaitable[tuple[list[dict[str, Any]], str]]],
+        plan_id: int,
+        race_info: dict[str, Any],
+        total_weeks: int,
+        cutoff_time_hours: float | None,
+        block_context: str | None,
+        target_week: int | None,
+    ) -> tuple[list[dict[str, Any]], str]:
+        """Lint the draft; when it breaks a rule, regenerate once with the problems spelled out and
+        keep whichever draft has fewer. Never raises: a failure here must not lose a good draft."""
+        kwargs = dict(
+            plan_id=plan_id,
+            race_info=race_info,
+            total_weeks=total_weeks,
+            cutoff_time_hours=cutoff_time_hours,
+            target_week=target_week,
+        )
+        try:
+            issues = PlanGenerator._lint_issues(workouts, tier, **kwargs)
+            if not issues:
+                return workouts, tier
+            codes = ",".join(sorted({i.code for i in issues}))
+            if not settings.PLAN_LINT_RETRY:
+                _logger.info(f"[PlanLint] plan={plan_id} week={target_week} issues={codes} (retry off)")
+                return workouts, tier
+            feedback = (
+                "PLAN CHECK -- the previous draft of this week broke the rules below. Regenerate the week "
+                "and fix every one of them while keeping everything else the athlete asked for:\n"
+                + "\n".join(f"- {i.message}" for i in issues)
+            )
+            retry_workouts, retry_tier = await generate(
+                block_context=f"{block_context}\n\n{feedback}" if block_context else feedback
+            )
+            retry_issues = PlanGenerator._lint_issues(retry_workouts, retry_tier, **kwargs)
+            better = len(retry_issues) < len(issues)
+            _logger.info(
+                f"[PlanLint] plan={plan_id} week={target_week} issues={codes} -> {len(issues)}->{len(retry_issues)}"
+                f" kept={'retry' if better else 'first'}"
+            )
+            return (retry_workouts, retry_tier) if better else (workouts, tier)
+        except Exception as ex:  # noqa: BLE001
+            _logger.warning(f"[PlanLint] skipped: {type(ex).__name__}: {ex}")
             return workouts, tier
 
     @staticmethod
