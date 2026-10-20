@@ -9,13 +9,18 @@ from typing import Any
 
 import db
 from config import settings
-from services import goal_anchors, goal_context, goal_judge, observability
+from log_utils import get_logger
+from services import goal_anchors, goal_context, goal_judge, observability, plan_adequacy, plan_lint
+from services.athlete_tier import get_profile
 
 MANUAL_DAILY_LIMIT = 3
 # Gemini calls per user per day across the modal and manual re-assess (weekly
 # runs are bounded by the plan calendar). Past it, the rules tier answers.
 LLM_DAILY_LIMIT = 20
 DRIFT_THRESHOLD = 0.03
+
+
+_logger = get_logger(__name__)
 
 
 class RateLimited(Exception):
@@ -179,18 +184,64 @@ def _benchmarks(race_name: str | None, distance_km: float) -> list[dict[str, Any
     return bench["results"] if bench else None
 
 
+def plan_adequacy_for(plan: dict[str, Any]) -> plan_adequacy.Adequacy | None:
+    """What the plan can deliver of the training improvement the goals assume (services/plan_adequacy)."""
+    total_weeks = int(plan.get("total_weeks") or 0)
+    return plan_adequacy.assess(
+        db.get_plan_workouts(plan["id"]),
+        total_weeks=total_weeks,
+        current_week=db.compute_current_week(plan.get("start_date"), total_weeks),
+        weeks_to_race=_weeks_until(plan.get("race_date")),
+        distance_km=plan.get("course_distance_km"),
+        profile=get_profile(plan.get("athlete_tier")),
+        prefs=plan_lint.Prefs(long_run_day=plan.get("long_run_day"), days_per_week=plan.get("days_per_week")),
+    )
+
+
+def with_plan_support(assessment: dict[str, Any] | None, plan: dict[str, Any] | None) -> dict[str, Any] | None:
+    """The assessment with its goals pushed later by the improvement the plan cannot deliver, plus a
+    `plan_support` block. Applied when an assessment is shown, not when it is stored, so a cached
+    judge answer stays valid and the adjustment always reflects the current plan. Any failure
+    returns the assessment untouched: the goals must never disappear over this."""
+    if not assessment or not plan or not assessment.get("goals"):
+        return assessment
+    try:
+        adequacy = plan_adequacy_for(plan)
+    except Exception:
+        _logger.exception("plan support failed", extra={"fields": {"plan_id": plan.get("id")}})
+        return assessment
+    if adequacy is None:
+        return assessment
+    out = dict(assessment)
+    out["goals_unadjusted"] = assessment["goals"]
+    out["goals"] = plan_adequacy.adjust_goals(assessment["goals"], adequacy)
+    out["plan_support"] = {
+        "a_supported": adequacy.a_supported,
+        "shortfall_pct": round((adequacy.shortfall_factor - 1) * 100, 2),
+        "improvement_assumed_pct": round(adequacy.improvement_assumed * 100, 2),
+        "improvement_supported_pct": round(adequacy.improvement_supported * 100, 2),
+        "weeks_assumed": round(adequacy.weeks_assumed, 1),
+        "weeks_supported": round(adequacy.weeks_supported, 1),
+        "problem_weeks": {str(k): v for k, v in adequacy.problems.items()},
+        "reasons": plan_adequacy.summary_lines(adequacy),
+    }
+    return out
+
+
 def status(assessment: dict[str, Any] | None, target_time_hours: float | None) -> dict[str, Any]:
     """Plan-header pill state from the latest assessment vs Time Target."""
     goals = (assessment or {}).get("goals")
     if not goals:
         return {"state": "not_assessed", "suggested_mins": None}
+    support = (assessment or {}).get("plan_support")
+    extra = {"a_supported": support["a_supported"]} if support else {}
     if not target_time_hours:
-        return {"state": "no_target", "suggested_mins": goals["b"]}
+        return {"state": "no_target", "suggested_mins": goals["b"], **extra}
     target = target_time_hours * 60
     drift = (goals["b"] - target) / target
     if abs(drift) <= DRIFT_THRESHOLD:
-        return {"state": "on_track", "suggested_mins": None}
-    return {"state": "ahead" if drift < 0 else "behind", "suggested_mins": goals["b"]}
+        return {"state": "on_track", "suggested_mins": None, **extra}
+    return {"state": "ahead" if drift < 0 else "behind", "suggested_mins": goals["b"], **extra}
 
 
 def run_for_plan(
@@ -219,7 +270,7 @@ def weekly_due(plan: dict[str, Any]) -> bool:
 
 def plan_goal(plan: dict[str, Any]) -> dict[str, Any]:
     latest = db.get_latest_goal_assessment(plan["id"])
-    assessment = _present(latest) if latest else None
+    assessment = with_plan_support(_present(latest), plan) if latest else None
     return {
         "assessment": assessment,
         "status": status(assessment, plan.get("target_time_hours")),

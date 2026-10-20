@@ -531,3 +531,23 @@ class TestGenerateNextBlockRaceReadiness:
         plan_id = self._plan(client, auth_headers["headers"], distance_km=None)
 
         assert "RACE READINESS" not in self._block_context(client, auth_headers["headers"], plan_id)
+
+
+class TestGenerateNextBlockPlanSupport:
+    """The brief is told when the plan cannot deliver the improvement the goal times assume."""
+
+    def test_the_decision_log_for_the_brief_carries_the_plan_support_shortfall(self, client, auth_headers):
+        readiness = TestGenerateNextBlockRaceReadiness()
+        plan_id = readiness._plan(client, auth_headers["headers"], distance_km=104.2)
+        brief_mock = AsyncMock(return_value=None)
+
+        with patch("main.generate_week_brief", new=brief_mock):
+            readiness._block_context(client, auth_headers["headers"], plan_id)
+            for _ in range(60):
+                if brief_mock.await_count:
+                    break
+                time.sleep(0.05)
+
+        assert brief_mock.await_count == 1
+        log = " ".join(brief_mock.call_args.kwargs["decision_log"])
+        assert "The goal times assume" in log and "improvement from structured training" in log

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { goalPillLabel, missingHints, PlanGoal } from "./goalAssessment";
+import { goalPillLabel, missingHints, PlanGoal, planSupportNotice } from "./goalAssessment";
 
 const goal = (state: PlanGoal["status"]["state"], suggested: number | null = null, hours: number | null = 7 + 40 / 60): PlanGoal => ({
   assessment: null,
@@ -26,5 +26,35 @@ describe("goalPillLabel", () => {
 describe("missingHints", () => {
   it("maps known keys and drops unknown ones", () => {
     expect(missingHints(["watch", "daily_metrics"], "en")).toEqual(["Connect your watch for recent training"]);
+  });
+});
+
+
+describe("planSupportNotice", () => {
+  const base = { goals: { a: 819, b: 870, c: 960 }, goals_unadjusted: { a: 810, b: 855, c: 945 } };
+  const support = (over = {}) => ({
+    a_supported: false,
+    shortfall_pct: 1.2,
+    improvement_assumed_pct: 2.75,
+    improvement_supported_pct: 1.5,
+    weeks_assumed: 11,
+    weeks_supported: 6,
+    problem_weeks: {},
+    reasons: [],
+    ...over,
+  });
+  const a = (over = {}) => ({ ...base, plan_support: support(over) }) as unknown as import("./goalAssessment").GoalAssessment;
+
+  it("says how much the plan delivers and how far the goals moved, in English and Vietnamese", () => {
+    expect(planSupportNotice(a(), "en")).toContain("delivers 1.5% of the 2.8% improvement");
+    expect(planSupportNotice(a(), "en")).toContain("moved 1.2% later");
+    expect(planSupportNotice(a(), "vi")).toContain("Plan chưa đỡ hết mục tiêu A");
+    expect(planSupportNotice(a(), "vi")).toContain("lùi 1.2%");
+  });
+
+  it("stays quiet when the plan backs the A goal or there is nothing to compare", () => {
+    expect(planSupportNotice(a({ a_supported: true, shortfall_pct: 0 }), "en")).toBeNull();
+    expect(planSupportNotice(null, "en")).toBeNull();
+    expect(planSupportNotice({ goals: base.goals } as never, "en")).toBeNull();
   });
 });

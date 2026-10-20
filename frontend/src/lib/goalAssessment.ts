@@ -70,13 +70,28 @@ export interface GoalAssessment {
   created_at: string;
   benchmarks?: RaceBenchmark[] | null;
   reused?: boolean;
+  /** Goals before the plan-support adjustment; `goals` is already pushed later by what the plan cannot deliver. */
+  goals_unadjusted?: { a: number; b: number; c: number } | null;
+  plan_support?: PlanSupport | null;
+}
+
+/** What the plan can deliver of the training improvement the goal times assume (backend plan_adequacy). */
+export interface PlanSupport {
+  a_supported: boolean;
+  shortfall_pct: number;
+  improvement_assumed_pct: number;
+  improvement_supported_pct: number;
+  weeks_assumed: number;
+  weeks_supported: number;
+  problem_weeks: Record<string, string[]>;
+  reasons: string[];
 }
 
 export type GoalState = "on_track" | "ahead" | "behind" | "not_assessed" | "no_target";
 
 export interface PlanGoal {
   assessment: GoalAssessment | null;
-  status: { state: GoalState; suggested_mins: number | null };
+  status: { state: GoalState; suggested_mins: number | null; a_supported?: boolean };
   target_time_hours: number | null;
 }
 
@@ -162,4 +177,20 @@ export function confidenceLabel(confidence: GoalAssessment["confidence"], lang: 
   if (confidence === "high") return t("High confidence", "Độ tin cậy cao");
   if (confidence === "medium") return t("Medium confidence", "Độ tin cậy vừa");
   return t("Low confidence", "Độ tin cậy thấp");
+}
+
+/** A short notice when the plan cannot fully back the A goal; null when it can (or without data). */
+export function planSupportNotice(assessment: GoalAssessment | null | undefined, lang: Lang): string | null {
+  const support = assessment?.plan_support;
+  const goals = assessment?.goals;
+  const before = assessment?.goals_unadjusted;
+  if (!support || support.a_supported || !goals || !before) return null;
+  const supported = support.improvement_supported_pct.toFixed(1);
+  const assumed = support.improvement_assumed_pct.toFixed(1);
+  const later = support.shortfall_pct.toFixed(1);
+  const from = formatGoalTime(before.a);
+  const to = formatGoalTime(goals.a);
+  return lang === "en"
+    ? `The plan can't fully back the A goal yet: it delivers ${supported}% of the ${assumed}% improvement the goals assume, so the goal times moved ${later}% later (A ${from} → ${to}). Weeks that follow the plan rules bring it back.`
+    : `Plan chưa đỡ hết mục tiêu A: chỉ mang lại ${supported}% trong ${assumed}% cải thiện mà mục tiêu giả định, nên thời gian lùi ${later}% (A ${from} → ${to}). Các tuần đúng nguyên tắc sẽ kéo lại.`;
 }
