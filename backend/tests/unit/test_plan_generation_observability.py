@@ -274,6 +274,33 @@ def test_week_narrative_records_one_paid_generation_and_preserves_output(langfus
     assert json.loads(_attrs(generation)["langfuse.observation.usage_details"])["total"] == 60
 
 
+def test_week_brief_is_traced_under_its_own_feature_with_one_paid_generation(langfuse_spans):
+    from services.week_brief import generate_week_brief
+
+    body = json.dumps({"why": "Held after a missed week.", "benefits": ["Easy: base"], "watch": None})
+    fake = _client(_response(body, prompt=50, output=10))
+    with patch("google.genai.Client", return_value=fake):
+        result = asyncio.run(
+            generate_week_brief(
+                race_info={"lang": "en"},
+                block_context="",
+                week_number=2,
+                workouts=[{"day_of_week": "Monday", "title": "Easy Run", "type": "Easy", "duration_minutes": 60}],
+                prev_workouts=[],
+                decision_log=["Week 1: 40 min done of 120 planned min (33% complete)."],
+                api_key="test-key",
+            )
+        )
+
+    spans = _finished(langfuse_spans)
+    generation = _generation_for_feature(spans, "week_brief")[0]
+    root = _by_name(spans, "week_brief")[0]
+
+    assert result == {"why": "Held after a missed week.", "benefits": ["Easy: base"], "watch": None}
+    assert generation.parent.span_id == root.context.span_id
+    assert json.loads(_attrs(generation)["langfuse.observation.usage_details"])["total"] == 60
+
+
 def test_observability_failure_does_not_change_single_workout_output(langfuse_spans):
     class ExplodingClient:
         def __getattr__(self, _name):

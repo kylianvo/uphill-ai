@@ -76,6 +76,7 @@ _SPAN_NAMES = frozenset(
         "RunnableLambda",
         "_tools_condition",
         "block_narrative",
+        "week_brief",
         "chat_summary",
         "coach_chat.turn",
         "final_generate",
@@ -114,6 +115,7 @@ _FEATURES = frozenset(
         "plan_generation",
         "workout_ai_create",
         "block_narrative",
+        "week_brief",
         "gear_finder",
         "nutrition_lab",
         "kb_distill",
@@ -198,6 +200,7 @@ _PROMPT_NAMES = frozenset(
         "plan_generation",
         "plan_single_workout",
         "block_narrative",
+        "week_brief",
         "llm_judge",
     }
 )
