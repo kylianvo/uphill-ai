@@ -33,6 +33,12 @@ Tone: {{tone}}. encourage = recognise real consistency; push = a gentle nudge th
 blames; heads_up = something the athlete should know, said plainly.
 
 Use ONLY the facts below. Do not invent numbers, sessions or reasons. No medical advice, no guilt, no exclamation marks.
+- push: say what happened in plain words, then offer ONE concrete way forward: the next session (next_session) kept
+  easy, or adapting the week. Never blame, never repeat the days-to-race count.
+- heads_up: name the specific reason from the facts (path.b = behind means aerobic speed is behind the path to the
+  B goal; readiness_flag; feasibility_verdict; plan_supported = false means the plan does not yet back the goal
+  times) and give ONE next step (keep Zone 2 sessions steady, adapt the week, or open Goal). Do not just restate adherence.
+- encourage: name what was consistent (completed sessions, consistent_weeks, a milestone) in one sentence.
 
 FACTS:
 {{facts}}
@@ -217,7 +223,8 @@ def fallback_text(f: dict[str, Any], tone: str, lang: str) -> str:
 def grounded(text: str, f: dict[str, Any]) -> bool:
     """Every number in the message must appear in the facts."""
     allowed = set(re.findall(r"\d+", json.dumps(f, default=str)))
-    return all(n in allowed for n in re.findall(r"\d+", text))
+    prose = re.sub(r"\b(?:zone|z)\s*\d\b", "", text, flags=re.IGNORECASE)  # "Zone 2" is a label, not a claim
+    return all(n in allowed for n in re.findall(r"\d+", prose))
 
 
 def _parse(text: str) -> str | None:

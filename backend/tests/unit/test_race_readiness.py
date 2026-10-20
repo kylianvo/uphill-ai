@@ -69,7 +69,9 @@ def test_a_timeline_that_cannot_reach_the_benchmark_is_at_risk_and_says_so():
     r = assess_week(history(20, 22, 24, 18, 25, 26), 7, total_weeks=12, distance_km=56.4, max_prog=0.10)
     assert r.status == "at_risk" and r.floor_km == r.cap_km
     assert "cannot reach" in r.message and r.reachable_km < 80
-    assert readiness_issue(r, 7, 1) is None  # at_risk is reported, not forced past the cap
+    assert readiness_issue(r, 7, 1) is not None  # a flat week is still asked to build as the cap allows
+    assert readiness_issue(r, 7, 1, push_at_risk=False) is None  # goal adequacy is not penalised for it
+    assert readiness_issue(r, 7, 28.0) is None  # at the cap (within tolerance) is the best feasible path
 
 
 def test_nothing_to_judge_without_distance_history_or_in_the_taper():
@@ -163,3 +165,19 @@ def test_flat_zone2_pace_reads_the_athletes_stored_zone_and_never_raises():
     assert (
         PlanGenerator.flat_zone2_pace({}, "time", None) is None or PlanGenerator.flat_zone2_pace({}, "time", None) > 0
     )
+
+
+def test_an_unreachable_benchmark_still_demands_the_best_reachable_build():
+    from services import race_readiness as rr
+
+    r = rr.Readiness("at_risk", "100K", 120.0, 130.0, 60.0, 64.2, 64.2, 90.0, 9, "msg")
+    assert rr.readiness_issue(r, 5, 55.0) is not None  # flat week: should build at the cap
+    assert rr.readiness_issue(r, 5, 63.0) is None  # within tolerance of the cap
+    assert rr.readiness_issue(r, 5, 55.0, capacity_km=50.0) is None  # the athlete's week cannot hold more
+
+
+def test_a_recovery_week_has_no_floor_even_when_at_risk():
+    from services import race_readiness as rr
+
+    r = rr.Readiness("at_risk", "100K", 120.0, 130.0, 60.0, 0.0, 64.2, 90.0, 9, "msg")
+    assert rr.readiness_issue(r, 4, 40.0) is None

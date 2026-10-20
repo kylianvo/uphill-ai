@@ -97,3 +97,32 @@ def prompt_block(d: Demands, lang: str) -> str:
             else f"Núi tập cho {round(d.venue_climb_rate)} m D+/km ở buổi Long Run."
         )
     return "\n".join(lines)
+
+
+LONG_RUN_WEEKLY_GROWTH = 1.20  # ask for at most +20% on last week's long run (the lint allows 25%)
+
+
+def long_run_line(
+    workouts: list[dict[str, Any]], week: int, total_weeks: int, demands: Demands, profile_long_cap_min: float
+) -> str | None:
+    """A context line telling the generator how long this week's long run should be, so the longest session
+    reaches the goal's time on feet by the last pre-taper week instead of staying where it started."""
+    last_build = total_weeks - 3
+    if week > last_build:
+        return None
+    prior = [
+        float(w.get("duration_minutes") or 0)
+        for w in workouts
+        if (w.get("week_number") or 0) < week and str(w.get("type") or "").lower() == "long run"
+    ]
+    if not prior:
+        return None
+    recent = max(prior[-2:])  # a recovery week's short long run is not the base
+    target = min(demands.longest_session_min, profile_long_cap_min)
+    remaining = max(last_build - week + 1, 1)
+    needed = recent * (target / recent) ** (1 / remaining) if target > recent else recent
+    ask = min(max(needed, recent), recent * LONG_RUN_WEEKLY_GROWTH, target)
+    return (
+        f"LONG RUN TARGET: the goal needs the longest session to reach about {target:.0f} min by week {last_build}; "
+        f"this week's Long Run should be at least {ask:.0f} min (last week's was {recent:.0f})."
+    )

@@ -2623,6 +2623,34 @@ async def _generate_next_block_for_athlete(
     if readiness and readiness.message:
         context_lines.append(f"  RACE READINESS: {readiness.message}")
         brief_decision_log.append(readiness.message)
+    # The generator works in minutes, the benchmark is in km: say what the path means for this week in minutes
+    # and how long the long run should be, so a flat or shrinking build is asked for, not just linted.
+    try:
+        from services import goal_demands, goal_service
+        from services.athlete_tier import week_capacity_parts
+        from services.plan_generator import PlanGenerator
+
+        profile = get_profile(plan.get("athlete_tier"))
+        owner_row = get_user_by_id(athlete_id) or {}
+        flat = PlanGenerator.flat_zone2_pace(owner_row, plan.get("goal_type"), plan.get("athlete_tier"))
+        if readiness and readiness.floor_km and flat:
+            context_lines.append(
+                f"  WEEK TARGET: build this week to about {readiness.floor_km * flat:.0f}+ minutes of running "
+                f"(at most {readiness.cap_km * flat:.0f}); a build week must not total less than the last build week."
+            )
+        goal_demand = goal_service.demands_for(plan, None)
+        if goal_demand:
+            line = goal_demands.long_run_line(
+                all_workouts,
+                block_start,
+                total_weeks,
+                goal_demand,
+                week_capacity_parts(profile, plan.get("days_per_week"))[1],
+            )
+            if line:
+                context_lines.append(f"  {line}")
+    except Exception:
+        _goal_logger.exception("week target lines failed", extra={"fields": {"plan_id": request.plan_id}})
     # Whether the goal times are backed by what this plan can deliver: the athlete's brief says so
     # in plain words (the generator already gets the readiness path above).
     try:

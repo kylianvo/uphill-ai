@@ -8,7 +8,13 @@ from config import settings
 from db import block_number_for_week, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
 from services import goal_demands, observability, plan_lint, race_readiness, recovery_baseline, week_layout
-from services.athlete_tier import MEASURED_THRESHOLD_SOURCES, TIER_PROFILES, get_profile, resolve_tier
+from services.athlete_tier import (
+    MEASURED_THRESHOLD_SOURCES,
+    TIER_PROFILES,
+    get_profile,
+    resolve_tier,
+    week_capacity_parts,
+)
 from services.plan_rules import build_rules_block, me_runway, me_status_block
 from services.training_mountains import default_min_minutes, long_run_climb_rate
 from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
@@ -1022,6 +1028,7 @@ class PlanGenerator:
             # an adapted week is the athlete's own call: never ask it to build toward the peak long run
             demands=None if target_week is not None else PlanGenerator.goal_demands_for(race_info, cutoff_time_hours),
             flat_only=not venues.local_hills and not venues.training_mountain and not venues.mountain_days,
+            total_weeks=total_weeks,
         )
         issues = plan_lint.lint_weeks(combined, weeks, profile, prefs)
         first = min(weeks) if weeks else 1
@@ -1042,7 +1049,10 @@ class PlanGenerator:
                 week_km = race_readiness.weekly_km(
                     [w for w in workouts if w.get("week_number") == wk], flat_pace_min_km
                 )
-                if issue := race_readiness.readiness_issue(r, wk, week_km):
+                capacity_km = (
+                    sum(week_capacity_parts(profile, days_per_week)) / flat_pace_min_km if flat_pace_min_km else None
+                )
+                if issue := race_readiness.readiness_issue(r, wk, week_km, capacity_km):
                     issues.append(issue)
         return issues
 

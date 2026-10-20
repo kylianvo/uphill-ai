@@ -106,3 +106,9 @@ def test_training_behind_the_b_path_is_a_plain_heads_up_and_ahead_is_encouraged(
     f = facts(ws, path=ahead)
     assert coach_nudge.tone_for(f) == "encourage"
     assert coach_nudge.grounded(coach_nudge.fallback_text(f, "encourage", "en"), f)
+
+
+def test_zone_labels_are_not_invented_numbers():
+    f = facts(_week(1, 5) + _week(2, 5))
+    assert coach_nudge.grounded("Keep the Zone 2 sessions steady.", f)
+    assert not coach_nudge.grounded("Keep Zone 2 for 87 minutes.", f)
