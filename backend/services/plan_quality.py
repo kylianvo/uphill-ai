@@ -57,7 +57,7 @@ def _climbs(w: dict[str, Any]) -> bool:
         incline = float(str(w.get("treadmill_incline") or 0).split("-")[0])
     except ValueError:
         incline = 0.0
-    return incline >= 3 or bool(w.get("mountain_climb_rate"))
+    return incline >= 3 or bool(w.get("mountain_climb_rate")) or w.get("mountain_mode") == "indoor"
 
 
 def _race_minutes(weeks: dict[int, list[dict[str, Any]]]) -> float:

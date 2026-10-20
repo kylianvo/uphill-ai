@@ -1492,6 +1492,7 @@ class PlanGenerator:
                     wo["elevation_gain_m"], wo["grade_percent"] = round(main / 60 * 600), 0.0
                     where_en, where_vi = "on stairs (up, then walk down)", "trên cầu thang (leo lên, đi bộ xuống)"
                 wo["mountain_climb_rate"] = None
+                wo["mountain_mode"] = "indoor"
                 wo["title"] = "Climb Session (Zone 2)" if lang != "vi" else "Buổi Climb (Zone 2)"
                 wo["description"] = (
                     f"Warm up 10 min easy flat → {main} min steady Zone 2 climbing {where_en}, power-hike the steep parts "
@@ -1619,6 +1620,16 @@ class PlanGenerator:
                 wo["treadmill_incline"], wo["treadmill_speed"] = PlanGenerator.resolve_treadmill_settings(
                     wo, flat_pace, use_treadmill, max_incline=venues.treadmill_incline_cap
                 )
+                # An incline session climbs: report the vert it earns instead of the 0 m an indoor run would show.
+                try:
+                    incline = sum(float(x) for x in str(wo["treadmill_incline"]).split("-")) / len(
+                        str(wo["treadmill_incline"]).split("-")
+                    )
+                except ValueError:
+                    incline = 0.0
+                if incline > 0 and not float(wo.get("elevation_gain_m") or 0) and float(wo.get("distance_km") or 0) > 0:
+                    wo["elevation_gain_m"] = round(float(wo["distance_km"]) * incline * 10)
+                    wo["grade_percent"] = round(incline, 1)
 
                 if terrain == "trail" and w_type == "Long Run" and venues.is_mountain_day(wo["day_of_week"]):
                     if wo.get("mountain_climb_rate") is None:
