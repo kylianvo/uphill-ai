@@ -7,7 +7,13 @@ plan can reach, not a guess about the athlete.
 
 from dataclasses import dataclass
 
-from services.athlete_tier import DEFAULT_TRAINING_DAYS, TierProfile, week_capacity_parts
+from services.athlete_tier import (
+    DEFAULT_TRAINING_DAYS,
+    TierProfile,
+    get_profile,
+    tier_for_weekly_km,
+    week_capacity_parts,
+)
 from services.goal_demands import Demands
 from services.race_readiness import TAPER_WEEKS, max_reachable
 
@@ -52,8 +58,12 @@ def assess(
 ) -> Feasibility | None:
     if demands is None:
         return None
-    capacity_min = week_capacity_minutes(profile, days_per_week)
     peak_km = demands.peak_week_km_lo * (FINISH_PEAK_SHARE if demands.source == "cutoff_safe" else 1.0)
+    # An athlete who builds toward the peak graduates to the caps of the tier that volume belongs to.
+    peak_profile = get_profile(tier_for_weekly_km(peak_km))
+    capacity_min = max(
+        week_capacity_minutes(profile, days_per_week), week_capacity_minutes(peak_profile, days_per_week)
+    )
     needed_h = peak_km * flat_pace_min_km / 60
     capacity_h = capacity_min / 60
     weeks_needed = _weeks_needed(current_weekly_km, peak_km, profile.max_weekly_progression)
@@ -72,7 +82,12 @@ def assess(
         if demands.source == "target":
             levers.append("finish_only")
     soft = False
-    if mountain_min_minutes and mountain_min_minutes / profile.long_run_share_cap > capacity_min:
+    # The mountain Long Run minimum applies from week one: it has to fit the share of the week the athlete trains
+    # now (with one week's growth), not only the week they will reach later.
+    start_min = current_weekly_km * flat_pace_min_km * (1 + profile.max_weekly_progression)
+    if mountain_min_minutes and mountain_min_minutes / profile.long_run_share_cap > min(
+        week_capacity_minutes(profile, days_per_week), max(start_min, 1.0)
+    ):
         levers.append("fewer_mountain_minimum")
         soft = True
     if demands.venue_climb_rate and demands.venue_climb_rate < VENUE_SHARE * demands.steepness_m_per_km:

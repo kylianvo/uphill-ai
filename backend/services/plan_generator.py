@@ -12,6 +12,7 @@ from services.athlete_tier import (
     MEASURED_THRESHOLD_SOURCES,
     TIER_PROFILES,
     get_profile,
+    graduated_profile,
     resolve_tier,
     week_capacity_parts,
 )
@@ -1016,6 +1017,11 @@ class PlanGenerator:
         profile = get_profile(tier)
         weeks = {w["week_number"] for w in workouts if isinstance(w.get("week_number"), int)}
         prior = [w for w in get_plan_workouts(plan_id) if w.get("week_number") not in weeks] if plan_id else []
+        if flat_pace_min_km and prior:  # caps follow the volume already built, like the generator's level
+            built = plan_lint._by_week(prior)
+            profile = graduated_profile(
+                profile, max((race_readiness.weekly_km(ws, flat_pace_min_km) for ws in built.values()), default=0)
+            )
         combined = prior + workouts
         try:
             days_per_week = int(race_info.get("days_per_week") or 0) or None
@@ -2155,8 +2161,9 @@ class PlanGenerator:
         # With a known goal the volume climbs toward the weekly time the race needs, at 90% of the
         # tier's weekly progression cap; week_layout then holds every week within the tier's caps.
         want_multiplier = 1.0
+        flat_for_caps = PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier) or 6.0
         if demands:
-            flat = PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier) or 6.0
+            flat = flat_for_caps
             share = 0.8 if demands.source == "cutoff_safe" else 1.0
             want_multiplier = demands.peak_week_km_lo * share * flat / base_weekly_minutes
 
@@ -2545,6 +2552,8 @@ class PlanGenerator:
                     workouts[week_start_idx:], week=week, phase=phase, race_weekday=race_weekday
                 )
             elif phase != "Recovery":
+                # the caps follow the volume this week is built to, not only the level the plan started at
+                week_caps = graduated_profile(tier_profile, week_minutes / flat_for_caps)
                 workouts[week_start_idx:] = week_layout.layout_week(
                     workouts[week_start_idx:],
                     week=week,
@@ -2553,8 +2562,8 @@ class PlanGenerator:
                     long_run_day=long_run_day,
                     days_per_week=days_per_week,
                     week_minutes=week_minutes,
-                    long_run_share_cap=tier_profile.long_run_share_cap,
-                    weekday_max_minutes=tier_profile.weekday_minutes[1],
+                    long_run_share_cap=week_caps.long_run_share_cap,
+                    weekday_max_minutes=week_caps.weekday_minutes[1],
                     recovery=is_recovery_week,
                 )
 

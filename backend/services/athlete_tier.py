@@ -338,6 +338,21 @@ def week_capacity_parts(profile: TierProfile, days_per_week: int | None) -> tupl
     return others, long_run
 
 
+def tier_for_weekly_km(km: float) -> str:
+    """The tier whose weekly-volume band holds `km` (the highest tier above the top band)."""
+    ordered = sorted(TIER_PROFILES.values(), key=lambda p: p.weekly_km_min)
+    return next((p.key for p in reversed(ordered) if km >= p.weekly_km_min), ordered[0].key)
+
+
+def graduated_profile(profile: TierProfile, weekly_km: float | None) -> TierProfile:
+    """The tier's caps follow the volume actually being trained: once a plan builds into the next tier's weekly
+    band, that tier's session caps apply. Never lower than `profile`."""
+    if not weekly_km:
+        return profile
+    candidate = TIER_PROFILES[tier_for_weekly_km(weekly_km)]
+    return candidate if candidate.weekly_km_min > profile.weekly_km_min else profile
+
+
 def get_profile(tier: str | None) -> TierProfile:
     """The profile for a tier, falling back to the default rather than raising: a plan
     built on slightly wrong assumptions still beats no plan, and the caller has nothing
