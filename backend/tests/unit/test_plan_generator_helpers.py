@@ -1081,11 +1081,11 @@ class TestMountainDaySessions:
         assert PlanGenerator.resolve_climb_rate(Venues(), None, None, 850, 25) == 34
         assert PlanGenerator.resolve_climb_rate(Venues(), None, None, None, 25) is None
 
-    def test_taper_chills_at_zone1_and_minimum(self):
+    def test_taper_chills_at_zone1_and_is_exempt_from_the_trip_minimum(self):
         wo = self._generate(phase="Taper")
         assert wo["mountain_mode"] == "chill"
         assert wo["target_zone"] == "Zone 1"
-        assert wo["duration_minutes"] == 180
+        assert wo["duration_minutes"] == 130  # the taper session as planned, not raised to the 180 min minimum
         assert wo["target_hr_range"]
 
     def test_race_week_skips_to_flat_city_session(self):

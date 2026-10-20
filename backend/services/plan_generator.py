@@ -582,7 +582,8 @@ class PlanGenerator:
         elif mode == "indoor":
             duration = 120
         elif mode == "chill":
-            duration = min(minimum or duration, 300)
+            # Taper / recovery: the trip minimum does not apply (book: volume drops 40-60%); only cap the session.
+            duration = min(duration or minimum or 0, minimum or duration, 300)
         else:
             duration = min(max(duration, minimum or 0), 300)
         zone = 1 if mode == "chill" or (mode == "mountain" and flat_pace == f"{est_zones['zone1_pace']} /km") else 2
@@ -1595,13 +1596,13 @@ class PlanGenerator:
                 on_mountain = venues.is_mountain_day(wo["day_of_week"]) or (
                     not venues.mountain_days and venues.outdoor_climbing
                 )
-                if (
-                    terrain == "trail"
-                    and w_type in ("Easy", "Long Run", "Aerobic Capacity")
-                    and flat_pace
-                    and dur > 0
-                    and on_mountain
-                ):
+                # "Easy trail run + hill sprints" is typed Interval but its bulk is an easy run on the climb.
+                easy_trail_bulk = w_type in ("Easy", "Long Run", "Aerobic Capacity") or (
+                    w_type == "Interval"
+                    and zone in ("Zone 1", "Zone 2")
+                    and any(kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
+                )
+                if terrain == "trail" and easy_trail_bulk and flat_pace and dur > 0 and on_mountain:
                     from services.trail_pace import trail_session
 
                     rate = PlanGenerator.resolve_climb_rate(
