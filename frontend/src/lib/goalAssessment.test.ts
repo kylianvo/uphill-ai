@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Feasibility, feasibilityNotice, goalPillLabel, missingHints, PlanGoal, planSupportNotice } from "./goalAssessment";
+import { Feasibility, feasibilityNotice, GoalPath, pathNotice, goalPillLabel, missingHints, PlanGoal, planSupportNotice } from "./goalAssessment";
 
 const goal = (state: PlanGoal["status"]["state"], suggested: number | null = null, hours: number | null = 7 + 40 / 60): PlanGoal => ({
   assessment: null,
@@ -95,5 +95,22 @@ describe("feasibilityNotice", () => {
     expect(feasibilityNotice(f({ verdict: "supported" }), "en")).toBeNull();
     expect(feasibilityNotice(null, "vi")).toBeNull();
     expect(feasibilityNotice(undefined, "en")).toBeNull();
+  });
+});
+
+describe("pathNotice", () => {
+  const p = (over: Partial<GoalPath> = {}): GoalPath => ({
+    b: "on", a: "behind", measured_pct: 2.14, expected_pct: 1.5, weeks: 6, confidence: "medium", ...over,
+  });
+
+  it("names the B and A status and the measured change, in both languages", () => {
+    expect(pathNotice(p(), "en")).toBe("B on track · A behind. Aerobic speed is 2.1% faster than at the start.");
+    expect(pathNotice(p({ b: "ahead" }), "vi")).toContain("B vượt lộ trình · A chậm lộ trình");
+    expect(pathNotice(p({ measured_pct: -1 }), "en")).toContain("1.0% slower");
+  });
+
+  it("flags an early read and stays quiet without data", () => {
+    expect(pathNotice(p({ confidence: "low" }), "en")).toContain("(early read)");
+    expect(pathNotice(null, "en")).toBeNull();
   });
 });
