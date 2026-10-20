@@ -8,6 +8,7 @@ as the plan_start_date regression this suite exists to catch.
 
 import asyncio
 import re
+from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -1138,7 +1139,8 @@ class TestRuleBasedFallbackFollowsDoctrine:
             "course_distance_km": distance,
             "course_elevation_gain_m": gain,
             "name": "Race",
-            "date": "2027-01-09",
+            "date": (date(2026, 10, 19) + timedelta(weeks=weeks - 2, days=5)).isoformat(),
+            "plan_start_date": "2026-10-19",  # a Monday: the fallback's week 1 depends on the start weekday
             "goal_type": "finish",
             "preferred_days": days,
             "long_run_day": long_day,
