@@ -581,7 +581,14 @@ class TestResolveTreadmillSettings:
 
 
 class TestPostProcessWorkoutsElevation:
-    def _run_rule_based(self, monkeypatch, terrain: str, course_distance_km: float, course_elevation_gain_m: float):
+    def _run_rule_based(
+        self,
+        monkeypatch,
+        terrain: str,
+        course_distance_km: float,
+        course_elevation_gain_m: float,
+        block_number: int = 1,
+    ):
         # Force the rule-based path: generate_plan_workouts gates the Gemini attempt
         # (and its retry) on `_ai_prompt and api_key`, so the api_key=None passed below
         # is what guarantees no external call regardless of this machine's backend/.env.
@@ -624,7 +631,7 @@ class TestPostProcessWorkoutsElevation:
                 race_info=race_info,
                 total_weeks=12,
                 api_key=None,
-                block_number=1,
+                block_number=block_number,
                 weeks_per_block=2,
             )
         )
@@ -660,15 +667,26 @@ class TestPostProcessWorkoutsElevation:
 
 class TestPostProcessWorkoutsIntervalFields:
     def test_interval_workout_gets_populated_reps_fields(self, monkeypatch):
+        # Block 3 = weeks 5-6 of a 12-week plan = Build phase: the base phase is aerobic (no intervals).
         workouts = TestPostProcessWorkoutsElevation()._run_rule_based(
-            monkeypatch, terrain="trail", course_distance_km=50.0, course_elevation_gain_m=2000.0
+            monkeypatch, terrain="trail", course_distance_km=50.0, course_elevation_gain_m=2000.0, block_number=3
         )
-        intervals = [w for w in workouts if w["type"] == "Interval"]
-        assert intervals, "expected at least one Interval workout in weeks 1-2"
+        # the Zone 4 aerobic power intervals carry reps; the Build-phase hill sprints are an unstructured set
+        intervals = [w for w in workouts if w["type"] == "Interval" and w["target_zone"] == "Zone 4"]
+        assert intervals, "expected at least one Zone 4 Interval workout in a Build-phase block"
         for w in intervals:
             assert isinstance(w["interval_reps"], int) and w["interval_reps"] > 0
             assert isinstance(w["interval_rep_value"], float) and w["interval_rep_value"] > 0
             assert w["interval_rep_unit"] == "min"
+
+    def test_base_phase_has_no_zone_3_or_4_work_in_the_rule_based_schedule(self, monkeypatch):
+        workouts = TestPostProcessWorkoutsElevation()._run_rule_based(
+            monkeypatch, terrain="trail", course_distance_km=50.0, course_elevation_gain_m=2000.0
+        )
+        assert {w["phase"] for w in workouts} == {"Base"}
+        assert not [
+            w for w in workouts if w["type"] in ("Interval", "Tempo") or w["target_zone"] in ("Zone 3", "Zone 4")
+        ]
 
     def test_non_interval_workouts_get_none_interval_fields(self, monkeypatch):
         workouts = TestPostProcessWorkoutsElevation()._run_rule_based(
@@ -1082,3 +1100,64 @@ class TestMountainDaySessions:
 
     def test_generated_mountain_keeps_original_rate(self):
         assert self._generate(mountain=None)["mountain_climb_rate"] > 0
+
+
+class TestRuleBasedFallbackFollowsDoctrine:
+    """The fallback is the safety net when Gemini is down: it must keep the lint's hard rules
+    (spacing, hard-day adjacency, share, session length, the athlete's long-run day and day count)
+    across preference sets, tiers and race lengths. Progression/back-to-back codes are left out:
+    a 3-day athlete cannot avoid a weekend pair, and capacity-bound weeks cannot ramp."""
+
+    HARD_RULES = {"ME_SPACING", "HARD_ADJACENT", "LONG_SHARE", "SESSION_TOO_LONG", "LONG_RUN_DAY", "DAYS_SHORT"}
+    ATHLETES = [
+        (65, ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], "Sunday", 6),
+        (40, ["Tuesday", "Thursday", "Saturday", "Sunday"], "Sunday", 4),
+        (25, ["Tuesday", "Saturday", "Sunday"], "Sunday", 3),
+        (100, None, None, 5),
+    ]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("weekly_km,days,long_day,dpw", ATHLETES)
+    @pytest.mark.parametrize("distance,gain,weeks", [(56.4, 2946, 12), (104.2, 5533, 13)])
+    async def test_no_hard_rule_is_broken(self, weekly_km, days, long_day, dpw, distance, gain, weeks):
+        from services import plan_lint
+        from services.athlete_tier import get_profile
+
+        profile = {
+            "max_hr": 185,
+            "resting_hr": 55,
+            "aet_hr": 145,
+            "ant_hr": 168,
+            "zone2_pace_min": "6:30",
+            "zone2_pace_max": "5:45",
+            "current_weekly_km": float(weekly_km),
+        }
+        race = {
+            "terrain": "trail",
+            "course_distance_km": distance,
+            "course_elevation_gain_m": gain,
+            "name": "Race",
+            "date": "2027-01-09",
+            "goal_type": "finish",
+            "preferred_days": days,
+            "long_run_day": long_day,
+            "days_per_week": dpw,
+        }
+        workouts, tier = await PlanGenerator.generate_plan_workouts(
+            plan_id=1,
+            user_profile=profile,
+            race_info=race,
+            total_weeks=weeks,
+            api_key=None,
+            block_number=1,
+            weeks_per_block=weeks,
+        )
+        found = plan_lint.lint_weeks(
+            workouts,
+            {w["week_number"] for w in workouts},
+            get_profile(tier),
+            plan_lint.Prefs(long_run_day=long_day, days_per_week=dpw),
+        )
+        assert {i.code for i in found} & self.HARD_RULES == set(), [(i.week, i.code) for i in found]
+        base = [w for w in workouts if w["phase"] == "Base"]
+        assert not [w for w in base if w["target_zone"] in ("Zone 3", "Zone 4")]

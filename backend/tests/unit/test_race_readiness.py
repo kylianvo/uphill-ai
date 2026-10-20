@@ -101,3 +101,65 @@ def test_a_due_recovery_week_does_not_hide_an_unreachable_timeline():
     assert r.race_class == "100K" and r.status == "at_risk"
     assert r.floor_km == 0  # it is a recovery week: no volume floor
     assert "cannot reach" in r.message and r.reachable_km < 120
+
+
+# --- flat-equivalent km (owner decision 2026-10-20) ---------------------------------------------------
+
+
+def run_week(n, minutes, km, extra=()):
+    base = [
+        {
+            "week_number": n,
+            "day_of_week": "Tuesday",
+            "type": "Easy",
+            "duration_minutes": minutes,
+            "distance_km": km,
+            "phase": "Base",
+        }
+    ]
+    return base + [dict(x, week_number=n) for x in extra]
+
+
+def test_flat_equivalent_km_counts_run_minutes_over_the_flat_pace_and_skips_strength_and_rest():
+    ws = run_week(
+        1,
+        300,
+        30,
+        extra=[
+            {"type": "Muscular Endurance", "duration_minutes": 60, "distance_km": 0},
+            {"type": "Strength", "duration_minutes": 45, "distance_km": 0},
+            {"type": "Rest", "duration_minutes": 0, "distance_km": 0},
+        ],
+    )
+    assert weekly_km(ws) == 30  # without a pace: the plan's own distance
+    assert abs(weekly_km(ws, 5.0) - 60.0) < 1e-9  # 300 run min / 5 min per km; ME and strength excluded
+
+
+def test_a_slow_mountain_pace_no_longer_makes_a_hard_plan_read_as_light():
+    # prod 100K plan: ~445 min/week but only ~47 km at trail pace. Against the 100K benchmark (120-130 km):
+    hist = [w for n, km in enumerate([43.3, 46.3, 48.8, 47.1, 44.6, 47.4], start=1) for w in run_week(n, 440, km)]
+    as_is = assess_week(hist, 7, total_weeks=13, distance_km=104.2, max_prog=0.10)
+    flat = assess_week(hist, 7, total_weeks=13, distance_km=104.2, max_prog=0.10, flat_pace_min_km=5.45)
+    assert as_is.status == "at_risk" and as_is.reachable_km < 75  # reads as hopeless on plan km
+    assert flat.base_km > 75  # 440 min / 5.45 = ~81 km flat-equivalent
+    # the honest verdict: right at the benchmark line (~118 of 120 km), not 50 km short of it
+    assert flat.reachable_km > 110 and flat.reachable_km - as_is.reachable_km > 40
+
+
+def test_flat_zone2_pace_reads_the_athletes_stored_zone_and_never_raises():
+    from services.plan_generator import PlanGenerator
+
+    user = {
+        "zone2_pace_min": "5:40",
+        "zone2_pace_max": "5:13",
+        "max_hr": 197,
+        "resting_hr": 50,
+        "aet_hr": 159,
+        "ant_hr": 174,
+    }
+    pace = PlanGenerator.flat_zone2_pace(user, "time", "sub_elite")
+    assert 5.2 < pace < 5.7
+    PlanGenerator.flat_zone2_pace({"zone2_pace_min": "garbage"}, "time", "sub_elite")  # must not raise
+    assert (
+        PlanGenerator.flat_zone2_pace({}, "time", None) is None or PlanGenerator.flat_zone2_pace({}, "time", None) > 0
+    )

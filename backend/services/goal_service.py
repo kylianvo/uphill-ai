@@ -187,6 +187,12 @@ def _benchmarks(race_name: str | None, distance_km: float) -> list[dict[str, Any
 def plan_adequacy_for(plan: dict[str, Any]) -> plan_adequacy.Adequacy | None:
     """What the plan can deliver of the training improvement the goals assume (services/plan_adequacy)."""
     total_weeks = int(plan.get("total_weeks") or 0)
+    from services.plan_generator import PlanGenerator
+
+    athlete = db.get_user_by_id(plan["user_id"]) if plan.get("user_id") else None
+    flat_pace = (
+        PlanGenerator.flat_zone2_pace(athlete, plan.get("goal_type"), plan.get("athlete_tier")) if athlete else None
+    )
     return plan_adequacy.assess(
         db.get_plan_workouts(plan["id"]),
         total_weeks=total_weeks,
@@ -195,6 +201,7 @@ def plan_adequacy_for(plan: dict[str, Any]) -> plan_adequacy.Adequacy | None:
         distance_km=plan.get("course_distance_km"),
         profile=get_profile(plan.get("athlete_tier")),
         prefs=plan_lint.Prefs(long_run_day=plan.get("long_run_day"), days_per_week=plan.get("days_per_week")),
+        flat_pace_min_km=flat_pace,
     )
 
 
