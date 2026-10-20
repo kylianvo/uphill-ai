@@ -144,6 +144,9 @@ class Config:
     # breaks a rule. Off in tests (it reads the plan's earlier weeks from the DB).
     PLAN_LINT_ENABLED: bool = os.getenv("PLAN_LINT_ENABLED", "true").lower() == "true"
     PLAN_LINT_RETRY: bool = os.getenv("PLAN_LINT_RETRY", "true").lower() == "true"
+    # Derive the goal's physical demands (services/goal_demands.py) and put them in the generation
+    # prompt, the specificity lint and the fallback's volume ramp. Off in tests unless a test enables it.
+    PLAN_DEMANDS_ENABLED: bool = os.getenv("PLAN_DEMANDS_ENABLED", "true").lower() == "true"
     # Assess a new plan's goal in a background thread at creation; off in tests
     # so the thread can't outlive a test and write into the next one's data.
     GOAL_ASSESS_ON_PLAN_CREATE: bool = os.getenv("GOAL_ASSESS_ON_PLAN_CREATE", "true").lower() == "true"

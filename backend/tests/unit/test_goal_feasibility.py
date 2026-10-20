@@ -17,8 +17,8 @@ def _100k(target=14.67):
 def test_capacity_matches_tier_caps():
     cap = goal_feasibility.week_capacity_minutes
     assert abs(cap(REC, 3) - 222) < 2
-    assert abs(cap(REC, 4) - 336) < 2
-    assert abs(cap(REC, 6) - 558) < 2
+    assert abs(cap(REC, 4) - 224) < 2  # from four days one day is strength, not run time
+    assert abs(cap(REC, 6) - 448) < 2
 
 
 def test_unset_days_assumes_five():
@@ -32,14 +32,16 @@ def test_three_day_100k_is_unsupported():
     assert "more_days" in f.levers
 
 
-def test_six_day_elite_100k_is_supported():
+def test_six_day_elite_100k_finish_is_supported_and_the_time_target_is_a_stretch_with_doubles():
+    finish = goal_demands.compute(104.2, 5533, None, 29)
+    assert _assess(finish, profile=ELITE, days=6, weeks=26, current=80.0).verdict == "supported"
     f = _assess(_100k(), profile=ELITE, days=6, weeks=26, current=80.0)
-    assert f.verdict == "supported"
+    assert f.verdict in {"stretch", "unsupported"} and "double_sessions" in f.levers
 
 
 def test_finish_goal_needs_less_than_a_time_target():
     finish = goal_demands.compute(104.2, 5533, None, 29)
-    assert _assess(finish, days=6).verdict == "supported"
+    assert _assess(finish, profile=ELITE, days=6).verdict == "supported"
     assert _assess(_100k(), days=6).needed_h > _assess(finish, days=6).needed_h
 
 
@@ -59,7 +61,7 @@ def test_stretch_when_capacity_binds_slightly():
     d = goal_demands.compute(104.2, 5533, 14.67, 29)
     f = _assess(d, profile=REC, days=6, weeks=40, current=80.0)
     assert f.verdict in {"stretch", "unsupported"}
-    f2 = _assess(goal_demands.compute(56.4, 2946, 9.0, 12), profile=REC, days=5, weeks=26, current=50.0)
+    f2 = _assess(goal_demands.compute(56.4, 2946, None, 12), profile=REC, days=5, weeks=26, current=50.0)
     assert f2.verdict in {"supported", "stretch"}
 
 
@@ -89,7 +91,7 @@ def test_mountain_minimum_must_fit_the_week():
     f = _assess(d, profile=REC, days=3, weeks=26, current=40.0, mountain_min_minutes=180)
     assert "fewer_mountain_minimum" in f.levers
     assert f.verdict != "supported"
-    ok = _assess(d, profile=ELITE, days=6, weeks=26, current=60.0, mountain_min_minutes=180)
+    ok = _assess(d, profile=ELITE, days=7, weeks=26, current=60.0, mountain_min_minutes=180)
     assert "fewer_mountain_minimum" not in ok.levers
 
 

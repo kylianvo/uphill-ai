@@ -11,7 +11,7 @@ from services.athlete_tier import DEFAULT_TRAINING_DAYS, TierProfile, week_capac
 from services.goal_demands import Demands
 from services.race_readiness import TAPER_WEEKS, max_reachable
 
-STRETCH_MARGIN = 0.10  # needed time may exceed capacity by 10% before the goal is unsupported
+STRETCH_MARGIN = 0.20  # my call: double sessions can add about this much, so up to 20% over is a stretch
 FINISH_PEAK_SHARE = 0.80  # my call: a finish goal needs 80% of the book's peak-week benchmark
 VENUE_SHARE = 0.60  # a training mountain below 60% of the course steepness cannot rehearse it
 FLAT_COURSE_M_PER_KM = 25.0  # below this a course needs no mountain access
@@ -63,6 +63,8 @@ def assess(
     levers: list[str] = []
     if over_capacity and (days_per_week or DEFAULT_TRAINING_DAYS) < 6:
         levers.append("more_days")
+    if over_capacity:
+        levers.append("double_sessions")
     if short_runway:
         levers.append("more_weeks")
     if over_capacity or short_runway:

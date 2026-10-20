@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from config import settings
 from services.plan_generator import PlanGenerator
 
 
@@ -1161,3 +1162,102 @@ class TestRuleBasedFallbackFollowsDoctrine:
         assert {i.code for i in found} & self.HARD_RULES == set(), [(i.week, i.code) for i in found]
         base = [w for w in workouts if w["phase"] == "Base"]
         assert not [w for w in base if w["target_zone"] in ("Zone 3", "Zone 4")]
+
+
+class TestGoalDemandsShapeGeneration:
+    """The goal's demands (pace, climbing, time on feet) reach the generator instead of one goal sentence."""
+
+    PROFILE = {
+        "max_hr": 185,
+        "resting_hr": 55,
+        "aet_hr": 145,
+        "ant_hr": 168,
+        "zone2_pace_min": "6:30",
+        "zone2_pace_max": "5:45",
+        "current_weekly_km": 65.0,
+    }
+    RACE = {
+        "name": "VHT 100K",
+        "date": "2027-01-09",
+        "terrain": "trail",
+        "course_distance_km": 104.2,
+        "course_elevation_gain_m": 5533,
+        "goal_type": "time",
+        "target_time_hours": 14.67,
+        "lang": "en",
+    }
+
+    def _prompt(self, race_info, cutoff=29.0):
+        fake_client = MagicMock()
+        fake_client.models.generate_content.return_value = MagicMock(text="[]")
+        with (
+            patch("google.genai.Client", return_value=fake_client),
+            patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+        ):
+            asyncio.run(
+                PlanGenerator.generate_plan_workouts(
+                    plan_id=1,
+                    user_profile=self.PROFILE,
+                    race_info=race_info,
+                    total_weeks=12,
+                    api_key="test-key",
+                    cutoff_time_hours=cutoff,
+                    block_number=1,
+                    weeks_per_block=2,
+                )
+            )
+        return fake_client.models.generate_content.call_args_list[0].kwargs["contents"]
+
+    def test_prompt_carries_the_demand_block_and_a_time_target_beats_the_cutoff_sentence(self, monkeypatch):
+        monkeypatch.setattr(settings, "PLAN_DEMANDS_ENABLED", True)
+        prompt = self._prompt(self.RACE)
+        assert "Goal demands (target, 14h40)" in prompt
+        assert "needing about 377 m D+/h" in prompt
+        assert "the longest session should reach about 300 min" in prompt
+        assert "Just to Finish" not in prompt
+
+    def test_a_finish_goal_keeps_the_cutoff_sentence_and_adds_the_demands(self, monkeypatch):
+        monkeypatch.setattr(settings, "PLAN_DEMANDS_ENABLED", True)
+        prompt = self._prompt({**self.RACE, "goal_type": "finish", "target_time_hours": None})
+        assert "Just to Finish" in prompt and "Goal demands (cutoff_safe" in prompt
+
+    def test_training_mountain_reaches_the_prompt(self, monkeypatch):
+        monkeypatch.setattr(settings, "PLAN_DEMANDS_ENABLED", True)
+        prompt = self._prompt({**self.RACE, "training_mountain": "chau_thoi", "training_environment": "flat"})
+        assert "Training mountain offers 28 m D+/km" in prompt
+
+    def test_flag_off_keeps_the_old_sentence(self, monkeypatch):
+        monkeypatch.setattr(settings, "PLAN_DEMANDS_ENABLED", False)
+        prompt = self._prompt({**self.RACE, "goal_type": "time"})
+        assert "Goal demands" not in prompt
+
+    def test_no_course_means_no_block(self, monkeypatch):
+        monkeypatch.setattr(settings, "PLAN_DEMANDS_ENABLED", True)
+        prompt = self._prompt({**self.RACE, "course_distance_km": None})
+        assert "Goal demands" not in prompt
+
+    @pytest.mark.asyncio
+    async def test_fallback_ramps_volume_toward_the_demand_and_reaches_the_long_run_target(self, monkeypatch):
+        from services import goal_demands, plan_lint
+        from services.athlete_tier import get_profile
+
+        monkeypatch.setattr(settings, "PLAN_DEMANDS_ENABLED", True)
+        race = {**self.RACE, "preferred_days": None, "long_run_day": "Saturday", "days_per_week": 6, "lang": "en"}
+        workouts, tier = await PlanGenerator.generate_plan_workouts(
+            plan_id=1,
+            user_profile={**self.PROFILE, "current_weekly_km": 100.0},
+            race_info=race,
+            total_weeks=26,
+            api_key=None,
+            cutoff_time_hours=29.0,
+            block_number=1,
+            weeks_per_block=26,
+        )
+        d = goal_demands.compute(104.2, 5533, 14.67, 29)
+        issues = plan_lint.lint_weeks(
+            workouts,
+            {w["week_number"] for w in workouts},
+            get_profile(tier),
+            plan_lint.Prefs(long_run_day="Saturday", days_per_week=6, demands=d, flat_only=True),
+        )
+        assert {i.code for i in issues} & {"TIME_ON_FEET", "SPECIFICITY_LATE", "ME_SPACING", "HARD_ADJACENT"} == set()

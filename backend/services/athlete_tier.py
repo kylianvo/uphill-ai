@@ -329,9 +329,10 @@ MAX_SESSION_MIN = 300  # the book caps a single session at four to five hours
 
 
 def week_capacity_parts(profile: TierProfile, days_per_week: int | None) -> tuple[float, float]:
-    """(minutes of the non-long sessions, minutes of the long run) the tier's own caps allow in a week."""
+    """(minutes of the other run sessions, minutes of the long run) the tier's own caps allow in a week.
+    From four training days one day is strength, which is not run time (my call: conservative)."""
     n = max(1, days_per_week or DEFAULT_TRAINING_DAYS)
-    others = (n - 1) * profile.weekday_minutes[1]
+    others = (n - 1 - (1 if n >= 4 else 0)) * profile.weekday_minutes[1]
     cap = profile.long_run_share_cap
     long_run = min(MAX_SESSION_MIN, cap / (1 - cap) * others) if n > 1 else MAX_SESSION_MIN
     return others, long_run
