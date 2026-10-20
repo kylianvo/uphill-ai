@@ -4361,6 +4361,47 @@ def coach_get_plan_journey(
     return _plan_journey(plan_id, athlete_id)
 
 
+async def _plan_nudge(plan_id: int, owner_id: int, lang: str) -> dict[str, Any]:
+    from datetime import date
+
+    import db
+    from services import coach_nudge, goal_service
+
+    lang = "vi" if lang == "vi" else "en"
+    plan = _goal_plan(plan_id, owner_id)
+    today = date.today()
+    workouts = get_plan_workouts(plan_id)
+    latest = db.get_latest_goal_assessment(plan_id)
+    shown = goal_service.with_plan_support(goal_service._present(latest), plan) if latest else None
+    feasibility = goal_service.feasibility_for(plan, shown)
+    support = (shown or {}).get("plan_support")
+    facts = coach_nudge.facts_for(
+        plan,
+        workouts,
+        today,
+        readiness_flag=db.get_recent_readiness_summary(owner_id).get("readiness_flag"),
+        feasibility_verdict=(feasibility or {}).get("verdict"),
+        plan_supported=support["a_supported"] if support else True,
+    )
+    tone = coach_nudge.tone_for(facts)
+    if tone is None:
+        return {"nudge": None}
+    cached = db.get_coach_nudge(plan_id, today, lang)
+    if cached and cached["facts_hash"] == coach_nudge.facts_hash(facts, tone, lang):
+        return {"nudge": cached}
+    owner = get_user_by_id(owner_id) or {}
+    made = await coach_nudge.nudge(facts, lang, owner.get("gemini_api_key") or settings.GEMINI_API_KEY)
+    if made is None:
+        return {"nudge": None}
+    db.upsert_coach_nudge(plan_id, today, lang, made)
+    return {"nudge": made}
+
+
+@app.get("/api/plans/{plan_id}/coach-nudge")
+async def get_plan_coach_nudge(plan_id: int, lang: str = "en", user: dict[str, Any] = Depends(get_current_user)):
+    return await _plan_nudge(plan_id, user["id"], lang)
+
+
 @app.post("/api/plans/{plan_id}/goal/reassess")
 def reassess_plan_goal(plan_id: int, request: GoalReassessRequest, user: dict[str, Any] = Depends(get_current_user)):
     return _reassess_plan_goal(plan_id, user["id"], request)
