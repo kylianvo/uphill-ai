@@ -561,10 +561,17 @@ export function usePlanner() {
     }
   };
 
-  const handleMarkMissed = async (woId: number, isMissed: boolean) => {
+  const handleMarkMissed = async (woId: number, isMissed: boolean, reason?: string) => {
     setWorkouts((prev: any) =>
       prev.map((wo: any) =>
-        wo.id === woId ? { ...wo, is_missed: isMissed ? 1 : 0, is_completed: isMissed ? 0 : wo.is_completed } : wo
+        wo.id === woId
+          ? {
+              ...wo,
+              is_missed: isMissed ? 1 : 0,
+              is_completed: isMissed ? 0 : wo.is_completed,
+              missed_reason: isMissed ? (reason ?? wo.missed_reason ?? null) : null,
+            }
+          : wo
       )
     );
     try {
@@ -573,7 +580,7 @@ export function usePlanner() {
       await fetch(`${API_BASE_URL}/api/coach/workouts/log`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ workout_id: woId, is_missed: isMissed ? 1 : 0 }),
+        body: JSON.stringify({ workout_id: woId, is_missed: isMissed ? 1 : 0, ...(isMissed && reason ? { missed_reason: reason } : {}) }),
       });
     } catch {
       // optimistic update already applied — failure is silent

@@ -240,6 +240,7 @@ def init_db():
             last_edited_by_user_id INTEGER REFERENCES users(id),
             is_completed        INTEGER DEFAULT 0,
             is_missed           INTEGER DEFAULT 0,
+            missed_reason       TEXT,  -- busy|sick|pain|tired|weather|other; only meaningful while is_missed = 1
             approved_at         TIMESTAMPTZ,  -- NULL = pending coach review; set on insert for self-serve plans
             -- explicit "this session matters most this week" flag, set by the AI or a coach
             is_priority         BOOLEAN NOT NULL DEFAULT FALSE
@@ -939,6 +940,7 @@ def init_db():
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS last_edited_by_user_id INTEGER REFERENCES users(id)",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS is_missed INTEGER DEFAULT 0",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS missed_reason TEXT",
             # Backfill: workouts that predate per-workout approval, on plans already
             # active, are implicitly approved -- only draft-plan workouts (and any
             # newly-inserted coach workout going forward) should read as pending.
@@ -1793,11 +1795,14 @@ def update_workout_log(
     rpe: int | None = None,
     notes: str | None = None,
     is_missed: int | None = None,
+    missed_reason: str | None = None,
 ) -> bool:
     """Update is_completed, is_missed, rpe, and/or notes for a workout.
 
     is_completed and is_missed are mutually exclusive: setting one to 1
     clears the other to 0, regardless of what the caller passed for it.
+    missed_reason only lives while the session is missed: it is cleared when the
+    session is completed or un-missed, and set last so it wins over that clear.
     """
     with engine.connect() as conn:
         row = conn.execute(text("SELECT id FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
@@ -1808,11 +1813,20 @@ def update_workout_log(
                 text("UPDATE workouts SET is_completed = :v WHERE id = :id"), {"v": is_completed, "id": workout_id}
             )
             if is_completed == 1:
-                conn.execute(text("UPDATE workouts SET is_missed = 0 WHERE id = :id"), {"id": workout_id})
+                conn.execute(
+                    text("UPDATE workouts SET is_missed = 0, missed_reason = NULL WHERE id = :id"), {"id": workout_id}
+                )
         if is_missed is not None:
             conn.execute(text("UPDATE workouts SET is_missed = :v WHERE id = :id"), {"v": is_missed, "id": workout_id})
             if is_missed == 1:
                 conn.execute(text("UPDATE workouts SET is_completed = 0 WHERE id = :id"), {"id": workout_id})
+            else:
+                conn.execute(text("UPDATE workouts SET missed_reason = NULL WHERE id = :id"), {"id": workout_id})
+        if missed_reason is not None:
+            conn.execute(
+                text("UPDATE workouts SET missed_reason = :v WHERE id = :id AND is_missed = 1"),
+                {"v": missed_reason, "id": workout_id},
+            )
         if rpe is not None:
             conn.execute(text("UPDATE workouts SET rpe = :v WHERE id = :id"), {"v": rpe, "id": workout_id})
         if notes is not None:
@@ -4208,6 +4222,24 @@ def _pick_readiness_provider(rows: list[Any]) -> str:
     return "coros" if "coros" in on_newest else sorted(on_newest)[0]
 
 
+def get_resting_hr_elevation(user_id: int) -> float | None:
+    """Last-3-day average resting HR over the 28-day average (>= 1.10 is the "take a
+    recovery day" signal). None when either window has no resting HR."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT AVG(resting_hr) FILTER (WHERE metric_date >= CURRENT_DATE - 3) AS recent,
+                       AVG(resting_hr) AS baseline
+                FROM daily_metrics
+                WHERE user_id = :uid AND resting_hr IS NOT NULL AND metric_date >= CURRENT_DATE - 28
+            """),
+            {"uid": user_id},
+        ).fetchone()
+    if not row or not row.recent or not row.baseline:
+        return None
+    return float(row.recent) / float(row.baseline)
+
+
 def get_recent_readiness_summary(user_id: int, days: int = 7) -> dict[str, Any]:
     """Computes a rolling readiness summary from daily_metrics over the last `days` days,
     reading a single provider (see _pick_readiness_provider).
@@ -5224,7 +5256,9 @@ def get_plan_workouts_for_placement(conn, plan_id: int, *, lock: bool) -> list[d
 def apply_workout_moves(conn, moves: list[dict[str, Any]]) -> None:
     for m in moves:
         conn.execute(
-            text("UPDATE workouts SET week_number = :wk, day_of_week = :day, is_missed = 0 WHERE id = :id"),
+            text(
+                "UPDATE workouts SET week_number = :wk, day_of_week = :day, is_missed = 0, missed_reason = NULL WHERE id = :id"
+            ),
             {"wk": m["to_week"], "day": m["to_day"], "id": m["workout_id"]},
         )
 

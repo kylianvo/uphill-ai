@@ -81,6 +81,7 @@ def test_rebuild_distinguishes_omitted_mountain_from_explicit_clear(monkeypatch,
     monkeypatch.setattr(week_rebuild.db, "get_user_by_id", lambda _: {"id": 7})
     monkeypatch.setattr(week_rebuild.db, "get_recent_readiness_summary", lambda *a, **kw: None)
     monkeypatch.setattr(week_rebuild.db, "get_user_activity_ceiling", lambda _: None)
+    monkeypatch.setattr("services.block_history.get_resting_hr_elevation", lambda _: None)
     monkeypatch.setattr(week_rebuild, "resolve_course_match", lambda *a: (None, None, None))
     plan = {
         "id": 1,

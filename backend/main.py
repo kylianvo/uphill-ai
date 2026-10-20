@@ -115,7 +115,7 @@ from services import (
     week_rebuild,
 )
 from services.auth_service import generate_reset_code, hash_password, hash_reset_code, verify_password
-from services.block_history import build_history_lines
+from services.block_history import build_history_lines, missed_rules_for_week
 from services.calendar_rules import GuardViolation, resolve_today
 from services.calendar_service import CalendarService
 from services.course_match import resolve_course_match as _resolve_course_match
@@ -2591,6 +2591,10 @@ async def _generate_next_block_for_athlete(
             else None
         ),
     )
+    reason_lines, _ = missed_rules_for_week(
+        plan=plan, athlete_id=athlete_id, all_workouts=all_workouts, target_week=block_start, today=today
+    )
+    context_lines.extend(f"  {line}" for line in reason_lines)
     if context_lines:
         block_context = "\n".join(context_lines)
 
@@ -2986,6 +2990,7 @@ class WorkoutLogRequest(BaseModel):
     workout_id: int
     is_completed: int | None = None
     is_missed: int | None = None
+    missed_reason: Literal["busy", "sick", "pain", "tired", "weather", "other"] | None = None
     rpe: int | None = None
     notes: str | None = None
 
@@ -3046,7 +3051,14 @@ def log_workout(request: WorkoutLogRequest, user: dict[str, Any] = Depends(get_c
     wo_ids = {w["id"] for w in workouts}
     if request.workout_id not in wo_ids:
         raise HTTPException(status_code=403, detail="Workout not in your active plan.")
-    ok = update_workout_log(request.workout_id, request.is_completed, request.rpe, request.notes, request.is_missed)
+    ok = update_workout_log(
+        request.workout_id,
+        request.is_completed,
+        request.rpe,
+        request.notes,
+        request.is_missed,
+        request.missed_reason,
+    )
     if not ok:
         raise HTTPException(status_code=404, detail="Workout not found.")
     updated = get_plan_workouts(active_plan["id"])

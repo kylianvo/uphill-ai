@@ -114,6 +114,28 @@ describe("WorkoutCard readOnly mode", () => {
     expect(screen.queryByText(/How did it feel/)).not.toBeInTheDocument();
   });
 
+  it("asks why a missed session was missed and reports the chosen reason", () => {
+    const onMarkMissed = vi.fn();
+    const missed = { ...wo, is_missed: 1 };
+    render(
+      <WorkoutCard wo={missed} isMobile={false} lang="en" getWorkoutDate={() => ""} onMarkMissed={onMarkMissed} />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sick" }));
+    expect(onMarkMissed).toHaveBeenCalledWith(missed.id, true, "sick");
+  });
+
+  it("shows the Vietnamese reason chips and marks the saved one", () => {
+    const missed = { ...wo, is_missed: 1, missed_reason: "busy" };
+    render(<WorkoutCard wo={missed} isMobile={false} lang="vi" getWorkoutDate={() => ""} onMarkMissed={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Bận" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Ốm" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("hides the reason chips for a session that is not missed", () => {
+    render(<WorkoutCard wo={wo} isMobile={false} lang="en" getWorkoutDate={() => ""} onMarkMissed={vi.fn()} />);
+    expect(screen.queryByTestId("missed-reason-chips")).not.toBeInTheDocument();
+  });
+
   it("does not require onToggleComplete/onLogWorkout callbacks when readOnly", () => {
     expect(() =>
       render(<WorkoutCard wo={wo} isMobile={false} lang="en" getWorkoutDate={() => ""} readOnly />)

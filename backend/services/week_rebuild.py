@@ -16,7 +16,7 @@ from typing import Any
 import db
 from config import settings
 from services import calendar_ops
-from services.block_history import build_history_lines
+from services.block_history import build_history_lines, missed_rules_for_week
 from services.calendar_rules import (
     DAYS,
     FINGERPRINT_FIELDS,
@@ -427,6 +427,10 @@ def build_rebuild_inputs(
     if history_lines:
         context_lines.append("  Training history (most recent first):")
         context_lines.extend(history_lines)
+    reason_lines, reason_cap = missed_rules_for_week(
+        plan=plan, athlete_id=athlete_id, all_workouts=all_workouts, target_week=request.week_number, today=today
+    )
+    context_lines.extend(f"  {line}" for line in reason_lines)
 
     # Note any workouts already completed/matched in the target week
     curr_completed = [
@@ -536,6 +540,11 @@ def build_rebuild_inputs(
                 floor_mult, ceil_mult = 0.85, 0.90
             else:  # max_effort, exhausted
                 floor_mult, ceil_mult = 0.70, 0.80
+
+        # The reason rules can only lower the band: the lowest of feeling, hold and reason cap wins.
+        if reason_cap is not None and reason_cap < ceil_mult:
+            ceil_mult = reason_cap
+            floor_mult = min(floor_mult, reason_cap - 0.05)
 
         target_floor_min = ref_min * floor_mult
         target_ceil_min = ref_min * ceil_mult
