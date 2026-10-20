@@ -51,9 +51,8 @@ tool start the server itself, give it a real command:
 ```
 
 (If `bash -c` with inline env vars doesn't work in the tool's arg-parsing,
-write a two-line wrapper script in your scratchpad and point
-`runtimeExecutable` at that instead — see prior sessions for the exact
-pattern.) Then:
+write a two-line wrapper script in your scratchpad that exports the env vars
+and runs uvicorn, and point `runtimeExecutable` at it.) Then:
 
 ```
 preview_start(name: "uphill-backend-dev")

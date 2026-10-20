@@ -1,6 +1,6 @@
 ---
 name: machine-learning-ops-ml-pipeline
-description: "Design and implement a complete ML pipeline for: $ARGUMENTS"
+description: "Design and implement an end-to-end MLOps pipeline: data ingestion, feature engineering, training, serving, monitoring. Use when asked to build or review an ML pipeline."
 risk: unknown
 source: community
 date_added: "2026-02-27"
@@ -9,23 +9,6 @@ date_added: "2026-02-27"
 # Machine Learning Pipeline - Multi-Agent MLOps Orchestration
 
 Design and implement a complete ML pipeline for: $ARGUMENTS
-
-## Use this skill when
-
-- Working on machine learning pipeline - multi-agent mlops orchestration tasks or workflows
-- Needing guidance, best practices, or checklists for machine learning pipeline - multi-agent mlops orchestration
-
-## Do not use this skill when
-
-- The task is unrelated to machine learning pipeline - multi-agent mlops orchestration
-- You need a different domain or tool outside this scope
-
-## Instructions
-
-- Clarify goals, constraints, and required inputs.
-- Apply relevant best practices and validate outcomes.
-- Provide actionable steps and verification.
-- If detailed examples are required, open `resources/implementation-playbook.md`.
 
 ## Thinking
 

@@ -16,7 +16,7 @@ Key modules:
 - `db.py` — entire data access layer (no separate repo pattern)
 - `services/` — stateless service classes: `PlanGenerator`, `RagService`, `CalendarService`, `PacingCalculator`, `gear_planner`, `nutrition_planner`, `knowledge_extractor`, `kb_distiller`, `kb_retrieval`, `kb_context`
 - `parsers/` — `FitParser` (Garmin .fit files), `GpxParser` (route profiles)
-- `routers/analytics.py` — analytics endpoints (the only router extracted from main.py)
+- `routers/` — `analytics.py`, `coach_chat.py`, `integrations.py` (the remaining routes still live in `main.py`)
 
 Plan generation is async and job-based: `POST /api/coach/generate-plan` returns a `job_id`, and the frontend polls `GET /api/coach/plan-status/{job_id}`. Job state is in-memory (`plan_jobs` dict in main.py — not persisted across restarts).
 
@@ -81,7 +81,7 @@ docker compose up -d --build
 
 ### Production
 - **Frontend**: Static export deployed to GitHub Pages — repo at `https://github.com/kylianvo/uphill-ai`. Deployment is automatic on push to the main branch (GitHub Actions).
-- **Backend**: Docker on SSH server `root@45.119.215.120` inside `/opt/uphill-ai-backend` (port `8000`). Deployment is handled by `deploy_server.sh` (reads `deploy.env` for `DEPLOY_SERVER` and `DEPLOY_TARGET_DIR`). Set `ENVIRONMENT=production` in the backend `.env` on the server — this disables API docs and the mock-login endpoint. For KB-seed-only changes (hand-edited `backend/kb_seed/*.json`, no code change), use the lighter `./deploy_kb.sh [--domain gear|nutrition|scheduler|all]` instead — see the `deploy-backend` skill.
+- **Backend**: Docker on SSH server `root@45.119.215.120` inside `/opt/uphill-ai-backend` (port `8000`). Deployment is handled by `deploy_server.sh` (reads `deploy.env` for `DEPLOY_SERVER` and `DEPLOY_TARGET_DIR`). Set `ENVIRONMENT=production` in the backend `.env` on the server — this disables API docs and the mock-login endpoint. For KB-seed-only changes (hand-edited `backend/kb_seed/*.json`, no code change), use the lighter `./deploy_kb.sh [--domain gear|nutrition|scheduler|race_courses|all]` (`all` excludes the hand-curated `race_courses`) instead — see the `deploy-backend` skill.
 
 The frontend uses `NEXT_PUBLIC_API_URL` to point at the production backend. In GitHub Pages deployments, this must be set at build time since the output is static.
 
