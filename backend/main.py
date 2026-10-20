@@ -112,10 +112,13 @@ from services import (
     coros_sync,
     fitness_snapshot,
     observability,
+    plan_adequacy,
     race_history,
+    race_readiness,
     race_review,
     week_rebuild,
 )
+from services.athlete_tier import get_profile
 from services.auth_service import generate_reset_code, hash_password, hash_reset_code, verify_password
 from services.block_history import build_history_lines, missed_rules_for_week
 from services.calendar_rules import GuardViolation, resolve_today
@@ -2608,6 +2611,26 @@ async def _generate_next_block_for_athlete(
         for line in context_lines
         if line.strip().startswith((f"Block {prev_block} ", "Coach evaluation", "Execution quality", "Coach takeaway"))
     ] + reason_lines
+    # Can the load still reach the book's benchmark peak week before the taper? Tell the generator
+    # what this block must total, and the brief when the timeline cannot make it.
+    readiness = race_readiness.assess_week(
+        all_workouts,
+        block_start,
+        total_weeks=total_weeks,
+        distance_km=plan.get("course_distance_km"),
+        max_prog=get_profile(plan.get("athlete_tier")).max_weekly_progression,
+    )
+    if readiness and readiness.message:
+        context_lines.append(f"  RACE READINESS: {readiness.message}")
+        brief_decision_log.append(readiness.message)
+    # Whether the goal times are backed by what this plan can deliver: the athlete's brief says so
+    # in plain words (the generator already gets the readiness path above).
+    try:
+        from services import goal_service
+
+        brief_decision_log.extend(plan_adequacy.summary_lines(goal_service.plan_adequacy_for(plan)))
+    except Exception:
+        _goal_logger.exception("plan support for brief failed", extra={"fields": {"plan_id": request.plan_id}})
     if context_lines:
         block_context = "\n".join(context_lines)
 
@@ -4283,6 +4306,7 @@ def _reassess_plan_goal(plan_id: int, owner_id: int, request: GoalReassessReques
         lang=request.lang,
         trigger="manual",
     )
+    assessment = goal_service.with_plan_support(assessment, plan)
     return {
         "assessment": assessment,
         "status": goal_service.status(assessment, plan.get("target_time_hours")),

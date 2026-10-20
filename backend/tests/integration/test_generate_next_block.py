@@ -459,3 +459,95 @@ class TestGenerateNextBlockUpcomingSessions:
         assert "Week not finished" not in ctx
         assert "4/5 sessions (80%)" in ctx
         assert "Sunday — Long Run (90min): not logged" in ctx
+
+
+class TestGenerateNextBlockRaceReadiness:
+    """A block generated while the load cannot reach the book's benchmark is told so."""
+
+    def _plan(self, client, headers, distance_km):
+        with patch(
+            "services.plan_generator.PlanGenerator.generate_plan_workouts",
+            new_callable=AsyncMock,
+            return_value=([], "recreational"),
+        ):
+            body = {
+                "goal_type": "finish",
+                "race_name": "Readiness Test 50K",
+                "race_date": "2027-05-01",
+                "plan_start_date": "2027-03-15",
+                "days_per_week": 4,
+                "current_weekly_km": 15,
+            }
+            if distance_km:
+                body["course_distance_km"] = distance_km
+            plan_id = client.post("/api/coach/generate-plan", headers=headers, json=body).json()["plan"]["id"]
+        rows = [
+            {
+                "week_number": 1,
+                "day_of_week": day,
+                "phase": "Base",
+                "title": f"Easy {day}",
+                "type": "Easy",
+                "duration_minutes": 50,
+                "distance_km": 7.5,
+                "target_zone": "Zone 2",
+                "description": "x",
+            }
+            for day in ("Monday", "Wednesday")
+        ]
+        save_workouts(plan_id, rows)
+        return plan_id
+
+    def _block_context(self, client, headers, plan_id):
+        captured = {}
+
+        async def _capture(*args, **kwargs):
+            captured["block_context"] = kwargs.get("block_context")
+            return [], "recreational"
+
+        with patch("services.plan_generator.PlanGenerator.generate_plan_workouts", new=AsyncMock(side_effect=_capture)):
+            resp = client.post(
+                "/api/coach/generate-next-block",
+                headers=headers,
+                json={"plan_id": plan_id, "block_number": 2, "override_gate": True},
+            )
+            assert resp.status_code == 200, resp.text
+            job_id = resp.json()["job_id"]
+            for _ in range(20):
+                if client.get(f"/api/coach/plan-status/{job_id}", headers=headers).json()["status"] == "done":
+                    break
+                time.sleep(0.05)
+        return captured.get("block_context") or ""
+
+    def test_a_short_timeline_that_cannot_reach_the_50k_peak_says_so_in_the_prompt(self, client, auth_headers):
+        plan_id = self._plan(client, auth_headers["headers"], distance_km=56.4)
+
+        ctx = self._block_context(client, auth_headers["headers"], plan_id)
+
+        assert "RACE READINESS:" in ctx
+        assert "cannot reach the 50K benchmark peak week (80-88 km)" in ctx
+
+    def test_no_readiness_line_without_a_race_distance(self, client, auth_headers):
+        plan_id = self._plan(client, auth_headers["headers"], distance_km=None)
+
+        assert "RACE READINESS" not in self._block_context(client, auth_headers["headers"], plan_id)
+
+
+class TestGenerateNextBlockPlanSupport:
+    """The brief is told when the plan cannot deliver the improvement the goal times assume."""
+
+    def test_the_decision_log_for_the_brief_carries_the_plan_support_shortfall(self, client, auth_headers):
+        readiness = TestGenerateNextBlockRaceReadiness()
+        plan_id = readiness._plan(client, auth_headers["headers"], distance_km=104.2)
+        brief_mock = AsyncMock(return_value=None)
+
+        with patch("main.generate_week_brief", new=brief_mock):
+            readiness._block_context(client, auth_headers["headers"], plan_id)
+            for _ in range(60):
+                if brief_mock.await_count:
+                    break
+                time.sleep(0.05)
+
+        assert brief_mock.await_count == 1
+        log = " ".join(brief_mock.call_args.kwargs["decision_log"])
+        assert "The goal times assume" in log and "improvement from structured training" in log
