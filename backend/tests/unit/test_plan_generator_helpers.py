@@ -611,6 +611,7 @@ class TestPostProcessWorkoutsElevation:
             "name": "Test Race",
             "date": "2026-12-01",
             "goal_type": "finish",
+            "training_environment": "hilly",  # these tests are about the elevation formula; no-venue athletes are below
         }
         # api_key=None additionally skips the Gemini path (plan_generator.py:677:
         # `if _ai_prompt and api_key:`), so together with the monkeypatch above,
@@ -1263,3 +1264,70 @@ class TestGoalDemandsShapeGeneration:
             plan_lint.Prefs(long_run_day="Saturday", days_per_week=6, demands=d, flat_only=True),
         )
         assert {i.code for i in issues} & {"TIME_ON_FEET", "SPECIFICITY_LATE", "ME_SPACING", "HARD_ADJACENT"} == set()
+
+
+class TestNoInventedClimbing:
+    """An athlete with no hills, mountain days or mountain declared gets no invented climbing on outdoor runs."""
+
+    PROFILE = {"max_hr": 185, "resting_hr": 55, "aet_hr": 145, "ant_hr": 168, "zone2_pace_min": "6:30",
+               "zone2_pace_max": "5:45", "current_weekly_km": 50.0}  # fmt: skip
+
+    def _plan(self, **venue):
+        race = {"name": "Steep 100K", "date": "2027-03-27", "plan_start_date": "2026-10-19", "terrain": "trail",
+                "course_distance_km": 104.2, "course_elevation_gain_m": 5533, "goal_type": "finish",
+                "training_environment": "flat", "days_per_week": 6, **venue}  # fmt: skip
+        workouts, _ = asyncio.run(
+            PlanGenerator.generate_plan_workouts(
+                plan_id=1,
+                user_profile=self.PROFILE,
+                race_info=race,
+                total_weeks=20,
+                api_key=None,
+                block_number=1,
+                weeks_per_block=20,
+            )  # fmt: skip
+        )
+        return [w for w in workouts if w["type"] in ("Easy", "Long Run", "Aerobic Capacity", "Tempo")]
+
+    def test_flat_with_nothing_declared_has_zero_gain_and_grade_outdoors(self):
+        runs = self._plan()
+        assert runs and all(not w["elevation_gain_m"] and not w["grade_percent"] for w in runs)
+
+    def test_a_declared_mountain_keeps_its_climbing(self):
+        runs = self._plan(training_mountain="nui_dinh", mountain_days='["Saturday", "Sunday"]')
+        assert any(w["elevation_gain_m"] > 0 for w in runs if w["type"] == "Long Run")
+
+    def test_hills_nearby_keep_their_climbing(self):
+        runs = self._plan(training_environment="hilly")
+        assert any(w["elevation_gain_m"] > 0 for w in runs)
+
+    def test_the_prompt_says_there_is_no_outdoor_climbing(self):
+        fake_client = MagicMock()
+        fake_client.models.generate_content.return_value = MagicMock(text="[]")
+        with (
+            patch("google.genai.Client", return_value=fake_client),
+            patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+        ):
+            asyncio.run(
+                PlanGenerator.generate_plan_workouts(
+                    plan_id=1,
+                    user_profile=self.PROFILE,
+                    race_info={
+                        "name": "Steep 100K",
+                        "date": "2027-03-27",
+                        "plan_start_date": "2026-10-19",
+                        "terrain": "trail",
+                        "course_distance_km": 104.2,
+                        "course_elevation_gain_m": 5533,
+                        "goal_type": "finish",
+                        "training_environment": "flat",
+                        "days_per_week": 6,
+                    },
+                    total_weeks=20,
+                    api_key="k",
+                    block_number=1,
+                    weeks_per_block=1,
+                )  # fmt: skip
+            )
+        prompt = fake_client.models.generate_content.call_args_list[0].kwargs["contents"]
+        assert "NO OUTDOOR CLIMBING" in prompt

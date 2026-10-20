@@ -455,6 +455,12 @@ struct PlanSetupDraft: Equatable, Sendable {
         return items
     }
 
+    /// The course's climb in m D+/km, or nil before a distance and a gain are set.
+    var courseSteepness: Double? {
+        guard let km = distanceKm, km > 0, let gain = elevationGainM, gain > 0 else { return nil }
+        return gain / km
+    }
+
     /// "50 km · 3,200 m D+", or nil before a distance is set.
     var courseLine: String? {
         guard let km = distanceKm else { return nil }

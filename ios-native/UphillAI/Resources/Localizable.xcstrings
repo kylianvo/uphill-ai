@@ -14860,6 +14860,16 @@
           }
         }
       }
+    },
+    "This course climbs about %lld m D+ per km. Add a place to train climbing (a mountain, stairs, or a treadmill with incline) or your plan will have no climbing work.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cung đường này leo khoảng %lld m D+ mỗi km. Hãy thêm nơi tập leo (núi, cầu thang hoặc treadmill có incline), nếu không plan sẽ không có buổi tập leo."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

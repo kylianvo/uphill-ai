@@ -102,6 +102,20 @@ def main() -> int:
                 f"{wk:2} {a[0]['phase'] if a else '':11} {sum(w['duration_minutes'] for w in a):5.0f} {long:5.0f} {len(a):4}"
             )
         print("lint:", sorted({(i.week, i.code) for i in issues}) or "clean")
+        by = plan_lint._by_week(ws)
+        print("back-to-back weeks:", [wk for wk in sorted(by) if plan_lint.is_b2b_week(by[wk])])
+        print(
+            "climbing-load sessions:",
+            [
+                (x["week_number"], x["title"][:40])
+                for x in ws
+                if x["type"] in ("Muscular Endurance", "Strength", "Interval", "Tempo") and plan_lint._climbs(x)
+            ],
+        )
+        print(
+            "hard sessions in recovery-ish weeks:",
+            [(i.week, i.code) for i in issues if i.code == "HARD_IN_DOWN_WEEK"] or "none",
+        )
         print("milestones:", [(m.key, m.week) for m in plan_journey.milestones(ws, 1)])
     return 0
 

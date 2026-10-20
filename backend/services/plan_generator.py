@@ -1385,10 +1385,16 @@ class PlanGenerator:
                 wo["elevation_gain_m"], wo["grade_percent"] = PlanGenerator.resolve_elevation_and_grade(
                     wo, w_type, terrain, wo["distance_km"], course_elevation_gain_m, course_distance_km
                 )
+                if not venues.outdoor_climbing:
+                    # No hills, mountain days or mountain declared: an outdoor run has no climbing to report.
+                    wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0
                 # Treadmill speed applies its own incline slowdown, so it must start from the flat pace.
                 flat_pace = wo["target_pace"]
-                # Only mountain days are on the mountain; with no mountain days set, every trail run may be.
-                on_mountain = venues.is_mountain_day(wo["day_of_week"]) or not venues.mountain_days
+                # Only mountain days are on the mountain; with none set, every trail run may be -- but only for an
+                # athlete who has a mountain or hills at all.
+                on_mountain = venues.is_mountain_day(wo["day_of_week"]) or (
+                    not venues.mountain_days and venues.outdoor_climbing
+                )
                 if terrain == "trail" and w_type in ("Easy", "Long Run") and flat_pace and dur > 0 and on_mountain:
                     from services.trail_pace import trail_session
 
@@ -1568,7 +1574,14 @@ class PlanGenerator:
                 f"{'every day' if venues.local_hills else (', '.join(venues.mountain_days) or 'no')}), "
                 f"Stair Access: {venues.stair_access}, Treadmill Max Incline: "
                 f"{f'{venues.treadmill_max_incline}%' if use_treadmill else 'n/a'}\n"
-                f"Custom Pace Zones (min/km):\n"
+                + (
+                    ""
+                    if venues.outdoor_climbing
+                    else "NO OUTDOOR CLIMBING: the athlete has no hills or mountain access, so every outdoor run has "
+                    "elevation_gain_m 0 and grade_percent 0; climbing comes only from stair or treadmill-incline "
+                    "sessions.\n"
+                )
+                + f"Custom Pace Zones (min/km):\n"
                 f"- Zone 1 (Recovery): {p_z1}\n"
                 f"- Zone 2 (Easy Range): {p_z2}\n"
                 f"- Zone 3 (Tempo): {p_z3}\n"

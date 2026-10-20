@@ -106,3 +106,34 @@ it("allows Other while locations fail and can retry the catalog", async () => {
   await screen.findByRole("option", { name: "Núi Dinh" });
   expect(screen.queryByRole("alert")).toBeNull();
 });
+
+
+describe("climb venue prompt", () => {
+  function renderSteep(props: { courseSteepness?: number; useTreadmill?: boolean; stair?: boolean; mountain?: string | null }) {
+    render(
+      <TrainingVenueFields
+        lang="en"
+        t={key => translations.en[key]}
+        value={{ mountain_days: [], stair_access: !!props.stair, treadmill_max_incline: 15, training_mountain: props.mountain ?? null }}
+        useTreadmill={!!props.useTreadmill}
+        courseSteepness={props.courseSteepness}
+        onChange={() => {}}
+      />,
+    );
+  }
+
+  it("asks where to train climbing on a steep course when the athlete named no place", () => {
+    renderSteep({ courseSteepness: 53 });
+    expect(screen.getByTestId("climb-venue-needed").textContent).toContain("about 53 m D+ per km");
+  });
+
+  it("stays quiet once there is a mountain, stairs or a treadmill, or the course is not steep", () => {
+    renderSteep({ courseSteepness: 53, stair: true });
+    expect(screen.queryByTestId("climb-venue-needed")).toBeNull();
+  });
+
+  it("is silent for a flat course or an unknown one", () => {
+    renderSteep({ courseSteepness: 8 });
+    expect(screen.queryByTestId("climb-venue-needed")).toBeNull();
+  });
+});

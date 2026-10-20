@@ -23,7 +23,11 @@ interface TrainingVenueFieldsProps {
   useTreadmill: boolean;
   onTreadmillChange?: (enabled: boolean) => void;
   onChange: (patch: Partial<TrainingVenueValue>) => void;
+  // The course's climb in m D+/km, when known: a steep course with no place to train climbing gets a prompt.
+  courseSteepness?: number;
 }
+
+export const STEEP_COURSE_M_PER_KM = 25;
 
 const FULL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -43,7 +47,7 @@ const SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHORT_DAYS_VI = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const INCLINES = [15, 20, 25];
 
-export function TrainingVenueFields({ lang, t, value, useTreadmill, onTreadmillChange, onChange }: TrainingVenueFieldsProps) {
+export function TrainingVenueFields({ lang, t, value, useTreadmill, onTreadmillChange, onChange, courseSteepness }: TrainingVenueFieldsProps) {
   const id = useId();
   const [mountains, setMountains] = useState<TrainingMountain[]>([]);
   const [loadError, setLoadError] = useState(false);
@@ -56,6 +60,7 @@ export function TrainingVenueFields({ lang, t, value, useTreadmill, onTreadmillC
   const hasLocation = !!value.training_mountain || value.mountain_days.length > 0 || choseOther;
   const mountain = mountains.find(m => m.key === value.training_mountain);
   const minimum = value.mountain_min_minutes || mountain?.default_min_minutes;
+  const needsClimbVenue = (courseSteepness ?? 0) >= STEEP_COURSE_M_PER_KM && !hasSavedTrail && !value.stair_access && !useTreadmill;
   useEffect(() => {
     let active = true;
     fetch(`${getApiBaseUrl()}/api/training-mountains`)
@@ -142,6 +147,9 @@ export function TrainingVenueFields({ lang, t, value, useTreadmill, onTreadmillC
       </div>}
       <div className={styles.alternatives}>
         <h3 className={styles.heading}>{t("plan_trail_alternatives")}</h3>
+        {needsClimbVenue && <p role="status" data-testid="climb-venue-needed" className={styles.help}>
+          {t("plan_climb_venue_needed").replace("{gradient}", String(Math.round(courseSteepness ?? 0)))}
+        </p>}
         <label className={styles.toggle}>
           <input type="checkbox" checked={value.stair_access} onChange={e => onChange({ stair_access: e.target.checked })} />
           {t("plan_stair_access")}

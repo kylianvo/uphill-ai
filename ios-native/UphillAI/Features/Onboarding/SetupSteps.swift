@@ -523,7 +523,8 @@ struct SetupSteps: View {
                 mountainMinMinutes: $model.draft.mountainMinMinutes,
                 stairAccess: $model.draft.stairAccess,
                 useTreadmill: $model.draft.useTreadmill,
-                treadmillMaxIncline: model.draft.useTreadmill ? $model.draft.treadmillMaxIncline : nil
+                treadmillMaxIncline: model.draft.useTreadmill ? $model.draft.treadmillMaxIncline : nil,
+                courseSteepness: model.draft.courseSteepness
             )
         }
         .trainingCard()

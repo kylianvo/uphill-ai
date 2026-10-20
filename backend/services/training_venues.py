@@ -93,6 +93,12 @@ class Venues:
         return self.local_hills or bool(self.mountain_days)
 
     @property
+    def outdoor_climbing(self) -> bool:
+        """Does the athlete have any outdoor climbing: hills at home, mountain days, or a training mountain?
+        Without it, outdoor runs carry no climbing (stairs and treadmill incline are the climbing venues)."""
+        return self.local_hills or bool(self.mountain_days) or bool(self.training_mountain)
+
+    @property
     def hills_only_some_days(self) -> bool:
         return not self.local_hills and bool(self.mountain_days)
 
