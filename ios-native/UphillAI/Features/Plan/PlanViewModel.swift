@@ -81,6 +81,9 @@ final class PlanViewModel {
     private(set) var isSyncingWatch = false
     private(set) var watchSyncNotice: String?
     private(set) var contextKnowledgeCard: KnowledgeCardModel?
+    /// The coach's brief for `weekBriefWeek`; cleared while another week's is loading.
+    private(set) var weekBrief: WeekBrief?
+    private var weekBriefWeek: Int?
 
     private let baseService: any PlanServicing
     private var service: any PlanServicing
@@ -406,8 +409,8 @@ final class PlanViewModel {
         }
     }
 
-    func setMissed(_ workout: Workout) async {
-        _ = await write { try await self.service.log(workoutID: workout.id, WorkoutLogUpdate(isMissed: 1)) }
+    func setMissed(_ workout: Workout, reason: String? = nil) async {
+        _ = await write { try await self.service.log(workoutID: workout.id, WorkoutLogUpdate(isMissed: 1, missedReason: reason)) }
     }
 
     func saveLog(_ workout: Workout, rpe: Int?, notes: String) async -> Bool {
@@ -607,7 +610,7 @@ final class PlanViewModel {
     }
 
     /// Returns an error message, or nil once the job has started.
-    func adaptWeek(_ week: Int, fatigue: FatigueLevel, rpe: Int?, notes: String, schedule: ScheduleDraft? = nil) async -> String? {
+    func adaptWeek(_ week: Int, fatigue: FatigueLevel, rpe: Int?, notes: String, healthIssue: String? = nil, schedule: ScheduleDraft? = nil) async -> String? {
         guard let planID = snapshot?.plan.id, let generation, let generationService else {
             return L("Couldn't start adapting this week. Try again.")
         }
@@ -619,6 +622,7 @@ final class PlanViewModel {
                 planId: planID, weekNumber: week, overallRpe: rpe, fatigueLevel: fatigue.rawValue,
                 fatigueNotes: trimmed.isEmpty ? nil : trimmed, lang: AppLanguage.code,
                 clientToday: PlanCalendar.ymd(now(), calendar: calendar))
+            body.healthIssue = healthIssue
             schedule?.applyChanges(to: &body)
             let job = try await generationService.adaptWeek(body)
             generation.track(kind: .adaptWeek, jobID: job.jobId, summary: [])
@@ -628,6 +632,32 @@ final class PlanViewModel {
         } catch {
             return error.localizedDescription
         }
+    }
+
+    /// Fetches the selected week's coach brief. Best effort: no brief just hides the card.
+    func loadWeekBrief() async {
+        let week = selectedWeek
+        if weekBriefWeek != week { weekBrief = nil }
+        guard !isWeekUngenerated(week), cachedAt == nil else { weekBrief = nil; return }
+        let brief: WeekBrief?
+        if case .success(let review) = await weekReview(week) { brief = review.brief } else { brief = nil }
+        guard week == selectedWeek else { return }
+        weekBriefWeek = week
+        weekBrief = brief
+    }
+
+    var weekDiffChips: [WeekDiffChip] {
+        guard selectedWeek > 1, let workouts = snapshot?.workouts else { return [] }
+        return WeekDiff.chips(prev: workouts.filter { $0.weekNumber == selectedWeek - 1 },
+                              cur: workouts.filter { $0.weekNumber == selectedWeek })
+    }
+
+    /// Position of the selected week inside its phase, e.g. week 2 of 4 in Base.
+    var weekInPhase: (index: Int, total: Int)? {
+        guard let phase, let workouts = snapshot?.workouts else { return nil }
+        let weeks = Set(workouts.filter { $0.phase == phase }.map(\.weekNumber)).sorted()
+        guard let i = weeks.firstIndex(of: selectedWeek) else { return nil }
+        return (i + 1, weeks.count)
     }
 
     func weekReview(_ week: Int) async -> Result<WeekReview, APIError> {

@@ -72,6 +72,8 @@ struct AdaptWeekBody: Encodable, Sendable {
     let fatigueNotes: String?
     let lang: String
     let clientToday: String
+    /// "sick" or "pain" when the athlete has one right now; fed to the missed-session rules.
+    var healthIssue: String? = nil
     var preferredDays: [String]? = nil
     var longRunDay: String? = nil
     var daysPerWeek: Int? = nil

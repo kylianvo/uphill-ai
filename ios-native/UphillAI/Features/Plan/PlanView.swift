@@ -261,6 +261,11 @@ struct PlanView: View {
                         WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek, viewMode: $viewMode)
                             .padding(.horizontal, UH.Space.regular)
 
+                        // Why this week looks the way it does
+                        WeekBriefView(chips: model.weekDiffChips, brief: model.weekBrief)
+                            .padding(.horizontal, UH.Space.regular)
+                            .task(id: briefTaskID) { await model.loadWeekBrief() }
+
                         // 5. Day list, Month Calendar grid, or Ungenerated Week CTA
                         if model.isWeekUngenerated(model.selectedWeek) {
                             ungeneratedWeekCTA(model.selectedWeek)
@@ -285,7 +290,7 @@ struct PlanView: View {
                         // 6. Coach's pick this week (contextual knowledge card)
                         if let card = model.contextKnowledgeCard {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("COACH'S PICK THIS WEEK")
+                                Text(verbatim: L("COACH'S PICK THIS WEEK"))
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .tracking(0.5)
                                     .foregroundStyle(UH.Palette.muted)
@@ -516,6 +521,12 @@ struct PlanView: View {
 
     // MARK: - Race and Goal Header
 
+    /// Refetch the brief when the week changes or its workouts are rebuilt (adapt, next week).
+    private var briefTaskID: String {
+        let ids = (model.snapshot?.workouts ?? []).filter { $0.weekNumber == model.selectedWeek }.map { String($0.id) }
+        return "\(model.selectedWeek):" + ids.joined(separator: ",")
+    }
+
     private var raceGoalHeader: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let plan = model.snapshot?.plan {
@@ -533,7 +544,9 @@ struct PlanView: View {
                                     .foregroundStyle(UH.Palette.secondary)
                             }
                             if let days = model.daysToRace {
-                                Text("· \(days / 7) weeks to go")
+                                Text(verbatim: days == 0 ? "· " + L("Race day")
+                                        : days < 7 ? "· " + L("Race week")
+                                        : L("· %lld weeks to go", Int((Double(days) / 7).rounded(.up))))
                                     .font(UH.TextStyle.caption)
                                     .foregroundStyle(UH.Palette.accentInk)
                             }

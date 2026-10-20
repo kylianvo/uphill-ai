@@ -360,9 +360,23 @@ struct SummaryCarousel: View {
 
                 Spacer(minLength: 0)
 
+                if plan?.courseDistanceKm != nil || plan?.courseElevationGainM != nil {
+                    HStack(alignment: .firstTextBaseline, spacing: 18) {
+                        if let km = plan?.courseDistanceKm {
+                            raceStat(String(format: "%.0f", km), unit: "km")
+                        }
+                        if let gain = plan?.courseElevationGainM {
+                            raceStat(Int(gain).formatted(), unit: "m D+")
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("plan.race.stats")
+                    .padding(.bottom, 4)
+                }
+
                 HStack {
                     if let days = model.daysToRace {
-                        Text(days < 7 ? L("Race week") : L("%lld days to go", days))
+                        Text(days == 0 ? L("Race day") : days < 7 ? L("Race week") : L("%lld days to go", days))
                             .font(.system(size: 13, weight: .semibold, design: .monospaced))
                             .foregroundStyle(UH.Palette.accentInk)
                     }
@@ -390,7 +404,40 @@ struct SummaryCarousel: View {
         .accessibilityElement(children: .contain)
     }
 
+    private func raceStat(_ value: String, unit: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .monospaced))
+                .foregroundStyle(UH.Palette.ink)
+            Text(unit)
+                .font(UH.TextStyle.label)
+                .foregroundStyle(UH.Palette.secondary)
+        }
+    }
+
     // MARK: - Phase Card
+
+    private var phaseWeekText: String {
+        let total = model.snapshot?.plan.totalWeeks ?? 0
+        guard let phase = model.phase, let inPhase = model.weekInPhase else {
+            return L("Week %lld of %lld", model.selectedWeek, total)
+        }
+        return L("Week %lld of %lld in %@", inPhase.index, inPhase.total, L(phase))
+    }
+
+    /// What this phase is for; same wording as the web carousel.
+    private var phasePurpose: String? {
+        let phase = (model.phase ?? "").lowercased()
+        let purposes: [(String, String)] = [
+            ("base", "Build aerobic endurance with easy, consistent running."),
+            ("build", "Add race-specific fitness on top of your aerobic base."),
+            ("peak", "Sharpen with your hardest, most race-like sessions."),
+            ("taper", "Cut volume to arrive at the start line fresh."),
+            ("recovery", "Absorb the work; rest is the training."),
+            ("transition", "Ease back into structured training."),
+        ]
+        return purposes.first { phase.contains($0.0) }.map { L($0.1) }
+    }
 
     private var phaseCard: some View {
         card(
@@ -400,15 +447,18 @@ struct SummaryCarousel: View {
                     .font(UH.TextStyle.metric)
                     .foregroundStyle(UH.Palette.ink)
 
-                Text("Week \(model.selectedWeek) of \(model.snapshot?.plan.totalWeeks ?? 0)")
+                Text(verbatim: phaseWeekText)
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .foregroundStyle(UH.Palette.secondary)
 
                 Spacer(minLength: 2)
 
-                Text("Focus: build consistent aerobic capacity and fatigue resistance.")
-                    .font(UH.TextStyle.caption)
-                    .foregroundStyle(UH.Palette.secondary)
+                if let purpose = phasePurpose {
+                    Text(verbatim: purpose)
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+                        .lineLimit(3)
+                }
             }
         )
         .accessibilityElement(children: .combine)

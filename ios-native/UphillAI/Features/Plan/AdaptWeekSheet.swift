@@ -7,6 +7,7 @@ struct AdaptWeekSheet: View {
     @State private var fatigue = FatigueLevel.medium
     @State private var rpe: Int?
     @State private var notes = ""
+    @State private var healthIssue: String?
     @State private var isSubmitting = false
     @State private var error: String?
     @State private var schedule: ScheduleDraft
@@ -16,6 +17,11 @@ struct AdaptWeekSheet: View {
         self.model = model
         self.week = week
         _schedule = State(initialValue: ScheduleDraft(plan: model.snapshot?.plan))
+    }
+
+    /// Last week's sessions marked missed, so the athlete can say why before the week is rebuilt.
+    private var missedLastWeek: [Workout] {
+        (model.snapshot?.workouts ?? []).filter { $0.weekNumber == week - 1 && $0.isMissedFlag && !$0.isRest }
     }
 
     var body: some View {
@@ -81,6 +87,47 @@ struct AdaptWeekSheet: View {
                                 .sensoryFeedback(.selection, trigger: isSelected)
                             }
                         }
+                    }
+                    .trainingCard()
+
+                    // Last week's missed sessions: why? Feeds the missed-session rules.
+                    if !missedLastWeek.isEmpty {
+                        VStack(alignment: .leading, spacing: UH.Space.regular) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Missed last week")
+                                    .font(UH.TextStyle.sectionTitle)
+                                    .foregroundStyle(UH.Palette.ink)
+                                Text("Tell the coach why. It shapes this week.")
+                                    .font(UH.TextStyle.caption)
+                                    .foregroundStyle(UH.Palette.secondary)
+                            }
+                            ForEach(missedLastWeek) { missed in
+                                VStack(alignment: .leading, spacing: UH.Space.compact) {
+                                    Text(verbatim: "\(L(missed.weekday.rawValue)) · \(missed.title)")
+                                        .font(UH.TextStyle.label)
+                                        .foregroundStyle(UH.Palette.ink)
+                                    MissedReasonChips(selected: missed.missedReason) { reason in
+                                        Task { await model.setMissed(missed, reason: reason.rawValue) }
+                                    }
+                                }
+                            }
+                        }
+                        .trainingCard()
+                        .accessibilityIdentifier("adapt.missed")
+                    }
+
+                    // Illness or pain right now
+                    VStack(alignment: .leading, spacing: UH.Space.compact) {
+                        Text("Illness or pain right now")
+                            .font(UH.TextStyle.label)
+                            .foregroundStyle(UH.Palette.ink)
+                        Picker("Illness or pain right now", selection: $healthIssue) {
+                            Text("None").tag(String?.none)
+                            Text("Sick").tag(String?.some("sick"))
+                            Text("Pain").tag(String?.some("pain"))
+                        }
+                        .pickerStyle(.segmented)
+                        .accessibilityIdentifier("adapt.healthIssue")
                     }
                     .trainingCard()
 
@@ -192,7 +239,7 @@ struct AdaptWeekSheet: View {
         isSubmitting = true
         error = nil
         defer { isSubmitting = false }
-        if let message = await model.adaptWeek(week, fatigue: fatigue, rpe: rpe, notes: notes, schedule: schedule) {
+        if let message = await model.adaptWeek(week, fatigue: fatigue, rpe: rpe, notes: notes, healthIssue: healthIssue, schedule: schedule) {
             error = message
         } else {
             dismiss()

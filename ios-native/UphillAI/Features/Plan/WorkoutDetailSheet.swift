@@ -660,6 +660,15 @@ struct WorkoutDetailSheet: View {
                 Text("Marked as missed")
                     .font(UH.TextStyle.caption)
                     .foregroundStyle(UH.Palette.muted)
+                VStack(alignment: .leading, spacing: UH.Space.compact) {
+                    Text("Why was it missed?")
+                        .font(UH.TextStyle.caption.weight(.semibold))
+                        .foregroundStyle(UH.Palette.secondary)
+                    MissedReasonChips(selected: w.missedReason) { reason in
+                        run { await model.setMissed(w, reason: reason.rawValue) }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .disabled(isBusy)
@@ -964,6 +973,16 @@ struct WorkoutDetailSheet: View {
 
     // MARK: - Matched Watch Workout Card
 
+    /// Where the week stands after this session, e.g. "Week so far: 120 of 300 min. Next key session: Saturday, Long Run."
+    static func weekSoFarNote(_ ctx: WeekContext) -> String {
+        var note = L("Week so far: %lld of %lld min.", ctx.doneMin, ctx.plannedMin)
+        if let next = ctx.nextKey, let day = Weekday(rawValue: next.dayOfWeek) {
+            let title = next.title ?? next.type ?? ""
+            note += " " + L("Next key session: %@, %@.", L(day.rawValue), title)
+        }
+        return note
+    }
+
     @ViewBuilder
     private func matchedWatchCard(_ w: Workout) -> some View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
@@ -1029,6 +1048,13 @@ struct WorkoutDetailSheet: View {
                         target: w.targetHrRange ?? WorkoutTypePresentation.zoneShort(w.targetZone)
                     )
                 }
+            }
+
+            if let ctx = w.matchedWeekContext, ctx.plannedMin > 0 {
+                Text(verbatim: Self.weekSoFarNote(ctx))
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+                    .accessibilityIdentifier("detail.weekContext")
             }
 
             HStack {

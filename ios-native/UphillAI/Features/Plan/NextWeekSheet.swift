@@ -47,6 +47,8 @@ struct NextWeekSheet: View {
                     // Block info & unlock status
                     blockStatusCard
 
+                    missedLastWeekCard
+
                     if isCoach {
                         coachGuidanceCard
                     } else {
@@ -81,6 +83,47 @@ struct NextWeekSheet: View {
         .presentationDetents([.medium, .large])
         .presentationBackground(UH.Palette.surface)
         .accessibilityIdentifier("nextweek.sheet")
+    }
+
+    // MARK: - Missed last week
+
+    /// The sessions marked missed in the week before the new block, so the athlete can say why
+    /// before the block is built. The backend applies the missed-session rules to these reasons.
+    private var missedBeforeBlock: [Workout] {
+        (model.snapshot?.workouts ?? []).filter {
+            $0.weekNumber == currentOffer.weekStart - 1 && $0.isMissedFlag && !$0.isRest
+        }
+    }
+
+    @ViewBuilder
+    private var missedLastWeekCard: some View {
+        if !missedBeforeBlock.isEmpty {
+            VStack(alignment: .leading, spacing: UH.Space.regular) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Missed last week")
+                        .font(UH.TextStyle.sectionTitle)
+                        .foregroundStyle(UH.Palette.ink)
+                    Text("Tell the coach why. It shapes this week.")
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+                }
+                ForEach(missedBeforeBlock) { missed in
+                    VStack(alignment: .leading, spacing: UH.Space.compact) {
+                        Text(verbatim: "\(L(missed.weekday.rawValue)) · \(missed.title)")
+                            .font(UH.TextStyle.label)
+                            .foregroundStyle(UH.Palette.ink)
+                        MissedReasonChips(selected: missed.missedReason) { reason in
+                            Task { await model.setMissed(missed, reason: reason.rawValue) }
+                        }
+                    }
+                }
+            }
+            .padding(UH.Space.regular)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+            .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line, lineWidth: 1))
+            .accessibilityIdentifier("nextweek.missed")
+        }
     }
 
     // MARK: - Block Status Card

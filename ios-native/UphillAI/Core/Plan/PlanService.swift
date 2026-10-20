@@ -3,6 +3,7 @@ import Foundation
 struct WorkoutLogUpdate: Equatable, Sendable {
     var isCompleted: Int?
     var isMissed: Int?
+    var missedReason: String?
     var rpe: Int?
     var notes: String?
 }
@@ -97,6 +98,7 @@ struct PlanService: PlanServicing {
         let workoutId: Int
         let isCompleted: Int?
         let isMissed: Int?
+        let missedReason: String?
         let rpe: Int?
         let notes: String?
     }
@@ -144,6 +146,7 @@ struct PlanService: PlanServicing {
         let avgHr: Double?
         let deviceModel: String?
         let sourceProvider: String?
+        let weekContext: WeekContext?
     }
 
     private struct MatchesResponse: Decodable { let activities: [MatchedActivity] }
@@ -168,13 +171,14 @@ struct PlanService: PlanServicing {
             matched.matchedDurationSeconds = activity.durationSeconds
             matched.matchedAvgHr = activity.avgHr.map { Int($0.rounded()) }
             matched.matchedSourceProvider = activity.sourceProvider
+            matched.matchedWeekContext = activity.weekContext
             return matched
         }
     }
 
     func log(workoutID: Int, _ update: WorkoutLogUpdate) async throws -> [Workout] {
         let body = LogBody(workoutId: workoutID, isCompleted: update.isCompleted, isMissed: update.isMissed,
-                           rpe: update.rpe, notes: update.notes)
+                           missedReason: update.missedReason, rpe: update.rpe, notes: update.notes)
         let response: WorkoutsResponse = try await client.send(.send(.patch, "/api/coach/workouts/log", body: body))
         return response.workouts
     }
