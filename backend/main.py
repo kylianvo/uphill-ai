@@ -339,6 +339,8 @@ class AdaptWeekRequest(BaseModel):
     fatigue_notes: str | None = None  # why adapting / fatigue details
     athlete_notes: str | None = None
     coach_notes: str | None = None
+    # An illness or pain the athlete has right now; fed to the missed-session rules.
+    health_issue: Literal["sick", "pain"] | None = None
     preferred_days: list[str] | None = None
     long_run_day: str | None = None
     days_per_week: int | None = None

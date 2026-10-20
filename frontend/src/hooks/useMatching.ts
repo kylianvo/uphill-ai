@@ -51,6 +51,12 @@ export type RawMatchActivity = {
     };
     takeaways?: string[];
   } | null;
+  /** Week-to-date for the matched workout's week (planned minutes done / planned) and the next key session. */
+  week_context?: {
+    done_min: number;
+    planned_min: number;
+    next_key: { day_of_week: string; title?: string | null; type?: string | null } | null;
+  } | null;
   match_details?: {
     warmup_distance_km?: number;
     fragments?: number;

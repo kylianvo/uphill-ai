@@ -813,3 +813,78 @@ class TestWeekBrief:
         resp = client.get(f"/api/coach/week-review/{plan_id}/2", headers=auth_headers["headers"])
         assert resp.status_code == 200
         assert resp.json()["brief"] == brief
+
+
+class TestAdaptHealthIssue:
+    def test_a_reported_pain_adds_the_ongoing_rules_and_caps_progression(self, client, auth_headers):
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [40, 40, 40], week1_completed=3)
+
+        ctx = _adapt_and_capture(
+            client, auth_headers["headers"], plan_id, fatigue_level="very_light", health_issue="pain"
+        )
+
+        assert "pain/injury (1 day(s) missed, ongoing)" in ctx
+        # very light would allow 1.02-1.08 of 120 min; the pain ceiling holds it at 1.00.
+        assert "Target Full Week Total: 114-120 min" in ctx
+
+    def test_no_reported_issue_leaves_the_band_alone(self, client, auth_headers):
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [40, 40, 40], week1_completed=3)
+
+        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="very_light")
+
+        assert "ongoing" not in ctx
+        assert "Target Full Week Total: 122-130 min" in ctx
+
+
+class TestWeekContextNote:
+    def test_matching_list_attaches_week_to_date_and_the_next_key_session(self, client, auth_headers):
+        from datetime import UTC, datetime
+
+        import db
+        from services.providers.base import CanonicalActivity
+
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        rows = [
+            {
+                "week_number": 1,
+                "day_of_week": d,
+                "phase": "Base",
+                "title": t,
+                "type": ty,
+                "duration_minutes": m,
+                "target_zone": "Zone 2",
+                "description": "x",
+            }
+            for d, t, ty, m in [
+                ("Tuesday", "Easy Run", "Easy", 40),
+                ("Thursday", "Gym ME", "Muscular Endurance", 45),
+                ("Saturday", "Club Long Run", "Long Run", 100),
+            ]
+        ]
+        save_workouts(plan_id, rows)
+        tue = sorted(get_plan_workouts(plan_id), key=lambda w: w["id"])[0]
+        db.update_workout_log(tue["id"], is_completed=1)
+        activity_id = db.upsert_activity(
+            auth_headers["user_id"],
+            CanonicalActivity(
+                external_id="wc-1",
+                provider="coros",
+                activity_type="outdoor_run",
+                start_time=datetime.now(UTC),
+                duration_seconds=2400.0,
+                distance_km=6.0,
+            ),
+        )
+        db.save_match(activity_id=activity_id, workout_id=tue["id"], confidence=0.9, method="auto", details={})
+
+        resp = client.get("/api/integrations/matching", params={"days": 30}, headers=auth_headers["headers"])
+
+        assert resp.status_code == 200
+        ctx = resp.json()["activities"][0]["week_context"]
+        assert ctx == {
+            "done_min": 40,
+            "planned_min": 185,
+            "next_key": {"day_of_week": "Thursday", "title": "Gym ME", "type": "Muscular Endurance"},
+        }

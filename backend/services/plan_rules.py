@@ -376,16 +376,22 @@ def missed_reason_rules(
     days_to_race: int | None = None,
     repeat_days: list[str] | tuple[str, ...] = (),
     rhr_elevated: bool = False,
+    current_issue: str | None = None,
 ) -> tuple[list[str], float | None]:
     """(prompt_lines, ceiling_cap): rules for the week after missed sessions, and the
     highest allowed multiple of the reference volume (None = no cap beyond the usual band).
-    The caller takes the lowest of this cap and the feeling band."""
+    The caller takes the lowest of this cap and the feeling band. current_issue ("sick" or
+    "pain") is something the athlete reports right now, treated like a one-day miss."""
     missed = [w for w in prev_workouts if w.get("is_missed") == 1]
     lines: list[str] = []
     caps: list[float] = []
     by_reason: dict[str, list[dict]] = {}
     for w in missed:
         by_reason.setdefault(w.get("missed_reason") or "other", []).append(w)
+    # A reported current issue counts as a one-day miss, unless that reason is already recorded.
+    ongoing = {current_issue} - set(by_reason) if current_issue in ("sick", "pain") else set()
+    for issue in ongoing:
+        by_reason[issue] = [{"day_of_week": "now"}]
 
     if missed:
         lines.append(
@@ -397,10 +403,13 @@ def missed_reason_rules(
             "Reason - busy/work/travel: everyday life stress counts as training load; resume the plan at its "
             "planned volume with no make-up [UA-R2]."
         )
+    # Computed outside the f-strings: reusing the quote character inside one is a 3.12-only syntax.
+    sick_tag = ", ongoing" if "sick" in ongoing else ""
+    pain_tag = ", ongoing" if "pain" in ongoing else ""
     if "sick" in by_reason:
         n = len({w.get("day_of_week") for w in by_reason["sick"]})
         lines.append(
-            f"Reason - illness ({n} day(s) missed): the first {n} training day(s) back are easy aerobic Zone 1-2 only "
+            f"Reason - illness ({n} day(s) missed{sick_tag}): the first {n} training day(s) back are easy aerobic Zone 1-2 only "
             f"with no Zone 3+ work; run the first 2 sessions back at about 50% of their planned duration; do not "
             f"train through a cold [UA-R3, R4, R5, R7]."
         )
@@ -408,7 +417,7 @@ def missed_reason_rules(
     if "pain" in by_reason:
         n = len({w.get("day_of_week") for w in by_reason["pain"]})
         lines.append(
-            f"Reason - pain/injury ({n} day(s) missed): no running while it hurts; use non-impact cross-training "
+            f"Reason - pain/injury ({n} day(s) missed{pain_tag}): no running while it hurts; use non-impact cross-training "
             f"(bike, swim) instead; take {n} gradual easy day(s) before any intensity; first sessions back at about "
             f"50% duration; no volume progression [UA-R6, R7, R4]. Coach safety note (not from the book): if the "
             f"pain persists, advise seeing a physio."

@@ -216,6 +216,7 @@ def missed_rules_for_week(
     all_workouts: list[dict[str, Any]],
     target_week: int,
     today: dt.date | None,
+    current_issue: str | None = None,
 ) -> tuple[list[str], float | None]:
     """missed_reason_rules for the week before target_week, with its inputs gathered."""
     prev_wos = [w for w in all_workouts if w.get("week_number") == target_week - 1 and w.get("type") != "Rest"]
@@ -231,4 +232,5 @@ def missed_rules_for_week(
         days_to_race=days_to_race,
         repeat_days=repeated_miss_days(all_workouts, target_week),
         rhr_elevated=rhr is not None and rhr >= 1.10,
+        current_issue=current_issue,
     )

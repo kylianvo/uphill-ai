@@ -2633,6 +2633,10 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             weekNumber={adaptTargetWeek}
             totalWeeks={activePlan.total_weeks || 12}
             completedWorkoutsCount={getWeekWorkouts(adaptTargetWeek).filter((w: any) => w.is_completed === 1).length}
+            missedLastWeek={getWeekWorkouts(adaptTargetWeek - 1)
+              .filter((w: any) => w.is_missed && w.type !== "Rest")
+              .map((w: any) => ({ id: w.id, day_of_week: w.day_of_week, title: w.title, missed_reason: w.missed_reason }))}
+            onSetMissedReason={(id: number, reason: string) => handleMarkMissed(id, true, reason)}
             initialSchedule={{
               days_per_week: activePlan.days_per_week || 4,
               long_run_day: activePlan.long_run_day || "Saturday",

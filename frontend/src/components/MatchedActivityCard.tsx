@@ -22,6 +22,7 @@ import {
 import { triggerHaptic } from "../utils/native";
 import CorosAttribution from "./CorosAttribution";
 import { RawMatchActivity } from "../hooks/useMatching";
+import { dayLabel } from "../utils/dayLabels";
 
 export interface MatchedActivityCardProps {
   activity: RawMatchActivity;
@@ -226,6 +227,21 @@ export default function MatchedActivityCard({
           {displayHr != null && <span>{displayHr} bpm</span>}
           <span className={styles.summaryStatus}>{isSuggest ? (lang === "vi" ? "Chờ xác nhận" : "Needs confirmation") : (lang === "vi" ? "Đã khớp" : "Matched")}</span>
         </span>
+        {/* Where the week stands after this session: visible without expanding the card */}
+        {activity.week_context && activity.week_context.planned_min > 0 && (
+          <span
+            style={{ display: "block", marginTop: "6px", fontSize: "12px", color: "var(--text-secondary)" }}
+            data-testid="week-context-note"
+          >
+            {lang === "vi"
+              ? `Tuần này: ${activity.week_context.done_min}/${activity.week_context.planned_min} phút.`
+              : `Week so far: ${activity.week_context.done_min} of ${activity.week_context.planned_min} min.`}
+            {activity.week_context.next_key &&
+              (lang === "vi"
+                ? ` Buổi quan trọng tiếp theo: ${dayLabel(activity.week_context.next_key.day_of_week, lang)}, ${activity.week_context.next_key.title || activity.week_context.next_key.type}.`
+                : ` Next key session: ${dayLabel(activity.week_context.next_key.day_of_week, lang)}, ${activity.week_context.next_key.title || activity.week_context.next_key.type}.`)}
+          </span>
+        )}
         <span className={styles.attribution}><CorosAttribution deviceModel={activity.device_model} provider={activity.source_provider} /></span>
       </summary>
       <div className={styles.expanded}>

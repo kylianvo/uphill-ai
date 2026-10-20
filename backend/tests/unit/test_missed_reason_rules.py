@@ -85,3 +85,24 @@ def test_repeated_miss_days_needs_two_different_weeks():
         {"week_number": 3, "day_of_week": "Friday", "is_missed": 1},
     ]
     assert repeated_miss_days(wos, 4) == ["Wednesday"]
+
+
+def test_a_current_illness_is_an_ongoing_one_day_miss_with_the_same_rules_and_cap():
+    lines, cap = missed_reason_rules([], current_issue="sick")
+    assert "ongoing" in _text(lines) and "first 1 training day(s) back" in _text(lines)
+    assert cap == 1.0
+
+
+def test_a_current_pain_adds_cross_training_and_caps():
+    lines, cap = missed_reason_rules([], current_issue="pain")
+    assert "non-impact" in _text(lines) and "ongoing" in _text(lines)
+    assert cap == 1.0
+
+
+def test_a_current_issue_does_not_double_count_a_recorded_miss_with_the_same_reason():
+    lines, _ = missed_reason_rules([_missed("Monday", "sick"), _missed("Tuesday", "sick")], current_issue="sick")
+    assert "first 2 training day(s) back" in _text(lines) and "ongoing" not in _text(lines)
+
+
+def test_an_unknown_current_issue_is_ignored():
+    assert missed_reason_rules([], current_issue="other") == ([], None)
