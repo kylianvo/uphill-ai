@@ -403,6 +403,19 @@ def init_db():
 
         conn.execute(
             text("""
+        CREATE TABLE IF NOT EXISTS fitness_checkpoints (
+            plan_id      INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            week_number  INTEGER NOT NULL,
+            pace_min_km  REAL NOT NULL,  -- median grade-adjusted pace of steady runs at AeT heart rate
+            n_runs       INTEGER NOT NULL,
+            created_at   TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (plan_id, week_number)
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS athlete_connections (
             id                SERIAL PRIMARY KEY,
             user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -3951,6 +3964,46 @@ def get_activities_for_matching(user_id: int, since, until) -> list[dict[str, An
             {"u": user_id, "since": since, "until": until},
         ).fetchall()
     return [_row_to_dict(row) for row in rows]
+
+
+def get_activities_for_pace(user_id: int, since, until) -> list[dict[str, Any]]:
+    """Non-duplicate activities in a window with the fields aerobic-speed tracking reads."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT start_time, duration_seconds, distance_km, avg_hr, activity_type, adjusted_pace_sec_per_km
+            FROM activities
+            WHERE user_id = :u AND duplicate_of IS NULL AND start_time >= :since AND start_time < :until
+            ORDER BY start_time
+            """),
+            {"u": user_id, "since": since, "until": until},
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
+
+
+def upsert_fitness_checkpoint(plan_id: int, week_number: int, pace_min_km: float, n_runs: int) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO fitness_checkpoints (plan_id, week_number, pace_min_km, n_runs)
+                VALUES (:p, :w, :pace, :n)
+                ON CONFLICT (plan_id, week_number) DO UPDATE SET pace_min_km = EXCLUDED.pace_min_km,
+                    n_runs = EXCLUDED.n_runs, created_at = NOW()
+            """),
+            {"p": plan_id, "w": week_number, "pace": pace_min_km, "n": n_runs},
+        )
+        conn.commit()
+
+
+def get_fitness_checkpoints(plan_id: int) -> list[dict[str, Any]]:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT week_number, pace_min_km, n_runs FROM fitness_checkpoints WHERE plan_id = :p ORDER BY week_number"
+            ),
+            {"p": plan_id},
+        ).fetchall()
+    return [dict(r._mapping) for r in rows]
 
 
 def get_activities_for_user(user_id: int, limit: int = 20) -> list[dict[str, Any]]:
