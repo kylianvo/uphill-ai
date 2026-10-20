@@ -1418,8 +1418,8 @@ class PlanGenerator:
                     wo,
                     "Easy Aerobic Run",
                     "Easy Run nhẹ",
-                    "Keep this run easy and conversational, Zone 2: a hard session this long is more than a week can absorb.",
-                    "Giữ buổi chạy này nhẹ nhàng, nói chuyện được, Zone 2: buổi cường độ dài như vậy vượt quá sức một tuần.",
+                    "Easy aerobic run, Zone 2, conversational pace. The long quality block planned for this slot was dropped to keep the week within safe limits.",
+                    "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được. Phần cường độ dài dự kiến cho buổi này đã được bỏ để giữ tuần tập trong giới hạn an toàn.",
                 )
 
         def _to_easy(wo: dict[str, Any], title_en: str, title_vi: str, desc_en: str, desc_vi: str) -> None:
@@ -2494,8 +2494,8 @@ class PlanGenerator:
                 desc = "No running. Focus on full-body mobility, gentle stretching, and hydration."
                 fuel_tip = "Eat high-protein, nutrient-dense foods to rebuild muscle tissues."
                 wed_dur = 0.0
-            elif phase in ("Base", "Race Week") or not tier_profile.allows_intensity or is_recovery_week:
-                # Base is aerobic (Zone 1-2); a race week or a recovery week is not for a hard session.
+            elif phase in ("Base", "Taper", "Race Week") or not tier_profile.allows_intensity or is_recovery_week:
+                # Base is aerobic (Zone 1-2); taper, race week and recovery weeks add no new hard work.
                 title = "Aerobic Capacity Run"
                 w_type = "Aerobic Capacity"
                 zone = "Zone 2"

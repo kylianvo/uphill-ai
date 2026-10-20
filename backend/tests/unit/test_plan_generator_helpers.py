@@ -275,17 +275,16 @@ class TestRuleBasedFallbackDescriptionConsistency:
         }
         race_info = {"name": "Test Race", "goal_type": "finish", "terrain": "trail"}
 
-        # 8 weeks in one block: Base(1-2)/Build(3-4)/Peak(5)/Taper(6)/Race Week(7)/Recovery(8)
-        # -- week 5 (odd) exercises the Tempo branch, week 6 (even) exercises
-        # both the Interval branch and the Sunday Taper "Active Recovery Walk".
+        # 10 weeks in one block: Peak weeks (6-7) exercise the Interval (even) and Tempo (odd) branches; the
+        # taper week (8) adds no hard work any more but still has the Sunday "Active Recovery Walk".
         workouts, _tier = await PlanGenerator.generate_plan_workouts(
             plan_id=1,
             user_profile=user_profile,
             race_info=race_info,
-            total_weeks=8,
+            total_weeks=10,
             api_key=None,  # no Gemini key either -- guarantees the rule-based path
             block_number=1,
-            weeks_per_block=8,
+            weeks_per_block=10,
         )
 
         checked = {"tempo": 0, "interval": 0, "taper_walk": 0}
@@ -345,10 +344,10 @@ class TestRuleBasedFallbackDescriptionConsistency:
             plan_id=1,
             user_profile=user_profile,
             race_info=race_info,
-            total_weeks=8,
+            total_weeks=10,
             api_key=None,
             block_number=1,
-            weeks_per_block=8,
+            weeks_per_block=10,
         )
 
         checked = {"tempo": 0, "interval": 0, "taper_walk": 0}
