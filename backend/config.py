@@ -167,6 +167,7 @@ class Config:
     # under 1-week windows (old block N = weeks 2N-1..2N is now read as block N =
     # week N). This was a deliberate, accepted cutover -- not a migration -- since
     # a majority of active plans already had 2nd-block history. See PR description.
+    TAPER_BY_RULES: bool = True  # taper weeks are built by the rules from the plan's real peak, not by the model
     WEEKS_PER_BLOCK: int = 1
 
     # Warehouse dashboards (Metabase)

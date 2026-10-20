@@ -488,12 +488,53 @@ def run_persona(name: str, out: Path) -> dict:
     return result
 
 
+MODEL_FIELDS = (
+    "week_number day_of_week phase title type duration_minutes target_zone target_hr_range target_pace distance_km "
+    "elevation_gain_m grade_percent treadmill_incline treadmill_speed description fueling_tip is_priority"
+).split()
+
+
+def install_replay(dirs: list[Path]) -> None:
+    """FREE mode: the Gemini client returns the model rows saved by an earlier paid run (week by week, read from
+    the 'weeks X through Y' line of the prompt), so the model's own numbers run through today's post-processing.
+    Any other model call (briefs, summaries) fails, which those features already tolerate."""
+    from types import SimpleNamespace
+
+    from google import genai
+
+    saved: dict[str, list[dict]] = {}
+    for d in dirs:  # earlier directories win
+        for f in d.glob("*.json"):
+            saved.setdefault(f.stem, json.loads(f.read_text())["workouts"])
+
+    class _Models:
+        def generate_content(self, model=None, contents="", config=None):
+            m = re.search(r"weeks (\d+) through (\d+)", str(contents))
+            persona = next((n for n in PERSONAS if f"ZZ {n}" in str(contents)), None)
+            if not m or not persona or persona not in saved:
+                raise RuntimeError("replay: no saved rows for this call")
+            lo, hi = int(m.group(1)), int(m.group(2))
+            rows = [{k: w[k] for k in MODEL_FIELDS if k in w} for w in saved[persona] if lo <= w["week_number"] <= hi]
+            return SimpleNamespace(text=json.dumps(rows), usage_metadata=None)
+
+    class _Client:
+        def __init__(self, *a, **k):
+            self.models = _Models()
+
+    genai.Client = _Client
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="/tmp/personas")
     ap.add_argument("--only", default="")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument(
+        "--replay", default="", help="comma-separated dirs of saved paid runs: FREE replay of their model rows"
+    )
     args = ap.parse_args()
+    if args.replay:
+        install_replay([Path(d) for d in args.replay.split(",")])
     if args.list:
         print("\n".join(PERSONAS))
         return 0

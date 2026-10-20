@@ -108,14 +108,15 @@ def assess(workouts: list[dict[str, Any]], race: dict[str, Any], zone2_pace: str
     long_hard = [
         (w["week_number"], w["target_zone"], round(w["duration_minutes"]))
         for w in _real(workouts)
-        if (w.get("target_zone") == "Zone 3" and w["duration_minutes"] > Z3_MAX_SESSION_MIN)
+        if w.get("type") != "Race"
+        and (w.get("target_zone") == "Zone 3" and w["duration_minutes"] > Z3_MAX_SESSION_MIN)
         or (w.get("target_zone") in ("Zone 4", "Zone 5") and w["duration_minutes"] > Z4_MAX_SESSION_MIN)
     ]
     checks.append(Check("no long Zone 3 (>75 min) or Zone 4 (>70 min) session", not long_hard, str(long_hard[:4])))
 
     heavy = []
     for k, v in weeks.items():
-        z3 = sum(w["duration_minutes"] * 0.6 for w in v if w.get("target_zone") == "Zone 3")
+        z3 = sum(w["duration_minutes"] * 0.6 for w in v if w.get("target_zone") == "Zone 3" and w.get("type") != "Race")
         z4 = sum(w["duration_minutes"] * 0.5 for w in v if w.get("target_zone") in ("Zone 4", "Zone 5"))
         if z3 > Z3_MAX_WEEK_MIN or z4 > Z4_MAX_WEEK_MIN:
             heavy.append((k, round(z3), round(z4)))
@@ -159,6 +160,8 @@ def assess(workouts: list[dict[str, Any]], race: dict[str, Any], zone2_pace: str
 
     padded = []
     for w in _real(workouts):
+        if w.get("type") in ("Muscular Endurance", "Strength"):
+            continue  # rep-based circuits, not a minute-by-minute run
         nums = [int(n) for n in _STEP_MIN.findall(w.get("description") or "")]
         if len(nums) >= 3:
             total = sum(nums)

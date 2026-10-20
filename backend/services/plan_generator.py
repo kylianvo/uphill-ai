@@ -2344,7 +2344,16 @@ class PlanGenerator:
         # failure (a truncated or unparseable response) before falling through to the
         # deterministic rule-based schedule below.
         _trace_id = observability.current_trace_id()
+        # A taper week is built by the rules: its volume must be a fixed share of the plan's real peak (book: -30%
+        # then -50%), which the model has no way to guarantee, and it has little coaching to add there.
+        _taper_by_rules = (
+            block_start_week == block_end_week
+            and PlanGenerator.phase_for_week(block_start_week, total_weeks) == "Taper"
+            and settings.TAPER_BY_RULES
+        )
         for _reduced in (False, True):
+            if _taper_by_rules:
+                break
             _result = await _try_gemini(reduced=_reduced)
             if _result:
                 if _trace_id:
@@ -2415,6 +2424,14 @@ class PlanGenerator:
             # A recovery week after every three builds (week_layout scales it to 80%).
             is_recovery_week = phase in ("Base", "Build", "Peak") and week % 4 == 0 and week > 1
             week_minutes = base_weekly_minutes * volume_multiplier
+            if phase == "Taper":
+                try:
+                    prior_weeks = plan_lint._by_week(get_plan_workouts(plan_id)) if plan_id else {}
+                except Exception:  # noqa: BLE001
+                    prior_weeks = {}
+                peak = max((plan_lint.week_minutes(r) for k, r in prior_weeks.items() if k < week), default=0.0)
+                if peak:
+                    week_minutes = peak * multiplier_for(week)
             easy_minutes = week_minutes * 0.8
             quality_minutes = week_minutes * 0.2
 
