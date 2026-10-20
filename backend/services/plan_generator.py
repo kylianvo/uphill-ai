@@ -1302,7 +1302,7 @@ class PlanGenerator:
             race_pace_dec = (float(target_time_hours) * 60) / float(course_distance_km)
             goal_race_pace_str = PlanGenerator.decimal_to_pace_str(race_pace_dec)
         else:
-            goal_race_pace_str = None  # fall back to Zone 4 (race effort)
+            goal_race_pace_str = None  # finish-only: the race session uses Zone 2 slowed by the climbing
 
         # Which kind of runner this plan is for. Resolved here, above the pace zones,
         # because the tier decides the pace default as well as the rules block -- see
@@ -1464,8 +1464,17 @@ class PlanGenerator:
                 # Race / Target Race: use the known course distance and goal pace
                 elif ("target race" in title_lower or w_type == "Race") and course_distance_km:
                     wo["distance_km"] = float(course_distance_km)
-                    # Use goal race pace derived from target finish time; fall back to Zone 4
-                    wo["target_pace"] = f"{goal_race_pace_str or p_z4} /km"
+                    # Goal pace from the target finish time; with no target, finish-only effort: Zone 2 slowed by
+                    # the course's climbing, never the Zone 4 table (a 100-miler cannot run at Zone 4 pace).
+                    if goal_race_pace_str:
+                        wo["target_pace"] = f"{goal_race_pace_str} /km"
+                    else:
+                        from services.trail_pace import trail_pace_range
+
+                        rate = float(course_elevation_gain_m or 0) / float(course_distance_km)
+                        wo["target_pace"] = trail_pace_range(est_zones["zone2_pace"], rate)
+                        slower, faster = PlanGenerator.parse_pace_range(wo["target_pace"])
+                        wo["duration_minutes"] = round((slower + faster) / 2 * float(course_distance_km))
                 else:
                     # Map zone to pace range + distance (always recalculate, discard AI distance)
                     wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(

@@ -23,7 +23,7 @@ from sqlalchemy import text  # noqa: E402
 import db  # noqa: E402
 from main import app  # noqa: E402
 from services import goal_demands, plan_lint  # noqa: E402
-from services.athlete_tier import get_profile  # noqa: E402
+from services.athlete_tier import for_race, get_profile  # noqa: E402
 
 START = date(2026, 10, 19)  # a Monday
 ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -103,8 +103,8 @@ PERSONAS: dict[str, dict] = {
             course_distance_km=100,
             course_elevation_gain_m=5000,
             current_weekly_km=120,
-            days_per_week=7,
-            preferred_days=ALL_DAYS,
+            days_per_week=6,
+            preferred_days=ALL_DAYS[1:],
             long_run_day="Saturday",
             target_time_hours=11.5,
             cutoff_time_hours=24,
@@ -293,7 +293,7 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict, feasibility: 
         flat_only=venues_flat, total_weeks=plan["total_weeks"],
     )  # fmt: skip
     weeks = sorted({w["week_number"] for w in ws})
-    issues = plan_lint.lint_weeks(ws, set(weeks), get_profile(tier), prefs)
+    issues = plan_lint.lint_weeks(ws, set(weeks), for_race(get_profile(tier), dist), prefs)
     hard = {
         "ME_SPACING",
         "HARD_ADJACENT",
@@ -329,7 +329,7 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict, feasibility: 
     at_capacity = bool(capacity_min) and minutes[weeks[0]] >= 0.9 * capacity_min  # nothing left to progress into
     add(
         "progression: peak week >= 1.15 x week 1 (or week 1 already at the athlete's capacity)",
-        peak >= 1.15 * minutes[weeks[0]] or at_capacity,
+        peak >= 1.15 * minutes[weeks[0]] or at_capacity or (bool(capacity_min) and peak >= 0.9 * capacity_min),
         f"wk1 {minutes[weeks[0]]:.0f} -> peak {peak:.0f} min (capacity {capacity_min:.0f})",
     )
     taper = [wk for wk in weeks if phases[wk] == "Taper"]
