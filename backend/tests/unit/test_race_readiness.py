@@ -214,3 +214,37 @@ def test_no_suggestion_when_nothing_can_be_scaled():
     from services.race_readiness import suggest_minutes
 
     assert suggest_minutes(_ws(("Tuesday", "Tempo", 50)), 300, weekday_max=75, long_share_cap=0.33) == ""
+
+
+def test_completed_weekly_km_follows_what_the_athlete_actually_ran():
+    from services.race_readiness import completed_weekly_km
+
+    def wk(week, minutes, done=True):
+        return [
+            {
+                "week_number": week,
+                "day_of_week": "Tuesday",
+                "type": "Easy",
+                "duration_minutes": minutes,
+                "is_completed": int(done),
+            },
+            {
+                "week_number": week,
+                "day_of_week": "Sunday",
+                "type": "Long Run",
+                "duration_minutes": minutes,
+                "is_completed": int(done),
+            },
+            {
+                "week_number": week,
+                "day_of_week": "Friday",
+                "type": "Strength",
+                "duration_minutes": 45,
+                "is_completed": 1,
+            },
+        ]
+
+    ws = wk(1, 100) + wk(2, 120) + wk(3, 90, done=False)
+    assert completed_weekly_km(ws, before_week=3, flat_pace_min_km=5.0) == (240 + 200) / 2 / 5.0  # weeks 1-2 only
+    assert completed_weekly_km(ws, before_week=1, flat_pace_min_km=5.0) is None
+    assert completed_weekly_km(ws, before_week=3, flat_pace_min_km=None) is None

@@ -29,6 +29,10 @@ def poll(client, headers, job_id, timeout=420):
     t0 = time.time()
     while time.time() - t0 < timeout:
         r = client.get(f"/api/coach/plan-status/{job_id}", headers=headers).json()
+        if "status" not in r:
+            print(f"plan-status gave {str(r)[:200]}")
+            time.sleep(5)
+            continue
         if r["status"] in ("done", "failed", "error"):
             return r
         time.sleep(3)

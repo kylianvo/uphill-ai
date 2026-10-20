@@ -223,3 +223,17 @@ def suggest_minutes(
         if abs(minutes[id(w)] - float(w.get("duration_minutes") or 0)) >= 2.5
     ]
     return ("Set these sessions to " + ", ".join(parts) + ".") if parts else ""
+
+
+def completed_weekly_km(
+    ws: list[dict[str, Any]], before_week: int, flat_pace_min_km: float | None, weeks: int = 2
+) -> float | None:
+    """Flat-equivalent km per week over the last `weeks` weeks before `before_week`, counting only sessions the
+    athlete ticked complete: what they really trained, which is what their level should follow."""
+    if not flat_pace_min_km:
+        return None
+    by_week = _by_week([w for w in ws if w.get("is_completed") == 1 and (w.get("week_number") or 0) < before_week])
+    recent = sorted(by_week)[-weeks:]
+    if not recent:
+        return None
+    return sum(weekly_km(by_week[wk], flat_pace_min_km) for wk in recent) / len(recent)
