@@ -58,6 +58,14 @@ struct ProfileDraft: Encodable, Sendable {
         if restingHr >= aetHr { return L("Resting heart rate must be below aerobic threshold (AeT).") }
         return nil
     }
+
+    /// (AnT - AeT) / AnT, the book's ADS marker; nil while the thresholds are out of order.
+    var adsGap: Double? {
+        aetHr > 0 && aetHr < antHr ? Double(antHr - aetHr) / Double(antHr) : nil
+    }
+
+    /// Above 10% matches the plan prompt's ADS rule (backend plan_rules.py).
+    var hasADS: Bool { (adsGap ?? 0) > 0.10 }
 }
 
 struct PaceZoneRow: Identifiable {

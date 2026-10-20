@@ -9711,6 +9711,36 @@
         }
       }
     },
+    "ADS check: AeT–AnT gap %lld%%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểm tra ADS: chênh lệch AeT–AnT %lld%%"
+          }
+        }
+      }
+    },
+    "Above 10% suggests Aerobic Deficiency Syndrome. Your plan keeps running in Zones 1–2 until the gap closes. Only a tested AeT confirms it.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trên 10% cho thấy có thể bị hội chứng thiếu hụt hiếu khí (ADS). Giáo án giữ bạn chạy ở Zone 1–2 cho đến khi khoảng chênh thu hẹp. Chỉ AeT đã test mới xác nhận được."
+          }
+        }
+      }
+    },
+    "10% or less: no sign of Aerobic Deficiency Syndrome. Watch estimates can hide it, so test AeT to be sure.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ 10% trở xuống: không có dấu hiệu ADS. Số liệu ước tính từ đồng hồ có thể che giấu, nên hãy test AeT để chắc chắn."
+          }
+        }
+      }
+    },
     "Training zones": {
       "localizations": {
         "vi": {
