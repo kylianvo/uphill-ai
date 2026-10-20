@@ -19,6 +19,8 @@ protocol PlanServicing: Sendable {
     func blockCompletion(planID: Int) async throws -> BlockCompletionResponse
     func weekReview(planID: Int, week: Int) async throws -> WeekReview
     func goal(planID: Int) async throws -> PlanGoal
+    func journey(planID: Int) async throws -> PlanJourney
+    func coachNudge(planID: Int) async throws -> CoachNudge?
     func reassessGoal(planID: Int) async throws -> PlanGoal
     func applyGoal(planID: Int, targetMinutes: Double) async throws -> PlanGoal
     func syncWatch(planID: Int) async throws -> String
@@ -233,6 +235,18 @@ struct PlanService: PlanServicing {
 
     func weekReview(planID: Int, week: Int) async throws -> WeekReview {
         try await client.send(.get("\(coachPrefix ?? "/api/coach")/week-review/\(planID)/\(week)"))
+    }
+
+    func journey(planID: Int) async throws -> PlanJourney {
+        try await client.send(.get("\(coachPrefix ?? "/api")/plans/\(planID)/journey"))
+    }
+
+    /// The coach message is generated for the signed-in athlete only; a coach viewing an athlete sees none.
+    func coachNudge(planID: Int) async throws -> CoachNudge? {
+        guard coachPrefix == nil else { return nil }
+        let response: CoachNudgeResponse = try await client.send(
+            .get("/api/plans/\(planID)/coach-nudge", query: [URLQueryItem(name: "lang", value: AppLanguage.code)]))
+        return response.nudge
     }
 
     func goal(planID: Int) async throws -> PlanGoal {

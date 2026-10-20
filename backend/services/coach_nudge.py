@@ -41,6 +41,15 @@ Return ONLY a JSON object: {"text": "<the message>"}
 
 {{lang_instruction}}"""
 
+_REASON = {  # the missed-session reasons the athlete picks (workouts.missed_reason), in plain words
+    "busy": ("busy", "bận"),
+    "sick": ("sick", "ốm"),
+    "pain": ("pain", "đau"),
+    "tired": ("tired", "mệt"),
+    "weather": ("weather", "thời tiết"),
+    "other": ("other", "lý do khác"),
+}
+
 _MILESTONE = {
     "long_run_3h": ("your first 3-hour Long Run", "buổi Long Run 3 giờ đầu tiên"),
     "first_recovery_week": ("your first recovery week", "tuần recovery đầu tiên"),
@@ -160,7 +169,8 @@ def fallback_text(f: dict[str, Any], tone: str, lang: str) -> str:
         )
     if tone == "push":
         reasons = last.get("missed_reasons") or {}
-        reason = f" ({max(reasons, key=reasons.get)})" if reasons else ""
+        top = max(reasons, key=reasons.get) if reasons else None
+        reason = f" ({_REASON.get(top, (top, top))[1 if vi else 0]})" if top else ""
         return (
             f"Tuần trước chỉ được {ratio} buổi{reason}. Không sao: chọn buổi kế tiếp và chạy nhẹ, hoặc điều chỉnh tuần này."
             if vi
