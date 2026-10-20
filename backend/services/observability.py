@@ -45,6 +45,7 @@ FEATURES = frozenset(
         "workout_ai_create",
         "block_narrative",
         "week_brief",
+        "coach_nudge",
         "gear_finder",
         "nutrition_lab",
         "kb_distill",

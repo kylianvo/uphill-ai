@@ -387,6 +387,22 @@ def init_db():
 
         conn.execute(
             text("""
+        CREATE TABLE IF NOT EXISTS coach_nudges (
+            plan_id     INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            day         DATE NOT NULL,
+            lang        TEXT NOT NULL,
+            facts_hash  TEXT NOT NULL,  -- the facts the message was worded from: same hash, same message
+            tone        TEXT NOT NULL,  -- encourage | push | heads_up
+            text        TEXT NOT NULL,
+            source      TEXT NOT NULL,  -- model | rules
+            created_at  TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (plan_id, day, lang)
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS athlete_connections (
             id                SERIAL PRIMARY KEY,
             user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -4254,6 +4270,36 @@ def get_week_brief(plan_id: int, week_number: int) -> dict[str, Any] | None:
             {"plan_id": plan_id, "week": week_number},
         ).fetchone()
     return row.brief if row else None
+
+
+def upsert_coach_nudge(plan_id: int, day: Any, lang: str, nudge: dict[str, Any]) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO coach_nudges (plan_id, day, lang, facts_hash, tone, text, source)
+                VALUES (:plan_id, :day, :lang, :facts_hash, :tone, :text, :source)
+                ON CONFLICT (plan_id, day, lang) DO UPDATE SET facts_hash = EXCLUDED.facts_hash,
+                    tone = EXCLUDED.tone, text = EXCLUDED.text, source = EXCLUDED.source, created_at = NOW()
+            """),
+            {
+                "plan_id": plan_id,
+                "day": day,
+                "lang": lang,
+                **{k: nudge[k] for k in ("facts_hash", "tone", "text", "source")},
+            },
+        )
+        conn.commit()
+
+
+def get_coach_nudge(plan_id: int, day: Any, lang: str) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(
+                "SELECT facts_hash, tone, text, source FROM coach_nudges WHERE plan_id = :p AND day = :d AND lang = :l"
+            ),
+            {"p": plan_id, "d": day, "l": lang},
+        ).fetchone()
+    return dict(row._mapping) if row else None
 
 
 def get_resting_hr_elevation(user_id: int) -> float | None:
