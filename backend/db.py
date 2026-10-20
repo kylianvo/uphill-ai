@@ -3971,10 +3971,12 @@ def get_activities_for_pace(user_id: int, since, until) -> list[dict[str, Any]]:
     with engine.connect() as conn:
         rows = conn.execute(
             text("""
-            SELECT start_time, duration_seconds, distance_km, avg_hr, activity_type, adjusted_pace_sec_per_km
-            FROM activities
-            WHERE user_id = :u AND duplicate_of IS NULL AND start_time >= :since AND start_time < :until
-            ORDER BY start_time
+            SELECT a.start_time, a.duration_seconds, a.distance_km, a.elevation_gain_m, a.avg_hr, a.activity_type,
+                   a.avg_pace_sec_per_km, a.adjusted_pace_sec_per_km, w.type AS workout_type
+            FROM activities a
+            LEFT JOIN workouts w ON w.id = a.matched_workout_id
+            WHERE a.user_id = :u AND a.duplicate_of IS NULL AND a.start_time >= :since AND a.start_time < :until
+            ORDER BY a.start_time
             """),
             {"u": user_id, "since": since, "until": until},
         ).fetchall()
