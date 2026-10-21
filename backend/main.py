@@ -14,6 +14,7 @@ from google.genai import types as genai_types
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator
 
+import db
 from config import settings
 from db import (
     COACH_EDITABLE_PROFILE_FIELDS,
@@ -1624,7 +1625,7 @@ def get_athlete_active_plan(athlete_id: int, acting_user: dict[str, Any] = Depen
     if not plan:
         return {"active": False}
     workouts = get_plan_workouts(plan["id"])
-    return {"active": True, "plan": plan, "workouts": workouts}
+    return {"active": True, "plan": _attach_milestones(plan), "workouts": workouts}
 
 
 @app.get("/api/coaching/athletes/{athlete_id}/recent-plans")
@@ -2105,7 +2106,7 @@ def get_current_active_plan(user: dict[str, Any] = Depends(get_current_user)):
         return {"active": False}
 
     workouts = get_plan_workouts(plan["id"])
-    return {"active": True, "plan": plan, "workouts": workouts}
+    return {"active": True, "plan": _attach_milestones(plan), "workouts": workouts}
 
 
 async def _generate_plan_for_athlete(
@@ -2396,11 +2397,69 @@ def get_user_recent_plans(user: dict[str, Any] = Depends(get_current_user)):
 # ─── Sequential Plan Endpoints ────────────────────────────────────────────────
 
 
+def _attach_milestones(plan: dict[str, Any]) -> dict[str, Any]:
+    """Adds `beginner_milestones` (None for plans without a target) to a plan payload."""
+    target = plan.get("milestone_target")
+    plan["beginner_milestones"] = (
+        beginner_milestones.serialize(
+            target, bool(plan.get("has_target_event")), db.get_plan_milestone_rows(plan["id"])
+        )
+        if target
+        else None
+    )
+    return plan
+
+
 def _verify_plan_ownership(plan_id: int, user_id: int):
     """Raise 404 if the plan doesn't belong to this user (prevents IDOR)."""
     recent = get_recent_plans(user_id, limit=100)
     if not any(p["id"] == plan_id for p in recent):
         raise HTTPException(status_code=404, detail="Plan not found.")
+
+
+class MilestoneTargetRequest(BaseModel):
+    target: Literal["5k", "10k"]
+    clear_event: bool = False
+
+
+def _owned_beginner_plan(plan_id: int, user_id: int) -> dict[str, Any]:
+    _verify_plan_ownership(plan_id, user_id)
+    plan = db.get_plan_by_id(plan_id)
+    if not plan or not plan.get("milestone_target"):
+        raise HTTPException(status_code=400, detail="This plan has no milestone target.")
+    return plan
+
+
+@app.post("/api/plans/{plan_id}/milestones/{key}")
+def tick_milestone(plan_id: int, key: str, user: dict[str, Any] = Depends(get_current_user)):
+    plan = _owned_beginner_plan(plan_id, user["id"])
+    if key not in {m.key for m in beginner_milestones.ladder_for(plan["milestone_target"])}:
+        raise HTTPException(status_code=400, detail="Unknown milestone for this plan.")
+    db.set_milestone_manual(plan_id, key)
+    return {"beginner_milestones": _attach_milestones(plan)["beginner_milestones"]}
+
+
+@app.delete("/api/plans/{plan_id}/milestones/{key}")
+def undo_milestone(plan_id: int, key: str, user: dict[str, Any] = Depends(get_current_user)):
+    plan = _owned_beginner_plan(plan_id, user["id"])
+    if key not in {m.key for m in beginner_milestones.ladder_for(plan["milestone_target"])}:
+        raise HTTPException(status_code=400, detail="Unknown milestone for this plan.")
+    db.revoke_milestone(plan_id, key)  # kept as a revoked row so the next sync cannot re-tick it
+    return {"beginner_milestones": _attach_milestones(plan)["beginner_milestones"]}
+
+
+@app.patch("/api/plans/{plan_id}/milestone-target")
+def upgrade_milestone_target(
+    plan_id: int, request: MilestoneTargetRequest, user: dict[str, Any] = Depends(get_current_user)
+):
+    plan = _owned_beginner_plan(plan_id, user["id"])
+    if request.target != "10k" or plan["milestone_target"] != "5k":
+        raise HTTPException(status_code=400, detail="Only a 5K target can move up to 10K.")
+    has_event = bool(plan.get("has_target_event")) and not request.clear_event
+    weeks = None if has_event else max(int(plan.get("total_weeks") or 0), beginner_milestones.default_weeks("10k"))
+    db.set_plan_milestone_target(plan_id, "10k", weeks, clear_event=request.clear_event)
+    plan = db.get_plan_by_id(plan_id) or plan
+    return {"plan": _attach_milestones(plan)}
 
 
 @app.get("/api/coach/block-completion/{plan_id}")
@@ -3079,7 +3138,11 @@ def select_plan_endpoint(request: SelectPlanRequest, user: dict[str, Any] = Depe
 
     updated_plan = get_active_plan(user["id"])
     workouts = get_plan_workouts(request.plan_id)
-    return {"active": True, "plan": updated_plan, "workouts": workouts}
+    return {
+        "active": True,
+        "plan": _attach_milestones(updated_plan) if updated_plan else updated_plan,
+        "workouts": workouts,
+    }
 
 
 @app.post("/api/coach/modify-calendar")
