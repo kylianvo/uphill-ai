@@ -392,7 +392,9 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict, feasibility: 
         out = [
             w["week_number"]
             for w in ws
-            if w["type"] in ("Easy", "Long Run", "Tempo") and float(w.get("elevation_gain_m") or 0) > 0
+            if w["type"] in ("Easy", "Long Run", "Tempo")
+            and float(w.get("elevation_gain_m") or 0) > 0
+            and str(w.get("treadmill_incline") or "0").split("-")[0] in ("0", "0.0", "")
         ]
         add("no invented outdoor climbing", not out, str(out[:5]))
     if exp.get("climbing_me"):

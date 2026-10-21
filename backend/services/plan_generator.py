@@ -1944,23 +1944,20 @@ class PlanGenerator:
                     )
                 except ValueError:
                     incline = 0.0
-                if (
-                    incline > 0
-                    and not any(kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
-                    and not float(wo.get("elevation_gain_m") or 0)
-                ):
-                    # Treadmill gain from the grade: horizontal distance x grade (m per km = grade% x 10). The
-                    # distance is the session's own, or the belt speed x time when none is filled in.
-                    km = float(wo.get("distance_km") or 0)
-                    if not km:
-                        try:
-                            speeds = [float(x) for x in str(wo.get("treadmill_speed") or 0).split("-")]
-                            km = sum(speeds) / len(speeds) * float(wo.get("duration_minutes") or 0) / 60
-                        except ValueError:
-                            km = 0.0
+                if incline >= 3 and not any(kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS):
+                    # Treadmill gain from the grade (a 1-2% incline only offsets the missing wind, no vert):
+                    # the belt covers speed x time, and every km at a grade of g% climbs g x 10 m.
+                    try:
+                        speeds = [float(x) for x in str(wo.get("treadmill_speed") or 0).split("-")]
+                        km = sum(speeds) / len(speeds) * float(wo.get("duration_minutes") or 0) / 60
+                    except ValueError:
+                        km = 0.0
                     if km > 0:
+                        wo["distance_km"] = round(km, 1)
                         wo["elevation_gain_m"] = round(km * incline * 10)
                         wo["grade_percent"] = round(incline, 1)
+                elif 0 < incline < 3 and float(wo.get("elevation_gain_m") or 0) != 0:
+                    wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0  # a flat-ish treadmill run claims no vert
 
                 if terrain == "trail" and w_type == "Long Run" and venues.is_mountain_day(wo["day_of_week"]):
                     if wo.get("mountain_climb_rate") is None:
