@@ -1,4 +1,5 @@
 import functools
+import re
 import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
@@ -1549,9 +1550,9 @@ class PlanGenerator:
             """Book: the heart-rate drift test finds the real AeT. Week 1 and every sixth week after it (Base and
             Build, never a deload) one easy run of 45+ min becomes a flat test; the athlete enters the result in
             Profile -> Thresholds, so the gate above works from a measured gap."""
-            placed: set[int] = set()  # test weeks done; a week with no run long enough passes it to the next week
+            placed: set[int] = set()  # 6-week cycles tested; a week with no fitting run passes it on
             for week_no, rows in sorted(_week_rows(wos).items()):
-                due = (week_no - 1) % 6 == 0 or ((week_no - 2) % 6 == 0 and week_no - 1 not in placed)
+                due = (week_no - 1) % 6 <= 2 and (week_no - 1) // 6 not in placed  # first fitting week of each 6
                 if (
                     not due
                     or rows[0].get("phase") not in ("Base", "Build")
@@ -1561,17 +1562,27 @@ class PlanGenerator:
                 long_day = next((r["day_of_week"] for r in rows if r.get("type") == "Long Run"), None)
                 days = list(_PRIORITY_DAY_ORDER)
                 eve = days[(days.index(long_day) - 1) % 7] if long_day in days else None
+                after_hard = {
+                    days[(days.index(r["day_of_week"]) + 1) % 7]
+                    for r in rows
+                    if r.get("day_of_week") in days
+                    and (
+                        r.get("type") in ("Interval", "Tempo")
+                        or any(kw in (r.get("title") or "").lower() for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
+                    )
+                }
                 pool = [
                     r
                     for r in rows
                     if r.get("type") == "Easy"
                     and r.get("day_of_week") != eve
+                    and r.get("day_of_week") not in after_hard
                     and float(r.get("duration_minutes") or 0) >= 45
                     and not r.get("mountain_mode")
                 ]
                 if not pool:
                     continue
-                placed.add(week_no)
+                placed.add((week_no - 1) // 6)
                 wo = min(  # a flat run closest to an hour: a hilly one is flattened below
                     pool,
                     key=lambda r: (
@@ -1670,6 +1681,67 @@ class PlanGenerator:
                 if float(long["duration_minutes"]) > cap:
                     _resize(long, int(cap // 5 * 5) or 30)
 
+        def _fix_labels(wos: list[dict[str, Any]]) -> None:
+            """Titles agree with the session: no 'Deload' outside a deload week, no 'Incline' run at 0% incline, and
+            the zone in the title is the session's zone."""
+            for wo in wos:
+                title = wo.get("title") or ""
+                if not title or wo.get("type") == "Race":
+                    continue
+                if not PlanGenerator.is_deload_week(wo.get("week_number") or 0, total_weeks):
+                    title = re.sub(r"\bDeload\s+", "", title, flags=re.IGNORECASE)
+                if str(wo.get("treadmill_incline") or "0").split("-")[-1] in ("0", "") and not wo.get("mountain_mode"):
+                    title = re.sub(r"\b(?:Incline[- ]Simulated|Incline)[- ]?\s*", "", title, flags=re.IGNORECASE)
+                zone = wo.get("target_zone")
+                if zone in ("Zone 1", "Zone 2") and re.search(r"Zone [12]\b", title):
+                    title = re.sub(r"Zone [12]\b", zone, title)
+                wo["title"] = title[:1].upper() + title[1:]
+
+        def _incline_long_run(wos: list[dict[str, Any]]) -> None:
+            """A treadmill-only athlete training for a steep race climbs inside the long run: three incline blocks
+            in Base/Build/Peak (book: the treadmill stands in for the mountain). Deload and taper long runs stay flat."""
+            if terrain != "trail" or not (course_elevation_gain_m and course_distance_km) or not venues.use_treadmill:
+                return
+            if float(course_elevation_gain_m) / float(course_distance_km) < 20 or (
+                venues.local_hills or venues.training_mountain or venues.mountain_days
+            ):
+                return
+            incline = min(venues.treadmill_incline_cap, 10.0)
+            slower, faster = PlanGenerator.parse_pace_range(est_zones["zone2_pace"])
+            speed = TrainingRules.calculate_treadmill_settings((slower + faster) / 2, incline)["speed_kph"]
+            for week_no, rows in _week_rows(wos).items():
+                if rows[0].get("phase") not in ("Base", "Build", "Peak") or PlanGenerator.is_deload_week(
+                    week_no, total_weeks
+                ):
+                    continue
+                long = next((r for r in rows if r.get("type") == "Long Run"), None)
+                if not long or float(long.get("elevation_gain_m") or 0) > 0 or long.get("mountain_mode"):
+                    continue
+                minutes = int(float(long["duration_minutes"]))
+                block = 10 if rows[0].get("phase") == "Base" else 20
+                other = sum(
+                    float(r.get("elevation_gain_m") or 0) for r in rows if r is not long and r.get("type") != "Race"
+                )
+                per_min = speed / 60 * incline * 10  # metres climbed per minute at this incline
+                block = min(block, int((0.8 * float(course_elevation_gain_m) - other) / (3 * per_min)))
+                flat = (minutes - 25) // 3 - block
+                if block < 5 or flat < 5:
+                    continue
+                long["treadmill_incline"], long["treadmill_speed"] = f"1-{incline:g}", f"{speed - 0.4:.1f}-{speed:.1f}"
+                long["elevation_gain_m"] = round(3 * block * per_min)
+                long["mountain_mode"] = "indoor"
+                climb_en = f"{block} min Zone 2 at {incline:g}% incline, power-hike when HR rises"
+                climb_vi = f"{block} phút Zone 2 ở độ dốc {incline:g}%, đi bộ nhanh khi HR tăng"
+                long["description"] = (
+                    "Warm-up 15 min easy at 1% → "
+                    + " → ".join([f"{climb_en} → {flat} min easy at 1%"] * 3)
+                    + " → Cool-down 10 min easy. Practise race fueling throughout."
+                    if lang != "vi"
+                    else "Warm-up 15 phút nhẹ ở 1% → "
+                    + " → ".join([f"{climb_vi} → {flat} phút nhẹ ở 1%"] * 3)
+                    + " → Cool-down 10 phút nhẹ. Tập fueling như ngày race."
+                )
+
         def _ramp_volume(wos: list[dict[str, Any]]) -> None:
             """The week's volume climbs toward the weekly time the goal needs at the tier's progression pace (the
             same ramp the rules use). The model lets it plateau well under the athlete's capacity; the deficit
@@ -1722,6 +1794,18 @@ class PlanGenerator:
                 if previous:  # never more than the tier's weekly progression on the week before
                     target = min(target, previous * (1 + tier_profile.max_weekly_progression))
                 total = plan_lint.week_minutes(rows)
+                if previous and total > previous * (1 + tier_profile.max_weekly_progression) * 1.03:
+                    excess = total - previous * (1 + tier_profile.max_weekly_progression)
+                    for r in sorted(rows, key=lambda r: -float(r.get("duration_minutes") or 0)):
+                        if excess <= 0:
+                            break
+                        if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery") and r["duration_minutes"] > 30:
+                            if r.get("mountain_mode"):
+                                continue
+                            new = int(max(30.0, float(r["duration_minutes"]) - excess) // 5 * 5)
+                            excess -= float(r["duration_minutes"]) - new
+                            _resize(r, new)
+                    continue
 
                 if total >= target * 0.97:
                     continue
@@ -2068,10 +2152,14 @@ class PlanGenerator:
                     r.get("target_zone") in ("Zone 3", "Zone 4", "Zone 5") and r.get("type") != "Race" for r in rows
                 ):
                     continue
-                anchors = [
+                anchors = [  # long run, ME and hill sprints: no three hard days in a row
                     days.index(r["day_of_week"])
                     for r in rows
-                    if r.get("day_of_week") in days and r.get("type") in ("Long Run", "Muscular Endurance")
+                    if r.get("day_of_week") in days
+                    and (
+                        r.get("type") in ("Long Run", "Muscular Endurance")
+                        or any(kw in (r.get("title") or "").lower() for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
+                    )
                 ]
                 pool = [
                     r
@@ -2110,10 +2198,14 @@ class PlanGenerator:
             one of them becomes an easy run: the safe side of a model that stacks them."""
             days = list(_PRIORITY_DAY_ORDER)
             for rows in _week_rows(wos).values():
-                sensitive = [
+                sensitive = [  # hill sprints too: a tempo between sprints and the long run makes three hard days
                     days.index(r["day_of_week"])
                     for r in rows
-                    if r.get("day_of_week") in days and r.get("type") in ("Long Run", "Muscular Endurance")
+                    if r.get("day_of_week") in days
+                    and (
+                        r.get("type") in ("Long Run", "Muscular Endurance")
+                        or any(kw in (r.get("title") or "").lower() for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
+                    )
                 ]
                 for r in rows:
                     if (
@@ -2168,71 +2260,79 @@ class PlanGenerator:
                 return incline >= 6 or bool(r.get("mountain_climb_rate"))
 
             for week_no, rows in by_week.items():
-                if rows[0].get("phase") not in ("Base", "Build", "Peak"):
+                phase = rows[0].get("phase")
+                if phase not in ("Base", "Build", "Peak", "Taper"):
                     continue
-                if any(_vert(r) for r in rows):
-                    continue
-                long_day = next((r["day_of_week"] for r in rows if r.get("type") == "Long Run"), None)
-                days = list(_PRIORITY_DAY_ORDER)
-                eve = days[(days.index(long_day) - 1) % 7] if long_day in days else None
-                days_idx = {d: i for i, d in enumerate(days)}
-                legs = [
-                    days_idx[r["day_of_week"]]
-                    for r in rows
-                    if r.get("day_of_week") in days_idx and (r.get("type") == "Muscular Endurance" or _vert(r))
-                ]  # ME and other climbing sessions: keep the climb session a day clear of them
-
-                def _candidates(clear_of: list[int]) -> list[dict[str, Any]]:
-                    return [
-                        r
+                # book: vert is the mountain runner's main load. Build/Peak weeks get a second climb session while the
+                # week is under 40% of race D+; a taper week keeps one short one so the climbing legs stay.
+                deload = PlanGenerator.is_deload_week(week_no, total_weeks)
+                for _round in range(2 if phase in ("Build", "Peak") and not deload else 1):
+                    week_vert = sum(float(r.get("elevation_gain_m") or 0) for r in rows if _vert(r))
+                    if sum(1 for r in rows if _vert(r)) > _round or week_vert >= 0.4 * float(course_elevation_gain_m):
+                        break
+                    long_day = next((r["day_of_week"] for r in rows if r.get("type") == "Long Run"), None)
+                    days = list(_PRIORITY_DAY_ORDER)
+                    eve = days[(days.index(long_day) - 1) % 7] if long_day in days else None
+                    days_idx = {d: i for i, d in enumerate(days)}
+                    legs = [
+                        days_idx[r["day_of_week"]]
                         for r in rows
-                        if r.get("type") in ("Easy", "Aerobic Capacity")
-                        and r.get("day_of_week") != eve
-                        and all(abs(days_idx.get(r["day_of_week"], -9) - i) > 1 for i in clear_of)
-                        and not venues.hills_on(r["day_of_week"])
-                        and float(r.get("duration_minutes") or 0) >= 40
-                    ]
+                        if r.get("day_of_week") in days_idx and (r.get("type") == "Muscular Endurance" or _vert(r))
+                    ]  # ME and other climbing sessions: keep the climb session a day clear of them
 
-                climb_days = [days_idx[r["day_of_week"]] for r in rows if r.get("day_of_week") in days_idx and _vert(r)]
-                # Prefer a day clear of ME and other climbs; with few run days, only keep clear of other climbs.
-                pool = _candidates(legs) or _candidates(climb_days)
-                if not pool:
-                    continue
-                wo = max(pool, key=lambda r: float(r["duration_minutes"]))
-                minutes = round(min(float(wo["duration_minutes"]), 75 + 2 * week_no))
-                main = max(20, minutes - 15)
-                wo["duration_minutes"] = float(minutes)
-                wo["target_zone"], wo["target_hr_range"] = "Zone 2", z2_range
-                if venues.use_treadmill:
-                    incline = min(venues.treadmill_incline_cap, 12.0)
-                    slower, faster = PlanGenerator.parse_pace_range(est_zones["zone2_pace"])
-                    speed = TrainingRules.calculate_treadmill_settings((slower + faster) / 2, incline)["speed_kph"]
-                    wo["treadmill_incline"] = f"{incline - 1:g}-{incline:g}"
-                    wo["treadmill_speed"] = f"{speed - 0.4:.1f}-{speed:.1f}"
-                    wo["target_pace"] = f"{PlanGenerator.decimal_to_pace_str(60 / speed)} /km"
-                    wo["distance_km"] = round(speed * main / 60, 1)
-                    wo["elevation_gain_m"] = round(wo["distance_km"] * incline * 10)
-                    wo["grade_percent"] = incline
-                    where_en, where_vi = (
-                        f"at {incline:g}% incline on the treadmill",
-                        f"ở độ dốc {incline:g}% trên treadmill",
+                    def _candidates(clear_of: list[int]) -> list[dict[str, Any]]:
+                        return [
+                            r
+                            for r in rows
+                            if r.get("type") in ("Easy", "Aerobic Capacity")
+                            and r.get("day_of_week") != eve
+                            and all(abs(days_idx.get(r["day_of_week"], -9) - i) > 1 for i in clear_of)
+                            and not venues.hills_on(r["day_of_week"])
+                            and float(r.get("duration_minutes") or 0) >= (30 if phase == "Taper" else 40)
+                        ]
+
+                    climb_days = [
+                        days_idx[r["day_of_week"]] for r in rows if r.get("day_of_week") in days_idx and _vert(r)
+                    ]
+                    # Prefer a day clear of ME and other climbs; with few run days, only keep clear of other climbs.
+                    pool = _candidates(legs) or _candidates(climb_days)
+                    if not pool:
+                        break
+                    wo = max(pool, key=lambda r: float(r["duration_minutes"]))
+                    minutes = round(min(float(wo["duration_minutes"]), 45 if phase == "Taper" else 75 + 2 * week_no))
+                    main = max(20, minutes - 15)
+                    wo["duration_minutes"] = float(minutes)
+                    wo["target_zone"], wo["target_hr_range"] = "Zone 2", z2_range
+                    if venues.use_treadmill:
+                        incline = min(venues.treadmill_incline_cap, 12.0)
+                        slower, faster = PlanGenerator.parse_pace_range(est_zones["zone2_pace"])
+                        speed = TrainingRules.calculate_treadmill_settings((slower + faster) / 2, incline)["speed_kph"]
+                        wo["treadmill_incline"] = f"{incline - 1:g}-{incline:g}"
+                        wo["treadmill_speed"] = f"{speed - 0.4:.1f}-{speed:.1f}"
+                        wo["target_pace"] = f"{PlanGenerator.decimal_to_pace_str(60 / speed)} /km"
+                        wo["distance_km"] = round(speed * main / 60, 1)
+                        wo["elevation_gain_m"] = round(wo["distance_km"] * incline * 10)
+                        wo["grade_percent"] = incline
+                        where_en, where_vi = (
+                            f"at {incline:g}% incline on the treadmill",
+                            f"ở độ dốc {incline:g}% trên treadmill",
+                        )
+                    else:
+                        wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
+                        wo["target_pace"], wo["distance_km"] = "", 0.0
+                        wo["elevation_gain_m"], wo["grade_percent"] = round(main / 60 * 600), 0.0
+                        where_en, where_vi = "on stairs (up, then walk down)", "trên cầu thang (leo lên, đi bộ xuống)"
+                    wo["mountain_climb_rate"] = None
+                    wo["mountain_mode"] = "indoor"
+                    wo["title"] = "Climb Session (Zone 2)" if lang != "vi" else "Buổi Climb (Zone 2)"
+                    wo["description"] = (
+                        f"Warm up 10 min easy flat → {main} min steady Zone 2 climbing {where_en}, power-hike the steep parts "
+                        f"→ 5 min cool-down flat. Keep HR in Zone 2; this is your weekly stand-in for the mountain."
+                        if lang != "vi"
+                        else f"Warm-up 10 phút nhẹ trên mặt phẳng → {main} phút Zone 2 đều, leo {where_vi}, đi bộ nhanh đoạn dốc "
+                        f"→ 5 phút cool-down trên mặt phẳng. Giữ HR trong Zone 2; đây là buổi thay cho chạy núi hằng tuần."
                     )
-                else:
-                    wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
-                    wo["target_pace"], wo["distance_km"] = "", 0.0
-                    wo["elevation_gain_m"], wo["grade_percent"] = round(main / 60 * 600), 0.0
-                    where_en, where_vi = "on stairs (up, then walk down)", "trên cầu thang (leo lên, đi bộ xuống)"
-                wo["mountain_climb_rate"] = None
-                wo["mountain_mode"] = "indoor"
-                wo["title"] = "Climb Session (Zone 2)" if lang != "vi" else "Buổi Climb (Zone 2)"
-                wo["description"] = (
-                    f"Warm up 10 min easy flat → {main} min steady Zone 2 climbing {where_en}, power-hike the steep parts "
-                    f"→ 5 min cool-down flat. Keep HR in Zone 2; this is your weekly stand-in for the mountain."
-                    if lang != "vi"
-                    else f"Warm-up 10 phút nhẹ trên mặt phẳng → {main} phút Zone 2 đều, leo {where_vi}, đi bộ nhanh đoạn dốc "
-                    f"→ 5 phút cool-down trên mặt phẳng. Giữ HR trong Zone 2; đây là buổi thay cho chạy núi hằng tuần."
-                )
-                wo["interval_reps"] = wo["interval_rep_value"] = wo["interval_rep_unit"] = None
+                    wo["interval_reps"] = wo["interval_rep_value"] = wo["interval_rep_unit"] = None
 
         # Helper function to post-process and estimate target pace and distance for all workouts
         def post_process_workouts(wos: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -2420,12 +2520,14 @@ class PlanGenerator:
             _add_tempo(wos)
             _space_hard_days(wos)
             _add_climb_session(wos)
+            _incline_long_run(wos)  # after the climb sessions: it fills the week up to the 80% cap, never past it
             _cap_week_vert(wos)
             _add_drift_test(wos)
             _soften_recovery_weeks(wos)
             _gate_hard(wos)
             _normalise_sessions(wos)
             _fit_taper_long_share(wos)
+            _fix_labels(wos)
             for wo in wos:
                 for field in ("title", "description", "fueling_tip"):
                     if wo.get(field):
