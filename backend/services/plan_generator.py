@@ -2,6 +2,7 @@ import functools
 import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from typing import Any
 
 import telemetry
@@ -1459,10 +1460,32 @@ class PlanGenerator:
                 )
                 wo["elevation_gain_m"] = round(wo["distance_km"] * rate)
 
+        road_goal = None  # a road marathon has no ultra demands but still needs a long-run target and a volume ramp
+        if not demands and terrain == "road" and course_distance_km and 30 <= float(course_distance_km) < 48:
+            tth = race_info.get("target_time_hours")
+            flat_road = PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier) or 6.0
+            race_min = float(tth) * 60 if tth else float(course_distance_km) * flat_road * 1.1
+            road_goal = SimpleNamespace(
+                longest_session_min=min(180.0, 0.75 * race_min), distance_km=float(course_distance_km), source="road"
+            )
+        plan_goal = demands or road_goal
+
         _proper_nouns = frozenset(
             {tok for m in MOUNTAINS.values() for tok in f"{m.name_vi} {m.name_en}".split()}
             | set(str(race_info.get("name") or "").split())
         )  # words a sentence-case title must not lowercase
+
+        def _mp_long_text(minutes: int, mp: int, pace: str) -> str:
+            easy = max(10, minutes - 25 - mp)
+            if lang == "vi":
+                return (
+                    f"Warm-up 15 phút nhẹ → {easy} phút Zone 2 đều → {mp} phút ở marathon pace ({pace}/km) "
+                    f"→ Cool-down 10 phút nhẹ."
+                )
+            return (
+                f"Warm-up 15 min easy → {easy} min steady Zone 2 → {mp} min at marathon pace ({pace}/km) "
+                f"→ Cool-down 10 min easy."
+            )
 
         def _long_text(minutes: int, climbing: bool) -> str:
             if minutes < 60:  # a short "long run" (taper, race week) is just an easy run
@@ -1495,7 +1518,7 @@ class PlanGenerator:
             """The week's volume climbs toward the weekly time the goal needs at the tier's progression pace (the
             same ramp the rules use). The model lets it plateau well under the athlete's capacity; the deficit
             is spread over the easy runs, each within the tier's weekday maximum."""
-            if not demands:
+            if not plan_goal:
                 return
             try:
                 prior_rows = get_plan_workouts(plan_id) if plan_id else []
@@ -1503,8 +1526,11 @@ class PlanGenerator:
                 prior_rows = []
             flat = PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier) or 6.0
             base = max(float(current_weekly_km or 0) * 6.0, 180.0)
-            share = 0.8 if demands.source == "cutoff_safe" else 1.0
-            want = demands.peak_week_km_lo * share * flat / base
+            if demands:
+                share = 0.8 if demands.source == "cutoff_safe" else 1.0
+                want = demands.peak_week_km_lo * share * flat / base
+            else:
+                want = 1.4  # road marathon: peak week about 1.4 x the starting volume
             by_week: dict[int, list[dict[str, Any]]] = {}
             for wo in wos:
                 if isinstance(wo.get("week_number"), int):
@@ -1551,7 +1577,7 @@ class PlanGenerator:
             """The long run grows toward the goal's time on feet (+20% a week at most, capped by the athlete's
             session and long-run share limits), and an ultra gets its back-to-back weekend in the last build
             weeks. The model keeps the long run flat at its starting length and misses the weekend."""
-            if not demands:
+            if not plan_goal:
                 return
             try:
                 prior = get_plan_workouts(plan_id) if plan_id else []
@@ -1590,7 +1616,7 @@ class PlanGenerator:
                 history = [w for w in prior if (w.get("week_number") or 0) < week_no] + [
                     w for w in wos if (w.get("week_number") or 0) < week_no
                 ]
-                asked = goal_demands.long_run_ask(history, week_no, total_weeks, demands, cap_min)
+                asked = goal_demands.long_run_ask(history, week_no, total_weeks, plan_goal, cap_min)
                 others = plan_lint.week_minutes(rows) - float(long.get("duration_minutes") or 0)
                 share = tier_profile.long_run_share_cap + LONG_SHARE_SOFT
                 limit = min(cap_min, share / (1 - share) * others) if others > 0 else cap_min
@@ -1602,8 +1628,18 @@ class PlanGenerator:
                     total_weeks - goal_demands.B2B_WINDOW[0] + 1 - shift,
                     total_weeks - goal_demands.B2B_WINDOW[0] + 4 - shift,
                 )
+                if road_goal and float(long["duration_minutes"]) >= 90 and week_no >= total_weeks - shift - 9:
+                    tth = float(race_info.get("target_time_hours") or 0)
+                    if tth:  # marathon-pace work inside the long run in the last build weeks
+                        mp_pace = PlanGenerator.decimal_to_pace_str(tth * 60 / float(course_distance_km))
+                        long["description"] = _mp_long_text(
+                            int(long["duration_minutes"]),
+                            min(40, int(round(0.3 * float(long["duration_minutes"]) / 5) * 5)),
+                            mp_pace,
+                        )
                 if (
-                    demands.distance_km >= goal_demands.ULTRA_KM
+                    demands is not None
+                    and demands.distance_km >= goal_demands.ULTRA_KM
                     and (days_per_week or 0) >= goal_demands.B2B_DAYS
                     and week_no in window
                     and long.get("day_of_week") in _PRIORITY_DAY_ORDER
@@ -1647,6 +1683,24 @@ class PlanGenerator:
                         )
                         eve["grade_percent"] = long.get("grade_percent") or 0
 
+        def _make_rest(wo: dict[str, Any]) -> None:
+            wo.update(
+                type="Rest",
+                title="Rest & Regeneration" if lang != "vi" else "Nghỉ ngơi và phục hồi",
+                description="Rest day. Sleep, light stretching and recovery."
+                if lang != "vi"
+                else "Ngày nghỉ. Ngủ đủ, giãn cơ nhẹ và phục hồi.",
+                duration_minutes=0.0,
+                target_pace="",
+                distance_km=0.0,
+                elevation_gain_m=0.0,
+                grade_percent=0.0,
+                treadmill_incline="0",
+                treadmill_speed="0",
+                mountain_mode=None,
+                mountain_climb_rate=None,
+            )
+
         def _respect_days(wos: list[dict[str, Any]]) -> None:
             """A week never has more training days than the athlete chose: the model adds a fourth session for a
             three-day athlete. The lowest-value extras (strength, recovery, then the shortest easy run) become rest."""
@@ -1665,22 +1719,7 @@ class PlanGenerator:
                     if not extras:
                         break
                     drop = min(extras, key=lambda r: (order.index(r["type"]), float(r["duration_minutes"])))
-                    drop.update(
-                        type="Rest",
-                        title="Rest & Regeneration" if lang != "vi" else "Nghỉ ngơi và phục hồi",
-                        description="Rest day. Sleep, light stretching and recovery."
-                        if lang != "vi"
-                        else "Ngày nghỉ. Ngủ đủ, giãn cơ nhẹ và phục hồi.",
-                        duration_minutes=0.0,
-                        target_pace="",
-                        distance_km=0.0,
-                        elevation_gain_m=0.0,
-                        grade_percent=0.0,
-                        treadmill_incline="0",
-                        treadmill_speed="0",
-                        mountain_mode=None,
-                        mountain_climb_rate=None,
-                    )
+                    _make_rest(drop)
                     active.remove(drop)
 
         def _fuel_text(minutes: int) -> str:
@@ -1783,6 +1822,9 @@ class PlanGenerator:
                 minutes = int(round(float(wo.get("duration_minutes") or 0)))
                 if typ == "Rest" or minutes <= 0:
                     continue
+                if minutes < 20 and typ in ("Easy", "Aerobic Capacity", "Recovery") and wo.get("phase") != "Race Week":
+                    _make_rest(wo)  # a run that short is filler, not training
+                    continue
                 title_l = (wo.get("title") or "").lower()
                 desc = re.sub(  # internal wording from an earlier version must never reach the athlete
                     r"\s*The long quality block planned for this slot was dropped[^.]*\.|\s*Phần cường độ dài dự kiến[^.]*\.",
@@ -1833,6 +1875,93 @@ class PlanGenerator:
                         note = VN_MOUNTAIN_NOTE_VI if lang == "vi" else VN_MOUNTAIN_NOTE_EN
                         keep_note = f" {note}" if note in (wo.get("fueling_tip") or "") else ""
                         wo["fueling_tip"] = _fuel_text(minutes) + keep_note
+
+        def _week_rows(wos: list[dict[str, Any]]) -> dict[int, list[dict[str, Any]]]:
+            by_week: dict[int, list[dict[str, Any]]] = {}
+            for wo in wos:
+                if isinstance(wo.get("week_number"), int):
+                    by_week.setdefault(wo["week_number"], []).append(wo)
+            return by_week
+
+        def _add_tempo(wos: list[dict[str, Any]]) -> None:
+            """Book: a sub-elite ultra runner gets Zone 3 work in the build and peak weeks. When a build week has no
+            Zone 3 or 4 session, one weekday easy run becomes a 30-40 min Zone 3 tempo, two days clear of the long
+            run, ME and the back-to-back."""
+            if tier_profile.key != "sub_elite":
+                return
+            days = list(_PRIORITY_DAY_ORDER)
+            for week_no, rows in _week_rows(wos).items():
+                if rows[0].get("phase") not in ("Build", "Peak") or PlanGenerator.is_deload_week(week_no, total_weeks):
+                    continue
+                if any(
+                    r.get("target_zone") in ("Zone 3", "Zone 4", "Zone 5") and r.get("type") != "Race" for r in rows
+                ):
+                    continue
+                anchors = [
+                    days.index(r["day_of_week"])
+                    for r in rows
+                    if r.get("day_of_week") in days
+                    and (
+                        r.get("type") in ("Long Run", "Muscular Endurance")
+                        or float(r.get("duration_minutes") or 0) >= 90
+                    )
+                ]
+                pool = [
+                    r
+                    for r in rows
+                    if r.get("type") in ("Easy", "Aerobic Capacity")
+                    and float(r.get("duration_minutes") or 0) >= 60
+                    and r.get("day_of_week") in days
+                    and all(abs(days.index(r["day_of_week"]) - i) > 1 for i in anchors)
+                ]
+                if not pool:
+                    continue
+                wo = max(pool, key=lambda r: float(r["duration_minutes"]))
+                main = min(40, int(float(wo["duration_minutes"])) - 25)
+                total = 15 + main + 10
+                wo.update(
+                    type="Tempo",
+                    target_zone="Zone 3",
+                    target_hr_range=z3_range,
+                    duration_minutes=float(total),
+                    title="Tempo (Zone 3)" if lang != "vi" else "Tempo (Zone 3)",
+                    description=(
+                        f"Warm-up 15 min easy → {main} min Zone 3 tempo, evenly paced → Cool-down 10 min easy."
+                        if lang != "vi"
+                        else f"Warm-up 15 phút nhẹ → {main} phút Zone 3 đều, kiểm soát → Cool-down 10 phút nhẹ."
+                    ),
+                    fueling_tip=_fuel_text(total),
+                )
+                wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                    "Zone 3", float(total), est_zones
+                )
+                wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0
+                wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
+
+        def _space_hard_days(wos: list[dict[str, Any]]) -> None:
+            """ME and the long run stay 48 h clear of hard sessions (book). A hard session on the day before or after
+            one of them becomes an easy run: the safe side of a model that stacks them."""
+            days = list(_PRIORITY_DAY_ORDER)
+            for rows in _week_rows(wos).values():
+                sensitive = [
+                    days.index(r["day_of_week"])
+                    for r in rows
+                    if r.get("day_of_week") in days and r.get("type") in ("Long Run", "Muscular Endurance")
+                ]
+                for r in rows:
+                    if (
+                        r.get("type") in ("Tempo", "Interval")
+                        and r.get("target_zone") in ("Zone 3", "Zone 4", "Zone 5")
+                        and r.get("day_of_week") in days
+                        and any(abs(days.index(r["day_of_week"]) - i) <= 1 for i in sensitive)
+                    ):
+                        _to_easy(
+                            r,
+                            "Easy Aerobic Run",
+                            "Easy Run nhẹ",
+                            "Easy aerobic run, Zone 2, conversational pace.",
+                            "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được.",
+                        )
 
         def _trail_steps(description: str | None, rate: float) -> str | None:
             """Step paces on a trail session follow the climb: the flat easy-to-tempo band is scaled by it."""
@@ -2120,6 +2249,8 @@ class PlanGenerator:
             _respect_days(wos)
             _ramp_volume(wos)
             _progress_long_runs(wos)
+            _add_tempo(wos)
+            _space_hard_days(wos)
             _add_climb_session(wos)
             _soften_recovery_weeks(wos)
             _normalise_sessions(wos)
