@@ -1,6 +1,16 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "YOUR PLAN ON COROS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PLAN TRÊN COROS"
+          }
+        }
+      }
+    },
     "Welcome to your plan for %@. This is where it starts.": {
       "localizations": {
         "vi": {

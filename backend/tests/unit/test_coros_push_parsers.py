@@ -50,3 +50,28 @@ def test_unapplied_days_reads_coros_update_summary():
     assert unapplied_days(reply, sent) == [11]
     assert unapplied_days(reply, sent[:3]) == []
     assert unapplied_days("Plan updated.", sent) == []  # no summary: nothing to check
+
+
+def test_unapplied_days_expands_coros_ranges():
+    from services.coros_push import unapplied_days
+
+    reply = "Training plan updated successfully.\nUpdated days (dayNo): 9-11, 87\nCleared to rest (dayNo): none"
+    assert unapplied_days(reply, [{"dayNo": d} for d in (9, 10, 11, 87)]) == []
+
+
+def test_coros_error_text_is_a_failure():
+    import pytest
+
+    from services.coros_push import _ok
+    from services.mcp_client import McpToolError
+
+    with pytest.raises(McpToolError):
+        _ok("COROS API error: 1 validation error(s): [dayNo=87, course=1] The training distance is too long.")
+    assert _ok("Training plan updated successfully.") == "Training plan updated successfully."
+
+
+def test_race_placeholder_over_80km_is_free_mode():
+    from services.coros_workouts import race_day_course
+
+    assert race_day_course("UTMB", 104.2, "en")["sections"][0]["targetType"] == 4
+    assert race_day_course("VMM", 70, "en")["sections"][0]["targetValue"] == 70000

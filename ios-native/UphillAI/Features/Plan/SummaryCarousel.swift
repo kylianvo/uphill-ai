@@ -444,9 +444,9 @@ struct SummaryCarousel: View {
                     }
                     if let tiers = model.goal?.assessment?.goals {
                         HStack(spacing: 6) {
-                            tierChip("A", tiers.a)
-                            tierChip("B", tiers.b)
-                            tierChip("C", tiers.c)
+                            tierChip("A", L("Ambitious"), tiers.a)
+                            tierChip("B", L("Realistic"), tiers.b)
+                            tierChip("C", L("Safe"), tiers.c)
                         }
                     }
                     Spacer(minLength: 0)
@@ -466,16 +466,18 @@ struct SummaryCarousel: View {
     }
 
     /// The tier the target matches is filled; the others are outlined.
-    private func tierChip(_ tier: String, _ minutes: Double) -> some View {
+    private func tierChip(_ tier: String, _ name: String, _ minutes: Double) -> some View {
         let target = model.goal?.targetTimeHours.map { Int(($0 * 60).rounded()) }
         let active = model.goal?.status.tier?.uppercased() == tier || target == Int(minutes.rounded())
-        return Text(verbatim: "\(tier) \(PlanViewModel.formatMinutes(minutes))")
-            .font(.system(size: 11, weight: .semibold).monospacedDigit())
+        return VStack(spacing: 1) {
+            Text(verbatim: name).font(.system(size: 10, weight: .semibold))
+            Text(verbatim: PlanViewModel.formatMinutes(minutes)).font(.system(size: 12, weight: .bold).monospacedDigit())
+        }
             .foregroundStyle(active ? UH.Palette.accentInk : UH.Palette.secondary)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(active ? UH.Palette.activeFill : .clear, in: Capsule())
-            .overlay(Capsule().stroke(active ? UH.Palette.accentInk.opacity(0.4) : UH.Palette.line))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
+            .background(active ? UH.Palette.activeFill : .clear, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(active ? UH.Palette.accentInk.opacity(0.4) : UH.Palette.line))
     }
 
     private func progressRow(_ title: String, _ bar: GoalProgress.Bar, _ value: String) -> some View {

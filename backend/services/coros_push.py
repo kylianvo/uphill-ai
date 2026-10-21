@@ -160,15 +160,25 @@ def unapplied_days(update_text: str, courses: list[dict[str, Any]]) -> list[int]
     lists = _DAY_LIST.findall(update_text or "")
     if not lists:
         return []
-    applied = {int(n) for _, days in lists for n in re.findall(r"\d+", days)}
+    applied: set[int] = set()
+    for _, days in lists:
+        for lo, hi in re.findall(r"(\d+)(?:-(\d+))?", days):  # COROS writes runs as "9-11"
+            applied.update(range(int(lo), int(hi or lo) + 1))
     return sorted({c["dayNo"] for c in courses} - applied)
+
+
+def _ok(text: str) -> str:
+    """COROS reports validation failures as ordinary text, not an MCP error."""
+    if (text or "").startswith("COROS API error"):
+        raise McpToolError("COROS API error", reason=text)
+    return text
 
 
 async def _update_plan(client, user_id: int, args: dict[str, Any]) -> None:
     """updateTrainingPlan, failing the push when COROS reports it applied fewer
     days than we sent -- a silent 'success' otherwise tells the athlete their
     watch has workouts it doesn't."""
-    text = await client.call_tool("updateTrainingPlan", args)
+    text = _ok(await client.call_tool("updateTrainingPlan", args))
     missing = unapplied_days(text, args.get("courseList", []))
     if missing:
         logger.warning(
@@ -404,18 +414,20 @@ def _window(st, start, end, today, lang, stored) -> tuple[PushWindow, list[dt.da
 async def _create_plan(client, st, g: PlanGeometry, today, lang, name) -> tuple[str, PushWindow, list[dt.date]]:
     """createTrainingPlan for geometry `g`; returns the new COROS plan id and what was sent."""
     window, tracked = _window(st, g.start, g.end, today, lang, {})
-    text = await client.call_tool(
-        "createTrainingPlan",
-        {
-            "planInfo": {
-                "planName": name,
-                "planOverview": _OVERVIEW.get(lang, _OVERVIEW["en"]),
-                "planStartDate": ymd(g.start),
-                "totalWeeks": g.weeks,
+    text = _ok(
+        await client.call_tool(
+            "createTrainingPlan",
+            {
+                "planInfo": {
+                    "planName": name,
+                    "planOverview": _OVERVIEW.get(lang, _OVERVIEW["en"]),
+                    "planStartDate": ymd(g.start),
+                    "totalWeeks": g.weeks,
+                },
+                "courseList": course_list(window, g.start),
+                "phaseInfo": {"periodization": periodization(st.by_date, g.start, g.weeks)},
             },
-            "courseList": course_list(window, g.start),
-            "phaseInfo": {"periodization": periodization(st.by_date, g.start, g.weeks)},
-        },
+        )
     )
     new_id = created_plan_id(text, await _library(client), name)
     if new_id is None:
