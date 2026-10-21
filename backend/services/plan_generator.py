@@ -203,7 +203,7 @@ _VI_TECH_TERMS = {  # kept as written when a Title Case heading is converted to 
 }  # fmt: skip
 
 
-def vi_sentence_case(title: str) -> str:
+def vi_sentence_case(title: str, keep: frozenset[str] = frozenset()) -> str:
     """A Title Case Vietnamese heading ('Buổi Chạy Đường Dài') becomes sentence case; English technical terms,
     numbers and acronyms keep their form. Short or already sentence-case titles are untouched."""
     words = title.split()
@@ -211,9 +211,16 @@ def vi_sentence_case(title: str) -> str:
     if len(words) < 3 or len(capped) < 0.6 * len(words):
         return title
     out = [
-        w if (w.strip(".,:;()") in _VI_TECH_TERMS or any(c.isdigit() for c in w) or w.isupper()) else w.lower()
+        w
+        if (
+            w.strip(".,:;()") in _VI_TECH_TERMS
+            or w.strip(".,:;()") in keep
+            or any(c.isdigit() for c in w)
+            or w.isupper()
+        )
+        else w.lower()
         for w in words
-    ]
+    ]  # proper nouns (mountain and race names) in `keep` stay capitalised
     out[0] = out[0][:1].upper() + out[0][1:]
     return " ".join(out)
 
@@ -233,7 +240,10 @@ _VI_REPLACEMENTS = (  # the app's Vietnamese copy contract: never these words fo
     (r"bốc dốc", "leo dốc"),
     (r"giải phóng ứ đọng cơ", "xả mỏi cơ"),
     (r"phát triển ti thể", "phát triển nền tảng aerobic"),
-    (r"đốt chất béo", "dùng mỡ làm năng lượng"),
+    (r"đốt (?:chất )?béo(?: làm năng lượng)?", "dùng mỡ làm năng lượng"),
+    (r"\bly tâm\b", "lệch tâm"),  # eccentric, not centrifugal
+    (r"vô tội vạ", "thoải mái"),
+    (r"nước rút hiếu khí", "tăng tốc ngắn"),
     (r"thể tích(?! tâm thu)", "khối lượng"),  # "thể tích tâm thu" is stroke volume and stays
     (r"tối ưu hóa", "cải thiện"),
     (r"bứt phá", "tăng tốc"),
@@ -251,6 +261,10 @@ def sanitize_vi(text: str) -> str:
 
     for pattern, replacement in _VI_REPLACEMENTS + _UNSAFE_BELT:
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    # a word the model repeats by accident ("Khởi động động", "nước rút rút", "dốc dốc")
+    text = re.sub(r"\b(\w{3,})\s+\1\b", r"\1", text, flags=re.IGNORECASE)
+    text = re.sub(r"(Khởi động) động\b", r"\1", text)
+    text = re.sub(r"(nước rút) rút\b", r"\1", text)
     return text
 
 
@@ -535,6 +549,12 @@ class PlanGenerator:
     def taper_weeks(total_weeks: int) -> int:
         """Book: taper over 2-3 weeks (40-60% less volume). Plans of 12+ weeks get two steps, shorter ones one."""
         return taper_weeks(total_weeks)
+
+    @staticmethod
+    def is_deload_week(w: int, total_weeks: int) -> bool:
+        """Every 4th build week is a deload, but never the last build week: that is the plan's peak."""
+        last_build = total_weeks - 3 - (taper_weeks(total_weeks) - 1)
+        return w > 1 and w % 4 == 0 and w < last_build
 
     @staticmethod
     def phase_for_week(w: int, total_weeks: int) -> str:
@@ -1486,8 +1506,8 @@ class PlanGenerator:
                     wo,
                     "Easy Aerobic Run",
                     "Easy Run nhẹ",
-                    "Easy aerobic run, Zone 2, conversational pace. The long quality block planned for this slot was dropped to keep the week within safe limits.",
-                    "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được. Phần cường độ dài dự kiến cho buổi này đã được bỏ để giữ tuần tập trong giới hạn an toàn.",
+                    "Easy aerobic run, Zone 2, conversational pace.",
+                    "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được.",
                 )
 
         def _to_easy(wo: dict[str, Any], title_en: str, title_vi: str, desc_en: str, desc_vi: str) -> None:
@@ -1512,6 +1532,11 @@ class PlanGenerator:
                     "Zone 2", minutes, est_zones
                 )
                 wo["elevation_gain_m"] = round(wo["distance_km"] * rate)
+
+        _proper_nouns = frozenset(
+            {tok for m in MOUNTAINS.values() for tok in f"{m.name_vi} {m.name_en}".split()}
+            | set(str(race_info.get("name") or "").split())
+        )  # words a sentence-case title must not lowercase
 
         def _long_text(minutes: int, climbing: bool) -> str:
             main = max(20, minutes - 25)
@@ -1557,7 +1582,9 @@ class PlanGenerator:
                 if isinstance(wo.get("week_number"), int):
                     by_week.setdefault(wo["week_number"], []).append(wo)
             for week_no, rows in by_week.items():
-                if rows[0].get("phase") not in ("Base", "Build", "Peak") or (week_no > 1 and week_no % 4 == 0):
+                if rows[0].get("phase") not in ("Base", "Build", "Peak") or PlanGenerator.is_deload_week(
+                    week_no, total_weeks
+                ):
                     continue
                 mult = max(
                     1.0 + 0.05 * (week_no - 1),
@@ -1610,7 +1637,24 @@ class PlanGenerator:
             shift = taper_weeks(total_weeks) - 1
             for week_no in sorted(by_week):
                 rows = by_week[week_no]
-                if rows[0].get("phase") not in ("Base", "Build", "Peak") or (week_no > 1 and week_no % 4 == 0):
+                if rows[0].get("phase") == "Taper":
+                    long = next((r for r in rows if r.get("type") == "Long Run"), None)
+                    peak_long = max(
+                        (
+                            float(w.get("duration_minutes") or 0)
+                            for w in prior + wos
+                            if w.get("type") == "Long Run" and (w.get("week_number") or 0) < week_no
+                        ),
+                        default=0.0,
+                    )
+                    first_taper = total_weeks - taper_weeks(total_weeks) - 1
+                    cap = peak_long * (0.6 if week_no == first_taper else 0.4)
+                    if long and cap and float(long["duration_minutes"]) > cap * 1.05:
+                        _resize(long, int(round(cap / 5) * 5))  # taper long run: about 60% then 40% of the peak
+                    continue
+                if rows[0].get("phase") not in ("Base", "Build", "Peak") or PlanGenerator.is_deload_week(
+                    week_no, total_weeks
+                ):
                     continue
                 long = next((r for r in rows if r.get("type") == "Long Run"), None)
                 if not long:
@@ -1710,6 +1754,122 @@ class PlanGenerator:
                         mountain_climb_rate=None,
                     )
                     active.remove(drop)
+
+        def _fuel_text(minutes: int) -> str:
+            if lang == "vi":
+                if minutes < 60:
+                    return "Chỉ cần nước, không cần carbs."
+                if minutes <= 120:
+                    return "Nạp 30-60 g carbs mỗi giờ kèm nước."
+                return "Nạp 60-90 g carbs và 500-700 mg sodium mỗi giờ; tập với sản phẩm sẽ dùng ngày race."
+            if minutes < 60:
+                return "Water only; no carbs needed."
+            if minutes <= 120:
+                return "Take 30-60 g carbs per hour and fluids."
+            return "Take 60-90 g carbs and 500-700 mg sodium per hour; practise the race products."
+
+        def _easy_text(minutes: int, zone: str | None, incline: float, climbing: bool) -> str:
+            warm = 10 if minutes >= 45 else (5 if minutes >= 20 else 0)
+            cool = 5 if minutes >= 30 else 0
+            main = minutes - warm - cool
+            if lang == "vi":
+                feel = {"Zone 1": "Zone 1 rất nhẹ, thả lỏng", "Zone 3": "Zone 3 đều, hơi nặng nhưng kiểm soát"}.get(
+                    zone or "", "Zone 2 đều"
+                )
+                where = f" ở độ dốc {incline:g}%" if incline >= 3 else (", power-hiking đoạn dốc" if climbing else "")
+                parts = ([f"Warm-up {warm} phút nhẹ"] if warm else []) + [f"{main} phút {feel}{where}"]
+                parts += [f"Cool-down {cool} phút nhẹ"] if cool else []
+            else:
+                feel = {"Zone 1": "very easy Zone 1, relaxed", "Zone 3": "Zone 3 tempo, evenly paced"}.get(
+                    zone or "", "steady Zone 2"
+                )
+                where = (
+                    f" at {incline:g}% incline"
+                    if incline >= 3
+                    else (", power-hiking the steep parts" if climbing else "")
+                )
+                parts = ([f"Warm-up {warm} min easy"] if warm else []) + [f"{main} min {feel}{where}"]
+                parts += [f"Cool-down {cool} min easy"] if cool else []
+            return " → ".join(parts) + "."
+
+        def _sprint_text(minutes: int, incline: float) -> str:
+            reps = 6
+            block = reps * 3  # 10 s sprint plus a 2-3 min walk
+            warm = max(10, minutes - block - 10)
+            if lang == "vi":
+                return (
+                    f"Warm-up {warm} phút nhẹ trên mặt phẳng → {reps} x 10 giây sprint ở độ dốc {incline:g}%: "
+                    f"dừng belt hoặc để tốc độ đi bộ, nâng độ dốc, đứng trên hai thành belt, cho belt chạy ở tốc độ đi bộ, "
+                    f"bước lên rồi tăng dần tới nỗ lực mạnh nhưng kiểm soát trong 10 giây (theo cảm nhận, không theo pace, "
+                    f"có thể vịn tay vịn); bước ra hai thành belt và đi bộ 2-3 phút giữa các lần → Cool-down 10 phút nhẹ."
+                )
+            return (
+                f"Warm-up {warm} min easy flat → {reps} x 10 s sprints at {incline:g}% incline: stop the belt or set walking "
+                f"speed, raise the incline, stand on the side rails, start the belt at walking speed, step on, then build to "
+                f"a hard but controlled effort for 10 s (by effort, not pace; hold the rails if needed); step back onto the "
+                f"rails and walk 2-3 min between reps → Cool-down 10 min easy."
+            )
+
+        def _race_text(minutes: int, km: float) -> str:
+            h, m = divmod(minutes, 60)
+            if lang == "vi":
+                return (
+                    f"Ngày race: {km:g} km, dự kiến về đích khoảng {h}h{m:02d}. Xuất phát thận trọng, power-hiking đoạn dốc đứng, "
+                    f"nạp 60-90 g carbs và 500-700 mg sodium mỗi giờ từ 30-45 phút đầu."
+                )
+            return (
+                f"Race day: {km:g} km, expected finish about {h}h{m:02d}. Start conservatively, power-hike the steep climbs, "
+                f"and take 60-90 g carbs and 500-700 mg sodium per hour from the first 30-45 minutes."
+            )
+
+        def _normalise_sessions(wos: list[dict[str, Any]]) -> None:
+            """The header (minutes, climb, pace) is the plan; the step text must agree with it. A description whose
+            minutes do not add up to the session is rebuilt from the header, a pace that contradicts a climbing
+            session's trail pace is dropped, treadmill sprints get a safe start, and the race text states the
+            header's finish time."""
+            import re
+
+            from services.plan_quality import _STEP_MIN
+
+            pace_token = re.compile(r"\s*@?\s*\d{1,2}:\d{2}(?:\s*[-–]\s*\d{1,2}:\d{2})?\s*/\s*km")
+            for wo in wos:
+                typ = wo.get("type")
+                minutes = int(round(float(wo.get("duration_minutes") or 0)))
+                if typ == "Rest" or minutes <= 0:
+                    continue
+                title_l = (wo.get("title") or "").lower()
+                desc = wo.get("description") or ""
+                try:
+                    incline = float(str(wo.get("treadmill_incline") or 0).split("-")[0] or 0)
+                except ValueError:
+                    incline = 0.0
+                if typ == "Race":
+                    wo["description"] = _race_text(minutes, float(wo.get("distance_km") or course_distance_km or 0))
+                    continue
+                if (
+                    any(kw in title_l for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
+                    and incline >= 10
+                    and venues.use_treadmill
+                    and not venues.hills_on(wo.get("day_of_week", ""))
+                ):
+                    wo["description"] = _sprint_text(minutes, incline)
+                    continue
+                km = float(wo.get("distance_km") or 0)
+                climbing = km > 0 and float(wo.get("elevation_gain_m") or 0) / km >= 15
+                if climbing and incline < 3:  # the header carries the trail pace; road paces in the steps contradict it
+                    desc = re.sub(r" {2,}", " ", pace_token.sub("", desc))
+                    wo["description"] = desc
+                if typ in ("Easy", "Aerobic Capacity", "Recovery", "Long Run", "Tempo"):
+                    nums = [int(n) for n in _STEP_MIN.findall(desc)]
+                    if len(nums) >= 2 and abs(sum(nums) - minutes) / minutes > 0.15:
+                        wo["description"] = (
+                            _long_text(minutes, climbing)
+                            if typ == "Long Run"
+                            else _easy_text(minutes, wo.get("target_zone"), incline, climbing)
+                        )
+                        note = VN_MOUNTAIN_NOTE_VI if lang == "vi" else VN_MOUNTAIN_NOTE_EN
+                        keep_note = f" {note}" if note in (wo.get("fueling_tip") or "") else ""
+                        wo["fueling_tip"] = _fuel_text(minutes) + keep_note
 
         def _trail_steps(description: str | None, rate: float) -> str | None:
             """Step paces on a trail session follow the climb: the flat easy-to-tempo band is scaled by it."""
@@ -1972,8 +2132,7 @@ class PlanGenerator:
                         mode = "skip"
                     elif wo["phase"] in ("Recovery", "Taper") or (
                         wo["phase"] in ("Base", "Build", "Peak")
-                        and wo["week_number"] > 1
-                        and wo["week_number"] % 4 == 0
+                        and PlanGenerator.is_deload_week(wo["week_number"], total_weeks)
                     ):  # taper, recovery and deload weeks: the trip minimum does not apply
                         mode = "chill"
                     else:
@@ -2000,12 +2159,13 @@ class PlanGenerator:
             _progress_long_runs(wos)
             _add_climb_session(wos)
             _soften_recovery_weeks(wos)
+            _normalise_sessions(wos)
             for wo in wos:
                 for field in ("title", "description", "fueling_tip"):
                     if wo.get(field):
                         wo[field] = sanitize_vi(wo[field]) if lang == "vi" else sanitize_belt(wo[field])
                 if lang == "vi" and wo.get("title"):
-                    wo["title"] = vi_sentence_case(wo["title"])
+                    wo["title"] = vi_sentence_case(wo["title"], _proper_nouns)
             return apply_priority_guard(wos)
 
         # 2. AI Plan Generation (Gemini → reduced-prompt retry → Rule-Based)
@@ -2775,7 +2935,7 @@ class PlanGenerator:
             volume_multiplier = multiplier_for(week)
 
             # A recovery week after every three builds (week_layout scales it to 80%).
-            is_recovery_week = phase in ("Base", "Build", "Peak") and week % 4 == 0 and week > 1
+            is_recovery_week = phase in ("Base", "Build", "Peak") and PlanGenerator.is_deload_week(week, total_weeks)
             week_minutes = base_weekly_minutes * volume_multiplier
             if phase == "Taper":
                 try:
