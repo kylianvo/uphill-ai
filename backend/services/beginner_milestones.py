@@ -6,7 +6,7 @@ Spec: docs/superpowers/specs/2026-10-20-beginner-milestones-design.md
 """
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
 from log_utils import get_logger
@@ -210,3 +210,48 @@ def safe_refresh_milestones(user_id: int) -> None:
         refresh_milestones(user_id)
     except Exception:
         logger.warning("beginner milestone refresh failed", exc_info=True, extra={"fields": {"user_id": user_id}})
+
+
+@dataclass(frozen=True)
+class PlanShape:
+    race_name: str
+    race_date: str
+    total_weeks: int
+    has_event: bool
+    warning: dict[str, Any] | None
+
+
+def plan_shape(
+    target: Target,
+    start: date,
+    today: date,
+    current_jog_min: int | None,
+    event_name: str | None,
+    event_date: str | None,
+) -> PlanShape:
+    """Name, end date and length of a beginner plan. An event sets the end date; a too-soon one only warns."""
+    label = f"First {target.upper()}"
+    if not event_date:
+        weeks = default_weeks(target)
+        return PlanShape(label, (start + timedelta(weeks=weeks - 1)).isoformat(), weeks, False, None)
+    event = date.fromisoformat(event_date)
+    if event <= today:
+        raise ValueError("event_date must be in the future")
+    monday_start = start - timedelta(days=start.weekday())
+    monday_event = event - timedelta(days=event.weekday())
+    weeks = max(3, (monday_event - monday_start).days // 7 + 1)
+    minimum = minimum_weeks(target, current_jog_min)
+    warning = {"code": "event_too_soon", "minimum_weeks": minimum} if weeks < minimum else None
+    return PlanShape(event_name or label, event_date, weeks, True, warning)
+
+
+def apply_creation(user_id: int, plan_id: int, target: Target, current_jog_min: int | None) -> None:
+    """Record what the athlete can already do: raise the jog ceiling and mark the baseline milestones."""
+    import db
+
+    if not current_jog_min:
+        return
+    db.set_max_continuous_jog_min(user_id, int(current_jog_min))
+    now = datetime.now(UTC)
+    for key in baseline_keys(target, current_jog_min):
+        db.insert_milestone_if_absent(plan_id, key, "baseline", now)

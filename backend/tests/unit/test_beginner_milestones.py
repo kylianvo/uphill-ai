@@ -133,3 +133,59 @@ def test_serialize_all_done_next_key_none():
         for m in ladder_for("5k")
     ]
     assert serialize("5k", False, rows)["next_key"] is None
+
+
+# --- plan shape and creation -------------------------------------------------
+
+from datetime import timedelta  # noqa: E402
+
+import pytest  # noqa: E402
+
+from services import beginner_milestones as bm  # noqa: E402
+
+MON = date(2026, 10, 5)
+
+
+def test_shape_10k_no_event_is_22_weeks_named_first_10k():
+    s = bm.plan_shape("10k", MON, MON, 0, None, None)
+    assert (s.race_name, s.total_weeks, s.has_event) == ("First 10K", 22, False)
+    assert s.race_date == (MON + timedelta(weeks=21)).isoformat() and s.warning is None
+
+
+def test_shape_5k_no_event_is_12_weeks():
+    assert bm.plan_shape("5k", MON, MON, None, None, None).total_weeks == 12
+
+
+def test_shape_with_event_uses_event_date_and_flag():
+    s = bm.plan_shape("5k", MON, MON, 0, "Parkrun", "2026-12-12")
+    assert (s.race_name, s.race_date, s.has_event) == ("Parkrun", "2026-12-12", True)
+    assert s.total_weeks == 10 and s.warning is None
+
+
+def test_shape_event_too_soon_returns_warning_not_error():
+    s = bm.plan_shape("5k", MON, MON, 0, None, "2026-11-02")
+    assert s.warning == {"code": "event_too_soon", "minimum_weeks": 9} and s.race_name == "First 5K" and s.has_event
+
+
+def test_shape_event_in_past_raises():
+    with pytest.raises(ValueError):
+        bm.plan_shape("5k", MON, MON, 0, None, "2026-10-01")
+
+
+def test_apply_creation_seeds_baseline_and_jog_ceiling(monkeypatch):
+    import db
+
+    rows, jog = [], []
+    monkeypatch.setattr(db, "set_max_continuous_jog_min", lambda uid, m: jog.append(m) or True)
+    monkeypatch.setattr(db, "insert_milestone_if_absent", lambda pid, k, src, at, **kw: rows.append((k, src)) or True)
+    bm.apply_creation(7, 5, "5k", 10)
+    assert rows == [("jog_5", "baseline"), ("jog_10", "baseline")] and jog == [10]
+
+
+def test_apply_creation_without_jog_does_nothing(monkeypatch):
+    import db
+
+    monkeypatch.setattr(db, "set_max_continuous_jog_min", lambda *a: pytest.fail("no jog given"))
+    monkeypatch.setattr(db, "insert_milestone_if_absent", lambda *a, **k: pytest.fail("no baseline"))
+    bm.apply_creation(7, 5, "5k", 0)
+    bm.apply_creation(7, 5, "5k", None)

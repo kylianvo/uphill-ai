@@ -260,6 +260,11 @@ class PlanGenerateRequest(BaseModel):
     treadmill_max_incline: int | None = None
     # Non-race / start date fields
     plan_start_date: str | None = None  # YYYY-MM-DD
+    # Beginner milestones (services/beginner_milestones.py): only read for goal_type 'start_running'
+    milestone_target: Literal["5k", "10k"] | None = None
+    current_jog_min: int | None = Field(default=None, ge=0, le=120)
+    event_name: str | None = None
+    event_date: str | None = None  # YYYY-MM-DD
     plan_duration_weeks: int | None = None
     time_away: str | None = None
     fitness_feel: str | None = None
@@ -458,6 +463,11 @@ class OnboardingRequest(BaseModel):
     weight_kg: float | None = None
     # Step 2
     goal_type: str  # race|distance|start_running|return|recovery
+    # Beginner milestones (services/beginner_milestones.py): only read for goal_type 'start_running'
+    milestone_target: Literal["5k", "10k"] | None = None
+    current_jog_min: int | None = Field(default=None, ge=0, le=120)
+    event_name: str | None = None
+    event_date: str | None = None  # YYYY-MM-DD
     # Fitness
     aet_hr: int | None = None
     # How the stored AeT/AnT pair was obtained. Only "lab"/"field" let the gap count
@@ -1289,6 +1299,24 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid plan_start_date format. Expected YYYY-MM-DD.")
     total_weeks = _calculate_total_weeks(race_date, start_date_parsed)
+    beginner_shape = None
+    if request.goal_type == "start_running" and request.milestone_target:
+        try:
+            beginner_shape = beginner_milestones.plan_shape(
+                request.milestone_target,
+                start_date_parsed,
+                today,
+                request.current_jog_min,
+                request.event_name,
+                request.event_date,
+            )
+        except ValueError:
+            raise HTTPException(status_code=400, detail="event_date must be a future YYYY-MM-DD date.")
+        race_name, race_date, total_weeks = (
+            beginner_shape.race_name,
+            beginner_shape.race_date,
+            beginner_shape.total_weeks,
+        )
     course_context = None
     if is_event:
         request.course_distance_km, request.course_elevation_gain_m, course_context = _resolve_course_match(
@@ -1317,7 +1345,11 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
         athlete_notes=request.athlete_notes,
+        milestone_target=request.milestone_target if beginner_shape else None,
+        has_target_event=bool(beginner_shape and beginner_shape.has_event),
     )
+    if beginner_shape:
+        beginner_milestones.apply_creation(user["id"], plan_id, request.milestone_target, request.current_jog_min)
     _assess_new_plan(user["id"], plan_id)
 
     # Mark onboarding complete immediately so the user can enter the app
@@ -1405,6 +1437,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         },
         "workouts": [],
         "user": format_user_response(fresh_user),
+        "warning": beginner_shape.warning if beginner_shape else None,
     }
 
 
@@ -2127,6 +2160,7 @@ async def _generate_plan_for_athlete(
 
     goal = request.goal_type
     is_race_or_dist = goal in ["finish", "time", "optimal"]
+    beginner_shape = None
 
     # Parse plan start date (default to today if missing)
     start_date_str = request.plan_start_date or datetime.now().strftime("%Y-%m-%d")
@@ -2162,7 +2196,23 @@ async def _generate_plan_for_athlete(
         request.course_distance_km = None
         request.course_elevation_gain_m = None
 
-        if goal == "start_running":
+        if goal == "start_running" and request.milestone_target:
+            try:
+                beginner_shape = beginner_milestones.plan_shape(
+                    request.milestone_target,
+                    start_date_parsed,
+                    datetime.now().date(),
+                    request.current_jog_min,
+                    request.event_name,
+                    request.event_date,
+                )
+            except ValueError:
+                raise HTTPException(status_code=400, detail="event_date must be a future YYYY-MM-DD date.")
+            total_weeks = beginner_shape.total_weeks
+            race_date_str = beginner_shape.race_date
+        if beginner_shape:
+            race_name_str = beginner_shape.race_name
+        elif goal == "start_running":
             race_name_str = "Base Building"
         elif goal == "return":
             race_name_str = "Return to Running"
@@ -2199,11 +2249,15 @@ async def _generate_plan_for_athlete(
         mountain_min_minutes=request.mountain_min_minutes,
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
+        milestone_target=request.milestone_target if beginner_shape else None,
+        has_target_event=bool(beginner_shape and beginner_shape.has_event),
         created_by_user_id=created_by_user_id,
         cutoff_time_hours=request.cutoff_time_hours,
         plan_status=plan_status,
         athlete_notes=request.athlete_notes,
     )
+    if beginner_shape:
+        beginner_milestones.apply_creation(athlete_id, plan_id, request.milestone_target, request.current_jog_min)
     _assess_new_plan(athlete_id, plan_id)
 
     # Fetch latest athlete details from database to ensure fresh physiological values
@@ -2319,6 +2373,7 @@ async def _generate_plan_for_athlete(
             "course_elevation_gain_m": request.course_elevation_gain_m,
         },
         "workouts": [],
+        "warning": beginner_shape.warning if beginner_shape else None,
     }
 
 
