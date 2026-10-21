@@ -34,6 +34,8 @@ import { localToday } from "../lib/scheduleProposals";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { GoalPill } from "../components/GoalPill";
 import PlanSummaryCarousel from "../components/PlanSummaryCarousel";
+import MilestonePath from "../components/MilestonePath";
+import { daysToRace } from "../utils/planSummary";
 import { weekVolume } from "../utils/planSummary";
 import { weekDiffChips } from "../utils/weekDiff";
 import WeekBrief from "../components/WeekBrief";
@@ -57,7 +59,7 @@ const WEEKS_PER_BLOCK = 1;
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
+  const { markMilestone, undoMilestone, upgradeMilestoneTarget, handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
   const [addWorkoutTarget, setAddWorkoutTarget] = useState<{ week: number; day: string } | null>(null);
   const { lang, activePlan, planLoading, planErrorMsg, setPlanErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName, handleTabSwitch, activePlanLoading } = ctx;
@@ -1548,6 +1550,17 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   maxGeneratedWeek={maxGeneratedWeek}
                   distanceKm={getPlanDistance(activePlan) || 0}
                   elevationM={getPlanElevation(activePlan) || 0}
+                  milestoneContent={activePlan.beginner_milestones ? (
+                    <MilestonePath
+                      milestones={activePlan.beginner_milestones}
+                      lang={lang}
+                      planId={activePlan.id}
+                      weeksToEvent={activePlan.beginner_milestones.has_event ? Math.max(0, Math.ceil(((daysToRace(activePlan.race_date) ?? 0)) / 7)) : null}
+                      onMark={markMilestone}
+                      onUndo={undoMilestone}
+                      onUpgrade={() => upgradeMilestoneTarget(activePlan.beginner_milestones.has_event ? window.confirm(lang === "en" ? "Clear your event so the plan can extend to a 10K? Cancel keeps the event." : "Xóa sự kiện để plan kéo dài tới 10K? Chọn Hủy để giữ sự kiện.") : false)}
+                    />
+                  ) : undefined}
                   goalPill={activePlan.id && activePlan.course_distance_km > 0 ? (
                     <GoalPill
                       planId={activePlan.id}
@@ -1675,6 +1688,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   {(() => {
                     const goal = activePlan.goal_type || "";
                     if (["start_running", "return", "recovery"].includes(goal)) {
+                      if (activePlan.has_target_event) return lang === "en" ? `Event: ${activePlan.race_date}` : `Sự kiện: ${activePlan.race_date}`;
                       return lang === "en" ? `Block ends: ${activePlan.race_date}` : `Kết thúc: ${activePlan.race_date}`;
                     } else {
                       return lang === "en" ? `Race Day: ${activePlan.race_date}` : `Ngày đua: ${activePlan.race_date}`;

@@ -26,6 +26,8 @@ interface Props {
   distanceKm: number;
   elevationM: number;
   goalPill: React.ReactNode;
+  /** Beginner milestone path; replaces the race and goal card body when set. */
+  milestoneContent?: React.ReactNode;
   onAdaptWeek?: () => void;
   reviewContent?: React.ReactNode;
   onOpenPaceStrategy: () => void;
@@ -114,7 +116,9 @@ export default function PlanSummaryCarousel(p: Props) {
         </section>
 
         <section className={styles.card} data-idx={1} aria-label="Race and goal">
-          <span style={label}>Race &amp; goal</span>
+          <span style={label}>{p.milestoneContent ? "Your path" : "Race &amp; goal"}</span>
+          {p.milestoneContent ? p.milestoneContent : (
+            <>
           <span style={{ fontSize: "15px", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.activePlan.race_name}</span>
           <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
             {[p.distanceKm ? `${p.distanceKm} km` : "", p.elevationM ? `+${p.elevationM} m` : "", p.activePlan.race_date].filter(Boolean).join(" · ")}
@@ -124,6 +128,8 @@ export default function PlanSummaryCarousel(p: Props) {
             {p.goalPill}
             <button type="button" onClick={() => setToolsOpen(true)} style={{ background: "none", border: "none", padding: "4px 0", cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--accent-primary)" }}>Race tools</button>
           </div>
+            </>
+          )}
         </section>
 
         <section className={styles.card} data-idx={2} aria-label={CARDS[2]}>
