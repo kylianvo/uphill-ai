@@ -29,7 +29,7 @@ WHERE THE NUMBERS COME FROM
 """
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 BEGINNER = "beginner"
@@ -325,16 +325,61 @@ class TierDecision:
 
 
 DEFAULT_TRAINING_DAYS = 5  # used when the athlete set no days per week
+
+
+LONG_SHARE_SOFT = 0.05  # soft margin: a long run up to 5 points over its tier cap is tolerated, not flagged or clamped
+
+
+def taper_weeks(total_weeks: int) -> int:
+    """Book: taper over 2-3 weeks (40-60% less volume). Plans of 12+ weeks get two steps, shorter ones one."""
+    return 2 if total_weeks >= 12 else 1
+
+
+def taper_shift(total_weeks: int) -> int:
+    """How many weeks earlier than in a one-week-taper plan the last build week falls."""
+    return taper_weeks(total_weeks) - 1
+
+
 MAX_SESSION_MIN = 300  # the book caps a single session at four to five hours
+# Scott Johnston's elite 100-mile example (Tom Evans' longest build run was one 8-hour day; Ruth Croft built on
+# weekly volume and weighted climbing, never race-length runs): sub-elite athletes training for 100 miles may
+# run a single day up to 8 hours in the build weeks. It is a ceiling, never a target.
+ELITE_ULTRA_SESSION_MIN = 480
+ELITE_ULTRA_KM = 150.0
 
 
-def week_capacity_parts(profile: TierProfile, days_per_week: int | None) -> tuple[float, float]:
+ELITE_ULTRA_WEEKDAY_MAX = 150  # weekday runs up to 2.5 h (doubles) in the 130-150 mile weeks of the elite example
+ELITE_ULTRA_LONG_SHARE = 0.35
+
+
+def for_race(profile: TierProfile, race_km: float | None) -> TierProfile:
+    """The caps for this race: sub-elite athletes training for 100 miles get longer weekday runs and a larger
+    long-run share (Johnston's elite example). Every other athlete keeps the standard tier caps."""
+    if profile.key == "sub_elite" and race_km and race_km >= ELITE_ULTRA_KM:
+        return replace(
+            profile,
+            weekday_minutes=(profile.weekday_minutes[0], ELITE_ULTRA_WEEKDAY_MAX),
+            long_run_share_cap=ELITE_ULTRA_LONG_SHARE,
+        )
+    return profile
+
+
+def session_cap_minutes(profile: TierProfile, race_km: float | None) -> int:
+    """The longest single session this athlete's plan may hold."""
+    if profile.key == "sub_elite" and race_km and race_km >= ELITE_ULTRA_KM:
+        return ELITE_ULTRA_SESSION_MIN
+    return MAX_SESSION_MIN
+
+
+def week_capacity_parts(
+    profile: TierProfile, days_per_week: int | None, session_cap: int = MAX_SESSION_MIN
+) -> tuple[float, float]:
     """(minutes of the other run sessions, minutes of the long run) the tier's own caps allow in a week.
     From four training days one day is strength, which is not run time (my call: conservative)."""
     n = max(1, days_per_week or DEFAULT_TRAINING_DAYS)
     others = (n - 1 - (1 if n >= 4 else 0)) * profile.weekday_minutes[1]
     cap = profile.long_run_share_cap
-    long_run = min(MAX_SESSION_MIN, cap / (1 - cap) * others) if n > 1 else MAX_SESSION_MIN
+    long_run = min(session_cap, cap / (1 - cap) * others) if n > 1 else session_cap
     return others, long_run
 
 
@@ -374,6 +419,26 @@ def aet_ant_gap(aet_hr: float | None, ant_hr: float | None) -> float | None:
     if not aet_hr or not ant_hr or ant_hr <= 0 or aet_hr <= 0 or aet_hr >= ant_hr:
         return None
     return (ant_hr - aet_hr) / ant_hr
+
+
+PHASES = frozenset({"Base", "Build", "Peak", "Taper"})
+RECENT_LOAD_GROWTH = 1.10  # week 1 may exceed what the athlete ran lately by at most this much
+
+
+def hard_work_banned_phases(*, is_ads: bool, thresholds_measured: bool) -> frozenset[str]:
+    """Phases with no Zone 3-5 work (hill sprints and strides stay). Book: a measured AeT-AnT gap above 10% means
+    the aerobic base is the limiter, so all running stays in Zones 1-2. When the thresholds are only estimates the
+    gap is unknown: the Base phase stays easy while the week-1 drift test finds the real AeT."""
+    if is_ads:
+        return PHASES
+    return frozenset() if thresholds_measured else frozenset({"Base"})
+
+
+def recent_weekly_minutes(weekly_km: float | None, flat_pace_min_per_km: float | None) -> float | None:
+    """What the athlete runs in a typical week now, in minutes at their own easy pace. None when unknown."""
+    if not weekly_km or weekly_km <= 0 or not flat_pace_min_per_km or flat_pace_min_per_km <= 0:
+        return None
+    return float(weekly_km) * float(flat_pace_min_per_km)
 
 
 def explain_tier(

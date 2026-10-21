@@ -10,7 +10,9 @@ from dataclasses import dataclass
 from services.athlete_tier import (
     DEFAULT_TRAINING_DAYS,
     TierProfile,
+    for_race,
     get_profile,
+    session_cap_minutes,
     tier_for_weekly_km,
     week_capacity_parts,
 )
@@ -34,8 +36,8 @@ class Feasibility:
     confidence: str  # measured | estimated
 
 
-def week_capacity_minutes(profile: TierProfile, days_per_week: int | None) -> float:
-    return sum(week_capacity_parts(profile, days_per_week))
+def week_capacity_minutes(profile: TierProfile, days_per_week: int | None, race_km: float | None = None) -> float:
+    return sum(week_capacity_parts(profile, days_per_week, session_cap_minutes(profile, race_km)))
 
 
 def _weeks_needed(current_km: float, peak_km: float, max_prog: float) -> int | None:
@@ -58,11 +60,13 @@ def assess(
 ) -> Feasibility | None:
     if demands is None:
         return None
+    profile = for_race(profile, demands.distance_km)
     peak_km = demands.peak_week_km_lo * (FINISH_PEAK_SHARE if demands.source == "cutoff_safe" else 1.0)
     # An athlete who builds toward the peak graduates to the caps of the tier that volume belongs to.
     peak_profile = get_profile(tier_for_weekly_km(peak_km))
     capacity_min = max(
-        week_capacity_minutes(profile, days_per_week), week_capacity_minutes(peak_profile, days_per_week)
+        week_capacity_minutes(profile, days_per_week, demands.distance_km),
+        week_capacity_minutes(peak_profile, days_per_week, demands.distance_km),
     )
     needed_h = peak_km * flat_pace_min_km / 60
     capacity_h = capacity_min / 60

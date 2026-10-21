@@ -109,6 +109,7 @@ def _compose(
     share_cap: float,
     weekday_max: float,
     recovery: bool = False,
+    max_long_minutes: float = MAX_LONG_RUN_MIN,
 ) -> None:
     """Set the week's durations so they add up to `total`: the long run takes at most `share_cap` of it,
     strength keeps its fixed length, the remaining minutes go to the easy runs (each within the tier's
@@ -124,7 +125,7 @@ def _compose(
         for role, r in placed.items()
         if role != "long"
     )
-    capacity = others_max + (min(MAX_LONG_RUN_MIN, share_cap / (1 - share_cap) * others_max) if long else 0.0)
+    capacity = others_max + (min(max_long_minutes, share_cap / (1 - share_cap) * others_max) if long else 0.0)
     total = min(total, capacity)
     fixed = [
         r
@@ -134,7 +135,7 @@ def _compose(
     scalable = {role: r for role, r in placed.items() if role not in ("long", "power") and r not in fixed}
     fixed_min = sum(float(r["duration_minutes"]) for r in fixed)
     if long:
-        long["duration_minutes"] = round(min(float(long["duration_minutes"]), share_cap * total, MAX_LONG_RUN_MIN))
+        long["duration_minutes"] = round(min(float(long["duration_minutes"]), share_cap * total, max_long_minutes))
     remaining = total - fixed_min - (float(long["duration_minutes"]) if long else 0.0)
     base = sum(float(r["duration_minutes"]) for r in scalable.values())
     if scalable and base > 0 and remaining > 0:
@@ -181,6 +182,7 @@ def layout_week(
     long_run_share_cap: float | None = None,
     weekday_max_minutes: float | None = None,
     recovery: bool = False,
+    max_long_minutes: float = MAX_LONG_RUN_MIN,
 ) -> list[dict[str, Any]]:
     """The week's 7 rows with sessions moved onto the athlete's days. Rest rows are rebuilt."""
     sessions = {
@@ -219,7 +221,9 @@ def layout_week(
     placed = best[1] if best else {}
     by_role = {role: {**sessions[role], "day_of_week": DAYS[day]} for role, day in placed.items()}
     if week_minutes and long_run_share_cap and weekday_max_minutes:
-        _compose(by_role, placed, week_minutes, long_run_share_cap, weekday_max_minutes)
+        _compose(
+            by_role, placed, week_minutes, long_run_share_cap, weekday_max_minutes, max_long_minutes=max_long_minutes
+        )
         if recovery:
             _scale_for_recovery(by_role)
     out = list(by_role.values())

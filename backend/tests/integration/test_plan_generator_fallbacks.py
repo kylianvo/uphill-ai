@@ -19,14 +19,14 @@ WORKOUT_JSON = json.dumps(
             "phase": "Base",
             "title": "Easy Aerobic Run",
             "type": "Easy",
-            "duration_minutes": 45,
+            "duration_minutes": 40,
             "target_zone": "Zone 2",
             "target_hr_range": "125-140 bpm",
             "target_pace": "6:30 /km",
             "distance_km": 7.0,
             "elevation_gain_m": 0,
             "grade_percent": 0,
-            "description": "Warm up 10min → run 30min Zone 2 → cool down 5min. Overall: aerobic base.",
+            "description": "Warm up 10min → run 25min Zone 2 → cool down 5min. Overall: aerobic base.",
             "fueling_tip": "Water only.",
         }
     ]

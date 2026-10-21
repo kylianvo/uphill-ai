@@ -1,8 +1,29 @@
 """Consistent trail pace, distance and climbing from a flat-ground zone pace."""
 
+import re
+
 from services.plan_generator import PlanGenerator
 
 TRAIL_CLIMB_FACTOR = 0.012
+
+
+_PACE_TOKEN = re.compile(r"(?<![\d:])(\d{1,2}):([0-5]\d)(?![\d:])")
+
+
+def scale_step_paces(text: str, band: tuple[float, float], climb_rate: float) -> str:
+    """The step text of a trail session quotes paces too. Any pace inside the athlete's flat easy-to-tempo band
+    (`band` = fastest, slowest in min/km) is scaled by the same climb factor as the header pace, so the steps
+    never ask for road pace on a climb. Sprint-speed paces fall outside the band and stay."""
+    factor = 1 + TRAIL_CLIMB_FACTOR * climb_rate
+    fast, slow = band
+
+    def _scale(m: re.Match[str]) -> str:
+        value = int(m.group(1)) + int(m.group(2)) / 60
+        if not fast <= value <= slow:
+            return m.group(0)
+        return PlanGenerator.decimal_to_pace_str(value * factor)
+
+    return _PACE_TOKEN.sub(_scale, text)
 
 
 def trail_pace_range(flat_pace: str, climb_rate: float) -> str:

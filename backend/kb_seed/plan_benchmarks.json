@@ -1,0 +1,34 @@
+{
+  "_note": "From a NotebookLM sweep (2026-10-21). Only fields the sweep filled are kept; every other plan field came back null (Chapter 12 gives weekly km only). Elite UTMB example figures come from podcasts/case studies, not the book: treat as unverified until a human coach confirms.",
+  "weekly_km_by_distance": {
+    "50K": {"source": "book ch.12 via CLAUDE.md", "peak_km": [80, 88]},
+    "100K": {"avg_km": 75, "peak_km": [120, 130]},
+    "100mi": {"avg_km": 100, "peak_km": [145, 160]}
+  },
+  "elite_100mi_example": {
+    "race": {"distance_km": 171, "vert_m": 10000, "target_time_h": 20},
+    "plan_weeks": 24,
+    "peak_week_hours": 30,
+    "peak_week_vert_m": 12000,
+    "peak_long_day_min": 480,
+    "back_to_back_min": [360, 300],
+    "taper_weeks": 3,
+    "last_long_run_min": 180
+  },
+  "rules": {
+    "long_run_share_of_weekly_volume_pct": 25,
+    "max_weekly_load_increase_pct": [7, 10],
+    "recovery_ratio_build_to_recovery": "3:1",
+    "zone4_min_per_week_max": [30, 40],
+    "zone3_min_per_week_max_high_level": 120,
+    "taper_volume_reduction_pct": [40, 60],
+    "taper_weeks": [2, 3],
+    "hill_sprints": {"reps": [6, 8], "seconds": 10, "grade_pct_min": 15, "recovery_min": 3}
+  },
+  "no_mountain_substitutes": {
+    "stairs": "10-12 s sprints on steep stairs, 2-3 min rest; or weighted hiking laps >=5 min with 10-15% body weight",
+    "incline_treadmill": "10 x 4 min at 20-25% incline with 1-2 min rest; or steady weighted hiking at 15-25%",
+    "weighted_step_ups": "box at 75% knee height; 3x20 per leg bodyweight, or 3x8-10 loaded (up to 25% BW); gym ME circuit 6x10, 1x/week for 8-14 weeks",
+    "sled_or_tire_drag": "flat-ground harness drag for horizontal leg drive without impact"
+  }
+}

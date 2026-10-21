@@ -257,7 +257,7 @@ class TestRuleBasedFallbackDescriptionConsistency:
         r"Warmup (\d+)m\. Repeat (\d+)x(\d+) minutes at Zone 4 effort\. "
         r"Recover with (\d+) minutes light jog between\. Cooldown (\d+)m\."
     )
-    TAPER_WALK_RE = re.compile(r"Restorative (\d+)-minute light walk or hike on soft trail\.")
+    TAPER_WALK_RE = re.compile(r"Restorative (\d+)-minute light walk or hike on soft ground or a flat route\.")
 
     @pytest.mark.asyncio
     async def test_wednesday_and_sunday_descriptions_sum_to_duration_minutes(self, monkeypatch):
@@ -275,17 +275,16 @@ class TestRuleBasedFallbackDescriptionConsistency:
         }
         race_info = {"name": "Test Race", "goal_type": "finish", "terrain": "trail"}
 
-        # 8 weeks in one block: Base(1-2)/Build(3-4)/Peak(5)/Taper(6)/Race Week(7)/Recovery(8)
-        # -- week 5 (odd) exercises the Tempo branch, week 6 (even) exercises
-        # both the Interval branch and the Sunday Taper "Active Recovery Walk".
+        # 10 weeks in one block: Peak weeks (6-7) exercise the Interval (even) and Tempo (odd) branches; the
+        # taper week (8) adds no hard work any more but still has the Sunday "Active Recovery Walk".
         workouts, _tier = await PlanGenerator.generate_plan_workouts(
             plan_id=1,
             user_profile=user_profile,
             race_info=race_info,
-            total_weeks=8,
+            total_weeks=10,
             api_key=None,  # no Gemini key either -- guarantees the rule-based path
             block_number=1,
-            weeks_per_block=8,
+            weeks_per_block=10,
         )
 
         checked = {"tempo": 0, "interval": 0, "taper_walk": 0}
@@ -324,7 +323,7 @@ class TestRuleBasedFallbackDescriptionConsistency:
         r"Khởi động (\d+) phút\. Lặp lại (\d+) lần (\d+) phút ở mức nỗ lực Zone 4\. "
         r"Đi bộ hoặc chạy nhẹ phục hồi (\d+) phút giữa các tổ\. Thả lỏng (\d+) phút\."
     )
-    VI_TAPER_WALK_RE = re.compile(r"Đi bộ phục hồi nhẹ nhàng (\d+) phút trên đường trail mềm\.")
+    VI_TAPER_WALK_RE = re.compile(r"Đi bộ phục hồi nhẹ nhàng (\d+) phút trên nền mềm hoặc đường bằng\.")
 
     @pytest.mark.asyncio
     async def test_vietnamese_translation_keeps_the_dynamic_minutes_consistent(self):
@@ -345,10 +344,10 @@ class TestRuleBasedFallbackDescriptionConsistency:
             plan_id=1,
             user_profile=user_profile,
             race_info=race_info,
-            total_weeks=8,
+            total_weeks=10,
             api_key=None,
             block_number=1,
-            weeks_per_block=8,
+            weeks_per_block=10,
         )
 
         checked = {"tempo": 0, "interval": 0, "taper_walk": 0}
@@ -1081,11 +1080,11 @@ class TestMountainDaySessions:
         assert PlanGenerator.resolve_climb_rate(Venues(), None, None, 850, 25) == 34
         assert PlanGenerator.resolve_climb_rate(Venues(), None, None, None, 25) is None
 
-    def test_taper_chills_at_zone1_and_minimum(self):
+    def test_taper_chills_at_zone1_and_is_exempt_from_the_trip_minimum(self):
         wo = self._generate(phase="Taper")
         assert wo["mountain_mode"] == "chill"
         assert wo["target_zone"] == "Zone 1"
-        assert wo["duration_minutes"] == 180
+        assert wo["duration_minutes"] == 130  # the taper session as planned, not raised to the 180 min minimum
         assert wo["target_hr_range"]
 
     def test_race_week_skips_to_flat_city_session(self):
@@ -1331,3 +1330,145 @@ class TestNoInventedClimbing:
             )
         prompt = fake_client.models.generate_content.call_args_list[0].kwargs["contents"]
         assert "NO OUTDOOR CLIMBING" in prompt
+
+
+class TestPersonaFindings:
+    def test_vietnamese_sanitizer_replaces_banned_words_but_keeps_stroke_volume(self):
+        from services.plan_generator import sanitize_vi
+
+        text = "Tăng thể tích hiếu khí, tối ưu hóa mỡ, chạy nước rút bứt phá, giáo án chuyên sâu; thể tích tâm thu."
+        out = sanitize_vi(text)
+        assert "khối lượng hiếu khí" in out and "cải thiện mỡ" in out and "tăng tốc" in out
+        assert "lịch tập chuyên biệt" in out and "thể tích tâm thu" in out
+        assert not any(b in out for b in ("tối ưu hóa", "bứt phá", "chuyên sâu", "giáo án"))
+
+    def test_phase_labels_are_structural(self):
+        phases = [PlanGenerator.phase_for_week(w, 12) for w in range(1, 13)]
+        assert phases[-1] == "Recovery" and phases[-2] == "Race Week" and phases[-3] == "Taper"
+        assert phases[0] == "Base" and "Build" in phases and phases.count("Taper") == 2  # 12+ weeks: two-step taper
+        short = [PlanGenerator.phase_for_week(w, 8) for w in range(1, 9)]
+        assert short.count("Taper") == 1 and short[0] == "Base"
+
+    def test_a_hard_session_in_a_recovery_week_becomes_an_easy_run_and_the_models_phase_label_is_overwritten(self):
+        import json
+
+        prior = [
+            {"week_number": 1, "day_of_week": d, "type": "Easy", "duration_minutes": 100.0, "phase": "Base"}
+            for d in ("Tuesday", "Thursday", "Saturday")
+        ]
+        reply = [
+            {"week_number": 2, "day_of_week": "Tuesday", "title": "Easy", "type": "Easy", "duration_minutes": 50, "target_zone": "Zone 2", "phase": "Taper", "description": "x"},
+            {"week_number": 2, "day_of_week": "Thursday", "title": "Sub-Threshold Tempo", "type": "Tempo", "duration_minutes": 50, "target_zone": "Zone 3", "phase": "Taper", "description": "x"},
+            {"week_number": 2, "day_of_week": "Saturday", "title": "Long", "type": "Long Run", "duration_minutes": 80, "target_zone": "Zone 2", "phase": "Taper", "description": "x"},
+        ]  # fmt: skip
+        client = MagicMock()
+        client.models.generate_content.return_value = MagicMock(text=json.dumps(reply))
+        profile = {
+            "max_hr": 185,
+            "resting_hr": 55,
+            "aet_hr": 145,
+            "ant_hr": 168,
+            "zone2_pace_min": "6:30",
+            "zone2_pace_max": "5:45",
+            "current_weekly_km": 40.0,
+        }
+        with (
+            patch("google.genai.Client", return_value=client),
+            patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+            patch("services.plan_generator.get_plan_workouts", return_value=prior),
+        ):
+            workouts, _ = asyncio.run(
+                PlanGenerator.generate_plan_workouts(
+                    plan_id=5,
+                    user_profile=profile,
+                    race_info={
+                        "name": "R",
+                        "date": "2027-03-27",
+                        "plan_start_date": "2026-10-19",
+                        "terrain": "road",
+                        "goal_type": "finish",
+                        "days_per_week": 3,
+                    },
+                    total_weeks=12,
+                    api_key="k",
+                    block_number=2,
+                    weeks_per_block=1,
+                )  # fmt: skip
+            )
+        thursday = next(w for w in workouts if w["day_of_week"] == "Thursday")
+        assert (
+            thursday["type"] == "Easy" and thursday["target_zone"] == "Zone 2" and "recovery week" in thursday["title"]
+        )
+        assert {w["phase"] for w in workouts} == {"Base"}  # the model's "Taper" label is not trusted
+
+
+class TestLanguageDetection:
+    def test_place_names_do_not_switch_an_english_plan_to_vietnamese(self):
+        from services.plan_generator import has_vietnamese_text, narrative_lang_instruction
+
+        info = {"lang": "en", "name": "Vietnam Highlands Trail by UTMB"}
+        block = "Week 3: Long Run at Núi Dinh (Núi Chứa Chan next), coach evaluation: on track."
+        assert not has_vietnamese_text(block, info)
+        assert narrative_lang_instruction(info, block) == "Respond in English."
+        assert (
+            narrative_lang_instruction({"lang": "en", "name": "Đà Lạt Ultra"}, "race Đà Lạt Ultra long run")
+            == "Respond in English."
+        )
+
+    def test_vietnamese_prose_still_switches_the_language(self):
+        from services.plan_generator import has_vietnamese_text
+
+        assert has_vietnamese_text("Tuần này tôi mệt, đau gối nhẹ", {"name": "x"})
+        assert has_vietnamese_text("Chạy Núi Dinh nhưng tôi bận việc", {})  # prose around a place name still counts
+
+
+class TestVietnameseCopyRule:
+    def test_hype_and_invented_phrases_are_replaced(self):
+        from services.plan_generator import sanitize_vi
+
+        text = "Hill Sprints Bùng Nổ trên dốc dốc, Strides Tươi Mới, giải phóng ứ đọng cơ, bốc dốc"
+        out = sanitize_vi(text)
+        for bad in ("Bùng Nổ", "Tươi Mới", "dốc dốc", "ứ đọng", "bốc dốc"):
+            assert bad.lower() not in out.lower()
+        assert "Hill Sprints" in out and "Strides" in out
+
+    def test_title_case_becomes_sentence_case_but_keeps_english_terms(self):
+        from services.plan_generator import vi_sentence_case
+
+        assert vi_sentence_case("Buổi Chạy Đường Dài Long Run Zone 2") == "Buổi chạy đường dài Long Run Zone 2"
+        assert vi_sentence_case("Easy Run nhẹ") == "Easy Run nhẹ"  # already sentence case
+
+    def test_nobody_is_told_to_jump_onto_a_moving_belt(self):
+        from services.plan_generator import sanitize_belt, sanitize_vi
+
+        assert "jump" not in sanitize_belt("Jump onto the moving belt at 15%").lower()
+        assert "nhảy" not in sanitize_vi("nhảy vào belt bứt tốc rồi chạy").lower()
+
+
+class TestTrailStepPaces:
+    def test_flat_easy_paces_in_the_steps_follow_the_climb_but_sprints_do_not(self):
+        from services.trail_pace import scale_step_paces
+
+        text = "Warm up 15 min @ 5:30 /km → 40 min @ 4:50/km → 6 x 10 s sprints @ 3:20/km"
+        out = scale_step_paces(text, (4.4, 6.2), 60)  # 60 m D+/km: x1.72
+        assert "9:28" in out and "8:19" in out  # 5:30 and 4:50 scaled
+        assert "3:20/km" in out  # sprint pace untouched
+
+
+class TestViStyle:
+    def test_known_weird_phrases_are_flagged_and_clean_text_is_not(self):
+        from services.vi_style import naturalness_issues, sanitize_vi
+
+        assert naturalness_issues("Hill Sprints Bùng Nổ cho bạn")  # banned hype word
+        assert "doubled-word" in naturalness_issues("Chạy dốc dốc nhẹ nhàng")
+        assert "title-case" in naturalness_issues("Buổi Chạy Đường Dài Cuối Tuần Này")
+        assert "english-sentence" in naturalness_issues("Warm up gently and run steadily on the soft grass today")
+        clean = "Warm-up 10 phút nhẹ → 40 phút Zone 2 đều, power-hiking đoạn dốc trên 10% → Cool-down 5 phút."
+        assert naturalness_issues(sanitize_vi(clean)) == []
+
+    def test_the_lexicon_replacements_cover_the_coach_examples(self):
+        from services.vi_style import sanitize_vi
+
+        out = sanitize_vi("giải phóng ứ đọng cơ, bốc dốc, vô tội vạ, ly tâm, thể tích tâm thu")
+        assert "ứ đọng" not in out and "bốc dốc" not in out and "vô tội vạ" not in out and "lệch tâm" in out
+        assert "thể tích tâm thu" in out  # stroke volume stays

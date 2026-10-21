@@ -1,0 +1,233 @@
+{
+  "_note": "Vietnamese copy lexicon for generated plan text (skill: uphill-ai-vietnamese-copy). Edit this file, not the code. Sources: the skill's ban list, coach reviews of generated plans (HCMC/Hanoi/Núi Dinh), vi-humanizer rewrites reviewed by a human. 'replace' entries are applied by sanitize_vi; 'banned' words and phrases fail the naturalness gate and send the session to a reviewed template.",
+  "replace": [
+    [
+      "đỉnh cao",
+      "cao điểm"
+    ],
+    [
+      "\\bProcess:",
+      "Cách làm:"
+    ],
+    [
+      "\\bOverall:",
+      "Tổng quan:"
+    ],
+    [
+      "\\bReason:",
+      "Lý do:"
+    ],
+    [
+      "\\bBenefit:",
+      "Lợi ích:"
+    ],
+    [
+      "toàn diện",
+      "đầy đủ"
+    ],
+    [
+      "\\s+bùng nổ",
+      ""
+    ],
+    [
+      "\\s+tươi mới",
+      ""
+    ],
+    [
+      "tiến hóa",
+      "tiến triển"
+    ],
+    [
+      "bằng phẳng phẳng lặng",
+      "bằng phẳng"
+    ],
+    [
+      "\\bdốc dốc\\b",
+      "dốc"
+    ],
+    [
+      "\\bphẳng phẳng\\b",
+      "phẳng"
+    ],
+    [
+      "bốc dốc",
+      "leo dốc"
+    ],
+    [
+      "giải phóng ứ đọng cơ",
+      "xả mỏi cơ"
+    ],
+    [
+      "phát triển ti thể",
+      "phát triển nền tảng aerobic"
+    ],
+    [
+      "đốt (?:chất )?béo(?: làm năng lượng)?",
+      "dùng mỡ làm năng lượng"
+    ],
+    [
+      "\\bly tâm\\b",
+      "lệch tâm"
+    ],
+    [
+      "vô tội vạ",
+      "thoải mái"
+    ],
+    [
+      "nước rút hiếu khí",
+      "tăng tốc ngắn"
+    ],
+    [
+      "thể tích(?! tâm thu)",
+      "khối lượng"
+    ],
+    [
+      "tối ưu hóa",
+      "cải thiện"
+    ],
+    [
+      "bứt phá",
+      "tăng tốc"
+    ],
+    [
+      "chuyên sâu",
+      "chuyên biệt"
+    ],
+    [
+      "đột phá",
+      "cải thiện rõ rệt"
+    ],
+    [
+      "giáo án",
+      "lịch tập"
+    ],
+    [
+      "sinh lý",
+      "thể chất"
+    ],
+    [
+      "\\bWarning:",
+      "Lưu ý:"
+    ],
+    [
+      "\\bFueling/notes:",
+      "Fueling / ghi chú:"
+    ],
+    [
+      "(\\d+)\\s*min\\b",
+      "\\1 phút"
+    ],
+    [
+      "\\bWarm up\\b",
+      "Warm-up"
+    ],
+    [
+      "mô phỏng độ cao",
+      "mô phỏng leo dốc"
+    ]
+  ],
+  "banned": [
+    "kiến tạo",
+    "bảo chứng",
+    "nâng tầm",
+    "vượt trội",
+    "độc quyền",
+    "mạnh mẽ",
+    "tuyệt vời",
+    "chinh phục",
+    "đắm chìm",
+    "hệ sinh thái",
+    "giải pháp",
+    "thấu hiểu",
+    "đồng hành cùng bạn",
+    "bùng nổ",
+    "tươi mới",
+    "sâu lắng",
+    "phục hồi chức năng",
+    "dinh dưỡng & fueling"
+  ],
+  "keep_english": [
+    "Easy",
+    "Run",
+    "Long",
+    "Tempo",
+    "Threshold",
+    "Interval",
+    "Recovery",
+    "Muscular",
+    "Endurance",
+    "ME",
+    "Strength",
+    "Zone",
+    "AeT",
+    "AnT",
+    "HR",
+    "Deload",
+    "Taper",
+    "D+",
+    "Race",
+    "Ultra",
+    "Trail",
+    "Road",
+    "Treadmill",
+    "Hill",
+    "Sprints",
+    "Strides",
+    "Warm-up",
+    "Cool-down",
+    "Power-hiking",
+    "Climb",
+    "Session",
+    "Fartlek",
+    "Surges",
+    "Pace",
+    "Plan",
+    "Coach",
+    "Aerobic",
+    "Anaerobic",
+    "RPE",
+    "Fueling",
+    "Carbs",
+    "Sodium",
+    "GPX",
+    "Repeats",
+    "Repeat",
+    "Back-to-back",
+    "km",
+    "min",
+    "Electrolytes",
+    "Gel",
+    "Cutoff",
+    "COT",
+    "DNF",
+    "CP",
+    "Split",
+    "Block",
+    "General",
+    "Bodyweight",
+    "Single-leg",
+    "Romanian",
+    "Deadlifts",
+    "Squats",
+    "Lunges",
+    "Walking",
+    "Step-ups",
+    "Planks",
+    "Bridges",
+    "Calf",
+    "Raises",
+    "Glute",
+    "Hip",
+    "Get-ups",
+    "Burpees",
+    "Foam",
+    "Rolling",
+    "Jump",
+    "Box",
+    "Goblet",
+    "Split",
+    "Bulgarian",
+    "Nordic",
+    "Curls"
+  ]
+}

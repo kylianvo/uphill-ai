@@ -9,7 +9,13 @@ retry prompt. Caps come from the athlete's tier profile, not from one-size numbe
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from services.athlete_tier import TierProfile, week_capacity_parts
+from services.athlete_tier import (
+    LONG_SHARE_SOFT,
+    TierProfile,
+    session_cap_minutes,
+    taper_shift,
+    week_capacity_parts,
+)
 
 if TYPE_CHECKING:  # goal_demands imports race_readiness, which imports this module
     from services.goal_demands import Demands
@@ -18,7 +24,7 @@ DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sun
 DOWN_PHASES = {"Recovery", "Taper", "Race Week"}
 HARD_TYPES = {"Tempo", "Threshold", "Interval"}
 HARD_ZONES = {"Zone 3", "Zone 4", "Zone 5"}
-LONG_SHARE_TOLERANCE = 0.02  # planned minutes are rounded
+LONG_SHARE_TOLERANCE = LONG_SHARE_SOFT + 0.02  # soft margin plus rounding of planned minutes
 # Planned D+ is a noisy estimate (it moves with which session lands on a mountain day), so
 # the vertical check only catches gross spikes; the doctrine's 7-10% cap is applied to time.
 MAX_VERT_GROWTH = 0.25
@@ -136,7 +142,8 @@ def in_ultra_window(prefs: Prefs | None, week: int) -> bool:
     if d is None or not prefs.total_weeks or d.distance_km < ULTRA_KM or (prefs.days_per_week or 5) < 5:
         return False
     lo, hi = _B2B_WINDOW_FROM_END
-    return prefs.total_weeks - lo <= week <= prefs.total_weeks - hi
+    shift = taper_shift(prefs.total_weeks)
+    return prefs.total_weeks - lo - shift <= week <= prefs.total_weeks - hi - shift
 
 
 def _climbs(w: dict[str, Any]) -> bool:
@@ -225,9 +232,15 @@ def lint_week(
     b2b_ok = False
     if in_ultra_window(prefs, week) and is_b2b_week(ws):
         lo, hi = _B2B_WINDOW_FROM_END
+        lo += taper_shift(prefs.total_weeks)
         earlier = sum(1 for wk in range(prefs.total_weeks - lo, week) if wk in weeks and is_b2b_week(weeks[wk]))
         b2b_ok = earlier < B2B_MAX_WEEKS
     long_cap = profile.long_run_share_cap + (B2B_LONG_SHARE_BONUS if b2b_ok else 0.0)
+    phase_for_share = next((w.get("phase") for w in ws if w.get("phase")), "")
+    if phase_for_share == "Taper":
+        long_cap += TAPER_LONG_SHARE_BONUS  # volume drops faster than the long run does
+    if any(_is_long(w) and _min(w) > MAX_SESSION_MIN for w in ws):
+        long_cap = max(long_cap, BIG_DAY_LONG_SHARE)  # an 8-hour day is about a third of a 150 mile build week
 
     # A recovery week is for recovering: no Zone 3+ session. (Taper and race weeks have their own shape.)
     phase_now = next((w.get("phase") for w in ws if w.get("phase")), "")
@@ -244,6 +257,16 @@ def lint_week(
                     )
                 )
                 break
+
+    if phase_now == "Taper" and prev_total and total > prev_total * TAPER_MAX_SHARE:
+        issues.append(
+            Issue(
+                "TAPER_NOT_LIGHT",
+                week,
+                f"Week {week} is the taper: cut the volume to at most {prev_total * TAPER_MAX_SHARE:.0f} min "
+                f"(now {total:.0f}); keep the long run and one short quality session, drop the rest.",
+            )
+        )
 
     # A steep race without hills: every build-phase Muscular Endurance session is climbing work (stairs, incline
     # treadmill, weighted carries), not gym straight sets.
@@ -267,11 +290,16 @@ def lint_week(
                 )
                 break
 
-    # An ultra's back-to-back weekend belongs in the first two weeks of the window: if neither has one, the
-    # second one asks for it (a recovery week is excused).
-    if in_ultra_window(prefs, week) and d is not None and week == prefs.total_weeks - _B2B_WINDOW_FROM_END[0] + 2:
-        first = prefs.total_weeks - _B2B_WINDOW_FROM_END[0] + 1
-        done_before = first in weeks and is_b2b_week(weeks[first])
+    # An ultra's back-to-back weekend belongs in the last build weeks: asked at total-4, and again at total-3 when
+    # the first ask fell on a recovery week (a recovery week is excused).
+    shift = taper_shift(prefs.total_weeks) if prefs and prefs.total_weeks else 0
+    if (
+        in_ultra_window(prefs, week)
+        and d is not None
+        and week in (prefs.total_weeks - 4 - shift, prefs.total_weeks - 3 - shift)
+    ):
+        lo = prefs.total_weeks - _B2B_WINDOW_FROM_END[0] - shift
+        done_before = any(wk in weeks and is_b2b_week(weeks[wk]) for wk in range(lo, week))
         if not done_before and not planned_recovery and not is_b2b_week(ws):
             sat, sun = b2b_targets(workouts, week, d.longest_session_min)
             issues.append(
@@ -360,14 +388,15 @@ def lint_week(
             )
         )
 
+    session_cap = session_cap_minutes(profile, prefs.demands.distance_km if prefs and prefs.demands else None)
     for w in ws:
-        if _min(w) > MAX_SESSION_MIN and w.get("type") != "Race":  # the race is not a training session
+        if _min(w) > session_cap and w.get("type") != "Race":  # the race is not a training session
             issues.append(
                 Issue(
                     "SESSION_TOO_LONG",
                     week,
                     f"Week {week}: {_label(w)} is {_min(w):.0f} min. No single session may exceed "
-                    f"{MAX_SESSION_MIN // 60} hours.",
+                    f"{session_cap // 60} hours.",
                 )
             )
 
@@ -394,8 +423,23 @@ RECOVERY_DROP = 0.85  # a week this far under the one before is a planned recove
 ULTRA_KM = 80  # races at or above this get back-to-back weekends and climbing-specific work
 B2B_DAY_MIN = 90  # each day of a back-to-back weekend holds at least this much running
 B2B_LONG_SHARE_BONUS = 0.10  # a back-to-back week may put more of its time into the long run
+TAPER_MAX_SHARE = 0.85  # the taper week is at most this share of the week before
+TAPER_LONG_SHARE_BONUS = 0.10
+BIG_DAY_LONG_SHARE = 0.35
 B2B_MAX_WEEKS = 2  # ...in at most this many of the last build weeks
-CLIMB_KEYWORDS = ("stair", "incline", "carry", "carries", "uphill", "hill")
+CLIMB_KEYWORDS = (
+    "stair",
+    "incline",
+    "carry",
+    "carries",
+    "uphill",
+    "hill",
+    "cầu thang",
+    "dốc",
+    "leo ",
+    "mang tạ",
+    "balo",
+)
 MIN_CLIMB_SESSIONS = 2  # climbing-load sessions in the build for a steep race without hills
 _B2B_WINDOW_FROM_END = (6, 3)  # the last four pre-taper weeks: total-6 .. total-3
 SPECIFICITY_WEEKS_BEFORE_END = 3  # taper, race week and the recovery week close the plan
@@ -411,7 +455,11 @@ def _specificity(
     d = prefs.demands if prefs else None
     by = _by_week(workouts)
     peaks = sorted(w for w in weeks if any(x.get("phase") == "Peak" for x in by.get(w, [])))
-    last_build = prefs.total_weeks - SPECIFICITY_WEEKS_BEFORE_END if prefs and prefs.total_weeks else None
+    last_build = (
+        prefs.total_weeks - SPECIFICITY_WEEKS_BEFORE_END - taper_shift(prefs.total_weeks)
+        if prefs and prefs.total_weeks
+        else None
+    )
     if d is None:
         return []
     # Models rarely label a "Peak" phase: the last pre-taper week is the anchor when the plan length is known.
@@ -423,7 +471,7 @@ def _specificity(
         return []
     issues: list[Issue] = []
     held = max((_min(x) for w in training for x in by[w]), default=0.0)
-    _, long_cap = week_capacity_parts(profile, prefs.days_per_week)
+    _, long_cap = week_capacity_parts(profile, prefs.days_per_week, session_cap_minutes(profile, d.distance_km))
     target = TIME_ON_FEET_SHARE * min(d.longest_session_min, long_cap)
     if held < target:
         issues.append(

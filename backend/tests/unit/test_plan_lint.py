@@ -362,3 +362,91 @@ def test_the_second_ultra_window_week_asks_for_a_back_to_back_weekend_when_none_
         ],
     ) + quiet(7)
     assert "B2B_MISSING" not in codes(lint_weeks(done, {7}, SUB, prefs))
+
+
+# --- findings from the persona runs ---------------------------------------------------------------------
+
+
+def test_sub_elite_hundred_milers_may_run_an_eight_hour_day_everyone_else_stays_at_five_hours():
+    from services.athlete_tier import session_cap_minutes
+
+    mile100 = goal_demands.compute(161, 8000, None, 36)
+    assert session_cap_minutes(SUB, 161) == 480 and session_cap_minutes(SUB, 104) == 300
+    assert session_cap_minutes(REC, 161) == 300
+    week = _week(
+        10,
+        [
+            ("Tuesday", "Easy", 70, "Zone 2", None),
+            ("Saturday", "Long Run", 400, "Zone 2", None),
+            ("Sunday", "Long Run", 180, "Zone 2", None),
+        ],
+    )
+    prefs = Prefs(demands=mile100, total_weeks=16)
+    assert "SESSION_TOO_LONG" not in codes(lint_weeks(week, {10}, SUB, prefs))
+    assert "SESSION_TOO_LONG" in codes(lint_weeks(week, {10}, REC, prefs))
+    assert "SESSION_TOO_LONG" in codes(
+        lint_weeks(
+            _week(10, [("Saturday", "Long Run", 400, "Zone 2", None)]),
+            {10},
+            SUB,
+            Prefs(demands=D100_ULTRA, total_weeks=16),
+        )
+    )
+
+
+def test_the_taper_week_must_be_lighter_and_may_keep_a_larger_long_run_share():
+    build = _week(
+        9,
+        [
+            ("Tuesday", "Easy", 80, "Zone 2", None),
+            ("Thursday", "Easy", 80, "Zone 2", None),
+            ("Sunday", "Long Run", 180, "Zone 2", None),
+        ],
+    )
+    heavy = _week(
+        10,
+        [
+            ("Tuesday", "Easy", 80, "Zone 2", None),
+            ("Thursday", "Easy", 80, "Zone 2", None),
+            ("Sunday", "Long Run", 170, "Zone 2", None),
+        ],
+        phase="Taper",
+    )
+    assert "TAPER_NOT_LIGHT" in codes(lint_weeks(build + heavy, {10}, REC, Prefs()))
+    light = _week(
+        10,
+        [
+            ("Tuesday", "Easy", 55, "Zone 2", None),
+            ("Thursday", "Easy", 50, "Zone 2", None),
+            ("Sunday", "Long Run", 72, "Zone 2", None),
+        ],
+        phase="Taper",
+    )
+    got = codes(lint_weeks(build + light, {10}, REC, Prefs()))
+    assert "TAPER_NOT_LIGHT" not in got and "LONG_SHARE" not in got  # 95/180 = 53%: taper weeks may hold more
+
+
+def test_vietnamese_climbing_words_count_as_climbing_work():
+    gym = _week(6, [("Wednesday", "Muscular Endurance", 50, "Zone 2", "ME bước lên bục")], "Build")
+    stairs = _week(6, [("Wednesday", "Muscular Endurance", 50, "Zone 2", "ME leo cầu thang mang tạ")], "Build")
+    prefs = Prefs(demands=D100_ULTRA, total_weeks=11, flat_only=True)
+    assert "CLIMB_SPECIFICITY" in codes(lint_weeks(gym, {6}, SUB, prefs))
+    assert "CLIMB_SPECIFICITY" not in codes(lint_weeks(stairs, {6}, SUB, prefs))
+
+
+def test_the_back_to_back_ask_moves_to_the_next_week_when_the_first_fell_on_a_recovery_week():
+    def quiet(wk, scale=1.0):
+        return _week(
+            wk,
+            [
+                ("Tuesday", "Easy", round(80 * scale), "Zone 2", None),
+                ("Wednesday", "Easy", round(70 * scale), "Zone 2", None),
+                ("Saturday", "Easy", round(60 * scale), "Zone 2", None),
+                ("Sunday", "Long Run", round(150 * scale), "Zone 2", None),
+            ],
+        )
+
+    prefs = Prefs(demands=D100_ULTRA, total_weeks=13)  # two-step taper: the asks sit one week earlier, 8 and 9
+    plan = quiet(7) + quiet(8, 0.7) + quiet(9)  # week 8 is a recovery week
+    assert "B2B_MISSING" not in codes(lint_weeks(plan, {8}, SUB, prefs))
+    assert "B2B_MISSING" in codes(lint_weeks(plan, {9}, SUB, prefs))
