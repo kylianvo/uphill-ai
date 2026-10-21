@@ -98,3 +98,16 @@ def test_gym_session_gets_warmup_and_cooldown_steps_around_its_exercises():
     assert steps[0].startswith("Warm-up") and steps[-1].startswith("Cool-down")
     assert steps[1:3] == ["Step-ups 4x10/leg, 30s rest", "Walking Lunges 4x10/leg, 30s rest"]
     assert note.strip() == "climbing legs."
+
+
+def test_run_plus_strength_keeps_its_exercises():
+    # prod (Dylan): a 45 min Easy run + strength; its run steps add up to 35 min because the exercises carry no
+    # minutes. It must not be rebuilt into a plain run.
+    desc = (
+        "Warm up 5 min easy walking → 25 min easy recovery run in Zone 1 → Bodyweight Squats: 3x10, 90s rest "
+        "→ Plank: 3x45s, 60s rest → Cool down 5 min gentle stretching."
+    )
+    wo = _generate(_session("Aerobic Recovery Run & General Strength", "Easy", 45, 3, 45, desc))
+    assert wo["title"] == "Aerobic Recovery Run & General Strength"
+    assert "Bodyweight Squats: 3x10, 90s rest → Plank: 3x45s, 60s rest" in wo["description"]
+    assert wo["interval_reps"] is None

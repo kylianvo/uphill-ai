@@ -1547,70 +1547,6 @@ class PlanGenerator:
                         "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được.",
                     )
 
-        def _add_drift_test(wos: list[dict[str, Any]]) -> None:
-            """Book: the heart-rate drift test finds the real AeT. Week 1 and every sixth week after it (Base and
-            Build, never a deload) one easy run of 45+ min becomes a flat test; the athlete enters the result in
-            Profile -> Thresholds, so the gate above works from a measured gap."""
-            placed: set[int] = set()  # 6-week cycles tested; a week with no fitting run passes it on
-            for week_no, rows in sorted(_week_rows(wos).items()):
-                due = (week_no - 1) % 6 <= 2 and (week_no - 1) // 6 not in placed  # first fitting week of each 6
-                if (
-                    not due
-                    or rows[0].get("phase") not in ("Base", "Build")
-                    or PlanGenerator.is_deload_week(week_no, total_weeks)
-                ):
-                    continue
-                long_day = next((r["day_of_week"] for r in rows if r.get("type") == "Long Run"), None)
-                days = list(_PRIORITY_DAY_ORDER)
-                eve = days[(days.index(long_day) - 1) % 7] if long_day in days else None
-                after_hard = {
-                    days[(days.index(r["day_of_week"]) + 1) % 7]
-                    for r in rows
-                    if r.get("day_of_week") in days
-                    and (
-                        r.get("type") in ("Interval", "Tempo")
-                        or any(kw in (r.get("title") or "").lower() for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
-                    )
-                }
-                pool = [
-                    r
-                    for r in rows
-                    if r.get("type") == "Easy"
-                    and r.get("day_of_week") != eve
-                    and r.get("day_of_week") not in after_hard
-                    and float(r.get("duration_minutes") or 0) >= 45
-                    and not r.get("mountain_mode")
-                ]
-                if not pool:
-                    continue
-                placed.add((week_no - 1) // 6)
-                wo = min(  # a flat run closest to an hour: a hilly one is flattened below
-                    pool,
-                    key=lambda r: (
-                        float(r.get("elevation_gain_m") or 0) >= 15 * max(float(r.get("distance_km") or 0), 1.0),
-                        abs(float(r["duration_minutes"]) - 60),
-                    ),
-                )
-                main = int(float(wo["duration_minutes"])) - 20
-                wo["target_zone"], wo["target_hr_range"] = "Zone 2", z2_range
-                wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
-                    "Zone 2", float(wo["duration_minutes"]), est_zones
-                )
-                wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0
-                wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
-                wo["title"] = "AeT Drift Test (Zone 2)" if lang != "vi" else "Kiểm tra AeT bằng HR drift (Zone 2)"
-                wo["description"] = (
-                    f"Warm-up 10 min easy → {main} min steady at the top of Zone 2 on flat ground, same effort "
-                    f"throughout; note your average HR for the first and second half → Cool-down 10 min easy. If the "
-                    f"second-half HR is under 5% above the first at the same pace, your Zone 2 ceiling is at or below "
-                    f"your AeT. Over 5%: lower the ceiling and repeat in 6 weeks. Enter the result in Profile → Thresholds."
-                    if lang != "vi"
-                    else f"Warm-up 10 phút nhẹ → {main} phút chạy đều ở mức cao của Zone 2 trên đường phẳng, giữ cùng "
-                    f"một mức nỗ lực; ghi HR trung bình nửa đầu và nửa sau → Cool-down 10 phút nhẹ. Nếu HR nửa sau cao "
-                    f"hơn nửa đầu dưới 5% ở cùng tốc độ, ngưỡng Zone 2 của bạn đang ở mức AeT hoặc thấp hơn. Cao hơn "
-                    f"5% thì hạ ngưỡng Zone 2 xuống và test lại sau 6 tuần. Nhập kết quả vào Hồ sơ → Ngưỡng."
-                )
-
         def _cap_start_load(wos: list[dict[str, Any]]) -> None:
             """Week 1 may not exceed what the athlete runs now by more than RECENT_LOAD_GROWTH. The excess comes off
             the easy runs (30 min minimum); the long run, ME and quality sessions stay."""
@@ -2178,7 +2114,9 @@ class PlanGenerator:
                     wo["description"] = desc
                 if typ in ("Easy", "Aerobic Capacity", "Recovery", "Long Run", "Tempo"):
                     nums = [int(n) for n in _STEP_MIN.findall(desc)]
-                    if len(nums) >= 2 and abs(sum(nums) - minutes) / minutes > 0.15:
+                    # a step with no minutes is an exercise or drill (run + strength), not padding to rebuild
+                    untimed = any(not _STEP_MIN.search(s) for s in _split_notes(desc)[0].split("→") if s.strip())
+                    if len(nums) >= 2 and not untimed and abs(sum(nums) - minutes) / minutes > 0.15:
                         wo["description"] = (
                             _long_text(minutes, climbing)
                             if typ == "Long Run"
@@ -2592,7 +2530,6 @@ class PlanGenerator:
             _add_climb_session(wos)
             _incline_long_run(wos)  # after the climb sessions: it fills the week up to the 80% cap, never past it
             _cap_week_vert(wos)
-            _add_drift_test(wos)
             _soften_recovery_weeks(wos)
             _gate_hard(wos)
             for wo in wos:  # a recovery run is short; a longer one is an easy Zone 1 aerobic run, same length
@@ -2744,7 +2681,7 @@ class PlanGenerator:
             else:
                 ads_status = (
                     "\nAerobic Efficiency: AeT and AnT are estimates, not measured, so ADS cannot be assessed. Keep easy "
-                    "runs conservative and suggest a heart-rate drift test to establish the real AeT.\n"
+                    "runs conservative.\n"
                 )
 
             user_summary = (

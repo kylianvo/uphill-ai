@@ -72,9 +72,8 @@ Paths are under `backend/services/` unless stated.
   - Thresholds only estimated: the **Base** phase stays in Zones 1–2.
   - Hill sprints and strides always stay (neuromuscular, not endurance intensity).
   - Code: `athlete_tier.hard_work_banned_phases`, `_gate_hard`.
-- **R-I2 Drift test.** The first fitting week of each 6-week cycle (weeks 1–3, 7–9, …) gets a flat
-  AeT drift test of 45+ min. It's never on the day after intervals or sprints. The athlete enters
-  the result in Profile → Thresholds, which makes R-I1 use a measured gap.
+- **R-I2 (removed 2026-10-22).** Plans no longer schedule an AeT drift test. R-I1 uses a measured
+  gap once the athlete enters lab or field thresholds in Profile → Thresholds.
 - **R-I3 Dose per session.** At most ~60 min of Zone 3 (session ≤75 min) or ~30 min of Zone 4
   (≤70 min). Longer ones become easy runs (`_cap_hard_dose`).
 - **R-I4 Dose per week.** Zone 3 ≤120 min and Zone 4 ≤40 min of work (scored by the quality bar).
@@ -212,8 +211,7 @@ held:
 9. Natural Vietnamese.
 10. No week >80% of race D+.
 11. AeT gate respected.
-12. Drift test in weeks 1–3.
-13. Week 1 within 10% of recent load.
+12. Week 1 within 10% of recent load.
 
 ## 7. Known gaps (say so when asked)
 

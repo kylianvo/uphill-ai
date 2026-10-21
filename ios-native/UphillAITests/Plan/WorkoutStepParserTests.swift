@@ -69,6 +69,18 @@ struct WorkoutStepParserTests {
         #expect(parsed.intent == "straight sets, 60s between exercises.")
     }
 
+    @Test func runPlusStrengthShowsTheRunAndEachExercise() {
+        // prod (Dylan): the plank's "3x45s" used to become the headline of one combined main set
+        let w = TestData.workout(["type": "Easy", "title": "Aerobic Recovery Run & General Strength", "duration_minutes": 45.0,
+                                 "target_zone": "Zone 1", "target_pace": "7:00 /km",
+                                 "description": "Process: Warm up 5 min easy walking and dynamic mobility → 25 min easy recovery run strictly in Zone 1 → Bodyweight Squats: 3x10, 90s rest → Plank: 3x45s, 60s rest → Cool down 5 min gentle stretching. Overall: A short aerobic flush run paired with strength."])
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: WorkoutStepParser.parseDescription(w.description), isTreadmill: false)
+        #expect(steps.map(\.phase) == [.warmup, .main, .main, .main, .cooldown])
+        #expect(steps[1].duration == "25 min" && steps[1].target == "25 min easy recovery run strictly in Zone 1")
+        #expect(steps[2].target == "Bodyweight Squats: 3x10, 90s rest")
+        #expect(steps[3].target == "3 × 45 s" && steps[3].steps == ["Plank: 3x45s, 60s rest"])
+    }
+
     @Test func vietnameseNotesStayOutOfTheSteps() {
         let text = "Cách làm: Khởi động 10 phút nhẹ → Step-ups 3 x 12/chân → Planks 3 x 45 giây → Cool-down 5 phút nhẹ. Tổng quan: tập theo vòng. Lưu ý: dừng nếu đau gối."
         let w = TestData.workout(["type": "Strength", "title": "Sức mạnh", "duration_minutes": 40.0, "description": text])
