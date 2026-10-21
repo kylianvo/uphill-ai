@@ -4,7 +4,7 @@
 
 **Goal:** `start_running` plans get a First 5K / First 10K target, an optional event, and a fixed milestone ladder. The ladder ticks automatically from completed workouts and synced runs, or by hand. It shows in iOS and web onboarding and in the plan view, and the plan prompt, week brief and Coach Uphill all know about it.
 
-**Architecture:** The ladder and all achievement logic live in one pure module, `backend/services/beginner_milestones.py`. A thin `refresh_milestones(user_id)` re-evaluates the whole active plan from DB state after any event that can earn credit, so every hook is the same one-line call and the result is idempotent. The plan JSON carries a `milestones` object, and the clients render it. The LLM only receives milestone facts as context. It never decides achievement.
+**Architecture:** The ladder and all achievement logic live in one pure module, `backend/services/beginner_milestones.py`. A thin `refresh_milestones(user_id)` re-evaluates the whole active plan from DB state after any event that can earn credit, so every hook is the same one-line call and the result is idempotent. The plan JSON carries a `beginner_milestones` object, and the clients render it. The LLM only receives milestone facts as context. It never decides achievement.
 
 **Tech Stack:** FastAPI + SQLAlchemy Core `text()` + Alembic (backend), Next.js 16 + vitest (web), SwiftUI + XcodeGen + XCTest (iOS).
 
@@ -12,14 +12,14 @@
 
 ## Global Constraints
 
-- Every schema change goes in BOTH `db.py:init_db()` (idempotent `CREATE`/`ALTER … IF NOT EXISTS`) and one Alembic migration with `down_revision = "b6094f3e20a8"` (current single head). Follow the `db-migration` skill.
+- Every schema change goes in BOTH `db.py:init_db()` (idempotent `CREATE`/`ALTER … IF NOT EXISTS`) and one Alembic migration with `down_revision = "a9d4c7e1f2b6"` (single head after the 2026-10-21 rebase; re-check with `alembic heads` before writing). Follow the `db-migration` skill.
 - The ladder keys, kinds, thresholds and stages are exactly the spec table: `first_session`, `jog_5`, `jog_10`, `jog_20`, `jog_30`, `first_5k` (stage A, where 5K ends), then `jog_45`, `jog_60`, `first_10k` (stage B, where 10K ends).
 - `typical_weeks`: first_session [1,1], jog_5 [3,5], jog_10 [4,6], jog_20 [5,8], jog_30 [7,10], first_5k [9,12], jog_45 [13,17], jog_60 [16,21], first_10k [18,24]. Shown as "usually around week X–Y", never compared to the current week.
 - `source` ∈ `auto | manual | baseline | revoked`. A revoked row has `achieved_at = NULL`, and detection never overwrites any existing row.
 - `max_continuous_jog_min` only ever goes up (`db.set_max_continuous_jog_min`). Nothing in this plan lowers it.
 - Default plan length with no event: 5K = 12 weeks, 10K = 22 weeks. Minimum length with an event: 5K = 9 weeks, 10K = 17 weeks, before the baseline reduction. The too-soon warning is soft and never blocks.
 - The server sends milestone keys only. Clients own the en/vi labels. All vi copy goes through the `uphill-ai-vietnamese-copy` skill.
-- Plans with `milestone_target IS NULL` (legacy and non-beginner plans) behave exactly as today: `milestones` is `null` and no milestone UI renders.
+- Plans with `milestone_target IS NULL` (legacy and non-beginner plans) behave exactly as today: `beginner_milestones` is `null` and no milestone UI renders.
 - Milestone hooks must never break the request they ride on. Each hook call is wrapped so an exception is logged and swallowed.
 - Prompt and context changes (Tasks 7–8) follow `.claude/skills/llm-change-process/SKILL.md`, and the PR description carries its checklist.
 - UI tasks need a real screenshot as evidence (`ui-screenshot-evidence` skill for web, a simulator screenshot for iOS).
@@ -29,9 +29,19 @@
 
 1. **Activities from before the plan started.** A 6 km run synced from 12 weeks of history must not tick `first_5k` on day one. Only activities with `start_time ≥ plan start_date` count. Test: `test_evaluate_ignores_activities_before_plan_start` (Task 2).
 2. **Undo survives the next sync.** Revoke `jog_10`, run `refresh_milestones` again with the same completed workout, and it stays revoked. Tests: `test_evaluate_skips_revoked_rows` (Task 2), `test_delete_then_refresh_stays_revoked` (Task 4).
-3. **Legacy beginner plans with no target.** Today's `start_running` plans have `milestone_target NULL`. `refresh_milestones` is a no-op for them and the plan response has `milestones: null`. Test: `test_refresh_noop_without_target` (Task 3). Web and iOS render the old header (Tasks 10 and 13).
+3. **Legacy beginner plans with no target.** Today's `start_running` plans have `milestone_target NULL`. `refresh_milestones` is a no-op for them and the plan response has `beginner_milestones: null`. Test: `test_refresh_noop_without_target` (Task 3). Web and iOS render the old header (Tasks 10 and 13).
 4. **A watch-less athlete.** Jog and session milestones still tick from a hand-ticked workout. Test: `test_log_workout_complete_ticks_jog_milestone` (Task 3).
 5. **The hook failing mid-sync.** A DB error in the milestone refresh must not fail the COROS or Apple Health sync response. Test: `test_apple_health_sync_survives_milestone_error` (Task 3).
+
+## Changes since the 2026-10-21 rebase
+
+Nine PRs (#149–#163) landed after this plan was first written. They change the plan as follows:
+
+- **Plan journey already has "milestones".** `services/plan_journey.py` (`GET /api/plans/{id}/journey`, iOS `JourneyStrip`) computes *calendar* milestones (`long_run_3h`, `first_recovery_week`, `peak_week`, `taper_start`, `race_week`) that count as done once their week has passed. Beginner milestones are earned, not scheduled, so they stay a separate concept. To avoid two meanings of one word on the wire, the plan payload key is **`beginner_milestones`**, never `milestones`. On iOS, `JourneyStrip`'s trailing "next milestone · week N" label shows the beginner next milestone instead when the plan has one (Task 13), so the screen never shows two competing "next" lines.
+- **The weekly coach message (`services/coach_nudge.py`) already celebrates milestones.** `facts_for` builds `milestones_just_done`. `tone_for` picks `encourage` when that list is non-empty. `fallback_text` reads labels from `_MILESTONE`, and `grounded()` checks every number in the message against the facts. Beginner milestones reached in the last 7 days join that list (Task 8), which gives a grounded celebration on the plan screen with no new prompt.
+- **`plan_lint` already checks long-run growth** (`LONG_RUN_JUMP`, `MAX_LONG_RUN_GROWTH = 0.25`, `MIN_LONG_RUN_STEP_MIN = 20`). The stage B prompt clause (Task 7) cites the same limit instead of inventing a "+10 min/week" rule, and needs no new lint.
+- **The web has no journey or coach-message UI.** The web `MilestonePath` (Task 10) reads `plan.beginner_milestones` from the active-plan payload, as planned.
+- **Line numbers** throughout this plan were refreshed against `fa0de6b`. The Alembic head is now `a9d4c7e1f2b6`.
 
 ---
 
@@ -40,7 +50,7 @@
 ### Task 1: Schema and DB helpers
 
 **Files:**
-- Modify: `backend/db.py`: `init_db()` (plans `ALTER`s + new table), `create_plan` (two new kwargs), new helpers next to `set_max_continuous_jog_min` (`db.py:2158`)
+- Modify: `backend/db.py`: `init_db()` (plans `ALTER`s + new table), `create_plan` (two new kwargs), new helpers next to `set_max_continuous_jog_min` (`db.py:2191`)
 - Create: `backend/alembic/versions/<rev>_add_beginner_milestones.py`
 - Test: `backend/tests/integration/test_milestones_db.py` (scratch DB only)
 
@@ -127,7 +137,7 @@ def test_jog_credit_non_run_is_none():
 
 **Files:**
 - Modify: `backend/services/beginner_milestones.py`: add a `refresh_milestones` impure wrapper at the bottom, with a lazy `import db`
-- Modify: `backend/main.py:3097` (`log_workout`, after a successful update with `request.is_completed == 1`)
+- Modify: `backend/main.py:3182` (`log_workout`, after a successful update with `request.is_completed == 1`)
 - Modify: `backend/routers/integrations.py:977,984` (manual match), `:748` (Apple Health sync, once after the loop)
 - Modify: `backend/services/coros_sync.py:113` (once after the upsert loop), `backend/services/matching/runner.py:223` (once at the end of `match_user` if any workout was marked complete)
 - Test: `backend/tests/unit/test_milestone_refresh.py`, plus additions to `backend/tests/unit/test_apple_health_route.py`
@@ -152,14 +162,14 @@ def test_jog_credit_non_run_is_none():
 
 **Files:**
 - Modify: `backend/main.py`:
-  - add `plan["milestones"]` in the three active-plan responses (`:1623`, `:2104`, `:2987`) through one helper
-  - add the new routes next to `delete_plan_endpoint` (`:2448`)
+  - add `plan["beginner_milestones"]` in the three active-plan responses (`:1626`, `:2107`, `:3081`) through one helper
+  - add the new routes next to `delete_plan_endpoint` (`:2452`)
 - Test: `backend/tests/unit/test_milestone_routes.py`
 
 **Interfaces:**
 - Produces:
-  - `_attach_milestones(plan: dict) -> dict`: sets `plan["milestones"] = serialize(...)`, or None when there is no target
-  - `POST /api/plans/{plan_id}/milestones/{key}`: returns `{"milestones": {...}}`. It returns 404 when the plan isn't the caller's (`plan["user_id"] != user["id"]`) and 400 when the key isn't in `ladder_for(target)`.
+  - `_attach_milestones(plan: dict) -> dict`: sets `plan["beginner_milestones"] = serialize(...)`, or None when there is no target
+  - `POST /api/plans/{plan_id}/milestones/{key}`: returns `{"beginner_milestones": {...}}`. It returns 404 when the plan isn't the caller's (`plan["user_id"] != user["id"]`) and 400 when the key isn't in `ladder_for(target)`.
   - `DELETE /api/plans/{plan_id}/milestones/{key}`: same responses, and calls `revoke_milestone`
   - `PATCH /api/plans/{plan_id}/milestone-target`, body `{"target": "10k", "clear_event": false}`:
     - It only allows `5k → 10k`; anything else is a 400.
@@ -187,8 +197,8 @@ def test_jog_credit_non_run_is_none():
 
 **Files:**
 - Modify: `backend/main.py`:
-  - `OnboardingRequest` (`:446`) and `PlanGenerateRequest` (`:227`) gain `milestone_target: Literal["5k","10k"] | None = None`, `current_jog_min: int | None = Field(None, ge=0, le=120)`, `event_name: str | None = None` and `event_date: date | None = None`
-  - the `complete_onboarding` start_running branch (`:1271`, `:1408-1418`) and the `_generate_plan_for_athlete` non-race branch (`:2151-2160`)
+  - `OnboardingRequest` (`:449`) and `PlanGenerateRequest` (`:230`) gain `milestone_target: Literal["5k","10k"] | None = None`, `current_jog_min: int | None = Field(None, ge=0, le=120)`, `event_name: str | None = None` and `event_date: date | None = None`
+  - the `complete_onboarding` start_running branch (`:1274`, plan names `:1411`, `_default_weeks` `:1419`) and the `_generate_plan_for_athlete` non-race branch (`:2154-2164`)
 - Test: additions to `backend/tests/unit/test_onboarding_helpers.py`, plus a new `backend/tests/unit/test_beginner_plan_create.py`
 
 **Interfaces:**
@@ -206,6 +216,7 @@ def test_jog_credit_non_run_is_none():
     - Call `db.set_max_continuous_jog_min(user_id, current_jog_min)` when it is given.
     - Insert the baseline rows.
   - An `event_date` in the past is a 400.
+  - Check that `goal_demands`, `goal_feasibility` and `plan_adequacy` (added in #154/#156) skip `start_running` plans even with `has_target_event`. They key off race goals, so a beginner event must not get a race feasibility verdict. Add `test_beginner_event_plan_gets_no_race_feasibility`.
   - A too-soon `event_date` is accepted. The response carries `"warning": {"code": "event_too_soon", "minimum_weeks": n}`.
 
 - [ ] **Step 1: Write failing tests.**
@@ -236,17 +247,17 @@ def test_jog_credit_non_run_is_none():
 ### Task 7: Plan prompt goal text and stage B rules
 
 **Files:**
-- Modify: `backend/services/plan_generator.py:1436-1440` (the `start_running` `goal_description`), and the `build_rules_block` call site
+- Modify: `backend/services/plan_generator.py:2739` (the `start_running` `goal_description`), and the `build_rules_block` call site
 - Modify: `backend/services/plan_rules.py`: `build_rules_block(..., milestones: dict | None = None)` passes into `_beginner_rules(profile, max_continuous_jog_min, milestones=None)`
 - Test: `backend/tests/unit/test_plan_rules_beginner_milestones.py`
 
 **Interfaces:**
-- Consumes: the plan's `milestones` dict (Task 4 shape), passed through `race_info["milestones"]`
+- Consumes: the plan's `beginner_milestones` dict (Task 4 shape), passed through `race_info["beginner_milestones"]`
 - Produces:
   - `goal_description`, when there is a target: `"Goal: First 5K"` (or 10K), then `" — event '{name}' on {date}"` when there is an event, then `". Next milestone: {key label}, usually around week {lo}-{hi}. Walk breaks are part of the plan."`. When there is an event, append `" Make the event week light, with the event as its last session; run/walk is fine on the day. No taper block."`. Use English labels from a `MILESTONE_PROMPT_LABELS` dict in `beginner_milestones.py`.
   - A rules **stage B clause**. It appears only when the target is 10k and `jog_30` is achieved:
     - Run/walk is finished.
-    - Schedule one long run a week that grows against the longest run of the past 30 days, by at most about 10 minutes per week.
+    - Schedule one long run a week that grows against the longest run of the past 30 days, within `plan_lint.MAX_LONG_RUN_GROWTH` (import the constant; don't restate the number).
     - All sessions stay Zone 1–2, with no intensity.
   - Without stage B, the existing text is byte-identical.
 
@@ -262,20 +273,22 @@ def test_jog_credit_non_run_is_none():
 ### Task 8: Week brief fact and Coach Uphill context
 
 **Files:**
-- Modify: `backend/main.py:2606` (`brief_decision_log`), and the matching decision log in `backend/services/week_rebuild.py`
-- Modify: `backend/services/coach_context.py` (`build_chat_context`): add a `"milestones"` key
+- Modify: `backend/main.py:2610` (`brief_decision_log`), and the matching decision log in `backend/services/week_rebuild.py`
+- Modify: `backend/services/coach_context.py` (`build_chat_context`): add a `"beginner_milestones"` key
+- Modify: `backend/services/coach_nudge.py`: `facts_for` appends beginner keys achieved (not baseline, not revoked) in the last 7 days to `milestones_just_done` as `{"key": k, "week": week - 1}`. Add an en/vi label per ladder key to `_MILESTONE`.
+- Modify: the coach-nudge route in `backend/main.py` (`:4440-4465`): pass the plan's milestone rows into `facts_for` through a new keyword `beginner_rows: list[dict] | None = None`
 - Test: additions to `backend/tests/unit/test_week_brief.py` and `backend/tests/unit/test_chat_context.py`
 
 **Interfaces:**
 - Produces:
   - `beginner_milestones.brief_fact(milestones: dict | None, max_jog_min: int | None) -> str | None`. It returns, for example, `"Milestone: next = 20 min unbroken jog (usually wk 5-8); best so far = 12 min; 3 of 6 reached"`, or None without a target.
-  - The chat context gains `"milestones": {"target", "reached": [keys], "next_key", "event": {"name","date"} | None}`, or None.
+  - The chat context gains `"beginner_milestones": {"target", "reached": [keys], "next_key", "event": {"name","date"} | None}`, or None.
 
-- [ ] **Step 1: Write failing tests:** `test_brief_fact_none_without_target`, `test_brief_fact_text`, `test_decision_log_includes_milestone_fact`, `test_chat_context_includes_milestones`.
+- [ ] **Step 1: Write failing tests:** `test_brief_fact_none_without_target`, `test_brief_fact_text`, `test_decision_log_includes_milestone_fact`, `test_chat_context_includes_milestones`. In `backend/tests/unit/test_coach_nudge.py` : `test_facts_include_beginner_milestone_reached_this_week`, `test_baseline_and_revoked_not_in_just_done`, `test_fallback_text_names_first_5k_en_vi`, and `test_grounded_accepts_milestone_numbers` ("20 min" is allowed because the threshold is in the facts).
 - [ ] **Step 2: Run them and confirm they fail.**
 - [ ] **Step 3: Implement.** If the coach system prompt needs a line about using the block, version `coach_chat` in Langfuse and run its golden eval.
 - [ ] **Step 4: Run** `cd backend && pytest tests/unit -q` and the relevant `golden_eval.py compare`. Expect them to PASS.
-- [ ] **Step 5: Commit** with the message `feat(llm): week brief and coach context carry milestone progress`. Then open PR 2 with the llm-change-process checklist.
+- [ ] **Step 5: Commit** with the message `feat(llm): week brief, coach chat and coach message carry milestone progress`. Then open PR 2 with the llm-change-process checklist.
 
 ---
 
@@ -285,7 +298,7 @@ def test_jog_credit_non_run_is_none():
 
 **Files:**
 - Create: `frontend/src/lib/beginnerMilestones.ts`
-- Modify: the plan type in `frontend/src/contexts/AppContext.tsx` (add `milestone_target?`, `has_target_event?`, `milestones?`), and `frontend/src/hooks/usePlanner.ts`
+- Modify: the plan type in `frontend/src/contexts/AppContext.tsx` (add `milestone_target?`, `has_target_event?`, `beginner_milestones?`), and `frontend/src/hooks/usePlanner.ts`
 - Test: `frontend/src/lib/beginnerMilestones.test.ts`
 
 **Interfaces:**
@@ -293,7 +306,7 @@ def test_jog_credit_non_run_is_none():
   - `type PlanMilestones = { target: "5k"|"10k"; has_event: boolean; items: MilestoneItem[]; next_key: string|null }`
   - `milestoneLabel(key, lang: "en"|"vi"): string`
   - `minimumWeeks(target, currentJogMin)`: the same formula as the backend, plus a comment pointing to `beginner_milestones.minimum_weeks`
-  - `usePlanner`: `markMilestone(planId, key)`, `undoMilestone(planId, key)` and `upgradeTarget(planId)`. Each updates the active plan's `milestones` from the response.
+  - `usePlanner`: `markMilestone(planId, key)`, `undoMilestone(planId, key)` and `upgradeTarget(planId)`. Each updates the active plan's `beginner_milestones` from the response.
 
 - [ ] **Step 1:** Write failing tests: `labels exist for every key in en and vi`, `minimumWeeks("10k", 30) === 9`, `minimumWeeks("5k", 0) === 9`.
 - [ ] **Step 2:** Run `cd frontend && npx vitest run src/lib/beginnerMilestones.test.ts`. Expect it to FAIL.
@@ -308,7 +321,7 @@ def test_jog_credit_non_run_is_none():
 - Modify: `frontend/src/views/PlannerView.tsx` (`:1551` carousel `goalPill` slot, and the `:1677` "Block ends" header), `frontend/src/hooks/usePlanner.ts:455` and `frontend/src/app/app/page.tsx:2050` (plan labels)
 
 **Interfaces:**
-- Produces: `<MilestonePath milestones lang onMark onUndo onUpgrade />`, rendered only when `plan.milestones` is non-null. The header reads `"First 5K · {reached} of {total} milestones"`, plus `" · {n} weeks to {event}"` when there is an event. The plan label reads `"First 5K plan"`.
+- Produces: `<MilestonePath milestones lang onMark onUndo onUpgrade />`, rendered only when `plan.beginner_milestones` is non-null. The header reads `"First 5K · {reached} of {total} milestones"`, plus `" · {n} weeks to {event}"` when there is an event. The plan label reads `"First 5K plan"`.
 
 - [ ] **Step 1:** Write failing tests:
   - `renders achieved checkmarks and highlights next_key with "usually around week X–Y"`
@@ -345,7 +358,7 @@ def test_jog_credit_non_run_is_none():
 ### Task 12: Models, service and onboarding steps
 
 **Files:**
-- Modify: `ios-native/UphillAI/Core/Models/Plan.swift`: add optional `milestoneTarget: String?`, `hasTargetEvent: Bool?` and `milestones: PlanMilestones?`
+- Modify: `ios-native/UphillAI/Core/Models/Plan.swift`: add optional `milestoneTarget: String?`, `hasTargetEvent: Bool?` and `beginnerMilestones: PlanMilestones?`
 - Create: `ios-native/UphillAI/Core/Plan/PlanMilestones.swift`: `PlanMilestones`, `MilestoneItem`, `MilestoneLabels.label(_ key: String) -> String` via `L(...)`, and `minimumWeeks(target:currentJogMin:)`
 - Modify: `ios-native/UphillAI/Core/Plan/PlanService.swift`: `markMilestone(planID:key:)`, `undoMilestone(planID:key:)` and `upgradeTarget(planID:)`, each returning `PlanMilestones` or `Plan`
 - Modify: `ios-native/UphillAI/Core/Plan/PlanSetupDraft.swift`: in `SetupStep.steps(for:)`, `.startRunning` gets steps `.beginnerTarget`, `.currentJog` and `.event`. The draft adds fields `milestoneTarget`, `currentJogMin` and `eventName/eventDate/hasEvent`. `OnboardingBody` and `PlanBody` encode them. Per-step validation requires the target.
@@ -369,9 +382,10 @@ def test_jog_credit_non_run_is_none():
 **Files:**
 - Create: `ios-native/UphillAI/Features/Plan/MilestonePathCard.swift`, `ios-native/UphillAI/Features/Plan/MilestoneCelebrationSheet.swift`
 - Modify:
-  - `ios-native/UphillAI/Features/Plan/SummaryCarousel.swift`: show `MilestonePathCard` in place of `raceCard` (`:344`) when `plan.milestones != nil`
-  - `ios-native/UphillAI/Features/Plan/PlanView.swift`: `raceGoalHeader` (`:519`) shows the milestone line, and the celebration `.sheet` lives here
+  - `ios-native/UphillAI/Features/Plan/SummaryCarousel.swift`: show `MilestonePathCard` in place of `raceCard` (`:344`) when `plan.beginnerMilestones != nil`
+  - `ios-native/UphillAI/Features/Plan/PlanView.swift`: `raceGoalHeader` (`:540`) shows the milestone line, and the celebration `.sheet` lives here
   - `ios-native/UphillAI/Features/Plan/PlanViewModel.swift`: add `milestoneHeaderText`, `newlyAchievedKey` (diffed against a `UserDefaults` seen-set keyed `milestonesSeen.\(planID)`), `mark(_:)`, `undo(_:)` and `upgrade()`
+  - `ios-native/UphillAI/Features/Plan/JourneyStrip.swift`: take an optional `beginnerNext: String?` (the localized label plus "usually wk X–Y") that replaces the trailing `nextMilestone` text when it is set
 - Test: `ios-native/UphillAITests/Plan/MilestonePathTests.swift`
 
 **Interfaces:**
@@ -383,6 +397,7 @@ def test_jog_credit_non_run_is_none():
   - `testNewlyAchievedKeyIgnoresBaselineAndSeen`
   - `testMarkUpdatesMilestonesFromResponse`
   - `testLegacyPlanHasNoMilestoneHeader`
+  - `testJourneyStripShowsBeginnerNextInsteadOfCalendarMilestone`
 - [ ] **Step 2:** Run `ios-native/scripts/test.sh`. Expect it to FAIL.
 - [ ] **Step 3:** Implement.
 - [ ] **Step 4:** Run `ios-native/scripts/test.sh`. Expect PASS. Then do a simulator walkthrough against a local backend: onboarding → plan card → "I did it" → celebration → "Next: First 10K". Take screenshots in en and vi and attach them to PR 4.

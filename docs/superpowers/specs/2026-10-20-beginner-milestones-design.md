@@ -110,7 +110,7 @@ Follow the `db-migration` skill: every change goes in both `db.py:init_db()` and
 
 ## API
 
-The active-plan response gains a `milestones` object, or null when `milestone_target` is null:
+The active-plan response gains a `beginner_milestones` object (not `milestones`: the plan journey, `services/plan_journey.py`, already uses that word for calendar milestones), or null when `milestone_target` is null:
 
 ```json
 {
@@ -162,7 +162,7 @@ These follow `.claude/skills/llm-change-process/SKILL.md`: Langfuse prompt versi
   - Seen-state is stored locally, keyed by plan and milestone, so a celebration shows once per device.
 - Reuse the `UH` tokens, `.uhCard()` and `PrimaryButtonStyle`.
 
-**Models:** add optional `milestones`, `milestoneTarget` and `hasTargetEvent` to `Plan`, decoded snake_case with nil defaults. Add a test in `PlanDecodingTests`.
+**Models:** add optional `beginnerMilestones`, `milestoneTarget` and `hasTargetEvent` to `Plan`, decoded snake_case with nil defaults. Add a test in `PlanDecodingTests`.
 
 **Copy:** vi strings go in `Localizable.xcstrings` via the `uphill-ai-vietnamese-copy` skill.
 
