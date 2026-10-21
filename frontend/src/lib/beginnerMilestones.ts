@@ -62,3 +62,29 @@ export function headerText(ms: PlanMilestones, lang: Lang, weeksToEvent: number 
 
 export const typicalWeeksText = (i: MilestoneItem, lang: Lang) =>
   lang === "vi" ? `thường quanh tuần ${i.typical_weeks[0]}–${i.typical_weeks[1]}` : `usually around week ${i.typical_weeks[0]}–${i.typical_weeks[1]}`;
+
+// Preview of the ladder for onboarding, before a plan exists. Mirrors backend beginner_milestones.LADDER;
+// the plan response is the source of truth once a plan is created.
+export const LADDER_PREVIEW: { key: string; jog?: number; weeks: [number, number]; stage: "A" | "B" }[] = [
+  { key: "first_session", weeks: [1, 1], stage: "A" },
+  { key: "jog_5", jog: 5, weeks: [3, 5], stage: "A" },
+  { key: "jog_10", jog: 10, weeks: [4, 6], stage: "A" },
+  { key: "jog_20", jog: 20, weeks: [5, 8], stage: "A" },
+  { key: "jog_30", jog: 30, weeks: [7, 10], stage: "A" },
+  { key: "first_5k", weeks: [9, 12], stage: "A" },
+  { key: "jog_45", jog: 45, weeks: [13, 17], stage: "B" },
+  { key: "jog_60", jog: 60, weeks: [16, 21], stage: "B" },
+  { key: "first_10k", weeks: [18, 24], stage: "B" },
+];
+
+export const ladderPreview = (target: MilestoneTarget) =>
+  LADDER_PREVIEW.slice(0, target === "5k" ? 6 : 9);
+
+/** Whole weeks (Monday-aligned, like the backend) a plan starting on `start` has before `eventIso`. */
+export function weeksUntilEvent(startIso: string, eventIso: string): number | null {
+  const s = new Date(startIso + "T00:00:00");
+  const e = new Date(eventIso + "T00:00:00");
+  if (isNaN(s.getTime()) || isNaN(e.getTime()) || e <= s) return null;
+  const monday = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
+  return Math.round((monday(e).getTime() - monday(s).getTime()) / (7 * 86400000)) + 1;
+}

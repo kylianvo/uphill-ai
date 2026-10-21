@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import BeginnerGoalFields from "../components/BeginnerGoalFields";
 import React from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { usePlanner } from "../hooks/usePlanner";
@@ -185,6 +186,12 @@ export default function OnboardingWizard() {
       if (onboardingAnswers.course_elevation_gain_m) payload.course_elevation_gain_m = parseFloat(onboardingAnswers.course_elevation_gain_m);
 
       if (onboardingAnswers.plan_start_date) payload.plan_start_date = onboardingAnswers.plan_start_date;
+      if (onboardingAnswers.goal_type === "start_running") {
+        payload.milestone_target = onboardingAnswers.milestone_target || "5k";
+        payload.current_jog_min = onboardingAnswers.current_jog_min || 0;
+        payload.event_name = onboardingAnswers.event_name || null;
+        payload.event_date = onboardingAnswers.event_date || null;
+      }
       if (onboardingAnswers.athlete_notes) payload.athlete_notes = onboardingAnswers.athlete_notes;
 
 
@@ -1441,6 +1448,14 @@ export default function OnboardingWizard() {
 
               )}
 
+              <div style={{ marginTop: "20px" }}>
+                <BeginnerGoalFields
+                  lang={lang}
+                  startDate={onboardingAnswers.plan_start_date}
+                  value={{ milestone_target: onboardingAnswers.milestone_target || "5k", current_jog_min: onboardingAnswers.current_jog_min || 0, event_name: onboardingAnswers.event_name || "", event_date: onboardingAnswers.event_date || "" }}
+                  onChange={(v) => setOnboardingAnswers({ ...onboardingAnswers, ...v })}
+                />
+              </div>
             </div>
 
           );

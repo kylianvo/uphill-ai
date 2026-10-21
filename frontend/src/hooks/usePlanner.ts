@@ -348,6 +348,14 @@ export function usePlanner() {
         double_session_days: planForm.double_session_days,
         plan_start_date: planForm.plan_start_date || null,
         plan_duration_weeks: isRaceOrDist ? null : planForm.plan_duration_weeks,
+        ...(planForm.plan_goal_category === "start_running"
+          ? {
+              milestone_target: planForm.milestone_target,
+              current_jog_min: planForm.current_jog_min,
+              event_name: planForm.event_name || null,
+              event_date: planForm.event_date || null,
+            }
+          : {}),
         // non-race context fields
         time_away: planForm.time_away || null,
         fitness_feel: planForm.fitness_feel || null,

@@ -19,3 +19,16 @@ describe("beginnerMilestones", () => {
     expect(headerText({ ...ms, has_event: false }, "vi", null)).toBe("5K đầu tiên · 2/3 cột mốc");
   });
 });
+
+import { ladderPreview, weeksUntilEvent } from "./beginnerMilestones";
+
+describe("ladder preview and event weeks", () => {
+  it("5k shows six rows, 10k nine", () => {
+    expect(ladderPreview("5k")).toHaveLength(6);
+    expect(ladderPreview("10k")).toHaveLength(9);
+  });
+  it("counts Monday-aligned weeks like the backend (Oct 5 2026 -> Dec 12 = 10)", () => {
+    expect(weeksUntilEvent("2026-10-05", "2026-12-12")).toBe(10);
+    expect(weeksUntilEvent("2026-10-05", "2026-10-01")).toBeNull();
+  });
+});

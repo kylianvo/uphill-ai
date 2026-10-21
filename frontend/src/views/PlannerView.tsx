@@ -35,6 +35,7 @@ import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { GoalPill } from "../components/GoalPill";
 import PlanSummaryCarousel from "../components/PlanSummaryCarousel";
 import MilestonePath from "../components/MilestonePath";
+import BeginnerGoalFields from "../components/BeginnerGoalFields";
 import { daysToRace } from "../utils/planSummary";
 import { weekVolume } from "../utils/planSummary";
 import { weekDiffChips } from "../utils/weekDiff";
@@ -1263,22 +1264,18 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 <div style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>
                   {lang === "en" ? "We'll build a gentle walk-to-run programme starting from your plan start date." : "Chúng tôi sẽ xây dựng một lộ trình chạy kết hợp đi bộ nhẹ nhàng bắt đầu từ ngày bạn chọn."}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
-                      {lang === "en" ? "Plan Start Date" : "Ngày bắt đầu kế hoạch"}
-                    </label>
-                    <input type="date" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "10px" }} value={planForm.plan_start_date} onChange={e => setPlanForm({ ...planForm, plan_start_date: e.target.value })} />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
-                      {lang === "en" ? "Duration (weeks)" : "Thời lượng (tuần)"}
-                    </label>
-                    <select className="chat-input" style={{ borderRadius: "8px", width: "100%", height: "38px", padding: "0 8px", fontSize: "13px" }} value={planForm.plan_duration_weeks} onChange={e => setPlanForm({ ...planForm, plan_duration_weeks: parseInt(e.target.value) })}>
-                      {[6,8,10,12,16].map(w => <option key={w} value={w}>{w} {lang === "en" ? "weeks" : "tuần"}</option>)}
-                    </select>
-                  </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
+                    {lang === "en" ? "Plan Start Date" : "Ngày bắt đầu kế hoạch"}
+                  </label>
+                  <input type="date" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "10px" }} value={planForm.plan_start_date} onChange={e => setPlanForm({ ...planForm, plan_start_date: e.target.value })} />
                 </div>
+                <BeginnerGoalFields
+                  lang={lang}
+                  startDate={planForm.plan_start_date}
+                  value={{ milestone_target: planForm.milestone_target, current_jog_min: planForm.current_jog_min, event_name: planForm.event_name, event_date: planForm.event_date }}
+                  onChange={(v) => setPlanForm({ ...planForm, ...v })}
+                />
               </div>
             )}
 
