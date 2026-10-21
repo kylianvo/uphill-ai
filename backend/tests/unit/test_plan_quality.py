@@ -8,7 +8,10 @@ def _wo(week, day, minutes, zone="Zone 2", typ="Easy", **kw):
     }  # fmt: skip
 
 
-RACE = {"course_distance_km": 50, "course_elevation_gain_m": 2500, "goal_type": "finish", "outdoor_climbing": True}
+RACE = {
+    "course_distance_km": 50, "course_elevation_gain_m": 2500, "goal_type": "finish", "outdoor_climbing": True,
+    "threshold_source": "field", "aet_hr": 150, "ant_hr": 160,
+}  # fmt: skip
 
 
 def _plan(weeks=12, long_min=240, climb=1200, taper=(0.8, 0.5)):
@@ -53,3 +56,16 @@ def test_long_zone_3_and_zone_4_sessions_are_flagged():
     rows = _plan() + [_wo(5, "Wednesday", 130, zone="Zone 3", typ="Tempo")]
     checks = plan_quality.assess(rows, RACE, "6:30 - 5:50")
     assert not next(c for c in checks if c.name.startswith("no long Zone 3")).ok
+
+
+def test_unmeasured_thresholds_need_the_week_one_drift_test():
+    race = {**RACE, "threshold_source": "unknown"}
+    plan = _plan()
+    assert not next(c for c in plan_quality.assess(plan, race, "6:30 - 5:50") if "drift test" in c.name).ok
+    plan[0]["title"] = "AeT Drift Test (Zone 2)"
+    assert next(c for c in plan_quality.assess(plan, race, "6:30 - 5:50") if "drift test" in c.name).ok
+
+
+def test_a_week_above_80_percent_of_race_climbing_is_flagged():
+    checks = plan_quality.assess(_plan(climb=2100), RACE, "6:30 - 5:50")
+    assert not next(c for c in checks if c.name.startswith("no week above 80%")).ok

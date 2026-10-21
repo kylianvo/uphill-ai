@@ -421,6 +421,26 @@ def aet_ant_gap(aet_hr: float | None, ant_hr: float | None) -> float | None:
     return (ant_hr - aet_hr) / ant_hr
 
 
+PHASES = frozenset({"Base", "Build", "Peak", "Taper"})
+RECENT_LOAD_GROWTH = 1.10  # week 1 may exceed what the athlete ran lately by at most this much
+
+
+def hard_work_banned_phases(*, is_ads: bool, thresholds_measured: bool) -> frozenset[str]:
+    """Phases with no Zone 3-5 work (hill sprints and strides stay). Book: a measured AeT-AnT gap above 10% means
+    the aerobic base is the limiter, so all running stays in Zones 1-2. When the thresholds are only estimates the
+    gap is unknown: the Base phase stays easy while the week-1 drift test finds the real AeT."""
+    if is_ads:
+        return PHASES
+    return frozenset() if thresholds_measured else frozenset({"Base"})
+
+
+def recent_weekly_minutes(weekly_km: float | None, flat_pace_min_per_km: float | None) -> float | None:
+    """What the athlete runs in a typical week now, in minutes at their own easy pace. None when unknown."""
+    if not weekly_km or weekly_km <= 0 or not flat_pace_min_per_km or flat_pace_min_per_km <= 0:
+        return None
+    return float(weekly_km) * float(flat_pace_min_per_km)
+
+
 def explain_tier(
     *,
     goal_type: str | None = None,

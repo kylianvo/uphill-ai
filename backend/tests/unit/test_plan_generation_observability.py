@@ -20,7 +20,7 @@ WORKOUT_JSON = json.dumps(
             "phase": "Base",
             "title": "Easy Aerobic Run",
             "type": "Easy",
-            "duration_minutes": 45,
+            "duration_minutes": 40,  # under the drift test's 45 min, so the title passes through
             "target_zone": "Zone 2",
             "target_hr_range": "125-140 bpm",
             "target_pace": "6:30 /km",

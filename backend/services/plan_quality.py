@@ -11,7 +11,14 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from services.athlete_tier import ELITE_ULTRA_KM, ELITE_ULTRA_SESSION_MIN
+from services.athlete_tier import (
+    ELITE_ULTRA_KM,
+    ELITE_ULTRA_SESSION_MIN,
+    MEASURED_THRESHOLD_SOURCES,
+    RECENT_LOAD_GROWTH,
+    aet_ant_gap,
+    hard_work_banned_phases,
+)
 
 CLIMB_MIN_PER_KM = 20  # races at or above this m D+/km need climbing prep
 VERT_PEAK_SHARE = 0.4  # peak-week climbing as a share of the race's D+
@@ -24,6 +31,8 @@ Z4_MAX_WEEK_MIN = 40  # book: 30-40 min of Zone 4 a week is hard even for condit
 Z3_MAX_WEEK_MIN = 120  # book: two-plus hours of Zone 3 a week only for high-level runners
 TRAIL_RATE_MIN = 15  # m D+/km above which a run is a trail run and needs a climb-adjusted pace
 STEP_TOLERANCE = 0.25
+MAX_WEEK_VERT_SHARE = 0.8  # no week carries more climbing than this share of the race's
+START_LOAD_TOLERANCE = 0.05  # rounding of the session lengths
 _STEP_MIN = re.compile(r"(\d+)\s*(?:min|m\b|phút|')", re.IGNORECASE)
 
 
@@ -173,6 +182,35 @@ def assess(workouts: list[dict[str, Any]], race: dict[str, Any], zone2_pace: str
     checks.append(
         Check("step minutes add up to the session (no padding)", len(padded) <= 3, f"{len(padded)}: {padded[:3]}")
     )
+    if dplus:
+        over = [(k, round(sum(float(w.get("elevation_gain_m") or 0) for w in v))) for k, v in weeks.items()]
+        over = [o for o in over if o[1] > MAX_WEEK_VERT_SHARE * dplus]
+        checks.append(Check("no week above 80% of the race's climbing", not over, str(over[:3])))
+
+    measured = (race.get("threshold_source") or "").lower() in MEASURED_THRESHOLD_SOURCES
+    gap = aet_ant_gap(race.get("aet_hr"), race.get("ant_hr")) if measured else None
+    banned = hard_work_banned_phases(is_ads=gap is not None and round(gap * 100) > 10, thresholds_measured=measured)
+    hard = [
+        (w["week_number"], w["day_of_week"][:3])
+        for w in _real(workouts)
+        if w.get("phase") in banned
+        and w.get("target_zone") in ("Zone 3", "Zone 4", "Zone 5")
+        and w.get("type") not in ("Race", "Muscular Endurance", "Strength")
+        and not re.search(r"hill (sprint|repeat|bound)", (w.get("title") or "").lower())
+    ]
+    checks.append(Check("no Zone 3-5 work where the aerobic gate bans it", not hard, str(hard[:3])))
+    if not measured:
+        test = [w for k in (1, 2) for w in weeks.get(k, []) if "drift" in (w.get("title") or "").lower()]
+        checks.append(Check("weeks 1-2 have the AeT drift test (thresholds unmeasured)", bool(test)))
+
+    z2_mid = _pace_mid(zone2_pace)
+    recent = float(race.get("current_weekly_km") or 0) * z2_mid if z2_mid else 0.0
+    if recent and 1 in weeks:
+        start = sum(w["duration_minutes"] for w in weeks[1] if w.get("type") != "Race")
+        movable = [w for w in weeks[1] if w.get("type") in ("Easy", "Aerobic Capacity", "Recovery")]
+        floor = sum(w["duration_minutes"] for w in weeks[1] if w not in movable and w.get("type") != "Race")
+        cap = max(recent * RECENT_LOAD_GROWTH * (1 + START_LOAD_TOLERANCE), floor + 30 * len(movable))
+        checks.append(Check("week 1 within 10% of the recent load", start <= cap, f"{start:.0f} vs {cap:.0f} min"))
     if race.get("lang") == "vi":
         from services.vi_style import naturalness_issues
 

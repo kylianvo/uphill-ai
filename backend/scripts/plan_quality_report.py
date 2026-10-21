@@ -22,6 +22,14 @@ for d in sys.argv[1:]:
             or plan.get("mountain_days")
             or plan.get("training_environment") in ("hilly", "mixed")
         )
-        rows = plan_quality.assess(run["workouts"], {**plan, "outdoor_climbing": outdoor}, z2)
+        rows = plan_quality.assess(
+            run["workouts"],
+            {
+                **plan,
+                **{k: persona["user"].get(k) for k in ("aet_hr", "ant_hr", "threshold_source")},
+                "outdoor_climbing": outdoor,
+            },
+            z2,
+        )
         bad = [f"{c.name.split(':')[0][:34]} [{c.detail[:45]}]" for c in rows if not c.ok]
         print(f"{run['persona']:30} {len(rows) - len(bad)}/{len(rows)}  " + "; ".join(bad))

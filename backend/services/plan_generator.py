@@ -13,10 +13,13 @@ from services import goal_demands, observability, plan_lint, race_readiness, rec
 from services.athlete_tier import (
     LONG_SHARE_SOFT,
     MEASURED_THRESHOLD_SOURCES,
+    RECENT_LOAD_GROWTH,
     TIER_PROFILES,
     for_race,
     get_profile,
     graduated_profile,
+    hard_work_banned_phases,
+    recent_weekly_minutes,
     resolve_tier,
     session_cap_minutes,
     taper_weeks,
@@ -1291,6 +1294,7 @@ class PlanGenerator:
         )
         ads_gap_pct = round((ant_hr - aet_hr) / ant_hr * 100) if ant_hr > 0 else 0
         is_ads = thresholds_measured and ads_gap_pct > 10
+        hard_banned = hard_work_banned_phases(is_ads=is_ads, thresholds_measured=thresholds_measured)
 
         # Calculate Heart Rate Zones
         hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
@@ -1518,6 +1522,154 @@ class PlanGenerator:
                     wo[key] = round(float(wo[key]) * ratio, 1)
             wo["description"] = _long_text(minutes, bool(wo.get("elevation_gain_m")))
 
+        def _gate_hard(wos: list[dict[str, Any]]) -> None:
+            """Book: with a measured AeT-AnT gap above 10% (or, while the thresholds are only estimates, in the Base
+            phase) every run stays in Zones 1-2. Zone 3-5 sessions become easy runs; hill sprints and strides stay."""
+            if not hard_banned:
+                return
+            for wo in wos:
+                if (
+                    wo.get("phase") in hard_banned
+                    and not PlanGenerator.is_deload_week(wo.get("week_number") or 0, total_weeks)  # softened later
+                    and wo.get("target_zone") in ("Zone 3", "Zone 4", "Zone 5")
+                    and wo.get("type") not in ("Race", "Muscular Endurance", "Strength", "Rest")
+                    and not any(
+                        kw in (wo.get("title") or "").lower() for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS
+                    )
+                ):
+                    _to_easy(
+                        wo,
+                        "Easy Aerobic Run",
+                        "Easy Run nhẹ",
+                        "Easy aerobic run, Zone 2, conversational pace.",
+                        "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được.",
+                    )
+
+        def _add_drift_test(wos: list[dict[str, Any]]) -> None:
+            """Book: the heart-rate drift test finds the real AeT. Week 1 and every sixth week after it (Base and
+            Build, never a deload) one easy run of 45+ min becomes a flat test; the athlete enters the result in
+            Profile -> Thresholds, so the gate above works from a measured gap."""
+            placed: set[int] = set()  # test weeks done; a week with no run long enough passes it to the next week
+            for week_no, rows in sorted(_week_rows(wos).items()):
+                due = (week_no - 1) % 6 == 0 or ((week_no - 2) % 6 == 0 and week_no - 1 not in placed)
+                if (
+                    not due
+                    or rows[0].get("phase") not in ("Base", "Build")
+                    or PlanGenerator.is_deload_week(week_no, total_weeks)
+                ):
+                    continue
+                long_day = next((r["day_of_week"] for r in rows if r.get("type") == "Long Run"), None)
+                days = list(_PRIORITY_DAY_ORDER)
+                eve = days[(days.index(long_day) - 1) % 7] if long_day in days else None
+                pool = [
+                    r
+                    for r in rows
+                    if r.get("type") == "Easy"
+                    and r.get("day_of_week") != eve
+                    and float(r.get("duration_minutes") or 0) >= 45
+                    and not r.get("mountain_mode")
+                ]
+                if not pool:
+                    continue
+                placed.add(week_no)
+                wo = min(  # a flat run closest to an hour: a hilly one is flattened below
+                    pool,
+                    key=lambda r: (
+                        float(r.get("elevation_gain_m") or 0) >= 15 * max(float(r.get("distance_km") or 0), 1.0),
+                        abs(float(r["duration_minutes"]) - 60),
+                    ),
+                )
+                main = int(float(wo["duration_minutes"])) - 20
+                wo["target_zone"], wo["target_hr_range"] = "Zone 2", z2_range
+                wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                    "Zone 2", float(wo["duration_minutes"]), est_zones
+                )
+                wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0
+                wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
+                wo["title"] = "AeT Drift Test (Zone 2)" if lang != "vi" else "Test drift AeT (Zone 2)"
+                wo["description"] = (
+                    f"Warm-up 10 min easy → {main} min steady at the top of Zone 2 on flat ground, same effort "
+                    f"throughout; note your average HR for the first and second half → Cool-down 10 min easy. If the "
+                    f"second-half HR is under 5% above the first at the same pace, your Zone 2 ceiling is at or below "
+                    f"your AeT. Over 5%: lower the ceiling and repeat in 6 weeks. Enter the result in Profile → Thresholds."
+                    if lang != "vi"
+                    else f"Warm-up 10 phút nhẹ → {main} phút chạy đều ở mức cao của Zone 2 trên đường phẳng, giữ cùng "
+                    f"một mức nỗ lực; ghi HR trung bình nửa đầu và nửa sau → Cool-down 10 phút nhẹ. Nếu HR nửa sau cao "
+                    f"hơn nửa đầu dưới 5% ở cùng tốc độ, ngưỡng Zone 2 của bạn đang ở mức AeT hoặc thấp hơn. Cao hơn "
+                    f"5% thì hạ ngưỡng Zone 2 xuống và test lại sau 6 tuần. Nhập kết quả vào Hồ sơ → Ngưỡng."
+                )
+
+        def _cap_start_load(wos: list[dict[str, Any]]) -> None:
+            """Week 1 may not exceed what the athlete runs now by more than RECENT_LOAD_GROWTH. The excess comes off
+            the easy runs (30 min minimum); the long run, ME and quality sessions stay."""
+            recent = recent_weekly_minutes(
+                current_weekly_km, PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier)
+            )
+            rows = _week_rows(wos).get(1)
+            if not recent or not rows:
+                return
+            excess = plan_lint.week_minutes(rows) - recent * RECENT_LOAD_GROWTH
+            easy = [
+                r
+                for r in rows
+                if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")
+                and float(r.get("duration_minutes") or 0) > 30
+                and not r.get("mountain_mode")
+            ]
+            for r in sorted(easy, key=lambda r: -float(r["duration_minutes"])):
+                if excess <= 0:
+                    break
+                cut = min(excess, float(r["duration_minutes"]) - 30)
+                new = int(round((float(r["duration_minutes"]) - cut) / 5) * 5)
+                excess -= float(r["duration_minutes"]) - new
+                _resize(r, new)
+
+        def _cap_week_vert(wos: list[dict[str, Any]]) -> None:
+            """No week carries more than 80% of the race's climbing: that is the race, not training for it. The excess
+            is taken from outdoor trail runs by lowering their climb rate (pace and distance follow)."""
+            if not course_elevation_gain_m:
+                return
+            cap = 0.8 * float(course_elevation_gain_m)
+            from services.trail_pace import trail_session
+
+            for rows in _week_rows(wos).values():
+                total = sum(float(r.get("elevation_gain_m") or 0) for r in rows if r.get("type") != "Race")
+                if total <= cap:
+                    continue
+                movable = [
+                    r
+                    for r in rows
+                    if r.get("type") not in ("Race", "Rest")
+                    and float(r.get("elevation_gain_m") or 0) > 0
+                    and not r.get("mountain_mode")
+                    and float(r.get("duration_minutes") or 0) > 0
+                ]
+                room = sum(float(r["elevation_gain_m"]) for r in movable)
+                if not room:
+                    continue
+                keep = max(0.0, 1 - (total - cap) / room)
+                for r in movable:
+                    minutes = float(r["duration_minutes"])
+                    rate = float(r["elevation_gain_m"]) / max(float(r.get("distance_km") or 1), 1.0) * keep
+                    r["target_pace"], r["distance_km"], r["elevation_gain_m"] = trail_session(
+                        est_zones["zone2_pace"], minutes, rate
+                    )
+                    r["grade_percent"] = r["elevation_gain_m"] / (r["distance_km"] * 10) if r["distance_km"] else 0.0
+
+        def _fit_taper_long_share(wos: list[dict[str, Any]]) -> None:
+            """A taper week whose short runs became rest keeps the long run within the athlete's long-run share."""
+            share = tier_profile.long_run_share_cap + LONG_SHARE_SOFT
+            for rows in _week_rows(wos).values():
+                long = next((r for r in rows if r.get("type") == "Long Run"), None)
+                if not long or rows[0].get("phase") != "Taper":
+                    continue
+                others = sum(
+                    float(r.get("duration_minutes") or 0) for r in rows if r is not long and r.get("type") != "Rest"
+                )
+                cap = max(others * share / (1 - share), 30.0)
+                if float(long["duration_minutes"]) > cap:
+                    _resize(long, int(cap // 5 * 5) or 30)
+
         def _ramp_volume(wos: list[dict[str, Any]]) -> None:
             """The week's volume climbs toward the weekly time the goal needs at the tier's progression pace (the
             same ramp the rules use). The model lets it plateau well under the athlete's capacity; the deficit
@@ -1529,7 +1681,8 @@ class PlanGenerator:
             except Exception:  # noqa: BLE001
                 prior_rows = []
             flat = PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier) or 6.0
-            base = max(float(current_weekly_km or 0) * 6.0, 180.0)
+            recent = recent_weekly_minutes(current_weekly_km, flat)
+            base = max(recent, 90.0) if recent else 180.0
             if demands:
                 share = 0.8 if demands.source == "cutoff_safe" else 1.0
                 want = demands.peak_week_km_lo * share * flat / base
@@ -1539,10 +1692,20 @@ class PlanGenerator:
             for wo in wos:
                 if isinstance(wo.get("week_number"), int):
                     by_week.setdefault(wo["week_number"], []).append(wo)
-            for week_no, rows in by_week.items():
-                if rows[0].get("phase") not in ("Base", "Build", "Peak") or PlanGenerator.is_deload_week(
-                    week_no, total_weeks
-                ):
+            for week_no, rows in sorted(by_week.items()):
+                if rows[0].get("phase") not in ("Base", "Build", "Peak"):
+                    continue
+                if PlanGenerator.is_deload_week(week_no, total_weeks):
+                    # 3:1 needs a real down week: at most 80% of the week before, taken off the easy runs
+                    before = by_week.get(week_no - 1) or [w for w in prior_rows if w.get("week_number") == week_no - 1]
+                    excess = plan_lint.week_minutes(rows) - 0.8 * plan_lint.week_minutes(before) if before else 0.0
+                    for r in sorted(rows, key=lambda r: -float(r.get("duration_minutes") or 0)):
+                        if excess <= 0:
+                            break
+                        if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery") and r["duration_minutes"] > 30:
+                            new = int(max(30.0, float(r["duration_minutes"]) - excess) // 5 * 5)
+                            excess -= float(r["duration_minutes"]) - new
+                            _resize(r, new)
                     continue
                 mult = max(
                     1.0 + 0.05 * (week_no - 1),
@@ -1895,7 +2058,11 @@ class PlanGenerator:
                 return
             days = list(_PRIORITY_DAY_ORDER)
             for week_no, rows in _week_rows(wos).items():
-                if rows[0].get("phase") not in ("Build", "Peak") or PlanGenerator.is_deload_week(week_no, total_weeks):
+                if (
+                    rows[0].get("phase") not in ("Build", "Peak")
+                    or rows[0].get("phase") in hard_banned
+                    or PlanGenerator.is_deload_week(week_no, total_weeks)
+                ):
                     continue
                 if any(
                     r.get("target_zone") in ("Zone 3", "Zone 4", "Zone 5") and r.get("type") != "Race" for r in rows
@@ -2248,12 +2415,17 @@ class PlanGenerator:
             _cap_hard_dose(wos)
             _respect_days(wos)
             _ramp_volume(wos)
+            _cap_start_load(wos)
             _progress_long_runs(wos)
             _add_tempo(wos)
             _space_hard_days(wos)
             _add_climb_session(wos)
+            _cap_week_vert(wos)
+            _add_drift_test(wos)
             _soften_recovery_weeks(wos)
+            _gate_hard(wos)
             _normalise_sessions(wos)
+            _fit_taper_long_share(wos)
             for wo in wos:
                 for field in ("title", "description", "fueling_tip"):
                     if wo.get(field):
@@ -2974,9 +3146,10 @@ class PlanGenerator:
 
         _rule_started = time.monotonic()
 
-        base_weekly_minutes = current_weekly_km * 6.0
-        if base_weekly_minutes < 120.0:
-            base_weekly_minutes = 180.0
+        recent_minutes = recent_weekly_minutes(
+            current_weekly_km, PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier)
+        )
+        base_weekly_minutes = max(recent_minutes, 90.0) if recent_minutes else 180.0
         try:
             race_weekday = datetime.strptime(
                 str(race_info.get("date") or race_info.get("race_date"))[:10], "%Y-%m-%d"
