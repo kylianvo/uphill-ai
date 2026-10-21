@@ -425,27 +425,33 @@ struct SummaryCarousel: View {
                     HStack {
                         eyebrow(L("Goal progress"))
                         Spacer()
-                        if let hours = model.goal?.targetTimeHours {
-                            Text(verbatim: L("Goal %@", PlanViewModel.formatMinutes(hours * 60)))
-                                .font(UH.TextStyle.caption.monospacedDigit())
-                                .foregroundStyle(UH.Palette.accentInk)
+                        if let pill = model.goalPillText {
+                            Text(verbatim: pill)
+                                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                                .foregroundStyle(goalTint)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(UH.Palette.hover, in: Capsule())
                         }
                     }
-                    if let bar = progress.longRun {
-                        progressRow(L("Long run"), bar, PlanViewModel.formatMinutes(bar.done) + " / " + PlanViewModel.formatMinutes(bar.target))
+                    if let hours = model.goal?.targetTimeHours {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(verbatim: PlanViewModel.formatMinutes(hours * 60))
+                                .font(UH.TextStyle.metric.monospacedDigit())
+                                .foregroundStyle(UH.Palette.ink)
+                            Text("target").font(UH.TextStyle.label).foregroundStyle(UH.Palette.secondary)
+                        }
                     }
-                    if let bar = progress.weekKm {
-                        progressRow(L("Biggest week"), bar, "\(Int(bar.done.rounded())) / \(Int(bar.target.rounded())) km")
-                    }
-                    if let bar = progress.aerobicSpeed {
-                        progressRow(L("Aerobic speed"), bar, "+\(RaceDisplay.number(bar.done))% / +\(RaceDisplay.number(bar.target))%")
+                    if let tiers = model.goal?.assessment?.goals {
+                        HStack(spacing: 6) {
+                            tierChip("A", L("Ambitious"), tiers.a)
+                            tierChip("B", L("Realistic"), tiers.b)
+                            tierChip("C", L("Safe"), tiers.c)
+                        }
                     }
                     Spacer(minLength: 0)
-                    if let next = model.journey?.nextMilestone {
-                        Label(L("Next: %@ · week %lld", next.title, next.week), systemImage: "flag")
-                            .font(UH.TextStyle.caption)
-                            .foregroundStyle(UH.Palette.secondary)
-                            .lineLimit(1)
+                    if let bar = progress.longRun {
+                        progressRow(L("Longest run"), bar, L("%@ of %@", PlanViewModel.formatMinutes(bar.done), PlanViewModel.formatMinutes(bar.target)))
                     }
                 }
             )
@@ -453,6 +459,25 @@ struct SummaryCarousel: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("plan.goalProgress")
+    }
+
+    private var goalTint: Color {
+        model.goalIsOutOfReach ? UH.Palette.danger : model.goal?.status.kind == .behind ? UH.Palette.warningInk : UH.Palette.accentInk
+    }
+
+    /// The tier the target matches is filled; the others are outlined.
+    private func tierChip(_ tier: String, _ name: String, _ minutes: Double) -> some View {
+        let target = model.goal?.targetTimeHours.map { Int(($0 * 60).rounded()) }
+        let active = model.goal?.status.tier?.uppercased() == tier || target == Int(minutes.rounded())
+        return VStack(spacing: 1) {
+            Text(verbatim: name).font(.system(size: 10, weight: .semibold))
+            Text(verbatim: PlanViewModel.formatMinutes(minutes)).font(.system(size: 12, weight: .bold).monospacedDigit())
+        }
+            .foregroundStyle(active ? UH.Palette.accentInk : UH.Palette.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
+            .background(active ? UH.Palette.activeFill : .clear, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(active ? UH.Palette.accentInk.opacity(0.4) : UH.Palette.line))
     }
 
     private func progressRow(_ title: String, _ bar: GoalProgress.Bar, _ value: String) -> some View {

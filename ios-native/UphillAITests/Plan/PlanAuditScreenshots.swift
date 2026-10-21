@@ -100,4 +100,41 @@ struct PlanAuditScreenshots {
             save(AdaptWeekSheet(model: model, week: 5).environment(\.locale, lang.locale), name: "adapt-\(suffix)", height: 1600)
         }
     }
+
+    /// Week 1 of a fresh plan: nothing reviewed yet, so the coach card welcomes; the goal card shows target, A/B/C and status.
+    @Test func renderWeekOne() async throws {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh")!
+        let now = cal.date(from: DateComponents(year: 2026, month: 10, day: 22, hour: 9))!
+        let plan = TestData.plan(["id": 131, "race_name": "Vietnam Highlands Trail by UTMB", "race_date": "2027-01-09",
+                                  "goal_type": "time", "target_time_hours": 15.75, "course_distance_km": 56, "course_elevation_gain_m": 2800,
+                                  "total_weeks": 12, "current_week": 1, "start_date": "2026-10-19", "plan_status": "active"])
+        func w(_ id: Int, _ day: String, _ type: String, _ min: Double, _ title: String, _ extra: [String: Any] = [:]) -> Workout {
+            TestData.workout(["id": id, "week_number": 1, "day_of_week": day, "type": type, "duration_minutes": min,
+                              "title": title, "target_zone": "Z2"].merging(extra) { $1 })
+        }
+        let week = [w(1, "Monday", "Rest", 0, "Rest Day"), w(2, "Thursday", "Easy Run", 50, "Aerobic Easy Run"),
+                    w(3, "Saturday", "Long Run", 150, "Trail Long Run", ["is_priority": true]), w(4, "Sunday", "Easy Run", 60, "Easy Run")]
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(PlanSnapshot(plan: plan, workouts: week)) }
+        service.goalResult.withLock { $0 = .success(try! decode(PlanGoal.self, [
+            "assessment": ["id": 1, "goals": ["a": 870, "b": 945, "c": 1050], "reasoning": [], "missing": [], "engine": "rules"],
+            "status": ["state": "ahead", "suggested_mins": NSNull()], "target_time_hours": 15.75,
+            "targets": ["long_run_min": 214, "peak_week_km": 120]])) }
+        let model = PlanViewModel(service: service, cache: .inMemory(), now: { now }, calendar: cal)
+        await model.load()
+        model.selectedWeek = 1
+        await model.loadGoal()
+
+        let oldLanguage = UserDefaults.standard.string(forKey: AppLanguage.storageKey)
+        defer { UserDefaults.standard.set(oldLanguage, forKey: AppLanguage.storageKey) }
+        for lang in [AppLanguage.en, .vi] {
+            UserDefaults.standard.set(lang.rawValue, forKey: AppLanguage.storageKey)
+            let suffix = lang == .en ? "en" : "vi"
+            save(SummaryCarousel(model: model, onReview: {}, onAdapt: {}, onGoal: {}).goalProgressCard(model.goalProgress!)
+                    .environment(\.locale, lang.locale), name: "week1-goal-card-\(suffix)", height: 260)
+            save(CoachReviewCard(model: model, onOpenReview: {}, initialExpanded: true)
+                    .padding().environment(\.locale, lang.locale), name: "week1-coach-welcome-\(suffix)", height: 420)
+        }
+    }
 }

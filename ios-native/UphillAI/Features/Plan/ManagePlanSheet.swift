@@ -399,11 +399,11 @@ struct ManagePlanSheet: View {
 
                 Divider().overlay(UH.Palette.line.opacity(0.6))
 
-                // COROS Push Row (sends the next ~4 weeks)
+                // COROS Push Row (sends every generated week through race day)
                 if model.athleteId == nil, let deviceService {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text("SEND NEXT 4 WEEKS")
+                            Text("YOUR PLAN ON COROS")
                                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                                 .foregroundStyle(UH.Palette.muted)
                             Spacer()

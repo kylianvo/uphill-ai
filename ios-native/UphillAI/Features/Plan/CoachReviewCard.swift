@@ -45,7 +45,7 @@ struct CoachReviewCard: View {
                         }
 
                         if !isExpanded {
-                            if let thisWeek = whyThisWeek {
+                            if let thisWeek = whyThisWeek ?? welcome?.first {
                                 Text(verbatim: thisWeek)
                                     .font(UH.TextStyle.caption)
                                     .foregroundStyle(UH.Palette.secondary)
@@ -77,8 +77,11 @@ struct CoachReviewCard: View {
                 VStack(alignment: .leading, spacing: UH.Space.small) {
                     Divider().overlay(UH.Palette.line.opacity(0.6)).padding(.vertical, 4)
 
-                    // Key Coach Takeaways
-                    takeawaysSection
+                    if let welcome {
+                        welcomeSection(welcome)
+                    } else {
+                        takeawaysSection
+                    }
 
                     // Coach's pick this week
                     if let priority = priorityWorkout {
@@ -110,6 +113,37 @@ struct CoachReviewCard: View {
         .padding(UH.Space.small)
         .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
         .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
+    }
+
+    /// Week 1 with nothing reviewed yet: a short welcome built from the plan, so the card is never empty.
+    private var welcome: [String]? {
+        guard model.selectedWeek == 1, whyThisWeek == nil, model.weekBrief == nil, model.coachNudge == nil,
+              let plan = model.snapshot?.plan else { return nil }
+        var lines = [L("Welcome to your plan for %@. This is where it starts.", plan.raceName)]
+        if let days = model.daysToRace, days >= 7 {
+            lines.append(L("You have %lld weeks. Week 1 is about easy, consistent running so your body settles into the routine.", Int((Double(days) / 7).rounded(.up))))
+        }
+        if let pick = priorityWorkout {
+            lines.append(L("If you do one session well this week, make it %@.", pick.title))
+        }
+        lines.append(L("Run easy, sleep well, and tell me how each session felt. I'll adjust from there."))
+        return lines
+    }
+
+    private func welcomeSection(_ lines: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(verbatim: lines[0])
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(UH.Palette.ink)
+            ForEach(lines.dropFirst(), id: \.self) {
+                Text(verbatim: $0).font(.system(size: 12.5)).foregroundStyle(UH.Palette.ink)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(UH.Space.small)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+        .accessibilityIdentifier("plan.coachCard.welcome")
     }
 
     /// The week brief's reason, else the block narrative's focus for the week.
