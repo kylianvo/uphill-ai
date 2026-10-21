@@ -10,13 +10,13 @@ import hashlib
 import json
 import re
 from collections import Counter
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
 import telemetry
 from config import settings
 from log_utils import get_logger
-from services import observability, plan_journey
+from services import beginner_milestones, observability, plan_journey
 from services.plan_generator import narrative_lang_instruction
 
 _logger = get_logger(__name__)
@@ -63,6 +63,15 @@ _MILESTONE = {
     "peak_week": ("your peak week", "tuần peak"),
     "taper_start": ("the start of your taper", "tuần bắt đầu Taper"),
     "race_week": ("race week", "tuần Race"),
+    "first_session": ("your first run/walk session", "buổi chạy/đi bộ đầu tiên"),
+    "jog_5": ("5 minutes of unbroken jogging", "5 phút chạy liên tục"),
+    "jog_10": ("10 minutes of unbroken jogging", "10 phút chạy liên tục"),
+    "jog_20": ("20 minutes of unbroken jogging", "20 phút chạy liên tục"),
+    "jog_30": ("30 minutes of non-stop running", "30 phút chạy không nghỉ"),
+    "first_5k": ("your first 5 km", "5 km đầu tiên"),
+    "jog_45": ("45 minutes of non-stop running", "45 phút chạy không nghỉ"),
+    "jog_60": ("60 minutes of non-stop running", "60 phút chạy không nghỉ"),
+    "first_10k": ("your first 10 km", "10 km đầu tiên"),
 }
 
 
@@ -95,6 +104,7 @@ def facts_for(
     feasibility_verdict: str | None,
     plan_supported: bool,
     path: dict[str, Any] | None = None,
+    beginner_rows: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     total = int(plan.get("total_weeks") or 0)
     start = _monday(plan["start_date"]) if plan.get("start_date") else today - timedelta(days=today.weekday())
@@ -120,6 +130,7 @@ def facts_for(
     )
     nxt = upcoming[0] if upcoming else None
     done_now = [m for m in plan_journey.milestones(workouts, week) if m.done and m.week == week - 1]
+    reached_now = beginner_milestones.just_reached(beginner_rows or [], datetime.combine(today, time.max, UTC))
     return {
         "current_week": week,
         "total_weeks": total,
@@ -127,7 +138,8 @@ def facts_for(
         "days_to_race": plan_journey.days_to_race(plan.get("race_date"), today),
         "last_week": last,
         "consistent_weeks": consistent,
-        "milestones_just_done": [{"key": m.key, "week": m.week} for m in done_now],
+        "milestones_just_done": [{"key": m.key, "week": m.week} for m in done_now]
+        + [{"key": k, "week": week - 1} for k in reached_now],
         "next_session": {
             "day": nxt.get("day_of_week"),
             "title": nxt.get("title") or nxt.get("type"),

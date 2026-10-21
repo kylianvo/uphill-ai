@@ -8,7 +8,7 @@ from typing import Any
 
 import db
 from db import CoachChatError
-from services import fitness_snapshot
+from services import beginner_milestones, fitness_snapshot
 
 
 def _is_valid_web_url(url: str | None) -> bool:
@@ -127,6 +127,9 @@ def build_chat_context(
     return {
         "athlete": athlete_context,
         "plan": {"id": plan.get("id")} if plan else None,
+        "beginner_milestones": beginner_milestones.coach_context_block(
+            beginner_milestones.safe_prompt_context(plan["id"]) if plan else None
+        ),
         "workouts": plan_workouts,
         "recent_activities": recent_activities,
         "race_history": race_history,

@@ -87,6 +87,23 @@ def test_build_chat_context_filters_expired_and_error_messages():
         assert [m["id"] for m in ctx["history"]] == [1, 2]
         assert ctx["question"] == "What is my next workout?"
         assert ctx["race_history"].startswith("RACE HISTORY")
+        assert ctx["beginner_milestones"] is None  # a plan with no milestone target adds nothing
+
+
+def test_chat_context_includes_milestones():
+    ctx_in = {"target": "5k", "has_event": False, "items": [], "next_key": "jog_5", "event": None}
+    with (
+        patch("db.get_user_by_id", return_value={"id": 1}),
+        patch("db.get_active_plan", return_value={"id": 10}),
+        patch("db.get_plan_workouts", return_value=[]),
+        patch("db.get_activities_for_user", return_value=[]),
+        patch("db.get_chat_thread_messages", return_value=[]),
+        patch("services.race_history.prompt_summary", return_value=""),
+        patch("services.fitness_snapshot.chat_summary", return_value={}),
+        patch("services.beginner_milestones.safe_prompt_context", return_value=ctx_in),
+    ):
+        ctx = build_chat_context(user_id=1, question="how am I doing?")
+    assert ctx["beginner_milestones"]["target"] == "5k" and ctx["beginner_milestones"]["next_key"] == "jog_5"
 
 
 def test_trim_context_to_budget_trims_history_then_evidence():

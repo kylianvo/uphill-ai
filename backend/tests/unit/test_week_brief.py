@@ -71,3 +71,13 @@ def test_prompt_carries_the_decision_log_and_diff(monkeypatch):
     assert "Week 1 was 87% complete" in seen["prompt"]
     assert "Total time: 80 -> 60 min (-25%)." in seen["prompt"]
     assert "Week 2" in seen["prompt"] and "Easy Run" in seen["prompt"]
+
+
+def test_decision_log_includes_milestone_fact():
+    from datetime import UTC, datetime
+
+    from services import beginner_milestones as bm
+
+    rows = [{"milestone_key": "first_session", "achieved_at": datetime(2026, 10, 6, tzinfo=UTC), "source": "auto"}]
+    fact = bm.brief_fact(bm.serialize("5k", False, rows), 5)
+    assert fact.startswith("Milestone: next = 5 minutes of unbroken jogging") and "1 of 6 reached" in fact

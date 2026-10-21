@@ -2727,6 +2727,12 @@ async def _generate_next_block_for_athlete(
         for line in context_lines
         if line.strip().startswith((f"Block {prev_block} ", "Coach evaluation", "Execution quality", "Coach takeaway"))
     ] + reason_lines
+    milestone_fact = beginner_milestones.brief_fact(
+        beginner_milestones.safe_prompt_context(request.plan_id),
+        (get_user_by_id(athlete_id) or {}).get("max_continuous_jog_min"),
+    )
+    if milestone_fact:
+        brief_decision_log.append(milestone_fact)
     # Can the load still reach the book's benchmark peak week before the taper? Tell the generator
     # what this block must total, and the brief when the timeline cannot make it.
     readiness = race_readiness.assess_week(
@@ -4576,6 +4582,7 @@ async def _plan_nudge(plan_id: int, owner_id: int, lang: str) -> dict[str, Any]:
         feasibility_verdict=(feasibility or {}).get("verdict"),
         plan_supported=support["a_supported"] if support else True,
         path=goal_service.path_for(plan),
+        beginner_rows=db.get_plan_milestone_rows(plan_id) if plan.get("milestone_target") else None,
     )
     tone = coach_nudge.tone_for(facts)
     if tone is None:

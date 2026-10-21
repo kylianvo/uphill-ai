@@ -40,3 +40,41 @@ def test_goal_description_without_event_omits_event_text():
 
 def test_goal_description_none_without_milestones():
     assert bm.goal_description(None) is None
+
+
+# --- week brief fact, coach context, coach message ---------------------------
+
+
+def test_brief_fact_none_without_target():
+    assert bm.brief_fact(None, None) is None
+
+
+def test_brief_fact_text():
+    ctx = _ms("5k", ["first_session", "jog_5", "jog_10"])
+    fact = bm.brief_fact(ctx, 12)
+    assert fact == (
+        "Milestone: next = 20 minutes of unbroken jogging (usually around weeks 5-8); "
+        "best unbroken jog so far = 12 min; 3 of 6 reached"
+    )
+
+
+def test_coach_context_block_is_compact():
+    ctx = _ms("10k", ["jog_5"], event={"name": "Parkrun", "date": "2026-12-12"})
+    block = bm.coach_context_block(ctx)
+    assert block == {
+        "target": "10k",
+        "reached": ["jog_5"],
+        "next_key": "first_session",
+        "event": {"name": "Parkrun", "date": "2026-12-12"},
+    }
+    assert bm.coach_context_block(None) is None
+
+
+def test_just_reached_keeps_recent_non_baseline_rows_only():
+    rows = [
+        {"milestone_key": "jog_5", "source": "auto", "achieved_at": NOW},
+        {"milestone_key": "jog_10", "source": "baseline", "achieved_at": NOW},
+        {"milestone_key": "jog_20", "source": "revoked", "achieved_at": None},
+        {"milestone_key": "first_session", "source": "manual", "achieved_at": datetime(2026, 9, 1, tzinfo=UTC)},
+    ]
+    assert bm.just_reached(rows, NOW) == ["jog_5"]

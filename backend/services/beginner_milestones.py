@@ -314,3 +314,41 @@ def safe_prompt_context(plan_id: int) -> dict[str, Any] | None:
             "beginner milestone prompt context failed", exc_info=True, extra={"fields": {"plan_id": plan_id}}
         )
         return None
+
+
+def brief_fact(ctx: dict[str, Any] | None, max_jog_min: int | None) -> str | None:
+    """One decision-log line for the week brief: where the athlete is on the ladder."""
+    if not ctx:
+        return None
+    by_key = {m.key: m for m in LADDER}
+    reached = sum(1 for i in ctx["items"] if i["achieved_at"])
+    parts = []
+    if ctx.get("next_key"):
+        lo, hi = by_key[ctx["next_key"]].typical_weeks
+        parts.append(f"next = {MILESTONE_PROMPT_LABELS[ctx['next_key']]} (usually around weeks {lo}-{hi})")
+    if max_jog_min:
+        parts.append(f"best unbroken jog so far = {max_jog_min} min")
+    parts.append(f"{reached} of {len(ctx['items'])} reached")
+    return "Milestone: " + "; ".join(parts)
+
+
+def coach_context_block(ctx: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Compact milestone state for Coach Uphill chat."""
+    if not ctx:
+        return None
+    return {
+        "target": ctx["target"],
+        "reached": [i["key"] for i in ctx["items"] if i["achieved_at"]],
+        "next_key": ctx["next_key"],
+        "event": ctx.get("event"),
+    }
+
+
+def just_reached(rows: list[dict[str, Any]], now: datetime, days: int = 7) -> list[str]:
+    """Keys earned (auto or by hand, not from the onboarding baseline) in the last `days` days."""
+    cutoff = now - timedelta(days=days)
+    return [
+        r["milestone_key"]
+        for r in rows
+        if r.get("source") in ("auto", "manual") and r.get("achieved_at") and r["achieved_at"] >= cutoff
+    ]

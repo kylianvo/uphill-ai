@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
 from services import coach_nudge
 
@@ -112,3 +112,29 @@ def test_zone_labels_are_not_invented_numbers():
     f = facts(_week(1, 5) + _week(2, 5))
     assert coach_nudge.grounded("Keep the Zone 2 sessions steady.", f)
     assert not coach_nudge.grounded("Keep Zone 2 for 87 minutes.", f)
+
+
+def test_facts_include_beginner_milestone_reached_this_week():
+    rows = [{"milestone_key": "jog_10", "source": "auto", "achieved_at": datetime(2026, 10, 19, 7, tzinfo=UTC)}]
+    f = facts(_week(1, 3) + _week(2, 3), beginner_rows=rows)
+    assert {"key": "jog_10", "week": 2} in f["milestones_just_done"]
+    assert coach_nudge.tone_for(f) == "encourage"
+
+
+def test_baseline_and_revoked_not_in_just_done():
+    rows = [
+        {"milestone_key": "jog_5", "source": "baseline", "achieved_at": datetime(2026, 10, 19, tzinfo=UTC)},
+        {"milestone_key": "jog_10", "source": "revoked", "achieved_at": None},
+    ]
+    assert facts(_week(1, 3), beginner_rows=rows)["milestones_just_done"] == []
+
+
+def test_fallback_text_names_first_5k_en_vi():
+    f = {"milestones_just_done": [{"key": "first_5k", "week": 2}], "last_week": {}}
+    assert "5 km" in coach_nudge.fallback_text(f, "encourage", "en")
+    assert "5 km" in coach_nudge.fallback_text(f, "encourage", "vi")
+
+
+def test_grounded_accepts_milestone_numbers():
+    f = {"milestones_just_done": [{"key": "jog_20", "week": 2}]}
+    assert coach_nudge.grounded("You just ran 20 minutes without stopping.", f)
