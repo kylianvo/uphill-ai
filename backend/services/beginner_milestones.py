@@ -255,3 +255,62 @@ def apply_creation(user_id: int, plan_id: int, target: Target, current_jog_min: 
     now = datetime.now(UTC)
     for key in baseline_keys(target, current_jog_min):
         db.insert_milestone_if_absent(plan_id, key, "baseline", now)
+
+
+def prompt_context(plan_id: int) -> dict[str, Any] | None:
+    """The plan's serialized milestones plus its event, for prompts. None for plans without a target."""
+    import db
+
+    plan = db.get_plan_by_id(plan_id)
+    if not plan or not plan.get("milestone_target"):
+        return None
+    ctx = serialize(plan["milestone_target"], bool(plan.get("has_target_event")), db.get_plan_milestone_rows(plan_id))
+    ctx["event"] = {"name": plan.get("race_name"), "date": str(plan.get("race_date"))} if ctx["has_event"] else None
+    return ctx
+
+
+def goal_description(ctx: dict[str, Any] | None) -> str | None:
+    """The plan prompt's goal line for a start_running plan with a target."""
+    if not ctx:
+        return None
+    by_key = {m.key: m for m in LADDER}
+    text = f"Goal: First {ctx['target'].upper()} — a beginner building from walk/run toward it."
+    if ctx.get("event"):
+        text += f" The athlete's event is '{ctx['event']['name']}' on {ctx['event']['date']}."
+    if ctx.get("next_key"):
+        lo, hi = by_key[ctx["next_key"]].typical_weeks
+        text += (
+            f" Next milestone: {MILESTONE_PROMPT_LABELS[ctx['next_key']]}, usually around weeks {lo}-{hi}."
+            " Walk breaks are part of the plan."
+        )
+    text += " Do NOT assign high-intensity threshold or anaerobic intervals. Volume starts low and rises slowly."
+    if ctx.get("event"):
+        text += " Make the event week light with the event as its last session; run/walk is fine on the day. No taper block."
+    return text
+
+
+def stage_b_clause(ctx: dict[str, Any] | None) -> str | None:
+    """Rules for a 10K-target beginner who can already run 30 minutes non-stop: run/walk is behind them."""
+    if not ctx or ctx.get("target") != "10k":
+        return None
+    if not any(i["key"] == "jog_30" and i["achieved_at"] for i in ctx["items"]):
+        return None
+    from services.plan_lint import MAX_LONG_RUN_GROWTH
+
+    return (
+        "STAGE B — the athlete can run 30 minutes non-stop, so run/walk intervals are finished. Where rules 2-5 below "
+        "describe run/walk intervals, STAGE B overrides them: write continuous easy runs. Keep one long run a week that grows gradually, by at most about "
+        f"{MAX_LONG_RUN_GROWTH * 100:.0f}% over the longest run of the last two weeks, toward 60 minutes and then 10 km. "
+        "Everything stays Zone 1-2: no tempo, threshold, intervals or hill sprints.\n"
+    )
+
+
+def safe_prompt_context(plan_id: int) -> dict[str, Any] | None:
+    """prompt_context that degrades to None: plan generation must not fail on a milestone lookup."""
+    try:
+        return prompt_context(plan_id)
+    except Exception:
+        logger.warning(
+            "beginner milestone prompt context failed", exc_info=True, extra={"fields": {"plan_id": plan_id}}
+        )
+        return None

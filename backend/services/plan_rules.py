@@ -31,6 +31,7 @@ PROVENANCE
 
 from collections.abc import Callable
 
+from services import beginner_milestones
 from services.athlete_tier import TierProfile
 
 
@@ -39,7 +40,7 @@ def _pct(fraction: float) -> str:
     return f"{fraction * 100:g}"
 
 
-def _beginner_rules(profile: TierProfile, max_continuous_jog_min: int | None) -> str:
+def _beginner_rules(profile: TierProfile, max_continuous_jog_min: int | None, milestones: dict | None = None) -> str:
     """Walk-to-run rules for an athlete who cannot yet run continuously.
 
     Grounded in four kb_seed/scheduler.json principles: "Walk-to-Run Progression for
@@ -59,9 +60,10 @@ def _beginner_rules(profile: TierProfile, max_continuous_jog_min: int | None) ->
         if max_continuous_jog_min
         else "The athlete's longest unbroken jog is not recorded yet; start from a 1 min jog / 1 min walk ratio."
     )
+    stage_b = beginner_milestones.stage_b_clause(milestones) or ""
     return f"""
 Rules:
-YOU ARE WRITING FOR A NEW RUNNER. Ignore any instinct to make this look like a serious
+{stage_b}YOU ARE WRITING FOR A NEW RUNNER. Ignore any instinct to make this look like a serious
 training plan. The limiter is connective-tissue tolerance, not fitness or willpower:
 tendons, ligaments and fascia are poorly vascularized and gain strength at roughly ONE
 SEVENTH the rate muscle gains fitness, so this athlete will feel capable of more than
@@ -279,7 +281,10 @@ Rules:
 
 
 def build_rules_block(
-    profile: TierProfile, max_continuous_jog_min: int | None = None, treadmill_max_incline: int = 15
+    profile: TierProfile,
+    max_continuous_jog_min: int | None = None,
+    treadmill_max_incline: int = 15,
+    milestones: dict | None = None,
 ) -> str:
     """The rules text for this tier, including the tier statement that precedes it.
 
@@ -293,7 +298,7 @@ def build_rules_block(
         f"in particular, do not add intensity, volume or session types that the rules below omit.\n"
     )
     body = (
-        _beginner_rules(profile, max_continuous_jog_min)
+        _beginner_rules(profile, max_continuous_jog_min, milestones)
         if profile.uses_walk_run
         else _performance_rules(profile, treadmill_max_incline)
     )
