@@ -6,10 +6,11 @@ from typing import Any
 
 import telemetry
 from config import settings
-from db import block_number_for_week, get_plan_workouts, week_range_for_block
+from db import block_number_for_week, get_plan_by_id, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
 from services import goal_demands, observability, plan_lint, race_readiness, recovery_baseline, week_layout
 from services.athlete_tier import (
+    LONG_SHARE_SOFT,
     MEASURED_THRESHOLD_SOURCES,
     TIER_PROFILES,
     for_race,
@@ -17,6 +18,7 @@ from services.athlete_tier import (
     graduated_profile,
     resolve_tier,
     session_cap_minutes,
+    taper_weeks,
     week_capacity_parts,
 )
 from services.plan_rules import build_rules_block, me_runway, me_status_block
@@ -532,7 +534,7 @@ class PlanGenerator:
     @staticmethod
     def taper_weeks(total_weeks: int) -> int:
         """Book: taper over 2-3 weeks (40-60% less volume). Plans of 12+ weeks get two steps, shorter ones one."""
-        return 2 if total_weeks >= 12 else 1
+        return taper_weeks(total_weeks)
 
     @staticmethod
     def phase_for_week(w: int, total_weeks: int) -> str:
@@ -1063,6 +1065,11 @@ class PlanGenerator:
         block_context: str | None = None,
         target_week: int | None = None,
     ) -> tuple[list[dict[str, Any]], str]:
+        if cutoff_time_hours is None:  # later blocks and rebuilds: the cutoff was stored on the plan
+            try:
+                cutoff_time_hours = (get_plan_by_id(plan_id) or {}).get("cutoff_time_hours") if plan_id else None
+            except Exception:  # noqa: BLE001
+                cutoff_time_hours = None
         user_id = user_profile.get("id")
         if isinstance(user_id, bool) or not isinstance(user_id, int):
             user_id = None
@@ -1494,6 +1501,168 @@ class PlanGenerator:
                 "Zone 2", float(wo.get("duration_minutes") or 0), est_zones
             )
 
+        def _long_text(minutes: int, climbing: bool) -> str:
+            main = max(20, minutes - 25)
+            if lang == "vi":
+                where = ", power-hiking đoạn dốc trên 10%" if climbing else ""
+                return (
+                    f"Warm-up 15 phút nhẹ → {main} phút Zone 2 đều{where}, tập fueling như ngày race "
+                    f"→ Cool-down 10 phút nhẹ."
+                )
+            where = ", power-hiking anything steeper than 10%" if climbing else ""
+            return (
+                f"Warm-up 15 min easy → {main} min steady Zone 2{where}, practise race fueling → 10 min easy cool-down."
+            )
+
+        def _resize(wo: dict[str, Any], minutes: int) -> None:
+            """Change a steady Zone 2 session's length: distance and climbing follow, the steps are rewritten."""
+            old = float(wo.get("duration_minutes") or 0)
+            if old <= 0:
+                return
+            ratio = minutes / old
+            wo["duration_minutes"] = float(minutes)
+            for key in ("distance_km", "elevation_gain_m"):
+                if wo.get(key):
+                    wo[key] = round(float(wo[key]) * ratio, 1)
+            wo["description"] = _long_text(minutes, bool(wo.get("elevation_gain_m")))
+
+        def _ramp_volume(wos: list[dict[str, Any]]) -> None:
+            """The week's volume climbs toward the weekly time the goal needs at the tier's progression pace (the
+            same ramp the rules use). The model lets it plateau well under the athlete's capacity; the deficit
+            is spread over the easy runs, each within the tier's weekday maximum."""
+            if not demands:
+                return
+            try:
+                prior_rows = get_plan_workouts(plan_id) if plan_id else []
+            except Exception:  # noqa: BLE001
+                prior_rows = []
+            flat = PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier) or 6.0
+            base = max(float(current_weekly_km or 0) * 6.0, 180.0)
+            share = 0.8 if demands.source == "cutoff_safe" else 1.0
+            want = demands.peak_week_km_lo * share * flat / base
+            by_week: dict[int, list[dict[str, Any]]] = {}
+            for wo in wos:
+                if isinstance(wo.get("week_number"), int):
+                    by_week.setdefault(wo["week_number"], []).append(wo)
+            for week_no, rows in by_week.items():
+                if rows[0].get("phase") not in ("Base", "Build", "Peak") or (week_no > 1 and week_no % 4 == 0):
+                    continue
+                mult = max(
+                    1.0 + 0.05 * (week_no - 1),
+                    min(want, (1 + 0.9 * tier_profile.max_weekly_progression) ** (week_no - 1)),
+                )
+                target = base * mult
+                previous = max(  # the larger of the last two weeks: a deload week is not the base
+                    (
+                        plan_lint.week_minutes([w for w in prior_rows if w.get("week_number") == wk])
+                        for wk in (week_no - 1, week_no - 2)
+                    ),
+                    default=0.0,
+                )
+                if previous:  # never more than the tier's weekly progression on the week before
+                    target = min(target, previous * (1 + tier_profile.max_weekly_progression))
+                total = plan_lint.week_minutes(rows)
+
+                if total >= target * 0.97:
+                    continue
+                easy = [
+                    r
+                    for r in rows
+                    if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")
+                    and float(r.get("duration_minutes") or 0) >= 30
+                ]
+                room = [(r, tier_profile.weekday_minutes[1] - float(r["duration_minutes"])) for r in easy]
+                room = [(r, m) for r, m in room if m > 0]
+                if not room:
+                    continue
+                deficit = target - total
+                grow = min(1.0, deficit / sum(m for _, m in room))
+                for r, m in room:
+                    _resize(r, int(round((float(r["duration_minutes"]) + m * grow) / 5) * 5))
+
+        def _progress_long_runs(wos: list[dict[str, Any]]) -> None:
+            """The long run grows toward the goal's time on feet (+20% a week at most, capped by the athlete's
+            session and long-run share limits), and an ultra gets its back-to-back weekend in the last build
+            weeks. The model keeps the long run flat at its starting length and misses the weekend."""
+            if not demands:
+                return
+            try:
+                prior = get_plan_workouts(plan_id) if plan_id else []
+            except Exception:  # noqa: BLE001
+                prior = []
+            cap_min = float(session_cap_minutes(tier_profile, course_distance_km))
+            by_week: dict[int, list[dict[str, Any]]] = {}
+            for wo in wos:
+                if isinstance(wo.get("week_number"), int):
+                    by_week.setdefault(wo["week_number"], []).append(wo)
+            shift = taper_weeks(total_weeks) - 1
+            for week_no in sorted(by_week):
+                rows = by_week[week_no]
+                if rows[0].get("phase") not in ("Base", "Build", "Peak") or (week_no > 1 and week_no % 4 == 0):
+                    continue
+                long = next((r for r in rows if r.get("type") == "Long Run"), None)
+                if not long:
+                    continue
+                history = [w for w in prior if (w.get("week_number") or 0) < week_no] + [
+                    w for w in wos if (w.get("week_number") or 0) < week_no
+                ]
+                asked = goal_demands.long_run_ask(history, week_no, total_weeks, demands, cap_min)
+                others = plan_lint.week_minutes(rows) - float(long.get("duration_minutes") or 0)
+                share = tier_profile.long_run_share_cap + LONG_SHARE_SOFT
+                limit = min(cap_min, share / (1 - share) * others) if others > 0 else cap_min
+                if asked and long.get("target_zone") in ("Zone 1", "Zone 2"):
+                    want = min(asked[0], limit)
+                    if want > float(long["duration_minutes"]) * 1.05:
+                        _resize(long, int(round(want / 5) * 5))
+                window = range(
+                    total_weeks - goal_demands.B2B_WINDOW[0] + 1 - shift,
+                    total_weeks - goal_demands.B2B_WINDOW[0] + 4 - shift,
+                )
+                if (
+                    demands.distance_km >= goal_demands.ULTRA_KM
+                    and (days_per_week or 0) >= goal_demands.B2B_DAYS
+                    and week_no in window
+                    and long.get("day_of_week") in _PRIORITY_DAY_ORDER
+                    and not plan_lint.is_b2b_week(rows)
+                    and not any(
+                        plan_lint.is_b2b_week([w for w in history if w.get("week_number") == wk]) for wk in window
+                    )
+                ):
+                    days = list(_PRIORITY_DAY_ORDER)
+                    eve_day = days[(days.index(long["day_of_week"]) - 1) % 7]
+                    eve = next((r for r in rows if r.get("day_of_week") == eve_day), None)
+                    allowed = not preferred_run_days or eve_day in preferred_run_days
+                    sat_min, sun_min = plan_lint.b2b_targets(history, week_no, demands.longest_session_min)
+                    sun_min = int(min(sun_min, limit if limit > 0 else sun_min, cap_min))
+                    easy_eve = eve is not None and eve.get("type") in (
+                        "Rest",
+                        "Easy",
+                        "Recovery",
+                        "Aerobic Capacity",
+                    )  # never displace ME or a quality session
+                    if eve is not None and easy_eve and allowed and sun_min >= plan_lint.B2B_DAY_MIN:
+                        if sun_min > float(long["duration_minutes"]) * 1.05:
+                            _resize(long, sun_min)
+                        eve.update(
+                            type="Easy",
+                            target_zone="Zone 2",
+                            target_hr_range=z2_range,
+                            title="Back-to-back day 1 (Zone 2)" if lang != "vi" else "Back-to-back ngày 1 (Zone 2)",
+                            duration_minutes=float(sat_min),
+                            description=_long_text(sat_min, bool(long.get("elevation_gain_m"))),
+                            fueling_tip=long.get("fueling_tip") or "",
+                            treadmill_incline="0",
+                            treadmill_speed="0",
+                            mountain_mode=None,
+                        )
+                        eve["target_pace"], eve["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                            "Zone 2", float(sat_min), est_zones
+                        )
+                        eve["elevation_gain_m"] = round(
+                            float(long.get("elevation_gain_m") or 0) * sat_min / max(float(long["duration_minutes"]), 1)
+                        )
+                        eve["grade_percent"] = long.get("grade_percent") or 0
+
         def _trail_steps(description: str | None, rate: float) -> str | None:
             """Step paces on a trail session follow the climb: the flat easy-to-tempo band is scaled by it."""
             if not description or not rate:
@@ -1753,6 +1922,8 @@ class PlanGenerator:
                 if isinstance(wo.get("week_number"), int):
                     wo["phase"] = PlanGenerator.phase_for_week(wo["week_number"], total_weeks)
             _cap_hard_dose(wos)
+            _ramp_volume(wos)
+            _progress_long_runs(wos)
             _add_climb_session(wos)
             _soften_recovery_weeks(wos)
             for wo in wos:
@@ -2932,7 +3103,7 @@ class PlanGenerator:
                     long_run_day=long_run_day,
                     days_per_week=days_per_week,
                     week_minutes=week_minutes,
-                    long_run_share_cap=week_caps.long_run_share_cap,
+                    long_run_share_cap=week_caps.long_run_share_cap + LONG_SHARE_SOFT,
                     weekday_max_minutes=week_caps.weekday_minutes[1],
                     max_long_minutes=session_cap_minutes(tier_profile, course_distance_km),
                     recovery=is_recovery_week,

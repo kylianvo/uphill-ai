@@ -151,6 +151,7 @@ def init_db():
             race_date               TEXT NOT NULL,
             goal_type               TEXT NOT NULL,
             target_time_hours       REAL,
+            cutoff_time_hours       REAL,
             total_weeks             INTEGER NOT NULL,
             current_week            INTEGER DEFAULT 1,
             course_distance_km      REAL,
@@ -939,6 +940,7 @@ def init_db():
             # blocks above; these ALTERs self-migrate existing dev databases).
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS max_continuous_jog_min INTEGER",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS athlete_tier TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS cutoff_time_hours REAL",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS fitness_snapshot JSONB",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS threshold_source TEXT NOT NULL DEFAULT 'unknown'",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_field_sources JSONB",
@@ -1217,6 +1219,7 @@ def create_plan(
     created_by_user_id: int | None = None,
     plan_status: str = "active",
     athlete_notes: str | None = None,
+    cutoff_time_hours: float | None = None,
 ) -> int:
     with engine.connect() as conn:
         result = conn.execute(
@@ -1227,13 +1230,13 @@ def create_plan(
                                days_per_week, double_session_days, start_date,
                                has_gym_access, use_treadmill, training_environment,
                                mountain_days, training_mountain, mountain_min_minutes, stair_access, treadmill_max_incline,
-                               created_by_user_id, plan_status, athlete_notes)
+                               created_by_user_id, plan_status, athlete_notes, cutoff_time_hours)
             VALUES (:user_id, :race_name, :race_date, :goal_type,
                     :tth, :total_weeks, :dist_km, :elev_m, :preferred_run_days,
                     :long_run_day, :days_per_week, :double_session_days, :start_date,
                     :has_gym_access, :use_treadmill, :training_environment,
                     :mountain_days, :training_mountain, :mountain_min_minutes, :stair_access, :treadmill_max_incline,
-                    :created_by_user_id, :plan_status, :athlete_notes)
+                    :created_by_user_id, :plan_status, :athlete_notes, :cutoff_time_hours)
             RETURNING id
         """),
             {
@@ -1260,6 +1263,7 @@ def create_plan(
                 "treadmill_max_incline": treadmill_max_incline or 15,
                 "created_by_user_id": created_by_user_id if created_by_user_id is not None else user_id,
                 "plan_status": plan_status,
+                "cutoff_time_hours": cutoff_time_hours,
                 "athlete_notes": athlete_notes,
             },
         )

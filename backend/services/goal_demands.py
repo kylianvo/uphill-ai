@@ -7,7 +7,7 @@ plan is built from the race's demands instead of one goal sentence.
 from dataclasses import dataclass
 from typing import Any
 
-from services.athlete_tier import ELITE_ULTRA_KM, ELITE_ULTRA_SESSION_MIN, MAX_SESSION_MIN
+from services.athlete_tier import ELITE_ULTRA_KM, ELITE_ULTRA_SESSION_MIN, MAX_SESSION_MIN, taper_shift
 from services.pacing_calculator import PacingCalculator
 from services.race_estimator import RaceEstimator
 from services.race_readiness import race_class
@@ -104,12 +104,12 @@ def prompt_block(d: Demands, lang: str) -> str:
 LONG_RUN_WEEKLY_GROWTH = 1.20  # ask for at most +20% on last week's long run (the lint allows 25%)
 
 
-def long_run_line(
+def long_run_ask(
     workouts: list[dict[str, Any]], week: int, total_weeks: int, demands: Demands, profile_long_cap_min: float
-) -> str | None:
-    """A context line telling the generator how long this week's long run should be, so the longest session
-    reaches the goal's time on feet by the last pre-taper week instead of staying where it started."""
-    last_build = total_weeks - 3
+) -> tuple[float, float, int] | None:
+    """(ask, recent, last_build): how long this week's long run should be so the longest session reaches the
+    goal's time on feet by the last build week instead of staying where it started."""
+    last_build = total_weeks - 3 - taper_shift(total_weeks)
     if week > last_build:
         return None
     prior = [
@@ -123,7 +123,18 @@ def long_run_line(
     target = min(demands.longest_session_min, profile_long_cap_min)
     remaining = max(last_build - week + 1, 1)
     needed = recent * (target / recent) ** (1 / remaining) if target > recent else recent
-    ask = min(max(needed, recent), recent * LONG_RUN_WEEKLY_GROWTH, target)
+    return min(max(needed, recent), recent * LONG_RUN_WEEKLY_GROWTH, target), recent, last_build
+
+
+def long_run_line(
+    workouts: list[dict[str, Any]], week: int, total_weeks: int, demands: Demands, profile_long_cap_min: float
+) -> str | None:
+    """A context line telling the generator how long this week's long run should be."""
+    asked = long_run_ask(workouts, week, total_weeks, demands, profile_long_cap_min)
+    if asked is None:
+        return None
+    ask, recent, last_build = asked
+    target = min(demands.longest_session_min, profile_long_cap_min)
     return (
         f"LONG RUN TARGET: the goal needs the longest session to reach about {target:.0f} min by week {last_build}; "
         f"this week's Long Run should be at least {ask:.0f} min (last week's was {recent:.0f})."
@@ -142,7 +153,8 @@ def back_to_back_line(
     if demands.distance_km < ULTRA_KM or (days_per_week or B2B_DAYS) < B2B_DAYS or not total_weeks:
         return None
     lo, _hi = B2B_WINDOW
-    if week not in (total_weeks - lo + 1, total_weeks - lo + 2, total_weeks - lo + 3):
+    shift = taper_shift(total_weeks)
+    if week not in (total_weeks - lo + 1 - shift, total_weeks - lo + 2 - shift, total_weeks - lo + 3 - shift):
         return None
     from services.plan_lint import b2b_targets
 

@@ -325,6 +325,21 @@ class TierDecision:
 
 
 DEFAULT_TRAINING_DAYS = 5  # used when the athlete set no days per week
+
+
+LONG_SHARE_SOFT = 0.05  # soft margin: a long run up to 5 points over its tier cap is tolerated, not flagged or clamped
+
+
+def taper_weeks(total_weeks: int) -> int:
+    """Book: taper over 2-3 weeks (40-60% less volume). Plans of 12+ weeks get two steps, shorter ones one."""
+    return 2 if total_weeks >= 12 else 1
+
+
+def taper_shift(total_weeks: int) -> int:
+    """How many weeks earlier than in a one-week-taper plan the last build week falls."""
+    return taper_weeks(total_weeks) - 1
+
+
 MAX_SESSION_MIN = 300  # the book caps a single session at four to five hours
 # Scott Johnston's elite 100-mile example (Tom Evans' longest build run was one 8-hour day; Ruth Croft built on
 # weekly volume and weighted climbing, never race-length runs): sub-elite athletes training for 100 miles may

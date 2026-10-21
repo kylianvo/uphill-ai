@@ -446,7 +446,7 @@ def test_the_back_to_back_ask_moves_to_the_next_week_when_the_first_fell_on_a_re
             ],
         )
 
-    prefs = Prefs(demands=D100_ULTRA, total_weeks=13)  # asks at weeks 9 and 10
-    plan = quiet(8) + quiet(9, 0.7) + quiet(10)  # week 9 is a recovery week
-    assert "B2B_MISSING" not in codes(lint_weeks(plan, {9}, SUB, prefs))
-    assert "B2B_MISSING" in codes(lint_weeks(plan, {10}, SUB, prefs))
+    prefs = Prefs(demands=D100_ULTRA, total_weeks=13)  # two-step taper: the asks sit one week earlier, 8 and 9
+    plan = quiet(7) + quiet(8, 0.7) + quiet(9)  # week 8 is a recovery week
+    assert "B2B_MISSING" not in codes(lint_weeks(plan, {8}, SUB, prefs))
+    assert "B2B_MISSING" in codes(lint_weeks(plan, {9}, SUB, prefs))

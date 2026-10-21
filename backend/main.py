@@ -2198,6 +2198,7 @@ async def _generate_plan_for_athlete(
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
         created_by_user_id=created_by_user_id,
+        cutoff_time_hours=request.cutoff_time_hours,
         plan_status=plan_status,
         athlete_notes=request.athlete_notes,
     )
