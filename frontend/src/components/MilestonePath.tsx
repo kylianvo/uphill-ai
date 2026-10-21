@@ -14,8 +14,8 @@ interface Props {
 }
 
 const T = {
-  en: { done: "I did it", confirm: "Yes, mark it", cancel: "Not yet", undo: "Undo", reached: "Milestone reached", next: "Next", upgrade: "Next: First 10K", normal: "Repeating a week is normal. You move on when you're ready.", dismiss: "Nice" },
-  vi: { done: "Mình làm được rồi", confirm: "Đúng, đánh dấu", cancel: "Chưa", undo: "Hoàn tác", reached: "Đã đạt cột mốc", next: "Tiếp theo", upgrade: "Tiếp: 10K đầu tiên", normal: "Lặp lại một tuần là bình thường. Bạn tiến tiếp khi sẵn sàng.", dismiss: "Tuyệt" },
+  en: { done: "I did it", confirm: "Yes, mark it", cancel: "Not yet", undo: "Undo", reached: "Milestone reached", next: "Next", upgrade: "Next: First 10K", normal: "Repeating a week is normal. You move on when you're ready.", dismiss: "Nice", all: "All milestones", fewer: "Hide list" },
+  vi: { done: "Mình làm được rồi", confirm: "Đúng, đánh dấu", cancel: "Chưa", undo: "Hoàn tác", reached: "Đã đạt cột mốc", next: "Tiếp theo", upgrade: "Tiếp: 10K đầu tiên", normal: "Lặp lại một tuần là bình thường. Bạn tiến tiếp khi sẵn sàng.", dismiss: "Tuyệt", all: "Tất cả cột mốc", fewer: "Ẩn danh sách" },
 } as const;
 
 const seenKey = (planId: number) => `uphill.milestonesSeen.${planId}`;
@@ -42,6 +42,7 @@ export default function MilestonePath({ milestones, lang, planId, weeksToEvent, 
   // seen is read once; the toast shows the latest reached milestone the athlete has not been shown yet
   const [seen, setSeen] = useState<string[]>(() => readSeen(planId) ?? []);
   const [dismissed, setDismissed] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const achieved = milestones.items.filter((i) => i.achieved_at);
   const earned = achieved.filter((i) => i.source !== "baseline");
   const achievedKeys = achieved.map((i) => i.key).join(",");
@@ -59,7 +60,14 @@ export default function MilestonePath({ milestones, lang, planId, weeksToEvent, 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }} data-testid="milestone-path">
       <span style={{ fontSize: "15px", fontWeight: 700 }}>{headerText(milestones, lang, weeksToEvent)}</span>
-      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "4px", maxHeight: "120px", overflowY: "auto" }}>
+      {next && !showAll && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "12.5px" }}>
+          <span style={{ fontWeight: 700 }}>→ {milestoneLabel(next.key, lang)}</span>
+          <span style={{ color: "var(--text-secondary)" }}>{typicalWeeksText(next, lang)}</span>
+        </div>
+      )}
+      {showAll && (
+      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "4px", maxHeight: "96px", overflowY: "auto" }}>
         {milestones.items.map((i) => (
           <li key={i.key} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12.5px", color: i.achieved_at ? "var(--text-primary)" : i.key === milestones.next_key ? "var(--text-primary)" : "var(--text-muted)", fontWeight: i.key === milestones.next_key ? 700 : 500 }}>
             <span aria-hidden>{i.achieved_at ? "✓" : i.key === milestones.next_key ? "→" : "○"}</span>
@@ -71,6 +79,7 @@ export default function MilestonePath({ milestones, lang, planId, weeksToEvent, 
           </li>
         ))}
       </ul>
+      )}
       {next && !confirming && (
         <button type="button" onClick={() => setConfirming(true)} style={{ alignSelf: "flex-start", background: "none", border: "none", padding: "4px 0", cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--accent-primary)" }}>{t.done}</button>
       )}
@@ -83,9 +92,10 @@ export default function MilestonePath({ milestones, lang, planId, weeksToEvent, 
       {canUpgrade && (
         <button type="button" className="btn btn-secondary" onClick={onUpgrade} style={{ alignSelf: "flex-start", minHeight: "36px", padding: "0 14px", borderRadius: "9999px", fontSize: "12px", fontWeight: 600 }}>{t.upgrade}</button>
       )}
-      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{t.normal}</span>
+      <button type="button" onClick={() => setShowAll((v) => !v)} style={{ alignSelf: "flex-start", background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: "11.5px", color: "var(--text-muted)" }}>{showAll ? t.fewer : t.all}</button>
+      {showAll && <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{t.normal}</span>}
       {celebrate && (
-        <div role="status" style={{ position: "fixed", left: "16px", right: "16px", bottom: "24px", zIndex: 50, background: "var(--bg-card, #fff)", border: "1px solid var(--accent-primary)", borderRadius: "16px", padding: "16px", boxShadow: "0 8px 30px rgba(0,0,0,0.18)", display: "flex", flexDirection: "column", gap: "6px" }}>
+        <div role="status" style={{ position: "fixed", left: "16px", right: "16px", bottom: "96px", zIndex: 1000, background: "#fff", border: "1px solid var(--accent-primary)", borderRadius: "16px", padding: "16px", boxShadow: "0 8px 30px rgba(0,0,0,0.18)", display: "flex", flexDirection: "column", gap: "6px" }}>
           <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--accent-primary)" }}>{t.reached}</span>
           <span style={{ fontSize: "17px", fontWeight: 800 }}>{milestoneLabel(celebrate, lang)}</span>
           {next && <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{t.next}: {milestoneLabel(next.key, lang)}</span>}

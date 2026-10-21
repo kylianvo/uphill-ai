@@ -82,9 +82,9 @@ export default function BeginnerGoalFields({ value, onChange, startDate, lang }:
           {t.event}
         </label>
         {eventOn && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            <input className="chat-input" style={{ borderRadius: "8px", padding: "10px" }} placeholder={t.eventName} aria-label={t.eventName} value={value.event_name} onChange={(e) => set({ event_name: e.target.value })} />
-            <input type="date" className="chat-input" style={{ borderRadius: "8px", padding: "10px" }} aria-label={t.eventDate} value={value.event_date} onChange={(e) => set({ event_date: e.target.value })} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "10px" }}>
+            <input className="chat-input" style={{ borderRadius: "8px", padding: "10px", minWidth: 0, width: "100%", boxSizing: "border-box" }} placeholder={t.eventName} aria-label={t.eventName} value={value.event_name} onChange={(e) => set({ event_name: e.target.value })} />
+            <input type="date" className="chat-input" style={{ borderRadius: "8px", padding: "10px", minWidth: 0, width: "100%", boxSizing: "border-box" }} aria-label={t.eventDate} value={value.event_date} onChange={(e) => set({ event_date: e.target.value })} />
           </div>
         )}
         {eventOn && weeks !== null && weeks < minimum && (

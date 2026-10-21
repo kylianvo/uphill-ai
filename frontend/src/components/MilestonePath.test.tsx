@@ -19,7 +19,7 @@ describe("MilestonePath", () => {
   it("shows reached rows and the next milestone with its typical weeks", () => {
     render(<MilestonePath milestones={base()} lang="en" planId={1} weeksToEvent={null} onMark={vi.fn()} onUndo={vi.fn()} onUpgrade={vi.fn()} />);
     expect(screen.getByText("First 5K · 2 of 4 milestones")).toBeInTheDocument();
-    expect(screen.getByText("10 min unbroken jog")).toBeInTheDocument();
+    expect(screen.getByText("→ 10 min unbroken jog")).toBeInTheDocument();
     expect(screen.getByText("usually around week 4–6")).toBeInTheDocument();
   });
   it("asks to confirm before marking the next milestone", () => {
@@ -33,6 +33,7 @@ describe("MilestonePath", () => {
   it("undoes an achieved row", () => {
     const onUndo = vi.fn();
     render(<MilestonePath milestones={base()} lang="en" planId={1} weeksToEvent={null} onMark={vi.fn()} onUndo={onUndo} onUpgrade={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "All milestones" }));
     fireEvent.click(screen.getByRole("button", { name: "Undo 5 min unbroken jog" }));
     expect(onUndo).toHaveBeenCalledWith("jog_5");
   });
