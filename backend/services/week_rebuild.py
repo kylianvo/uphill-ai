@@ -8,6 +8,7 @@ are kept (past days, completed, GPS-matched), the diff and the warnings."""
 
 import asyncio
 import datetime as dt
+import logging
 import threading
 from collections.abc import Callable, Coroutine
 from dataclasses import asdict, dataclass, field
@@ -644,12 +645,22 @@ def build_rebuild_inputs(
         else (plan.get("training_environment") or "flat")
     )
 
+    # B is the contract: an A target only reaches the week once the A gate is open (goal_service).
+    try:
+        from services import goal_service
+
+        gate = goal_service.a_gate_for({**plan, "user_id": athlete_id}, all_workouts, rng.week)
+        training_target = goal_service.training_target_hours(plan, gate.open)
+    except Exception:
+        logging.getLogger(__name__).exception("A-goal gate failed; training for the stored target")
+        training_target = plan.get("target_time_hours")
+
     race_info = {
         "name": plan.get("race_name", "Training Plan"),
         "date": plan.get("race_date"),
         "terrain": fresh_user.get("terrain", "trail"),
         "goal_type": plan.get("goal_type"),
-        "target_time_hours": plan.get("target_time_hours"),
+        "target_time_hours": training_target,
         "course_distance_km": plan.get("course_distance_km"),
         "course_elevation_gain_m": plan.get("course_elevation_gain_m"),
         "course_context": course_context,

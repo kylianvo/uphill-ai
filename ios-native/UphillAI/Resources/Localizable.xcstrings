@@ -14870,6 +14870,276 @@
           }
         }
       }
+    },
+    "%lld more sessions to shape Block %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Còn %1$lld buổi nữa để coach lên Block %2$lld"
+          }
+        }
+      }
+    },
+    "Add a note for the coach (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm ghi chú cho coach (không bắt buộc)"
+          }
+        }
+      }
+    },
+    "Coach Uphill builds the next block from how this one goes.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill dựng block tiếp theo dựa trên cách bạn tập block này."
+          }
+        }
+      }
+    },
+    "Done · %lld of %lld this week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xong · %1$lld/%2$lld buổi tuần này"
+          }
+        }
+      }
+    },
+    "Keep going to shape Block %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục tập để coach lên Block %lld"
+          }
+        }
+      }
+    },
+    "WHY THIS WEEK": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LÝ DO TUẦN NÀY"
+          }
+        }
+      }
+    },
+    "WHAT IT BUILDS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BUỔI TẬP GIÚP GÌ"
+          }
+        }
+      }
+    },
+    "WATCH OUT": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LƯU Ý"
+          }
+        }
+      }
+    },
+    "Goal %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu %@"
+          }
+        }
+      }
+    },
+    "Building": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang xây dựng"
+          }
+        }
+      }
+    },
+    "If everything clicks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nếu mọi thứ suôn sẻ"
+          }
+        }
+      }
+    },
+    "Your goal": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu chính"
+          }
+        }
+      }
+    },
+    "Safety net": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phương án dự phòng"
+          }
+        }
+      }
+    },
+    "Your best day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày bạn chạy tốt nhất"
+          }
+        }
+      }
+    },
+    "What your plan is built for": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giáo án được xây cho mốc này"
+          }
+        }
+      }
+    },
+    "Still a good race on a rough day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vẫn là cuộc đua tốt khi ngày thi không thuận"
+          }
+        }
+      }
+    },
+    "Your target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu hiện tại"
+          }
+        }
+      }
+    },
+    "Your week can carry this.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần tập của bạn đủ sức cho mốc này."
+          }
+        }
+      }
+    },
+    "Coach Uphill adds the harder A sessions only in weeks when your progress and recovery say you're ready. Your goal stays as the fallback.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill chỉ thêm các buổi khó cho mốc A vào những tuần tiến độ và hồi phục cho thấy bạn đã sẵn sàng. Mục tiêu hiện tại vẫn là phương án dự phòng."
+          }
+        }
+      }
+    },
+    "Keep my current target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giữ mục tiêu hiện tại"
+          }
+        }
+      }
+    },
+    "Train for A anyway": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vẫn tập cho mốc A"
+          }
+        }
+      }
+    },
+    "Train for A": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tập cho mốc A"
+          }
+        }
+      }
+    },
+    "Chase A?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chinh phục mốc A?"
+          }
+        }
+      }
+    },
+    "Goal progress": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiến độ mục tiêu"
+          }
+        }
+      }
+    },
+    "Biggest week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần nhiều nhất"
+          }
+        }
+      }
+    },
+    "Aerobic speed": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tốc độ aerobic"
+          }
+        }
+      }
+    },
+    "Next: %@ · week %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp theo: %1$@ · tuần %2$lld"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

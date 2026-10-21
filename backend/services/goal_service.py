@@ -332,9 +332,11 @@ def status(assessment: dict[str, Any] | None, target_time_hours: float | None) -
     if not target_time_hours:
         return {"state": "no_target", "suggested_mins": goals["b"], **extra}
     target = target_time_hours * 60
+    # A target set to the A or C time is a choice the athlete made, not drift from B.
+    for tier in ("b", "a", "c"):
+        if goals.get(tier) and abs(goals[tier] - target) / target <= DRIFT_THRESHOLD:
+            return {"state": "on_track", "suggested_mins": None, "tier": tier, **extra}
     drift = (goals["b"] - target) / target
-    if abs(drift) <= DRIFT_THRESHOLD:
-        return {"state": "on_track", "suggested_mins": None, **extra}
     return {"state": "ahead" if drift < 0 else "behind", "suggested_mins": goals["b"], **extra}
 
 
@@ -370,5 +372,59 @@ def plan_goal(plan: dict[str, Any]) -> dict[str, Any]:
         "status": status(assessment, plan.get("target_time_hours")),
         "target_time_hours": plan.get("target_time_hours"),
         "feasibility": feasibility_for(plan, assessment),
+        "a_feasibility": a_feasibility_for(plan, assessment),
         "path": path_for(plan),
+        "targets": targets_for(plan, assessment),
     }
+
+
+def targets_for(plan: dict[str, Any], assessment: dict[str, Any] | None) -> dict[str, Any] | None:
+    """What the plan builds toward, for the Goal progress card: the long run the goal needs (held to what the
+    athlete's tier allows, as the generator does) and the low end of the race's peak-week volume."""
+    from services.athlete_tier import week_capacity_parts
+
+    demands = demands_for(plan, assessment)
+    if demands is None:
+        return None
+    long_cap = week_capacity_parts(get_profile(plan.get("athlete_tier")), plan.get("days_per_week"))[1]
+    return {
+        "long_run_min": round(min(demands.longest_session_min, long_cap)),
+        "peak_week_km": round(demands.peak_week_km_lo),
+    }
+
+
+def a_gate_for(plan: dict[str, Any], workouts: list[dict[str, Any]], before_week: int) -> Any:
+    """Whether the A add-ons may run in the weeks from `before_week` (services/a_gate)."""
+    from services import a_gate, fitness_tracking
+
+    athlete_id = plan.get("user_id")
+    adequacy = plan_adequacy_for(plan)
+    return a_gate.evaluate(
+        fitness_tracking.refresh(plan, db.get_user_by_id(athlete_id) if athlete_id else None),
+        readiness_flag=db.get_recent_readiness_summary(athlete_id).get("readiness_flag") if athlete_id else None,
+        workouts=workouts,
+        before_week=before_week,
+        plan_supported=adequacy.a_supported if adequacy else True,
+    )
+
+
+def training_target_hours(plan: dict[str, Any], gate_open: bool) -> float | None:
+    """The target the generator trains for. B is the contract: when the athlete chose A, race-pace work and the
+    goal's demands stay at B until the A gate opens, so choosing A never makes a week harder on its own."""
+    target = plan.get("target_time_hours")
+    if not target or gate_open or not plan.get("id"):
+        return target
+    latest = db.get_latest_goal_assessment(plan["id"])
+    shown = with_plan_support(_present(latest), plan) if latest else None
+    goals = (shown or {}).get("goals")
+    if goals and status(shown, target).get("tier") == "a":
+        return round(goals["b"] / 60, 4)
+    return target
+
+
+def a_feasibility_for(plan: dict[str, Any], assessment: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Feasibility as if the athlete set the A time as their target, shown before they choose it."""
+    a_mins = ((assessment or {}).get("goals") or {}).get("a")
+    if not a_mins:
+        return None
+    return feasibility_for({**plan, "goal_type": "time", "target_time_hours": a_mins / 60}, assessment)

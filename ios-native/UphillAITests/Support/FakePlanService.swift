@@ -72,14 +72,18 @@ final class FakePlanService: PlanServicing {
         return try reviewResult.withLock { $0 }.get()
     }
 
+    let journeyResult = Mutex<PlanJourney?>(nil)
+    let nudgeResult = Mutex<CoachNudge?>(nil)
+
     func journey(planID: Int) async throws -> PlanJourney {
         record("journey \(planID)")
-        throw URLError(.notConnectedToInternet)
+        guard let journey = journeyResult.withLock({ $0 }) else { throw URLError(.notConnectedToInternet) }
+        return journey
     }
 
     func coachNudge(planID: Int) async throws -> CoachNudge? {
         record("nudge \(planID)")
-        return nil
+        return nudgeResult.withLock { $0 }
     }
 
     func goal(planID: Int) async throws -> PlanGoal {

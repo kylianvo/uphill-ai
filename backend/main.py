@@ -2624,6 +2624,16 @@ async def _generate_next_block_for_athlete(
     if readiness and readiness.message:
         context_lines.append(f"  RACE READINESS: {readiness.message}")
         brief_decision_log.append(readiness.message)
+    # Choosing A doesn't make a week harder by itself: until the A gate opens, the generator trains for B.
+    gate = None
+    training_target = plan.get("target_time_hours")
+    try:
+        from services import goal_service
+
+        gate = goal_service.a_gate_for({**plan, "user_id": athlete_id}, all_workouts, block_start)
+        training_target = goal_service.training_target_hours(plan, gate.open)
+    except Exception:
+        _goal_logger.exception("A-goal gate failed", extra={"fields": {"plan_id": request.plan_id}})
     # The generator works in minutes, the benchmark is in km: say what the path means for this week in minutes
     # and how long the long run should be, so a flat or shrinking build is asked for, not just linted.
     try:
@@ -2639,7 +2649,7 @@ async def _generate_next_block_for_athlete(
                 f"  WEEK TARGET: build this week to about {readiness.floor_km * flat:.0f}+ minutes of running "
                 f"(at most {readiness.cap_km * flat:.0f}); a build week must not total less than the last build week."
             )
-        goal_demand = goal_service.demands_for(plan, None)
+        goal_demand = goal_service.demands_for({**plan, "target_time_hours": training_target}, None)
         if goal_demand:
             line = goal_demands.long_run_line(
                 all_workouts,
@@ -2672,21 +2682,11 @@ async def _generate_next_block_for_athlete(
         brief_decision_log.extend(plan_adequacy.summary_lines(goal_service.plan_adequacy_for(plan)))
     except Exception:
         _goal_logger.exception("plan support for brief failed", extra={"fields": {"plan_id": request.plan_id}})
-    try:
-        from services import a_gate, fitness_tracking, goal_service
+    if gate is not None:
+        from services import a_gate
 
-        adequacy = goal_service.plan_adequacy_for(plan)
-        gate = a_gate.evaluate(
-            fitness_tracking.refresh(plan, get_user_by_id(athlete_id)),
-            readiness_flag=get_recent_readiness_summary(athlete_id).get("readiness_flag"),
-            workouts=all_workouts,
-            before_week=block_start,
-            plan_supported=adequacy.a_supported if adequacy else True,
-        )
         context_lines.append(f"  {a_gate.prompt_line(gate)}")
         brief_decision_log.append(a_gate.log_line(gate))
-    except Exception:
-        _goal_logger.exception("A-goal gate failed", extra={"fields": {"plan_id": request.plan_id}})
     if context_lines:
         block_context = "\n".join(context_lines)
 
@@ -2724,7 +2724,7 @@ async def _generate_next_block_for_athlete(
         "date": plan.get("race_date"),
         "terrain": fresh_user.get("terrain", "trail"),
         "goal_type": plan.get("goal_type"),
-        "target_time_hours": plan.get("target_time_hours"),
+        "target_time_hours": training_target,
         "course_distance_km": plan.get("course_distance_km"),
         "course_elevation_gain_m": plan.get("course_elevation_gain_m"),
         "course_context": course_context,
