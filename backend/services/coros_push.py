@@ -151,6 +151,42 @@ def _live(records: list[PlanRecord], plan_id: str | None = None, name: str | Non
     return None
 
 
+_DAY_LIST = re.compile(r"^(Updated days|Cleared to rest|Skipped executed days) \(dayNo\):\s*(.*)$", re.M)
+
+
+def unapplied_days(update_text: str, courses: list[dict[str, Any]]) -> list[int]:
+    """dayNos we sent that COROS's update summary doesn't list as updated, cleared
+    or skipped. Empty when the reply has no summary (nothing to check against)."""
+    lists = _DAY_LIST.findall(update_text or "")
+    if not lists:
+        return []
+    applied = {int(n) for _, days in lists for n in re.findall(r"\d+", days)}
+    return sorted({c["dayNo"] for c in courses} - applied)
+
+
+async def _update_plan(client, user_id: int, args: dict[str, Any]) -> None:
+    """updateTrainingPlan, failing the push when COROS reports it applied fewer
+    days than we sent -- a silent 'success' otherwise tells the athlete their
+    watch has workouts it doesn't."""
+    text = await client.call_tool("updateTrainingPlan", args)
+    missing = unapplied_days(text, args.get("courseList", []))
+    if missing:
+        logger.warning(
+            "coros update not applied",
+            extra={
+                "fields": {
+                    "service": "coros_push",
+                    "event": "update_not_applied",
+                    "user_id": user_id,
+                    "sent_days": sorted({c["dayNo"] for c in args["courseList"]}),
+                    "missing_days": missing,
+                    "reply": (text or "")[:REASON_LOG_MAX],
+                }
+            },
+        )
+        raise PushError("COROS_rejected", 502)
+
+
 def plan_name(plan: dict[str, Any]) -> str:
     return f"Uphill AI · {plan.get('race_name') or 'Training'}"[:PLAN_NAME_MAX]
 
@@ -404,7 +440,7 @@ async def _update(client, user_id, plan, st, target, total, stored, today, lang)
         args["planInfo"]["totalWeeks"] = total
         args["phaseInfo"] = {"periodization": periodization(st.by_date, target.start, total)}
     if len(args) > 1:
-        await client.call_tool("updateTrainingPlan", args)
+        await _update_plan(client, user_id, args)
     return _save(user_id, plan, st, target.plan_id, target.start, total, end, tracked, [window], partial=False)
 
 
@@ -421,7 +457,7 @@ async def _rollover(client, user_id, plan, st, target, stored, today, lang, name
     courses = course_list(this_week, target.start)
     if courses:
         args["courseList"] = courses
-    await client.call_tool("updateTrainingPlan", args)  # failure here: nothing changed
+    await _update_plan(client, user_id, args)  # failure here: nothing changed
 
     try:
         new_id, ahead, ahead_tracked = await _create_plan(client, st, g, next_monday, lang, name)

@@ -1,6 +1,76 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Welcome to your plan for %@. This is where it starts.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chào mừng bạn đến với plan cho %@. Mọi thứ bắt đầu từ đây."
+          }
+        }
+      }
+    },
+    "You have %lld weeks. Week 1 is about easy, consistent running so your body settles into the routine.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có %lld tuần. Tuần 1 là chạy nhẹ, đều đặn để cơ thể quen dần với lịch tập."
+          }
+        }
+      }
+    },
+    "If you do one session well this week, make it %@.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nếu chỉ làm tốt một buổi tuần này, hãy chọn %@."
+          }
+        }
+      }
+    },
+    "Run easy, sleep well, and tell me how each session felt. I'll adjust from there.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy nhẹ, ngủ đủ và cho mình biết cảm giác sau mỗi buổi. Mình sẽ điều chỉnh theo đó."
+          }
+        }
+      }
+    },
+    "target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mục tiêu"
+          }
+        }
+      }
+    },
+    "Longest run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy dài nhất"
+          }
+        }
+      }
+    },
+    "%@ of %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@"
+          }
+        }
+      }
+    },
     "%@ Coming soon": {
       "localizations": {
         "vi": {
