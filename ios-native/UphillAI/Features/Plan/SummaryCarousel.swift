@@ -46,7 +46,7 @@ struct SummaryCarousel: View {
             HStack(spacing: UH.Space.compact) {
                 volumeCard
                 weekCard
-                raceCard
+                if model.beginnerMilestones != nil { MilestonePathCard(model: model) } else { raceCard }
                 phaseCard
             }
             .padding(.horizontal, UH.Space.regular)

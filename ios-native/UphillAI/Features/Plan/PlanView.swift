@@ -141,6 +141,17 @@ struct PlanView: View {
             if model.state == .loading { await model.load() }
             if let app { await app.refreshPendingInvites() }
         }
+        .onChange(of: model.beginnerMilestones) { _, _ in model.refreshCelebration() }
+        .task(id: model.snapshot?.plan.id) { model.refreshCelebration() }
+        .sheet(item: Binding(get: { model.celebration }, set: { if $0 == nil { model.dismissCelebration() } })) { item in
+            MilestoneCelebrationSheet(
+                item: item,
+                next: model.beginnerMilestones?.next,
+                targetTitle: model.beginnerMilestones?.targetTitle ?? "",
+                canUpgrade: model.beginnerMilestones?.canUpgrade == true,
+                onUpgrade: { Task { await model.upgradeMilestoneTarget(clearEvent: model.beginnerMilestones?.hasEvent == true) } }
+            )
+        }
     }
 
     @ViewBuilder
@@ -210,7 +221,7 @@ struct PlanView: View {
                         TodayCard(focus: model.todayFocus, onOpen: { selectedWorkout = $0 })
                             .padding(.horizontal, UH.Space.regular)
                         if let journey = model.journey {
-                            JourneyStrip(journey: journey).padding(.horizontal, UH.Space.regular)
+                            JourneyStrip(journey: journey, beginnerNext: model.beginnerNextText).padding(.horizontal, UH.Space.regular)
                         }
                         if let nudge = model.coachNudge {
                             CoachNudgeCard(nudge: nudge).padding(.horizontal, UH.Space.regular)
@@ -547,6 +558,12 @@ struct PlanView: View {
                             .foregroundStyle(UH.Palette.ink)
                             .lineLimit(1)
 
+                        if let beginnerHeader = model.beginnerHeaderText {
+                            Text(verbatim: beginnerHeader)
+                                .font(UH.TextStyle.caption)
+                                .foregroundStyle(UH.Palette.accentInk)
+                                .accessibilityIdentifier("plan.milestones.header")
+                        } else {
                         HStack(spacing: 6) {
                             if let date = PlanCalendar.day(from: plan.raceDate) {
                                 Text(date, format: .dateTime.month(.abbreviated).day().year())
@@ -560,6 +577,7 @@ struct PlanView: View {
                                     .font(UH.TextStyle.caption)
                                     .foregroundStyle(UH.Palette.accentInk)
                             }
+                        }
                         }
                     }
 

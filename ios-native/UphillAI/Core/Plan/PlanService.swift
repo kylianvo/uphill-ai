@@ -30,6 +30,10 @@ protocol PlanServicing: Sendable {
     func watchActivities(planID: Int) async throws -> [WatchActivity]
     /// Links an activity to a workout, or unlinks it when `workoutID` is nil.
     func setMatch(activityID: Int, workoutID: Int?) async throws
+    /// Beginner milestones: athlete-only routes, no coach-scoped mirror.
+    func markMilestone(planID: Int, key: String) async throws -> PlanMilestones
+    func undoMilestone(planID: Int, key: String) async throws -> PlanMilestones
+    func upgradeMilestoneTarget(planID: Int, clearEvent: Bool) async throws -> Plan
     /// The same service, reading and writing a coached athlete's plan (nil = the signed-in user's own).
     func scoped(toAthlete athleteId: Int?) -> any PlanServicing
 }
@@ -41,6 +45,9 @@ extension PlanServicing {
     func scoped(toAthlete athleteId: Int?) -> any PlanServicing { self }
     func watchActivities(planID: Int) async throws -> [WatchActivity] { [] }
     func setMatch(activityID: Int, workoutID: Int?) async throws {}
+    func markMilestone(planID: Int, key: String) async throws -> PlanMilestones { throw APIError.http(status: 404, message: nil, code: nil) }
+    func undoMilestone(planID: Int, key: String) async throws -> PlanMilestones { throw APIError.http(status: 404, message: nil, code: nil) }
+    func upgradeMilestoneTarget(planID: Int, clearEvent: Bool) async throws -> Plan { throw APIError.http(status: 404, message: nil, code: nil) }
 }
 
 /// One row of GET /api/integrations/matching.
@@ -235,6 +242,26 @@ struct PlanService: PlanServicing {
 
     func weekReview(planID: Int, week: Int) async throws -> WeekReview {
         try await client.send(.get("\(coachPrefix ?? "/api/coach")/week-review/\(planID)/\(week)"))
+    }
+
+    private struct MilestonesResponse: Decodable { let beginnerMilestones: PlanMilestones }
+    private struct UpgradeResponse: Decodable { let plan: Plan }
+    private struct UpgradeBody: Encodable { let target: String; let clearEvent: Bool }
+
+    func markMilestone(planID: Int, key: String) async throws -> PlanMilestones {
+        let response: MilestonesResponse = try await client.send(.post("/api/plans/\(planID)/milestones/\(key)"))
+        return response.beginnerMilestones
+    }
+
+    func undoMilestone(planID: Int, key: String) async throws -> PlanMilestones {
+        let response: MilestonesResponse = try await client.send(.delete("/api/plans/\(planID)/milestones/\(key)"))
+        return response.beginnerMilestones
+    }
+
+    func upgradeMilestoneTarget(planID: Int, clearEvent: Bool) async throws -> Plan {
+        let body = UpgradeBody(target: "10k", clearEvent: clearEvent)
+        let response: UpgradeResponse = try await client.send(.send(.patch, "/api/plans/\(planID)/milestone-target", body: body))
+        return response.plan
     }
 
     func journey(planID: Int) async throws -> PlanJourney {

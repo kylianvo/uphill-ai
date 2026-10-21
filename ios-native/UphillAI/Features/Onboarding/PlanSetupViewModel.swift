@@ -156,6 +156,14 @@ final class PlanSetupViewModel {
     }
 
     var latestStartDate: Date { draft.latestStartDate(today: today, calendar: calendar) }
+    /// Soft warning when a beginner's event is closer than most beginners need. Never blocks.
+    var beginnerEventWarning: String? {
+        guard draft.hasBeginnerEvent, let date = draft.beginnerEventDate,
+              let weeks = BeginnerMilestones.weeksUntil(event: date, start: draft.startDate, calendar: calendar) else { return nil }
+        let minimum = BeginnerMilestones.minimumWeeks(target: draft.milestoneTarget, currentJogMin: draft.currentJogMin)
+        return weeks < minimum ? L("Most beginners need about %lld weeks. Pick a later date, or plan to run/walk the event.", minimum) : nil
+    }
+
     var weeksToRace: Int { max(0, calendar.dateComponents([.day], from: today, to: draft.raceDate ?? earliestRaceDate).day ?? 0) / 7 }
 
     func searchRace() async {

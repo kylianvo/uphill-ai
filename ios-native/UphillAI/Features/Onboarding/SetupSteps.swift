@@ -70,6 +70,8 @@ struct SetupSteps: View {
 
             case .raceGoal:
                 raceGoal
+            case .beginnerGoal:
+                beginnerGoal
             case .fitnessFeel:
                 Text("How do you feel right now?").font(UH.TextStyle.screenTitle)
                 options(PlanSetupDraft.fitnessFeelOptions, selection: $model.draft.fitnessFeel)
@@ -170,6 +172,7 @@ struct SetupSteps: View {
         case .goal: L("This sets the shape of your whole plan.")
         case .details where model.draft.goal == .race: L("If I know the race, I know its distance and climbing.")
         case .details where model.draft.goal == .distance: L("Distance and climbing set how long your key runs get.")
+        case .beginnerGoal: L("A clear finish line keeps the first weeks easy to follow.")
         case .details, .fitnessFeel, .daysSinceRace, .recoveryFeel: L("So I don't start you too hard.")
         case .raceDate: L("I'll count the weeks back from race day.")
         case .raceGoal: L("A clear goal sets how hard your key sessions are.")
@@ -189,6 +192,64 @@ struct SetupSteps: View {
             model.draft.terrain = terrain
             model.selectGoal(goal)
         }.accessibilityIdentifier(goal == .race ? "goal.race.\(terrain.rawValue)" : "goal.\(goal.rawValue)")
+    }
+
+    // MARK: Beginner goal
+
+    private static let jogChoices: [(minutes: Int, title: String)] = [
+        (0, "Not yet"), (3, "1–5 min"), (10, "About 10 min"), (20, "20+ min"),
+    ]
+
+    @ViewBuilder private var beginnerGoal: some View {
+        Text("What's your first goal?").font(UH.TextStyle.screenTitle)
+
+        VStack(spacing: UH.Space.small) {
+            ForEach(MilestoneTarget.allCases, id: \.self) { target in
+                SetupOption(title: target.title, symbol: target == .fiveK ? "5.circle" : "10.circle", selected: model.draft.milestoneTarget == target) {
+                    model.draft.milestoneTarget = target
+                }
+                .accessibilityIdentifier("beginner.target.\(target.rawValue)")
+            }
+        }
+
+        VStack(alignment: .leading, spacing: UH.Space.compact) {
+            Text("Longest jog without stopping today").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+            ForEach(Self.jogChoices, id: \.minutes) { choice in
+                SetupOption(title: choice.title, selected: model.draft.currentJogMin == choice.minutes) {
+                    model.draft.currentJogMin = choice.minutes
+                }
+            }
+        }
+        .trainingCard()
+
+        VStack(alignment: .leading, spacing: UH.Space.compact) {
+            Toggle("I have an event in mind", isOn: $model.draft.hasBeginnerEvent)
+                .font(UH.TextStyle.label)
+                .tint(UH.Palette.accentInk)
+                .onChange(of: model.draft.hasBeginnerEvent) { _, on in
+                    if on, model.draft.beginnerEventDate == nil { model.draft.beginnerEventDate = model.earliestRaceDate }
+                }
+            if model.draft.hasBeginnerEvent {
+                TextField("Event name (optional)", text: $model.draft.beginnerEventName)
+                    .textInputAutocapitalization(.words)
+                    .padding(UH.Space.small)
+                    .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                    .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line, lineWidth: 1))
+                DatePicker(
+                    "Event date",
+                    selection: Binding(get: { model.draft.beginnerEventDate ?? model.earliestRaceDate }, set: { model.draft.beginnerEventDate = $0 }),
+                    in: model.earliestRaceDate...,
+                    displayedComponents: .date
+                )
+                .tint(UH.Palette.accentInk)
+                .id(SetupField.beginnerEventDate)
+                if let note = model.beginnerEventWarning {
+                    Text(note).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.warningInk)
+                }
+                SetupError(model: model, field: .beginnerEventDate)
+            }
+        }
+        .trainingCard()
     }
 
     // MARK: Race or distance
@@ -836,6 +897,26 @@ private struct SetupReviewStep: View {
                 }
             }
             .trainingCard()
+
+            if model.draft.goal == .startRunning {
+                VStack(alignment: .leading, spacing: UH.Space.compact) {
+                    Text("Your path").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                    ForEach(BeginnerMilestones.preview(for: model.draft.milestoneTarget), id: \.key) { entry in
+                        let done = (entry.jog ?? Int.max) <= model.draft.currentJogMin
+                        HStack(spacing: UH.Space.small) {
+                            Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(done ? UH.Palette.accentInk : UH.Palette.muted)
+                            Text(BeginnerMilestones.label(entry.key)).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.ink)
+                            Spacer()
+                            Text(L("wk %lld–%lld", entry.weeks.lowerBound, entry.weeks.upperBound))
+                                .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.muted)
+                        }
+                    }
+                    Text("Repeating a week is normal. You move on when you're ready.")
+                        .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                }
+                .trainingCard()
+            }
 
             VStack(alignment: .leading, spacing: UH.Space.compact) {
                 Text("Anything else I should know? (optional)").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)

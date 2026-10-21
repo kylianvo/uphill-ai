@@ -3,6 +3,8 @@ import SwiftUI
 /// Where the athlete is between today and race day: phases as segments, milestones as marks, one "you are here".
 struct JourneyStrip: View {
     let journey: PlanJourney
+    /// A beginner's next milestone, shown instead of the calendar milestone so the screen has one "next".
+    var beginnerNext: String? = nil
 
     private let trackHeight: CGFloat = 6
 
@@ -47,7 +49,12 @@ struct JourneyStrip: View {
                     .font(UH.TextStyle.caption.monospacedDigit())
                     .foregroundStyle(UH.Palette.ink)
                 Spacer()
-                if let next = journey.nextMilestone {
+                if let beginnerNext {
+                    Text(verbatim: beginnerNext)
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+                        .lineLimit(1)
+                } else if let next = journey.nextMilestone {
                     Text(verbatim: L("%@ · week %lld", next.title, next.week))
                         .font(UH.TextStyle.caption)
                         .foregroundStyle(UH.Palette.secondary)
