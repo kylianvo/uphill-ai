@@ -40,7 +40,14 @@ def render(path: str) -> str:
                 extra.append(f"pace {w['target_pace']}")
             if w.get("treadmill_incline"):
                 extra.append(f"treadmill incline {w['treadmill_incline']}")
-            desc = (w.get("description") or "").replace("\n", " ")[:170]
+            if w.get("treadmill_speed") and str(w["treadmill_speed"]) not in ("0", "0.0"):
+                extra.append(f"treadmill speed {w['treadmill_speed']} km/h")
+            if w.get("elevation_gain_m"):
+                extra.append(f"D+ {float(w['elevation_gain_m']):.0f} m")
+            desc = (w.get("description") or "").replace("\n", " ")  # full text: reviewers need the whole step list
+            tip = (w.get("fueling_tip") or "").replace("\n", " ")
+            if tip:
+                desc += f" || Fueling/notes: {tip}"
             out.append(
                 f"- {w['day_of_week'][:3]} {w['type']} {float(w.get('duration_minutes') or 0):.0f} min {w.get('target_zone', '')} "
                 f"| {w.get('title', '')[:70]} {' '.join(extra)} | {desc}"
