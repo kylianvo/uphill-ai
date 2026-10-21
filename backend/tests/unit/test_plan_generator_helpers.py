@@ -257,7 +257,7 @@ class TestRuleBasedFallbackDescriptionConsistency:
         r"Warmup (\d+)m\. Repeat (\d+)x(\d+) minutes at Zone 4 effort\. "
         r"Recover with (\d+) minutes light jog between\. Cooldown (\d+)m\."
     )
-    TAPER_WALK_RE = re.compile(r"Restorative (\d+)-minute light walk or hike on soft trail\.")
+    TAPER_WALK_RE = re.compile(r"Restorative (\d+)-minute light walk or hike on soft ground or a flat route\.")
 
     @pytest.mark.asyncio
     async def test_wednesday_and_sunday_descriptions_sum_to_duration_minutes(self, monkeypatch):
@@ -323,7 +323,7 @@ class TestRuleBasedFallbackDescriptionConsistency:
         r"Khởi động (\d+) phút\. Lặp lại (\d+) lần (\d+) phút ở mức nỗ lực Zone 4\. "
         r"Đi bộ hoặc chạy nhẹ phục hồi (\d+) phút giữa các tổ\. Thả lỏng (\d+) phút\."
     )
-    VI_TAPER_WALK_RE = re.compile(r"Đi bộ phục hồi nhẹ nhàng (\d+) phút trên đường trail mềm\.")
+    VI_TAPER_WALK_RE = re.compile(r"Đi bộ phục hồi nhẹ nhàng (\d+) phút trên nền mềm hoặc đường bằng\.")
 
     @pytest.mark.asyncio
     async def test_vietnamese_translation_keeps_the_dynamic_minutes_consistent(self):
@@ -1420,3 +1420,36 @@ class TestLanguageDetection:
 
         assert has_vietnamese_text("Tuần này tôi mệt, đau gối nhẹ", {"name": "x"})
         assert has_vietnamese_text("Chạy Núi Dinh nhưng tôi bận việc", {})  # prose around a place name still counts
+
+
+class TestVietnameseCopyRule:
+    def test_hype_and_invented_phrases_are_replaced(self):
+        from services.plan_generator import sanitize_vi
+
+        text = "Hill Sprints Bùng Nổ trên dốc dốc, Strides Tươi Mới, giải phóng ứ đọng cơ, bốc dốc"
+        out = sanitize_vi(text)
+        for bad in ("Bùng Nổ", "Tươi Mới", "dốc dốc", "ứ đọng", "bốc dốc"):
+            assert bad.lower() not in out.lower()
+        assert "Hill Sprints" in out and "Strides" in out
+
+    def test_title_case_becomes_sentence_case_but_keeps_english_terms(self):
+        from services.plan_generator import vi_sentence_case
+
+        assert vi_sentence_case("Buổi Chạy Đường Dài Long Run Zone 2") == "Buổi chạy đường dài Long Run Zone 2"
+        assert vi_sentence_case("Easy Run nhẹ") == "Easy Run nhẹ"  # already sentence case
+
+    def test_nobody_is_told_to_jump_onto_a_moving_belt(self):
+        from services.plan_generator import sanitize_belt, sanitize_vi
+
+        assert "jump" not in sanitize_belt("Jump onto the moving belt at 15%").lower()
+        assert "nhảy" not in sanitize_vi("nhảy vào belt bứt tốc rồi chạy").lower()
+
+
+class TestTrailStepPaces:
+    def test_flat_easy_paces_in_the_steps_follow_the_climb_but_sprints_do_not(self):
+        from services.trail_pace import scale_step_paces
+
+        text = "Warm up 15 min @ 5:30 /km → 40 min @ 4:50/km → 6 x 10 s sprints @ 3:20/km"
+        out = scale_step_paces(text, (4.4, 6.2), 60)  # 60 m D+/km: x1.72
+        assert "9:28" in out and "8:19" in out  # 5:30 and 4:50 scaled
+        assert "3:20/km" in out  # sprint pace untouched

@@ -20,7 +20,7 @@ from services.athlete_tier import (
     week_capacity_parts,
 )
 from services.plan_rules import build_rules_block, me_runway, me_status_block
-from services.training_mountains import default_min_minutes, long_run_climb_rate
+from services.training_mountains import MOUNTAINS, default_min_minutes, long_run_climb_rate
 from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
 from services.training_venues import INCLINE_TRAINER_MIN, STANDARD_TREADMILL_MAX, Venues
 
@@ -170,7 +170,11 @@ def narrative_lang_instruction(race_info: dict[str, Any], text_sample: str) -> s
             "- Coach tone: direct, concise, second-person 'bạn', no marketing puffery or exclamation marks.\n"
             "- Keep technical terms in English: Pace, Easy Run, Long Run, Tempo, Threshold, Interval, Recovery Run, Muscular Endurance, ME, Strength, Zone 1-5, AeT, AnT, HR, Deload, Taper, D+, GPX, Race, Ultra, Trail, Road, Treadmill, Fueling, Carbs, Sodium, Plan, Coach, Aerobic, Anaerobic, RPE.\n"
             "- Fixed mappings: 'khối lượng' (never 'thể tích'), 'thể chất' (never 'sinh lý'), 'plan' / 'lịch tập' (never 'giáo án'), 'buổi tập' / 'bài chạy' (never 'bài tập thể dục'), 'điều chỉnh tuần' (never 'tối ưu hóa').\n"
-            "- Banned words: 'kiến tạo', 'bảo chứng', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'chuyên sâu', 'đột phá', 'giáo án', 'sinh lý', 'thể tích'."
+            "- Banned words: 'kiến tạo', 'bảo chứng', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'chuyên sâu', 'đột phá', 'giáo án', 'sinh lý', 'thể tích'.\n"
+            "- Style: titles and sentences in sentence case (only the first word capitalised, never Title Case). No hype adjectives in titles or steps "
+            "('Bùng Nổ', 'Tươi Mới', 'Tiến Hóa', 'Mạnh Mẽ'). Do not translate Hill Sprints, Strides, Warm-up, Cool-down, Power-hiking: keep them in English. "
+            "Write minutes as 'phút'. Never double a word ('dốc dốc'); use plain words a Zalo running group uses ('leo dốc', 'xả mỏi cơ'), not invented or physiology-textbook phrases. "
+            "Never tell the athlete to jump onto a moving treadmill belt: start the belt at walking speed, then step on."
         )
     else:
         lang_instruction = "Respond in English."
@@ -178,7 +182,56 @@ def narrative_lang_instruction(race_info: dict[str, Any], text_sample: str) -> s
     return lang_instruction
 
 
+VN_MOUNTAIN_NOTE_EN = (
+    "Vietnam conditions: in heat and humidity drink to thirst plus electrolytes from the first hour and slow down on "
+    "the climbs; after rain the rock and clay are slippery, so shorten your stride and use poles or hands on the "
+    "steep parts; the bus trip home is part of the load, so eat and drink on it and keep the next day easy."
+)
+VN_MOUNTAIN_NOTE_VI = (
+    "Điều kiện ở Việt Nam: trời nóng ẩm thì uống theo cơn khát kèm electrolytes từ giờ đầu và giảm tốc ở đoạn leo; "
+    "sau mưa đá và đất sét rất trơn, hãy rút ngắn sải chân, dùng gậy hoặc tay ở đoạn dốc đứng; chuyến xe về cũng là "
+    "một phần tải, hãy ăn uống trên xe và giữ ngày hôm sau nhẹ."
+)
+
+_VI_TECH_TERMS = {  # kept as written when a Title Case heading is converted to sentence case
+    "Easy", "Run", "Long", "Tempo", "Threshold", "Interval", "Recovery", "Muscular", "Endurance", "ME", "Strength",
+    "Zone", "AeT", "AnT", "HR", "Deload", "Taper", "D+", "Race", "Ultra", "Trail", "Road", "Treadmill", "Hill",
+    "Sprints", "Strides", "Warm-up", "Cool-down", "Power-hiking", "Climb", "Session", "Fartlek", "Surges", "Pace",
+    "Plan", "Coach", "Aerobic", "Anaerobic", "RPE", "Fueling", "Carbs", "Sodium", "GPX", "Repeats", "Repeat",
+}  # fmt: skip
+
+
+def vi_sentence_case(title: str) -> str:
+    """A Title Case Vietnamese heading ('Buổi Chạy Đường Dài') becomes sentence case; English technical terms,
+    numbers and acronyms keep their form. Short or already sentence-case titles are untouched."""
+    words = title.split()
+    capped = [w for w in words if w[:1].isupper()]
+    if len(words) < 3 or len(capped) < 0.6 * len(words):
+        return title
+    out = [
+        w if (w.strip(".,:;()") in _VI_TECH_TERMS or any(c.isdigit() for c in w) or w.isupper()) else w.lower()
+        for w in words
+    ]
+    out[0] = out[0][:1].upper() + out[0][1:]
+    return " ".join(out)
+
+
+_UNSAFE_BELT = (  # never a jump onto a moving treadmill belt, in either language
+    (r"jump(?:ing)?\s+(?:on|onto)\s+(?:the\s+)?(?:moving\s+)?(?:belt|treadmill)", "step onto the belt only after it is running at walking speed"),
+    (r"nhảy\s+(?:vào|lên)\s+(?:belt|băng chuyền|máy chạy)(?:\s+bứt tốc)?", "bước lên belt khi belt đang chạy ở tốc độ đi bộ"),
+)  # fmt: skip
+
 _VI_REPLACEMENTS = (  # the app's Vietnamese copy contract: never these words for training volume or hype
+    (r"\s+bùng nổ", ""),
+    (r"\s+tươi mới", ""),
+    (r"tiến hóa", "tiến triển"),
+    (r"bằng phẳng phẳng lặng", "bằng phẳng"),
+    (r"\bdốc dốc\b", "dốc"),
+    (r"\bphẳng phẳng\b", "phẳng"),
+    (r"bốc dốc", "leo dốc"),
+    (r"giải phóng ứ đọng cơ", "xả mỏi cơ"),
+    (r"phát triển ti thể", "phát triển nền tảng aerobic"),
+    (r"đốt chất béo", "dùng mỡ làm năng lượng"),
     (r"thể tích(?! tâm thu)", "khối lượng"),  # "thể tích tâm thu" is stroke volume and stays
     (r"tối ưu hóa", "cải thiện"),
     (r"bứt phá", "tăng tốc"),
@@ -190,12 +243,20 @@ _VI_REPLACEMENTS = (  # the app's Vietnamese copy contract: never these words fo
 
 
 def sanitize_vi(text: str) -> str:
-    """Replaces the banned Vietnamese words (skill: uphill-ai-vietnamese-copy) the model still writes."""
+    """Replaces the banned Vietnamese words and phrases (skill: uphill-ai-vietnamese-copy) the model still writes,
+    and rewrites any instruction to jump onto a moving treadmill belt."""
     import re
 
-    for pattern, replacement in _VI_REPLACEMENTS:
+    for pattern, replacement in _VI_REPLACEMENTS + _UNSAFE_BELT:
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     return text
+
+
+def sanitize_belt(text: str) -> str:
+    """The same treadmill-belt safety rewrite for English plans."""
+    import re
+
+    return re.sub(_UNSAFE_BELT[0][0], _UNSAFE_BELT[0][1], text, flags=re.IGNORECASE)
 
 
 class PlanGenerator:
@@ -1433,6 +1494,16 @@ class PlanGenerator:
                 "Zone 2", float(wo.get("duration_minutes") or 0), est_zones
             )
 
+        def _trail_steps(description: str | None, rate: float) -> str | None:
+            """Step paces on a trail session follow the climb: the flat easy-to-tempo band is scaled by it."""
+            if not description or not rate:
+                return description
+            from services.trail_pace import scale_step_paces
+
+            slow1, _ = PlanGenerator.parse_pace_range(est_zones["zone1_pace"])
+            _, fast3 = PlanGenerator.parse_pace_range(est_zones["zone3_pace"])
+            return scale_step_paces(description, (fast3 * 0.97, slow1 * 1.05), rate)
+
         def _add_climb_session(wos: list[dict[str, Any]]) -> None:
             """A race with real climbing needs weekly vert. An athlete with a treadmill or stairs but no hills that
             day gets one easy weekday run per Base/Build/Peak week turned into a climb session (book: incline
@@ -1458,11 +1529,19 @@ class PlanGenerator:
                 long_day = next((r["day_of_week"] for r in rows if r.get("type") == "Long Run"), None)
                 days = list(_PRIORITY_DAY_ORDER)
                 eve = days[(days.index(long_day) - 1) % 7] if long_day in days else None
+                days_idx = {d: i for i, d in enumerate(days)}
+                legs = [
+                    days_idx[r["day_of_week"]]
+                    for r in rows
+                    if r.get("day_of_week") in days_idx
+                    and (r.get("type") == "Muscular Endurance" or plan_lint._climbs(r))
+                ]  # ME and other climbing sessions: keep the climb session a day clear of them
                 pool = [
                     r
                     for r in rows
                     if r.get("type") in ("Easy", "Aerobic Capacity")
                     and r.get("day_of_week") != eve
+                    and all(abs(days_idx.get(r["day_of_week"], -9) - i) > 1 for i in legs)
                     and not venues.hills_on(r["day_of_week"])
                     and float(r.get("duration_minutes") or 0) >= 40
                 ]
@@ -1614,6 +1693,7 @@ class PlanGenerator:
                             flat_pace, dur, rate
                         )
                         wo["grade_percent"] = wo["elevation_gain_m"] / (wo["distance_km"] * 10)
+                        wo["description"] = _trail_steps(wo.get("description"), rate)
 
                 # Treadmill settings are never the AI's raw numbers: derive range
                 # strings from this workout's own pace range and resolved grade
@@ -1628,7 +1708,12 @@ class PlanGenerator:
                     )
                 except ValueError:
                     incline = 0.0
-                if incline > 0 and not float(wo.get("elevation_gain_m") or 0) and float(wo.get("distance_km") or 0) > 0:
+                if (
+                    incline > 0
+                    and not any(kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
+                    and not float(wo.get("elevation_gain_m") or 0)
+                    and float(wo.get("distance_km") or 0) > 0
+                ):
                     wo["elevation_gain_m"] = round(float(wo["distance_km"]) * incline * 10)
                     wo["grade_percent"] = round(incline, 1)
 
@@ -1643,13 +1728,23 @@ class PlanGenerator:
                         )
                     if wo["phase"] == "Race Week" or athlete_tier == "beginner":
                         mode = "skip"
-                    elif wo["phase"] in ("Recovery", "Taper"):
+                    elif wo["phase"] in ("Recovery", "Taper") or (
+                        wo["phase"] in ("Base", "Build", "Peak")
+                        and wo["week_number"] > 1
+                        and wo["week_number"] % 4 == 0
+                    ):  # taper, recovery and deload weeks: the trip minimum does not apply
                         mode = "chill"
                     else:
                         mode = "mountain"
                     PlanGenerator.apply_mountain_mode(
                         wo, mode, venues, {**est_zones, "zone1_hr": z1_range, "zone2_hr": z2_range}, flat_pace
                     )
+                    if mode in ("mountain", "chill") and wo.get("mountain_climb_rate"):
+                        wo["description"] = _trail_steps(wo.get("description"), wo["mountain_climb_rate"])
+                    if mode == "mountain" and venues.training_mountain in MOUNTAINS:
+                        note = VN_MOUNTAIN_NOTE_VI if lang == "vi" else VN_MOUNTAIN_NOTE_EN
+                        if note not in (wo.get("fueling_tip") or ""):
+                            wo["fueling_tip"] = f"{wo.get('fueling_tip') or ''} {note}".strip()
 
                 wo["interval_reps"], wo["interval_rep_value"], wo["interval_rep_unit"] = (
                     PlanGenerator.resolve_interval_summary(wo, w_type)
@@ -1660,11 +1755,12 @@ class PlanGenerator:
             _cap_hard_dose(wos)
             _add_climb_session(wos)
             _soften_recovery_weeks(wos)
-            if lang == "vi":
-                for wo in wos:
-                    for field in ("title", "description", "fueling_tip"):
-                        if wo.get(field):
-                            wo[field] = sanitize_vi(wo[field])
+            for wo in wos:
+                for field in ("title", "description", "fueling_tip"):
+                    if wo.get(field):
+                        wo[field] = sanitize_vi(wo[field]) if lang == "vi" else sanitize_belt(wo[field])
+                if lang == "vi" and wo.get("title"):
+                    wo["title"] = vi_sentence_case(wo["title"])
             return apply_priority_guard(wos)
 
         # 2. AI Plan Generation (Gemini → reduced-prompt retry → Rule-Based)
@@ -2659,13 +2755,17 @@ class PlanGenerator:
                         desc = f"Steady long run. Keep effort conversational (Zone 2). Target: cover around 50-60% of your race distance ({round(course_distance_km * 0.5)}km-{round(course_distance_km * 0.6)}km) to build specific fatigue resistance."
                     elif phase == "Peak":
                         desc = f"Peak long run. Practice gear and race-day nutrition. Target: cover around 70-80% of your race distance ({round(course_distance_km * 0.7)}km) at conversational effort."
+                    elif phase == "Taper":
+                        desc = (
+                            "Taper long run: keep it short, easy and conversational (Zone 2) and finish feeling fresh."
+                        )
 
                 workouts.append(
                     {
                         "week_number": week,
                         "day_of_week": "Saturday",
                         "phase": phase,
-                        "title": "Endurance Long Run",
+                        "title": "Taper Long Run" if phase == "Taper" else "Endurance Long Run",
                         "type": "Long Run",
                         "duration_minutes": round(sat_dur),
                         "target_zone": "Zone 2",
@@ -2789,7 +2889,7 @@ class PlanGenerator:
                     else:
                         title = "Active Recovery Walk"
                         w_type = "Recovery"
-                        desc = f"Restorative {round(sun_dur)}-minute light walk or hike on soft trail."
+                        desc = f"Restorative {round(sun_dur)}-minute light walk or hike on soft ground or a flat route."
                         fuel_tip = "Recovery focus. Drink water."
                 else:
                     zone = "Zone 1"
@@ -2874,6 +2974,8 @@ class PlanGenerator:
                 "km event, maintain fueling targets, and enjoy the run.": "km của bạn, duy trì các mục tiêu nạp năng lượng & fueling và tận hưởng cuộc đua.",
                 "RACE FUELING: Target 60-90g carbs/hr, and 500-700mg sodium/hr. Stick to tested products.": "DINH DƯỠNG NGÀY ĐUA: Mục tiêu nạp 60-90g carbs/giờ, và 500-700mg sodium/giờ. Chỉ dùng các sản phẩm đã thử nghiệm từ trước.",
                 "Endurance Long Run": "Chạy dài phát triển sức bền (Long Run)",
+                "Taper Long Run": "Long Run giai đoạn Taper",
+                "Taper long run: keep it short, easy and conversational (Zone 2) and finish feeling fresh.": "Long Run giai đoạn Taper: giữ ngắn, nhẹ, nói chuyện được (Zone 2) và kết thúc với cảm giác còn khỏe.",
                 "Building aerobic endurance. Keep a steady conversational effort.": "Xây dựng sức bền hiếu khí. Giữ nỗ lực chạy đều đặn ở mức có thể trò chuyện.",
                 "GUT TRAINING: Target 60g carbs/hour using gels and drink mixes to prepare your stomach.": "GUT TRAINING: Mục tiêu nạp 60g carbs/giờ sử dụng gel và drink mix để tập thích nghi cho dạ dày.",
                 "GUT TRAINING: Target 30g carbs/hour using gels and drink mixes to prepare your stomach.": "GUT TRAINING: Mục tiêu nạp 30g carbs/giờ sử dụng gel và drink mix để tập thích nghi cho dạ dày.",
@@ -2993,8 +3095,8 @@ class PlanGenerator:
                     s,
                 )
                 s = _re.sub(
-                    r"Restorative (\d+)-minute light walk or hike on soft trail\.",
-                    r"Đi bộ phục hồi nhẹ nhàng \1 phút trên đường trail mềm.",
+                    r"Restorative (\d+)-minute light walk or hike on soft ground or a flat route\.",
+                    r"Đi bộ phục hồi nhẹ nhàng \1 phút trên nền mềm hoặc đường bằng.",
                     s,
                 )
                 return s
