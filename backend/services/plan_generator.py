@@ -1725,6 +1725,7 @@ class PlanGenerator:
             """A race with real climbing needs weekly vert. An athlete with a treadmill or stairs but no hills that
             day gets one easy weekday run per Base/Build/Peak week turned into a climb session (book: incline
             treadmill or stairs substitute for the mountain). Mountain days and ME already count as climbing."""
+
             if terrain != "trail" or not (course_elevation_gain_m and course_distance_km):
                 return
             rate = float(course_elevation_gain_m) / float(course_distance_km)
@@ -1734,18 +1735,23 @@ class PlanGenerator:
             for wo in wos:
                 if isinstance(wo.get("week_number"), int):
                     by_week.setdefault(wo["week_number"], []).append(wo)
+
+            def _vert(r: dict[str, Any]) -> bool:
+                """Real weekly vert: an incline of 6%+ or a mountain climb rate, never rest or 10-second sprints."""
+                if r.get("type") == "Rest" or any(
+                    kw in (r.get("title") or "").lower() for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS
+                ):
+                    return False
+                try:
+                    incline = float(str(r.get("treadmill_incline") or 0).split("-")[0] or 0)
+                except ValueError:
+                    incline = 0.0
+                return incline >= 6 or bool(r.get("mountain_climb_rate"))
+
             for week_no, rows in by_week.items():
                 if rows[0].get("phase") not in ("Base", "Build", "Peak"):
                     continue
-                if any(  # 10-second hill sprints are power work, not weekly vert
-                    (
-                        float(str(r.get("treadmill_incline") or 0).split("-")[0] or 0) >= 6
-                        or r.get("mountain_climb_rate")
-                    )
-                    and not any(kw in (r.get("title") or "").lower() for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
-                    for r in rows
-                    if r.get("type") != "Rest"
-                ):
+                if any(_vert(r) for r in rows):
                     continue
                 long_day = next((r["day_of_week"] for r in rows if r.get("type") == "Long Run"), None)
                 days = list(_PRIORITY_DAY_ORDER)
@@ -1754,8 +1760,7 @@ class PlanGenerator:
                 legs = [
                     days_idx[r["day_of_week"]]
                     for r in rows
-                    if r.get("day_of_week") in days_idx
-                    and (r.get("type") == "Muscular Endurance" or plan_lint._climbs(r))
+                    if r.get("day_of_week") in days_idx and (r.get("type") == "Muscular Endurance" or _vert(r))
                 ]  # ME and other climbing sessions: keep the climb session a day clear of them
 
                 def _candidates(clear_of: list[int]) -> list[dict[str, Any]]:
@@ -1769,11 +1774,7 @@ class PlanGenerator:
                         and float(r.get("duration_minutes") or 0) >= 40
                     ]
 
-                climb_days = [
-                    days_idx[r["day_of_week"]]
-                    for r in rows
-                    if r.get("day_of_week") in days_idx and plan_lint._climbs(r)
-                ]
+                climb_days = [days_idx[r["day_of_week"]] for r in rows if r.get("day_of_week") in days_idx and _vert(r)]
                 # Prefer a day clear of ME and other climbs; with few run days, only keep clear of other climbs.
                 pool = _candidates(legs) or _candidates(climb_days)
                 if not pool:
