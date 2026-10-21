@@ -1461,7 +1461,11 @@ class PlanGenerator:
                 wo["elevation_gain_m"] = round(wo["distance_km"] * rate)
 
         road_goal = None  # a road marathon has no ultra demands but still needs a long-run target and a volume ramp
-        if not demands and terrain == "road" and course_distance_km and 30 <= float(course_distance_km) < 48:
+        # Later blocks read the terrain from the user's profile, not the plan, so a flat course also counts as road.
+        is_road = terrain == "road" or (
+            bool(course_distance_km) and float(course_elevation_gain_m or 0) / float(course_distance_km) < 12
+        )
+        if not demands and is_road and course_distance_km and 30 <= float(course_distance_km) < 48:
             tth = race_info.get("target_time_hours")
             flat_road = PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier) or 6.0
             race_min = float(tth) * 60 if tth else float(course_distance_km) * flat_road * 1.1
@@ -1900,11 +1904,7 @@ class PlanGenerator:
                 anchors = [
                     days.index(r["day_of_week"])
                     for r in rows
-                    if r.get("day_of_week") in days
-                    and (
-                        r.get("type") in ("Long Run", "Muscular Endurance")
-                        or float(r.get("duration_minutes") or 0) >= 90
-                    )
+                    if r.get("day_of_week") in days and r.get("type") in ("Long Run", "Muscular Endurance")
                 ]
                 pool = [
                     r
