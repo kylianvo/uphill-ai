@@ -197,7 +197,7 @@ VN_MOUNTAIN_NOTE_EN = (
 )
 VN_MOUNTAIN_NOTE_VI = (
     "Điều kiện ở Việt Nam: trời nóng ẩm thì uống theo cơn khát kèm electrolytes từ giờ đầu và giảm tốc ở đoạn leo; "
-    "sau mưa đá và đất sét rất trơn, hãy rút ngắn sải chân, dùng gậy hoặc tay ở đoạn dốc đứng; chuyến xe về cũng là "
+    "sau mưa thì đá và đất sét rất trơn, hãy rút ngắn sải chân, dùng gậy hoặc tay ở đoạn dốc đứng; chuyến xe về cũng là "
     "một phần tải, hãy ăn uống trên xe và giữ ngày hôm sau nhẹ."
 )
 
