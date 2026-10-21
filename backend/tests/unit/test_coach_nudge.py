@@ -112,3 +112,8 @@ def test_zone_labels_are_not_invented_numbers():
     f = facts(_week(1, 5) + _week(2, 5))
     assert coach_nudge.grounded("Keep the Zone 2 sessions steady.", f)
     assert not coach_nudge.grounded("Keep Zone 2 for 87 minutes.", f)
+
+
+def test_next_session_never_points_to_a_day_already_past():
+    ws = _week(1, 5) + _week(2, 5) + [w(3, "Monday", 60, title="Past run"), w(3, "Thursday", 60, title="Next run")]
+    assert facts(ws)["next_session"]["title"] == "Next run"

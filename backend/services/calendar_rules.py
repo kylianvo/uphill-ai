@@ -92,6 +92,18 @@ def is_upcoming(row: dict[str, Any], monday: dt.date | None, today: dt.date) -> 
     return workout_date(monday, int(row.get("week_number") or 0), row["day_of_week"]) >= today
 
 
+def is_unlogged_past(row: dict[str, Any], monday: dt.date | None, today: dt.date) -> bool:
+    """A session two or more days past with no outcome: almost certainly missed, but the athlete never
+    said so. The one-day grace leaves time for a watch match or a late check-off."""
+    if monday is None or row.get("day_of_week") not in DAYS or row.get("type") == "Rest":
+        return False
+    if int(row.get("is_completed") or 0) == 1 or int(row.get("is_missed") or 0) == 1:
+        return False
+    if row.get("matched_activity_id") is not None:
+        return False
+    return workout_date(monday, int(row.get("week_number") or 0), row["day_of_week"]) < today - dt.timedelta(days=1)
+
+
 def upcoming_note(rows: list[dict[str, Any]]) -> str:
     """Prompt line naming the sessions still ahead, e.g.
     'Week not finished: W4 Sunday Long Run still upcoming; do not treat them as missed.'"""

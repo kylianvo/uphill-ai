@@ -313,11 +313,11 @@ struct DayRow: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 24))
                         .foregroundStyle(UH.Palette.accentInk)
-                } else if workout.isMissedFlag {
+                } else if workout.isMissedFlag || PlanCalendar.isUnloggedPast(workout, on: day.date) {
                     HStack(spacing: 3) {
                         Image(systemName: "xmark.circle")
                             .font(.system(size: 13))
-                        Text("Missed")
+                        Text(workout.isMissedFlag ? "Missed" : "Not logged")
                             .font(.system(size: 11, weight: .medium))
                     }
                     .foregroundStyle(UH.Palette.muted)

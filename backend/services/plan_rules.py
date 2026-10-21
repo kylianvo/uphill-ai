@@ -348,6 +348,7 @@ def me_status_block(
 # [UA-Rn] tags point at that extraction's rule ids. Our own additions are labelled as such.
 
 MISSED_REASONS = ("busy", "sick", "pain", "tired", "weather", "other")
+# "unknown" is never stored: block_history infers it for unlogged past sessions.
 
 
 def weeks_off(workouts: list[dict], target_week: int, is_pending: Callable[[dict], bool] | None = None) -> int:
@@ -440,6 +441,14 @@ def missed_reason_rules(
             "Reason - weather/logistics: substitute treadmill, stair machine or stairs for outdoor terrain and "
             "keep the volume [UA-R12]."
         )
+    if "unknown" in by_reason:
+        n = len(by_reason["unknown"])
+        lines.append(
+            f"Reason - not logged ({n} session(s) past with no check-off and no reason): treat as missed for an "
+            f"unknown reason. Keep the plan's structure, hold volume at or slightly below last week's planned load, "
+            f"and do not assume illness or injury. (Coach rule, not from the book.)"
+        )
+        caps.append(0.95)
     if rhr_elevated:
         lines.append(
             "Resting heart rate is 10%+ above baseline: make the first session of the week an easy recovery "

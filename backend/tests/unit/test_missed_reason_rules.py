@@ -116,3 +116,39 @@ def test_a_prior_week_still_in_progress_is_not_a_week_off():
     assert weeks_off(wos, 4, is_pending=lambda w: w["week_number"] == 3) == 0
     # earlier finished weeks do not count past an in-progress one
     assert weeks_off(wos, 4, is_pending=lambda w: w["week_number"] == 1) == 2
+
+
+def test_unknown_reason_holds_volume_without_assuming_illness():
+    lines, cap = missed_reason_rules([_missed("Tuesday", "unknown"), _missed("Thursday", "unknown")])
+    assert "not logged (2 session(s)" in _text(lines) and "do not assume illness" in _text(lines)
+    assert cap == 0.95
+
+
+def test_unlogged_past_sessions_count_as_unknown_misses(monkeypatch):
+    import datetime as dt
+
+    from services import block_history
+
+    monkeypatch.setattr(block_history, "get_resting_hr_elevation", lambda _id: None)
+    plan = {"start_date": "2026-10-12", "race_date": "2027-01-10"}  # week 1 = Oct 12-18
+    ws = [
+        {"id": 1, "week_number": 1, "day_of_week": "Tuesday", "type": "Easy"},  # unlogged, past
+        {"id": 2, "week_number": 1, "day_of_week": "Thursday", "type": "Easy", "is_completed": 1},
+        {"id": 3, "week_number": 1, "day_of_week": "Saturday", "type": "Easy", "matched_activity_id": 9},
+    ]
+    lines, cap = block_history.missed_rules_for_week(
+        plan=plan, athlete_id=1, all_workouts=ws, target_week=2, today=dt.date(2026, 10, 20)
+    )
+    assert "not logged (1 session(s)" in "\n".join(lines) and cap == 0.95
+
+
+def test_unlogged_past_respects_the_one_day_grace():
+    import datetime as dt
+
+    from services.calendar_rules import is_unlogged_past
+
+    mon = dt.date(2026, 10, 12)
+    row = {"week_number": 1, "day_of_week": "Saturday", "type": "Easy"}  # Oct 17
+    assert not is_unlogged_past(row, mon, dt.date(2026, 10, 18))
+    assert is_unlogged_past(row, mon, dt.date(2026, 10, 19))
+    assert not is_unlogged_past({**row, "type": "Rest"}, mon, dt.date(2026, 10, 19))

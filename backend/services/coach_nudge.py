@@ -115,6 +115,7 @@ def facts_for(
             and w.get("type") != "Rest"
             and w.get("is_completed") != 1
             and w.get("is_missed") != 1
+            and order.get(w.get("day_of_week"), 9) >= today.weekday()
         ),
         key=lambda w: order.get(w.get("day_of_week"), 9),
     )
