@@ -85,27 +85,3 @@ extension Weekday {
         return symbols[(offset + 1) % 7]
     }
 }
-
-/// What the Today card shows: the session to do now, or the next one when today is a rest day.
-struct TodayFocus: Equatable {
-    enum State: Equatable { case todo, done, missed }
-
-    let workout: Workout?
-    let isToday: Bool
-    let isRestToday: Bool
-    let state: State
-
-    private static func training(_ day: PlanDay) -> [Workout] { day.workouts.filter { $0.type != "Rest" } }
-    private static func open(_ w: Workout) -> Bool { !w.isDone && !w.isMissedFlag }
-
-    static func make(days: [PlanDay], nextWeek: [PlanDay]) -> TodayFocus {
-        let today = days.first(where: \.isToday)
-        if let today, let primary = training(today).first(where: open) ?? training(today).first {
-            let state: State = primary.isDone ? .done : primary.isMissedFlag ? .missed : .todo
-            return TodayFocus(workout: primary, isToday: true, isRestToday: false, state: state)
-        }
-        let after = today.map { t in days.filter { $0.weekday.offset > t.weekday.offset } } ?? days
-        let next = (after + nextWeek).lazy.compactMap { training($0).first(where: open) }.first
-        return TodayFocus(workout: next, isToday: false, isRestToday: today != nil, state: .todo)
-    }
-}

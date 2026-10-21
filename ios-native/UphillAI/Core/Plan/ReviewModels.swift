@@ -131,8 +131,43 @@ struct PlanGoal: Decodable, Sendable, Equatable {
     let targetTimeHours: Double?
     /// Whether the athlete's week and training venue can hold the goal; nil without a course or a time.
     var feasibility: GoalFeasibility?
+    /// The same check as if the A time were the target, so choosing A can say what it asks first.
+    var aFeasibility: GoalFeasibility?
+    /// What the plan builds toward (long run, peak-week volume); nil without a course.
+    var targets: GoalTargets?
     /// Measured aerobic speed against the B and A paths; nil until there are a few weeks of runs.
     var path: GoalPath?
+}
+
+struct GoalTargets: Decodable, Sendable, Equatable {
+    let longRunMin: Double
+    let peakWeekKm: Double
+}
+
+/// The Goal progress card: what the athlete has built against what the race needs. Bars only fill.
+struct GoalProgress: Equatable {
+    struct Bar: Equatable {
+        let done: Double
+        let target: Double
+        var fraction: Double { target > 0 ? min(max(done / target, 0), 1) : 0 }
+    }
+    let longRun: Bar?
+    let weekKm: Bar?
+    let aerobicSpeed: Bar?
+
+    /// Longest completed Long Run and biggest completed week, from the plan's own workouts.
+    static func make(workouts: [Workout], targets: GoalTargets?, path: GoalPath?) -> GoalProgress? {
+        let done = workouts.filter(\.isDone)
+        let longest = done.filter { $0.type == "Long Run" }.map(\.durationMinutes).max() ?? 0
+        let weekKm = Dictionary(grouping: done, by: \.weekNumber).values
+            .map { $0.reduce(0) { $0 + ($1.matchedDistanceKm ?? $1.distanceKm ?? 0) } }.max() ?? 0
+        let progress = GoalProgress(
+            longRun: targets.map { Bar(done: longest, target: $0.longRunMin) },
+            weekKm: targets.map { Bar(done: weekKm, target: $0.peakWeekKm) },
+            aerobicSpeed: path.flatMap { $0.expectedPct > 0 ? Bar(done: max($0.measuredPct, 0), target: $0.expectedPct) : nil }
+        )
+        return progress.longRun == nil && progress.aerobicSpeed == nil ? nil : progress
+    }
 }
 
 struct GoalStatus: Decodable, Sendable, Equatable {
@@ -140,6 +175,8 @@ struct GoalStatus: Decodable, Sendable, Equatable {
 
     let state: String
     let suggestedMins: Double?
+    /// Which goal the target matches (a | b | c) when on track; nil otherwise.
+    var tier: String? = nil
 
     var kind: Kind {
         switch state {

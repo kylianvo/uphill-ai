@@ -28,6 +28,8 @@ struct NextWeekOffer: Equatable {
     let weekEnd: Int
     let previousCompletionPct: Double?
     let unlocked: Bool
+    /// Sessions still to do before the 70% unlock; nil when the block's sessions can't be counted.
+    var sessionsToUnlock: Int? = nil
 
     var title: String { weekStart == weekEnd ? L("Build week %lld", weekStart) : L("Build weeks %lld–%lld", weekStart, weekEnd) }
 }
@@ -408,9 +410,17 @@ final class PlanViewModel {
 
     func setDone(_ workout: Workout, _ done: Bool) async {
         let update = done ? WorkoutLogUpdate(isCompleted: 1) : WorkoutLogUpdate(isCompleted: 0, isMissed: 0)
-        if await write({ try await self.service.log(workoutID: workout.id, update) }), done {
-            lastCompletedID = workout.id
+        if await write({ try await self.service.log(workoutID: workout.id, update) }) {
+            lastCompletedID = done ? workout.id : nil
         }
+    }
+
+    /// "Done · 2 of 5 this week" for the week holding `workoutID`, counting sessions that aren't rest.
+    func doneLine(for workoutID: Int) -> String? {
+        guard let workouts = snapshot?.workouts,
+              let week = workouts.first(where: { $0.id == workoutID })?.weekNumber else { return nil }
+        let sessions = workouts.filter { $0.weekNumber == week && !$0.isRest }
+        return L("Done · %lld of %lld this week", sessions.filter(\.isDone).count, sessions.count)
     }
 
     func setMissed(_ workout: Workout, reason: String? = nil) async {
@@ -566,8 +576,17 @@ final class PlanViewModel {
             weekStart: start,
             weekEnd: min(start + (last.weekEnd - last.weekStart), snapshot.plan.totalWeeks),
             previousCompletionPct: last.completionPct,
-            unlocked: last.unlocked
+            unlocked: last.unlocked,
+            sessionsToUnlock: Self.sessionsToUnlock(
+                sessions: snapshot.workouts.filter { (last.weekStart...last.weekEnd) ~= $0.weekNumber && !$0.isRest }.count,
+                completionPct: last.completionPct)
         )
+    }
+
+    nonisolated static func sessionsToUnlock(sessions: Int, completionPct: Double?) -> Int? {
+        guard sessions > 0, let pct = completionPct else { return nil }
+        let needed = Int((Double(sessions) * 0.7).rounded(.up))
+        return max(needed - Int((Double(sessions) * pct / 100).rounded()), 0)
     }
 
     /// How the block before `offer` went; nil when it can't be read.
@@ -650,12 +669,6 @@ final class PlanViewModel {
         weekBrief = brief
     }
 
-    var weekDiffChips: [WeekDiffChip] {
-        guard selectedWeek > 1, let workouts = snapshot?.workouts else { return [] }
-        return WeekDiff.chips(prev: workouts.filter { $0.weekNumber == selectedWeek - 1 },
-                              cur: workouts.filter { $0.weekNumber == selectedWeek })
-    }
-
     /// Position of the selected week inside its phase, e.g. week 2 of 4 in Base.
     var weekInPhase: (index: Int, total: Int)? {
         guard let phase, let workouts = snapshot?.workouts else { return nil }
@@ -694,9 +707,9 @@ final class PlanViewModel {
     var goalPillText: String? {
         guard let goal, snapshot?.plan.courseDistanceKm != nil else { return nil }
         switch goal.status.kind {
-        case .onTrack: return L("On track")
+        case .onTrack: return goal.targetTimeHours.map { L("Goal %@", Self.formatMinutes($0 * 60)) } ?? L("On track")
         case .ahead: return L("Ahead of target")
-        case .behind: return L("Behind target")
+        case .behind: return goalIsOutOfReach ? L("Behind target") : L("Building")
         case .noTarget: return goal.status.suggestedMins.map { L("Suggested %@", Self.formatMinutes($0)) } ?? L("Not assessed yet")
         case .notAssessed: return L("Not assessed yet")
         }
@@ -732,10 +745,6 @@ final class PlanViewModel {
         if let nudge = try? await service.coachNudge(planID: plan.id), revision == scopeRevision { coachNudge = nudge }
     }
 
-    var todayFocus: TodayFocus {
-        let week = currentWeek
-        return TodayFocus.make(days: days(for: week), nextWeek: days(for: week + 1))
-    }
 
     func loadGoal() async {
         let revision = scopeRevision
@@ -762,9 +771,22 @@ final class PlanViewModel {
         }
     }
 
+    var goalProgress: GoalProgress? {
+        guard let goal, let workouts = snapshot?.workouts else { return nil }
+        return GoalProgress.make(workouts: workouts, targets: goal.targets, path: goal.path)
+    }
+
+    /// Behind only reads as a warning when the week truly can't carry the target; otherwise the athlete is building.
+    var goalIsOutOfReach: Bool { goal?.status.kind == .behind && goal?.feasibility?.verdict == "unsupported" }
+
     func applySuggestedGoal() async -> String? {
+        guard let minutes = suggestedMinutes else { return nil }
+        return await applyGoal(minutes: minutes)
+    }
+
+    func applyGoal(minutes: Double) async -> String? {
         let revision = scopeRevision
-        guard let planID = snapshot?.plan.id, let minutes = suggestedMinutes else { return nil }
+        guard let planID = snapshot?.plan.id else { return nil }
         guard cachedAt == nil else { return Self.offlineMessage }
         do {
             let fresh = try await service.applyGoal(planID: planID, targetMinutes: minutes)

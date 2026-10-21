@@ -45,6 +45,7 @@ struct SummaryCarousel: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: UH.Space.compact) {
                 volumeCard
+                if let progress = model.goalProgress { goalProgressCard(progress) }
                 weekCard
                 raceCard
                 phaseCard
@@ -387,7 +388,7 @@ struct SummaryCarousel: View {
                         Button(action: onGoal) {
                             Text(pill)
                                 .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundStyle(model.goal?.status.kind == .behind ? UH.Palette.danger : UH.Palette.accentInk)
+                                .foregroundStyle(model.goalIsOutOfReach ? UH.Palette.danger : model.goal?.status.kind == .behind ? UH.Palette.warningInk : UH.Palette.accentInk)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
                                 .contentShape(Capsule())
@@ -412,6 +413,62 @@ struct SummaryCarousel: View {
             Text(unit)
                 .font(UH.TextStyle.label)
                 .foregroundStyle(UH.Palette.secondary)
+        }
+    }
+
+    // MARK: - Goal Progress Card
+
+    func goalProgressCard(_ progress: GoalProgress) -> some View {
+        Button(action: onGoal) {
+            card(
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        eyebrow(L("Goal progress"))
+                        Spacer()
+                        if let hours = model.goal?.targetTimeHours {
+                            Text(verbatim: L("Goal %@", PlanViewModel.formatMinutes(hours * 60)))
+                                .font(UH.TextStyle.caption.monospacedDigit())
+                                .foregroundStyle(UH.Palette.accentInk)
+                        }
+                    }
+                    if let bar = progress.longRun {
+                        progressRow(L("Long run"), bar, PlanViewModel.formatMinutes(bar.done) + " / " + PlanViewModel.formatMinutes(bar.target))
+                    }
+                    if let bar = progress.weekKm {
+                        progressRow(L("Biggest week"), bar, "\(Int(bar.done.rounded())) / \(Int(bar.target.rounded())) km")
+                    }
+                    if let bar = progress.aerobicSpeed {
+                        progressRow(L("Aerobic speed"), bar, "+\(RaceDisplay.number(bar.done))% / +\(RaceDisplay.number(bar.target))%")
+                    }
+                    Spacer(minLength: 0)
+                    if let next = model.journey?.nextMilestone {
+                        Label(L("Next: %@ · week %lld", next.title, next.week), systemImage: "flag")
+                            .font(UH.TextStyle.caption)
+                            .foregroundStyle(UH.Palette.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("plan.goalProgress")
+    }
+
+    private func progressRow(_ title: String, _ bar: GoalProgress.Bar, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(verbatim: title).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.ink)
+                Spacer()
+                Text(verbatim: value).font(UH.TextStyle.caption.monospacedDigit()).foregroundStyle(UH.Palette.secondary)
+            }
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(UH.Palette.line)
+                    Capsule().fill(UH.Palette.accent).frame(width: max(proxy.size.width * bar.fraction, 4))
+                }
+            }
+            .frame(height: 5)
         }
     }
 

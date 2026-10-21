@@ -45,8 +45,8 @@ struct CoachReviewCard: View {
                         }
 
                         if !isExpanded {
-                            if let thisWeek = model.selectedWeekNarrative?.aiThisWeekDescription, !thisWeek.isEmpty {
-                                Text(thisWeek)
+                            if let thisWeek = whyThisWeek {
+                                Text(verbatim: thisWeek)
                                     .font(UH.TextStyle.caption)
                                     .foregroundStyle(UH.Palette.secondary)
                                     .lineLimit(1)
@@ -76,9 +76,6 @@ struct CoachReviewCard: View {
             if isExpanded {
                 VStack(alignment: .leading, spacing: UH.Space.small) {
                     Divider().overlay(UH.Palette.line.opacity(0.6)).padding(.vertical, 4)
-
-                    // Phase banner brief
-                    phaseBriefSection
 
                     // Key Coach Takeaways
                     takeawaysSection
@@ -115,65 +112,53 @@ struct CoachReviewCard: View {
         .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
     }
 
-    // Phase Banner Brief
-    private var phaseBriefSection: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("PHASE BRIEF · \((model.phase ?? "BASE").uppercased())")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .foregroundStyle(UH.Palette.muted)
+    /// The week brief's reason, else the block narrative's focus for the week.
+    private var whyThisWeek: String? {
+        let why = model.weekBrief?.why ?? model.selectedWeekNarrative?.aiThisWeekDescription
+        return why?.isEmpty == false ? why : nil
+    }
 
-            Text("Focus on building steady aerobic durability and consistent rhythm. Keep easy runs conversational to maximize mitochondrial adaptation.")
+    private func section<Content: View>(_ title: String, tint: Color = UH.Palette.secondary, @ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(verbatim: title)
+                .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                .foregroundStyle(tint)
+            content()
                 .font(.system(size: 12.5))
                 .foregroundStyle(UH.Palette.ink)
                 .lineSpacing(1.5)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(UH.Space.small)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
     }
 
-    // Key Coach Takeaways
+    // Key Coach Takeaways: the coach message, why this week, what the key sessions build, what to watch, last week
     private var takeawaysSection: some View {
-        let narrative = model.selectedWeekNarrative
-        let hasCustom = (narrative?.aiThisWeekDescription != nil && !narrative!.aiThisWeekDescription!.isEmpty) ||
-                        (narrative?.aiLastWeekReview != nil && !narrative!.aiLastWeekReview!.isEmpty)
+        let brief = model.weekBrief
+        let nudge = model.selectedWeek == model.currentWeek ? model.coachNudge : nil
+        let lastWeek = model.selectedWeekNarrative?.aiLastWeekReview
 
-        return VStack(alignment: .leading, spacing: 6) {
-            Text("KEY COACH TAKEAWAYS")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .foregroundStyle(UH.Palette.muted)
-
-            if hasCustom {
-                if let lastWeek = narrative?.aiLastWeekReview, !lastWeek.isEmpty {
+        return VStack(alignment: .leading, spacing: UH.Space.small) {
+            if let nudge {
+                Text(verbatim: nudge.text)
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(nudge.kind == .headsUp ? UH.Palette.warningInk : UH.Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let why = whyThisWeek {
+                section(L("WHY THIS WEEK"), tint: UH.Palette.accentInk) { Text(verbatim: why) }
+            }
+            if let benefits = brief?.benefits, !benefits.isEmpty {
+                section(L("WHAT IT BUILDS")) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("LAST WEEK REVIEW")
-                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
-                            .foregroundStyle(UH.Palette.secondary)
-                        Text(lastWeek)
-                            .font(.system(size: 12.5))
-                            .foregroundStyle(UH.Palette.ink)
-                            .lineSpacing(1.5)
-                    }
-                    .padding(.bottom, 2)
-                }
-
-                if let thisWeek = narrative?.aiThisWeekDescription, !thisWeek.isEmpty {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("THIS WEEK FOCUS")
-                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
-                            .foregroundStyle(UH.Palette.accentInk)
-                        Text(thisWeek)
-                            .font(.system(size: 12.5))
-                            .foregroundStyle(UH.Palette.ink)
-                            .lineSpacing(1.5)
+                        ForEach(benefits, id: \.self) { Text(verbatim: "• " + $0) }
                     }
                 }
-            } else {
-                Text("“Solid volume progression. Remember: recovery is where adaptation happens. Do not cut rest short on heavy training blocks.”")
-                    .font(.system(size: 12.5))
-                    .italic()
-                    .foregroundStyle(UH.Palette.ink)
-                    .lineSpacing(1.5)
+            }
+            if let watch = brief?.watch, !watch.isEmpty {
+                section(L("WATCH OUT"), tint: UH.Palette.warningInk) { Text(verbatim: watch) }
+            }
+            if let lastWeek, !lastWeek.isEmpty {
+                section(L("LAST WEEK REVIEW")) { Text(verbatim: lastWeek) }
             }
         }
         .padding(UH.Space.small)
