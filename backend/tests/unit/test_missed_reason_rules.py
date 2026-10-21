@@ -118,10 +118,10 @@ def test_a_prior_week_still_in_progress_is_not_a_week_off():
     assert weeks_off(wos, 4, is_pending=lambda w: w["week_number"] == 1) == 2
 
 
-def test_unknown_reason_holds_volume_without_assuming_illness():
+def test_unknown_reason_does_not_assume_illness_or_cap():
     lines, cap = missed_reason_rules([_missed("Tuesday", "unknown"), _missed("Thursday", "unknown")])
     assert "not logged (2 session(s)" in _text(lines) and "do not assume illness" in _text(lines)
-    assert cap == 0.95
+    assert cap is None  # the prior-week adherence hold already sets the volume
 
 
 def test_unlogged_past_sessions_count_as_unknown_misses(monkeypatch):
@@ -139,7 +139,7 @@ def test_unlogged_past_sessions_count_as_unknown_misses(monkeypatch):
     lines, cap = block_history.missed_rules_for_week(
         plan=plan, athlete_id=1, all_workouts=ws, target_week=2, today=dt.date(2026, 10, 20)
     )
-    assert "not logged (1 session(s)" in "\n".join(lines) and cap == 0.95
+    assert "not logged (1 session(s)" in "\n".join(lines) and cap is None
 
 
 def test_unlogged_past_respects_the_one_day_grace():

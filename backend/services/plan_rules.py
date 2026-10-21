@@ -445,10 +445,9 @@ def missed_reason_rules(
         n = len(by_reason["unknown"])
         lines.append(
             f"Reason - not logged ({n} session(s) past with no check-off and no reason): treat as missed for an "
-            f"unknown reason. Keep the plan's structure, hold volume at or slightly below last week's planned load, "
-            f"and do not assume illness or injury. (Coach rule, not from the book.)"
+            f"unknown reason. Keep the plan's structure and do not assume illness or injury; the prior-week "
+            f"adherence hold sets the volume. (Coach rule, not from the book.)"
         )
-        caps.append(0.95)
     if rhr_elevated:
         lines.append(
             "Resting heart rate is 10%+ above baseline: make the first session of the week an easy recovery "
