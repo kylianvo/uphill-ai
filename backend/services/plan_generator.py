@@ -1539,6 +1539,8 @@ class PlanGenerator:
         )  # words a sentence-case title must not lowercase
 
         def _long_text(minutes: int, climbing: bool) -> str:
+            if minutes < 60:  # a short "long run" (taper, race week) is just an easy run
+                return _easy_text(minutes, "Zone 2", 0, climbing)
             main = max(20, minutes - 25)
             if lang == "vi":
                 where = ", power-hiking đoạn dốc trên 10%" if climbing else ""
@@ -1838,7 +1840,12 @@ class PlanGenerator:
                 if typ == "Rest" or minutes <= 0:
                     continue
                 title_l = (wo.get("title") or "").lower()
-                desc = wo.get("description") or ""
+                desc = re.sub(  # internal wording from an earlier version must never reach the athlete
+                    r"\s*The long quality block planned for this slot was dropped[^.]*\.|\s*Phần cường độ dài dự kiến[^.]*\.",
+                    "",
+                    wo.get("description") or "",
+                )
+                wo["description"] = desc
                 try:
                     incline = float(str(wo.get("treadmill_incline") or 0).split("-")[0] or 0)
                 except ValueError:
