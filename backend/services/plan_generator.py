@@ -1497,9 +1497,21 @@ class PlanGenerator:
             wo["description"] = desc_en if lang != "vi" else desc_vi
             for key in ("interval_reps", "interval_rep_value", "interval_rep_unit", "walk_interval_value"):
                 wo[key] = None
-            wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
-                "Zone 2", float(wo.get("duration_minutes") or 0), est_zones
-            )
+            old_km, old_gain = float(wo.get("distance_km") or 0), float(wo.get("elevation_gain_m") or 0)
+            rate = old_gain / old_km if old_km else 0.0
+            minutes = float(wo.get("duration_minutes") or 0)
+            if rate >= 15 and minutes > 0:  # it was a hill session: the easy run keeps the climb and its pace
+                from services.trail_pace import trail_session
+
+                wo["target_pace"], wo["distance_km"], wo["elevation_gain_m"] = trail_session(
+                    est_zones["zone2_pace"], minutes, rate
+                )
+                wo["grade_percent"] = wo["elevation_gain_m"] / (wo["distance_km"] * 10)
+            else:
+                wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                    "Zone 2", minutes, est_zones
+                )
+                wo["elevation_gain_m"] = round(wo["distance_km"] * rate)
 
         def _long_text(minutes: int, climbing: bool) -> str:
             main = max(20, minutes - 25)
@@ -1725,8 +1737,12 @@ class PlanGenerator:
             for week_no, rows in by_week.items():
                 if rows[0].get("phase") not in ("Base", "Build", "Peak"):
                     continue
-                if any(
-                    float(str(r.get("treadmill_incline") or 0).split("-")[0] or 0) >= 6 or r.get("mountain_climb_rate")
+                if any(  # 10-second hill sprints are power work, not weekly vert
+                    (
+                        float(str(r.get("treadmill_incline") or 0).split("-")[0] or 0) >= 6
+                        or r.get("mountain_climb_rate")
+                    )
+                    and not any(kw in (r.get("title") or "").lower() for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
                     for r in rows
                     if r.get("type") != "Rest"
                 ):
@@ -1931,10 +1947,19 @@ class PlanGenerator:
                     incline > 0
                     and not any(kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
                     and not float(wo.get("elevation_gain_m") or 0)
-                    and float(wo.get("distance_km") or 0) > 0
                 ):
-                    wo["elevation_gain_m"] = round(float(wo["distance_km"]) * incline * 10)
-                    wo["grade_percent"] = round(incline, 1)
+                    # Treadmill gain from the grade: horizontal distance x grade (m per km = grade% x 10). The
+                    # distance is the session's own, or the belt speed x time when none is filled in.
+                    km = float(wo.get("distance_km") or 0)
+                    if not km:
+                        try:
+                            speeds = [float(x) for x in str(wo.get("treadmill_speed") or 0).split("-")]
+                            km = sum(speeds) / len(speeds) * float(wo.get("duration_minutes") or 0) / 60
+                        except ValueError:
+                            km = 0.0
+                    if km > 0:
+                        wo["elevation_gain_m"] = round(km * incline * 10)
+                        wo["grade_percent"] = round(incline, 1)
 
                 if terrain == "trail" and w_type == "Long Run" and venues.is_mountain_day(wo["day_of_week"]):
                     if wo.get("mountain_climb_rate") is None:
