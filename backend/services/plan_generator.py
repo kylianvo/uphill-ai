@@ -2158,6 +2158,8 @@ class PlanGenerator:
                     if r.get("day_of_week") in days
                     and (
                         r.get("type") in ("Long Run", "Muscular Endurance")
+                        or r.get("mountain_mode") == "mountain"  # a long mountain day is a hard day
+                        or float(r.get("duration_minutes") or 0) >= 120
                         or any(kw in (r.get("title") or "").lower() for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
                     )
                 ]
@@ -2204,6 +2206,8 @@ class PlanGenerator:
                     if r.get("day_of_week") in days
                     and (
                         r.get("type") in ("Long Run", "Muscular Endurance")
+                        or r.get("mountain_mode") == "mountain"  # a long mountain day is a hard day
+                        or float(r.get("duration_minutes") or 0) >= 120
                         or any(kw in (r.get("title") or "").lower() for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
                     )
                 ]
@@ -2525,6 +2529,20 @@ class PlanGenerator:
             _add_drift_test(wos)
             _soften_recovery_weeks(wos)
             _gate_hard(wos)
+            for wo in wos:  # a recovery run is short; a longer one is an easy Zone 1 aerobic run, same length
+                if wo.get("type") == "Recovery" and float(wo.get("duration_minutes") or 0) > 60:
+                    minutes = float(wo["duration_minutes"])
+                    _to_easy(
+                        wo,
+                        "Easy Aerobic Run (Zone 1)",
+                        "Easy Run aerobic (Zone 1)",
+                        f"Warm-up 10 min walk-jog → {int(minutes) - 15} min easy Zone 1, fully conversational → Cool-down 5 min easy.",
+                        f"Warm-up 10 phút đi bộ xen chạy → {int(minutes) - 15} phút Zone 1 thật nhẹ, nói chuyện thoải mái → Cool-down 5 phút nhẹ.",
+                    )
+                    wo["target_zone"], wo["target_hr_range"] = "Zone 1", z1_range
+                    wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                        "Zone 1", minutes, est_zones
+                    )
             _normalise_sessions(wos)
             _fit_taper_long_share(wos)
             _fix_labels(wos)
