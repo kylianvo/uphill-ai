@@ -428,7 +428,7 @@ RECENT_LOAD_GROWTH = 1.10  # week 1 may exceed what the athlete ran lately by at
 def hard_work_banned_phases(*, is_ads: bool, thresholds_measured: bool) -> frozenset[str]:
     """Phases with no Zone 3-5 work (hill sprints and strides stay). Book: a measured AeT-AnT gap above 10% means
     the aerobic base is the limiter, so all running stays in Zones 1-2. When the thresholds are only estimates the
-    gap is unknown: the Base phase stays easy while the week-1 drift test finds the real AeT."""
+    gap is unknown, so the Base phase stays easy until the athlete enters measured thresholds."""
     if is_ads:
         return PHASES
     return frozenset() if thresholds_measured else frozenset({"Base"})

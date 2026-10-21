@@ -58,14 +58,6 @@ def test_long_zone_3_and_zone_4_sessions_are_flagged():
     assert not next(c for c in checks if c.name.startswith("no long Zone 3")).ok
 
 
-def test_unmeasured_thresholds_need_the_week_one_drift_test():
-    race = {**RACE, "threshold_source": "unknown"}
-    plan = _plan()
-    assert not next(c for c in plan_quality.assess(plan, race, "6:30 - 5:50") if "drift test" in c.name).ok
-    plan[0]["title"] = "AeT Drift Test (Zone 2)"
-    assert next(c for c in plan_quality.assess(plan, race, "6:30 - 5:50") if "drift test" in c.name).ok
-
-
 def test_a_week_above_80_percent_of_race_climbing_is_flagged():
     checks = plan_quality.assess(_plan(climb=2100), RACE, "6:30 - 5:50")
     assert not next(c for c in checks if c.name.startswith("no week above 80%")).ok

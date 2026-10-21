@@ -199,9 +199,6 @@ def assess(workouts: list[dict[str, Any]], race: dict[str, Any], zone2_pace: str
         and not re.search(r"hill (sprint|repeat|bound)", (w.get("title") or "").lower())
     ]
     checks.append(Check("no Zone 3-5 work where the aerobic gate bans it", not hard, str(hard[:3])))
-    if not measured:
-        test = [w for k in (1, 2, 3) for w in weeks.get(k, []) if "drift" in (w.get("title") or "").lower()]
-        checks.append(Check("weeks 1-3 have the AeT drift test (thresholds unmeasured)", bool(test)))
 
     z2_mid = _pace_mid(zone2_pace)
     recent = float(race.get("current_weekly_km") or 0) * z2_mid if z2_mid else 0.0
