@@ -108,6 +108,7 @@ from routers.coach_chat import router as coach_chat_router
 from routers.integrations import router as integrations_router
 from services import (
     apple_auth,
+    beginner_milestones,
     calendar_ops,
     coros_sync,
     fitness_snapshot,
@@ -3198,6 +3199,8 @@ def log_workout(request: WorkoutLogRequest, user: dict[str, Any] = Depends(get_c
     )
     if not ok:
         raise HTTPException(status_code=404, detail="Workout not found.")
+    if request.is_completed == 1:
+        beginner_milestones.safe_refresh_milestones(user["id"])
     updated = get_plan_workouts(active_plan["id"])
     return {"workouts": updated}
 

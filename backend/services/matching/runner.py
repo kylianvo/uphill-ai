@@ -13,6 +13,7 @@ from datetime import date, datetime, timedelta
 import db
 from config import settings
 from log_utils import get_logger
+from services import beginner_milestones
 from services.matching.assigner import assign
 from services.matching.bundler import bundle_activities
 from services.matching.quality_scorer import score_workout_quality
@@ -245,6 +246,9 @@ async def match_user(
                         and w.get("is_missed") != 1
                     ):
                         db.update_workout_log(w_id, is_missed=1)
+
+    if not settings.MATCHING_SHADOW_MODE:  # only live matching marks workouts complete
+        beginner_milestones.safe_refresh_milestones(user_id)
 
     logger.info(
         "matching run complete",

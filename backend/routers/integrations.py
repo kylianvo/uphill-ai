@@ -29,7 +29,7 @@ import db
 from config import settings
 from db import verify_session
 from log_utils import get_logger
-from services import coros_oauth, coros_push, coros_sync, recovery_baseline, token_crypto
+from services import beginner_milestones, coros_oauth, coros_push, coros_sync, recovery_baseline, token_crypto
 from services.calendar_rules import resolve_today
 from services.matching import runner as matching_runner
 from services.matching.quality_scorer import score_workout_quality
@@ -747,6 +747,7 @@ async def apple_health_sync(body: AppleHealthSyncRequest, user: dict[str, Any] =
             continue
         db.upsert_activity(user_id, _to_canonical(workout))
         accepted += 1
+    beginner_milestones.safe_refresh_milestones(user_id)
     deleted = db.delete_activities_by_external_ids(user_id, APPLE_HEALTH, body.deleted_ids)
     daily_metrics = _store_daily_metrics(user_id, body.daily_metrics)
     db.mark_connection_synced(user_id, APPLE_HEALTH)
@@ -975,6 +976,7 @@ async def matching_override(
                             match_details={"bundle_primary_activity_id": primary_id, "fragments": len(member_acts)},
                         )
                 db.update_workout_log(workout_id, is_completed=1)
+                beginner_milestones.safe_refresh_milestones(user["id"])
                 return {"status": "ok", "activity_id": activity_id, "workout_id": workout_id, "combined": True}
 
             q_res = score_workout_quality(workout, activity, athlete_profile)
@@ -982,6 +984,7 @@ async def matching_override(
             quality_grade = q_res.grade
             quality_details = q_res.to_dict()
         db.update_workout_log(workout_id, is_completed=1)
+        beginner_milestones.safe_refresh_milestones(user["id"])
 
     db.set_manual_match(
         activity_id=activity_id,

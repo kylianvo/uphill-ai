@@ -167,3 +167,46 @@ def serialize(target: Target, has_event: bool, rows: list[dict[str, Any]]) -> di
         )
     next_key = next((i["key"] for i in items if not i["achieved_at"]), None)
     return {"target": target, "has_event": bool(has_event), "items": items, "next_key": next_key}
+
+
+def refresh_milestones(user_id: int) -> list[str]:
+    """Re-evaluate the active beginner plan from DB state and record new achievements.
+
+    Idempotent: every hook that can earn credit calls this and existing rows are never touched.
+    A jog milestone also raises users.max_continuous_jog_min, which the beginner rules read.
+    """
+    import db
+
+    plan = db.get_active_plan(user_id)
+    if not plan or plan.get("goal_type") != "start_running" or not plan.get("milestone_target"):
+        return []
+    target: Target = plan["milestone_target"]
+    start = plan.get("start_date")
+    plan_start = date.fromisoformat(str(start)[:10]) if start else date.today()
+    existing = {r["milestone_key"] for r in db.get_plan_milestone_rows(plan["id"])}
+    found = evaluate(
+        target,
+        plan_start,
+        db.get_completed_run_workouts(plan["id"]),
+        db.get_run_activities_since(user_id, plan_start),
+        existing,
+    )
+    new_keys: list[str] = []
+    by_key = {m.key: m for m in LADDER}
+    for a in found:
+        if not db.insert_milestone_if_absent(
+            plan["id"], a.key, "auto", a.achieved_at, activity_id=a.activity_id, workout_id=a.workout_id
+        ):
+            continue
+        new_keys.append(a.key)
+        if by_key[a.key].kind == "jog_min":
+            db.set_max_continuous_jog_min(user_id, int(by_key[a.key].threshold))
+    return new_keys
+
+
+def safe_refresh_milestones(user_id: int) -> None:
+    """The form every hook uses: a milestone problem must never fail the request it rides on."""
+    try:
+        refresh_milestones(user_id)
+    except Exception:
+        logger.warning("beginner milestone refresh failed", exc_info=True, extra={"fields": {"user_id": user_id}})
