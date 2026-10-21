@@ -40,9 +40,44 @@ struct WorkoutStepParserTests {
         let w = TestData.workout(["type": "Easy", "title": "Easy Run + Hill Sprints", "target_zone": "Zone 2",
                                  "target_pace": "6:00 /km", "description": "Process: Khởi động 10 phút xoay khớp → Chạy 40 phút Zone 2 → 8 x 10s Hill Sprints dốc >20%, nghỉ đi bộ thả lỏng 2 phút 30 giây giữa mỗi rep → Hạ nhiệt 5 phút chạy thả lỏng."])
         let steps = WorkoutStepParser.parseSteps(workout: w, description: WorkoutStepParser.parseDescription(w.description), isTreadmill: false)
-        #expect(steps[1].target == "8 × 10 s")
-        #expect(steps[1].steps.count == 2)
-        #expect(steps[2].target.hasPrefix("Hạ nhiệt"))
+        #expect(steps.map(\.phase) == [.warmup, .main, .main, .cooldown])
+        #expect(steps[1].duration == "40 phút")
+        #expect(steps[2].target == "8 × 10 s")
+        #expect(steps[3].target.hasPrefix("Hạ nhiệt"))
+    }
+
+    @Test func easyRunWithStridesShowsTheRunAndTheStridesAsTwoSteps() {
+        let w = TestData.workout(["type": "Easy", "title": "Aerobic Base Run + Strides", "target_zone": "Zone 2",
+                                 "duration_minutes": 40.0,
+                                 "description": "Warm-up 5 min easy → 30 min steady Zone 2 → 5 × 15 s strides with easy jog back between → Cool-down 5 min easy."])
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: WorkoutStepParser.parseDescription(w.description), isTreadmill: false)
+        #expect(steps.map(\.phase) == [.warmup, .main, .main, .cooldown])
+        #expect(steps[1].duration == "30 min" && steps[1].target == "30 min steady Zone 2")
+        #expect(steps[2].target == "5 × 15 s" && steps[2].recovery == "Recovery: easy jog back between")
+        #expect(steps[2].steps == ["5 × 15 s strides"])
+    }
+
+    @Test func gymSessionShowsOneStepPerExerciseAndKeepsTheNoteOut() {
+        let w = TestData.workout(["type": "Muscular Endurance", "title": "Gym ME", "duration_minutes": 45.0,
+                                 "description": "Warm-up 10 min easy (jog or mobility) → Box Step-Ups 4x10/leg, 30s rest between sets → Front Lunges 4x10/leg, 30s rest between sets → Cool-down 5 min easy stretching. Overall: straight sets, 60s between exercises."])
+        let parsed = WorkoutStepParser.parseDescription(w.description)
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: parsed, isTreadmill: false)
+        #expect(steps.map(\.phase) == [.warmup, .main, .main, .cooldown])
+        #expect(steps[1].target == "Box Step-Ups 4x10/leg, 30s rest between sets")
+        #expect(steps[2].target == "Front Lunges 4x10/leg, 30s rest between sets")
+        #expect(!steps.flatMap(\.steps).joined().contains("straight sets"))
+        #expect(parsed.intent == "straight sets, 60s between exercises.")
+    }
+
+    @Test func vietnameseNotesStayOutOfTheSteps() {
+        let text = "Cách làm: Khởi động 10 phút nhẹ → Step-ups 3 x 12/chân → Planks 3 x 45 giây → Cool-down 5 phút nhẹ. Tổng quan: tập theo vòng. Lưu ý: dừng nếu đau gối."
+        let w = TestData.workout(["type": "Strength", "title": "Sức mạnh", "duration_minutes": 40.0, "description": text])
+        let parsed = WorkoutStepParser.parseDescription(text)
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: parsed, isTreadmill: false)
+        #expect(steps.map(\.phase) == [.warmup, .main, .main, .cooldown])
+        #expect(steps[2].target == "3 × 45 s")
+        #expect(parsed.intent == "tập theo vòng." && parsed.warning == "dừng nếu đau gối.")
+        #expect(steps.last?.steps == ["Cool-down 5 phút nhẹ."])
     }
 
     @Test func fractionalDistanceIsNotTruncated() {
@@ -58,7 +93,7 @@ struct WorkoutStepParserTests {
         let w = makeWorkout(pace: nil, reps: nil, repVal: nil, repUnit: nil, walkVal: nil,
                             desc: "Process: Warm-up 10 min → Easy running → \(text) → Cool-down 5 min")
         let steps = WorkoutStepParser.parseSteps(workout: w, description: WorkoutStepParser.parseDescription(w.description), isTreadmill: false)
-        #expect(steps[1].target == expected)
+        #expect(steps[2].target == expected)   // "Easy running" is its own step before the reps
     }
 
     @Test(arguments: [("Intervals", "Zone 5"), ("Hill-Sprint session", "Zone 2"), ("Easy + Strides", "Zone 2")])

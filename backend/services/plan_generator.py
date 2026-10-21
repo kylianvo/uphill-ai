@@ -82,6 +82,7 @@ You MUST return ONLY a JSON array of workout objects. NEVER wrap it in markdown 
    - `elevation_gain_m` and `grade_percent` (numbers, ONLY for `type` Easy/Tempo/Interval/Long Run AND only when the athlete's terrain is trail/mountain — omit or use 0 otherwise): give this specific run a plausible amount of climbing, using the race's overall course_elevation_gain_m/course_distance_km (given below in the athlete/race profile) as context for what's typical, and this run's own distance/phase/role to vary it — a Base-phase Easy run climbs less than a Peak-phase Long Run. `grade_percent` should be consistent with `elevation_gain_m` and this run's own `distance_km` (grade ≈ elevation_gain_m / (distance_km × 10)), not just the race's average. NEVER invent a figure wildly inconsistent with the race's overall elevation profile.
    - `description` (string: highly detailed description containing specific sections, each introduced by its keyword — Process, Overall, Reason, Benefit, Warning — appearing in that order and each appearing EXACTLY ONCE: Process (step-by-step execution using → to separate segments — EVERY exercise or effort chunk MUST be its own → segment; NEVER chain multiple exercises together with semicolons or commas inside a single segment, and NEVER wrap them in a label like 'Main Circuit: ...'. The warm-up, main, and cool-down minutes stated MUST sum exactly to duration_minutes.
      * Easy/Tempo/Interval/Long Run, e.g. 'Warm up 10 min easy → 4 x 6min @ Zone 4, 2min jog recovery → cool down 10 min'.
+     * Easy or Long Run with strides / hill sprints: the strides are their OWN → segment after the steady running, e.g. 'Warm up 10 min easy → 30 min steady Zone 2 → 6 x 15s strides with easy jog back between → cool down 5 min'. Leave the interval_* fields empty on these runs.
      * Strength (general/max-strength): straight sets — one → segment per exercise, each naming the exercise plus sets x reps and a 60-180s rest interval BETWEEN SETS OF THAT SAME EXERCISE (appropriate for near-maximal loads), e.g. 'Warm up 5 min mobility → Bodyweight Squats: 3x10, 90s rest → Walking Lunges: 3x10 each leg, 90s rest → Cool down 5 min stretching'.
 {{me_format_spec}}     * Interval: state exact rep count, distance or duration per rep, and recovery between reps.
 NEVER substitute a placeholder segment like 'Perform the bodyweight strength circuit for 20 minutes' for the actual named-exercise segments, and NEVER place the exercise breakdown anywhere outside this Process → chain (in particular, never append it after Warning or any other section) — every exercise MUST live inside Process and nowhere else), Overall (2-3 sentence summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (ONLY injury risks or execution precautions — NEVER exercise prescriptions, sets, or reps; those belong exclusively in Process). Provide extensive context.)
@@ -1999,10 +2000,13 @@ class PlanGenerator:
         def _me_text() -> str:
             if lang == "vi":
                 return (
-                    "Warm-up 10 phút nhẹ → 3-4 vòng step-up, squat, lunge và plank, nghỉ 2-3 phút giữa các vòng "
-                    "→ Cool-down 5 phút nhẹ."
+                    "Warm-up 10 phút nhẹ → Step-ups 3 x 12/chân → Squats 3 x 15 → Lunges 3 x 10/chân "
+                    "→ Planks 3 x 45 giây → Cool-down 5 phút nhẹ. Overall: tập theo vòng, nghỉ 2-3 phút giữa các vòng."
                 )
-            return "Warm-up 10 min easy → 3-4 rounds of step-ups, squats, lunges and planks, 2-3 min rest between rounds → Cool-down 5 min easy."
+            return (
+                "Warm-up 10 min easy → Step-ups 3 x 12/leg → Squats 3 x 15 → Lunges 3 x 10/leg "
+                "→ Planks 3 x 45 s → Cool-down 5 min easy. Overall: work in rounds, 2-3 min rest between rounds."
+            )
 
         def _easy_text(minutes: int, zone: str | None, incline: float, climbing: bool) -> str:
             warm = 10 if minutes >= 45 else (5 if minutes >= 20 else 0)
@@ -2069,19 +2073,61 @@ class PlanGenerator:
 
             pace_token = re.compile(r"\s*@?\s*\d{1,2}:\d{2}(?:\s*[-–]\s*\d{1,2}:\d{2})?\s*/\s*km")
 
-            def _rebuilt(wo: dict[str, Any], text: str) -> str:
-                """A rebuilt description keeps the strides / hill sprints the rep fields describe; rep fields the
-                new text cannot describe are cleared, or the app shows them as the main set."""
+            def _reps_into_text(wo: dict[str, Any]) -> None:
+                """Only an Interval / Walk-Run session carries rep fields (the app shows them as the main set). On
+                any other run the strides or hill sprints become their own step before the cool-down, and the
+                fields go."""
+                reps, value, unit = wo.get("interval_reps"), wo.get("interval_rep_value"), wo.get("interval_rep_unit")
+                if wo.get("type") in ("Interval", "Walk/Run") or not reps:
+                    return
+                wo["interval_reps"] = wo["interval_rep_value"] = wo["interval_rep_unit"] = None
                 title = (wo.get("title") or "").lower()
                 kind = "hill sprints" if "sprint" in title else "strides" if "stride" in title else None
-                reps, value, unit = wo.get("interval_reps"), wo.get("interval_rep_value"), wo.get("interval_rep_unit")
-                if not (kind and reps and value and unit):
-                    wo["interval_reps"] = wo["interval_rep_value"] = wo["interval_rep_unit"] = None
-                    return text
-                block = f"{reps} × {float(value):g} {unit}"
-                if lang == "vi":
-                    return f"{text} Cuối phần chính: {block} {kind}, chạy nhẹ hồi phục giữa các lần."
-                return f"{text} Near the end of the main block: {block} {kind}, easy jog between."
+                desc = wo.get("description") or ""
+                if not (kind and value and unit) or kind.split()[-1] in desc.lower():
+                    return
+                block = f"{reps} × {float(value):g} {unit} {kind}"
+                step = f"{block}, chạy nhẹ về giữa các lần" if lang == "vi" else f"{block} with easy jog back between"
+                wo["description"] = _insert_before_cooldown(desc, step)
+
+            def _insert_before_cooldown(desc: str, step: str) -> str:
+                body, notes = _split_notes(desc)
+                steps = body.rstrip(". ").split(" → ")
+                at = len(steps) - 1 if len(steps) > 1 and _is_cooldown(steps[-1]) else len(steps)
+                steps.insert(at, step)
+                return " → ".join(steps) + "." + notes
+
+            def _is_cooldown(step: str) -> bool:
+                low = step.strip().lower()
+                return "cool" in low or low.startswith(("thả lỏng", "hạ nhiệt"))
+
+            def _split_notes(desc: str) -> tuple[str, str]:
+                """'steps. Overall: note' -> ('steps.', ' Overall: note'); the app shows labelled notes apart."""
+                m = re.search(r"\s(?=(?:Overall|Reason|Benefit|Why|Warning|Tổng quan|Lý do|Lợi ích|Lưu ý)\s*:)", desc)
+                return (desc[: m.start()], desc[m.start() :]) if m else (desc, "")
+
+            def _strength_steps(wo: dict[str, Any]) -> None:
+                """A gym / ME session always reads warm-up → one exercise per step → cool-down."""
+                desc = (wo.get("description") or "").strip()
+                if not desc:
+                    return
+                body, notes = _split_notes(desc)
+                head = re.match(r"\s*(?:Process|Cách làm)\s*:\s*", body)
+                prefix, body = (body[: head.end()], body[head.end() :]) if head else ("", body)
+                steps = [s.strip() for s in body.rstrip(". ").split(" → ") if s.strip()]
+                if not steps:
+                    return
+                low = steps[0].lower()
+                if not ("warm" in low or low.startswith("khởi động")):
+                    steps.insert(
+                        0,
+                        "Warm-up 10 phút nhẹ (chạy chậm hoặc xoay khớp)"
+                        if lang == "vi"
+                        else "Warm-up 10 min easy (jog or mobility)",
+                    )
+                if not _is_cooldown(steps[-1]):
+                    steps.append("Cool-down 5 phút giãn cơ nhẹ" if lang == "vi" else "Cool-down 5 min easy stretching")
+                wo["description"] = prefix + " → ".join(steps) + "." + notes
 
             for wo in wos:
                 typ = wo.get("type")
@@ -2120,13 +2166,12 @@ class PlanGenerator:
                     if naturalness_issues(clean_title, _proper_nouns):
                         wo["title"] = _VI_TITLES.get(typ, clean_title)
                     if naturalness_issues(clean_desc, _proper_nouns) and typ != "Interval":
-                        desc = wo["description"] = _rebuilt(
-                            wo,
+                        desc = wo["description"] = (
                             _long_text(minutes, climbing)
                             if typ == "Long Run"
                             else _me_text()
                             if typ in ("Muscular Endurance", "Strength")
-                            else _easy_text(minutes, wo.get("target_zone"), incline, climbing),
+                            else _easy_text(minutes, wo.get("target_zone"), incline, climbing)
                         )
                 if climbing and incline < 3:  # the header carries the trail pace; road paces in the steps contradict it
                     desc = re.sub(r" {2,}", " ", pace_token.sub("", desc))
@@ -2134,15 +2179,19 @@ class PlanGenerator:
                 if typ in ("Easy", "Aerobic Capacity", "Recovery", "Long Run", "Tempo"):
                     nums = [int(n) for n in _STEP_MIN.findall(desc)]
                     if len(nums) >= 2 and abs(sum(nums) - minutes) / minutes > 0.15:
-                        wo["description"] = _rebuilt(
-                            wo,
+                        wo["description"] = (
                             _long_text(minutes, climbing)
                             if typ == "Long Run"
-                            else _easy_text(minutes, wo.get("target_zone"), incline, climbing),
+                            else _easy_text(minutes, wo.get("target_zone"), incline, climbing)
                         )
                         note = VN_MOUNTAIN_NOTE_VI if lang == "vi" else VN_MOUNTAIN_NOTE_EN
                         keep_note = f" {note}" if note in (wo.get("fueling_tip") or "") else ""
                         wo["fueling_tip"] = _fuel_text(minutes) + keep_note
+
+            for wo in wos:
+                _reps_into_text(wo)
+                if wo.get("type") in ("Muscular Endurance", "Strength"):
+                    _strength_steps(wo)
 
         def _week_rows(wos: list[dict[str, Any]]) -> dict[int, list[dict[str, Any]]]:
             by_week: dict[int, list[dict[str, Any]]] = {}
@@ -3627,10 +3676,11 @@ class PlanGenerator:
                         sets = 4 if me_seen < 2 else 6
                         me_seen += 1
                         desc = (
-                            f"Straight sets: finish every set of one exercise before the next. Split Jump Squats "
-                            f"{sets}x10, 60s rest between sets → Squat Jumps {sets}x10, 60s rest between sets → Box "
-                            f"Step-Ups at 75% kneecap height {sets}x10/leg, 30s rest between sets → Front Lunges "
-                            f"{sets}x10/leg, 30s rest between sets. 60s between exercises. Aim for a low-grade burn "
+                            f"Warm-up 10 min easy (jog or mobility) → Split Jump Squats {sets}x10, 60s rest between "
+                            f"sets → Squat Jumps {sets}x10, 60s rest between sets → Box Step-Ups at 75% kneecap "
+                            f"height {sets}x10/leg, 30s rest between sets → Front Lunges {sets}x10/leg, 30s rest "
+                            f"between sets → Cool-down 5 min easy stretching. Overall: Straight sets, finish every "
+                            f"set of one exercise before the next, 60s between exercises. Aim for a low-grade burn "
                             f"in the quads and glutes; ignore heart rate. Keep the next two days easy."
                         )
                         fuel_tip = "Drink amino acids post-workout for protein synthesis."
@@ -3866,14 +3916,16 @@ class PlanGenerator:
                         "lượt bước lên bục cao 30cm, không cần tạ.",
                     )
                 s = _re.sub(
-                    r"Straight sets: finish every set of one exercise before the next\. Split Jump Squats (\d+)x10, "
-                    r"60s rest between sets → Squat Jumps \1x10, 60s rest between sets → Box Step-Ups at 75% kneecap "
-                    r"height \1x10/leg, 30s rest between sets → Front Lunges \1x10/leg, 30s rest between sets\. 60s "
+                    r"Warm-up 10 min easy \(jog or mobility\) → Split Jump Squats (\d+)x10, 60s rest between sets → "
+                    r"Squat Jumps \1x10, 60s rest between sets → Box Step-Ups at 75% kneecap height \1x10/leg, 30s "
+                    r"rest between sets → Front Lunges \1x10/leg, 30s rest between sets → Cool-down 5 min easy "
+                    r"stretching\. Overall: Straight sets, finish every set of one exercise before the next, 60s "
                     r"between exercises\. Aim for a low-grade burn in the quads and glutes; ignore heart rate\. Keep "
                     r"the next two days easy\.",
-                    r"Straight sets: tập xong mọi hiệp của một bài rồi mới sang bài tiếp. Split Jump Squats \1x10, "
-                    r"nghỉ 60s giữa các hiệp → Squat Jumps \1x10, nghỉ 60s giữa các hiệp → Box Step-Ups cao 75% đầu "
-                    r"gối \1x10/chân, nghỉ 30s giữa các hiệp → Front Lunges \1x10/chân, nghỉ 30s giữa các hiệp. Nghỉ "
+                    r"Warm-up 10 phút nhẹ (chạy chậm hoặc xoay khớp) → Split Jump Squats \1x10, nghỉ 60s giữa các "
+                    r"hiệp → Squat Jumps \1x10, nghỉ 60s giữa các hiệp → Box Step-Ups cao 75% đầu gối \1x10/chân, "
+                    r"nghỉ 30s giữa các hiệp → Front Lunges \1x10/chân, nghỉ 30s giữa các hiệp → Cool-down 5 phút "
+                    r"giãn cơ nhẹ. Overall: Straight sets, tập xong mọi hiệp của một bài rồi mới sang bài tiếp, nghỉ "
                     r"60s giữa các bài. Cơ đùi trước và mông chỉ cần hơi rát; bỏ qua HR. Hai ngày sau chỉ tập nhẹ.",
                     s,
                 )

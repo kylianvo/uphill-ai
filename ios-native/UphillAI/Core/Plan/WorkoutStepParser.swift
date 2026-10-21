@@ -94,16 +94,18 @@ enum WorkoutStepParser {
         ("common mistake", .warning), ("warning", .warning), ("mistake", .warning),
         ("how to execute", .process), ("process", .process), ("execution", .process), ("steps", .process),
         ("overall", .intent), ("overview", .intent),
+        // Vietnamese plans: the server's copy lexicon rewrites the English labels to these.
+        ("tổng quan", .intent), ("lý do", .builds), ("lợi ích", .builds), ("lưu ý", .warning), ("cách làm", .process),
     ]
 
     /// Descriptions arrive with sections separated by newlines or by " / ".
     static func stripSectionMetadata(_ text: String) -> String {
-        let pattern = #"(?i)\s*(?:\b(?:overall|overview|reason|why|benefit|builds|what it builds|warning|common mistake|mistake|coach note|coach uphill note)\s*[:\-]).*$"#
+        let pattern = #"(?i)\s*(?:\b(?:overall|overview|reason|why|benefit|builds|what it builds|warning|common mistake|mistake|coach note|coach uphill note|tổng quan|lý do|lợi ích|lưu ý)\s*[:\-]).*$"#
         return text.replacingOccurrences(of: pattern, with: "", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func segments(of text: String) -> [String] {
-        let keywordPattern = #"(?i)(?<=[.!?;]|\s)\s*(?=(?:overall|overview|reason|why|benefit|builds|what it builds|warning|common mistake|mistake|coach note|coach uphill note|process|execution|steps)\s*[:\-])"#
+        let keywordPattern = #"(?i)(?<=[.!?;]|\s)\s*(?=(?:overall|overview|reason|why|benefit|builds|what it builds|warning|common mistake|mistake|coach note|coach uphill note|process|execution|steps|tổng quan|lý do|lợi ích|lưu ý|cách làm)\s*[:\-])"#
         let normalized = text
             .replacingOccurrences(of: keywordPattern, with: "\n", options: .regularExpression)
             .replacingOccurrences(of: #"\s+/\s+"#, with: "\n", options: .regularExpression)
@@ -208,6 +210,27 @@ enum WorkoutStepParser {
                 return !lower.hasPrefix("overall:") && !lower.hasPrefix("reason:") && !lower.hasPrefix("why:") && !lower.hasPrefix("benefit:") && !lower.hasPrefix("warning:")
             }
             .map { cleanStepText($0, prefix: "main set:") }
+            .filter { !$0.isEmpty }
+        // A run with strides, or a gym session, written as "→" steps: one card per step, so the steady
+        // running and the strides (or each exercise) read separately. Interval and treadmill views keep one card.
+        let ownCards = processText.contains("→") && cleanMainSteps.count >= 2 && !isTreadmill
+            && (workout.intervalReps ?? 0) == 0
+            && !cleanMainSteps.contains { $0.lowercased().hasPrefix("target pace") }
+        if ownCards {
+            for (index, step) in cleanMainSteps.enumerated() {
+                let reps = detectReps(step)
+                items.append(ExecutionStepItem(
+                    id: "main-\(index)",
+                    phase: .main,
+                    duration: reps != nil ? nil : leadingMinutes(of: step)
+                        ?? (step.range(of: #"(?i)rest|nghỉ"#, options: .regularExpression) == nil ? extractMinutes(step) : nil),
+                    target: reps?.reps ?? step,
+                    recovery: reps?.recovery,
+                    // the recovery has its own line: "6 × 15 s strides with easy jog back" -> "6 × 15 s strides"
+                    steps: [reps?.recovery == nil ? step : (step.components(separatedBy: " with ").first ?? step)]
+                ))
+            }
+        } else {
         items.append(ExecutionStepItem(
             id: "main",
             phase: .main,
@@ -216,6 +239,7 @@ enum WorkoutStepParser {
             recovery: recovery,
             steps: cleanMainSteps.isEmpty ? [mainTarget] : cleanMainSteps
         ))
+        }
 
         // 3. Cool-down
         if !workout.isRest {
@@ -335,7 +359,7 @@ enum WorkoutStepParser {
     /// "25 min steady running @ Zone 1-2" -> "25 min"; nil unless the line opens with a duration.
     private static func leadingMinutes(of text: String?) -> String? {
         guard let text,
-              let range = text.range(of: #"^\s*(?:main set:?\s*)?(\d+(?:[–\-]\d+)?\s*min)\b"#,
+              let range = text.range(of: #"^\s*(?:main set:?\s*)?(\d+(?:[–\-]\d+)?\s*(?:min|phút))(?![\p{L}])"#,
                                      options: [.regularExpression, .caseInsensitive]) else { return nil }
         return extractMinutes(String(text[range]))
     }

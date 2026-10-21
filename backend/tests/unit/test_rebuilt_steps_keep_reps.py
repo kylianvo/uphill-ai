@@ -1,5 +1,6 @@
-"""A session whose step text is rebuilt keeps its strides in the text; rep fields the text no longer describes are
-cleared (prod plan 129: the app showed '5 x 15 s' as the main set of an easy run whose steps had no strides)."""
+"""Only Interval / Walk-Run sessions carry rep fields: the app shows them as the main set (prod plan 129 showed
+'5 x 15 s' on an easy run whose steps said '20 min steady Zone 2'). On other runs the strides or hill sprints move
+into their own step of the text; gym / ME text reads warm-up → one exercise per step → cool-down."""
 
 import asyncio
 import json
@@ -9,16 +10,16 @@ from unittest.mock import MagicMock, patch
 from services.plan_generator import PlanGenerator
 
 
-def _session(title: str, reps: int, value: int, description: str) -> dict:
+def _session(title: str, typ: str, minutes: int, reps: int, value: int, description: str) -> dict:
     return {
         "week_number": 1,
         "day_of_week": "Friday",
         "phase": "Base",
         "title": title,
-        "type": "Easy",
-        "duration_minutes": 40,
+        "type": typ,
+        "duration_minutes": minutes,
         "target_zone": "Zone 2",
-        "distance_km": 6.5,
+        "distance_km": round(minutes / 6, 1),
         "elevation_gain_m": 0,
         "interval_reps": reps,
         "interval_rep_value": value,
@@ -28,9 +29,9 @@ def _session(title: str, reps: int, value: int, description: str) -> dict:
     }
 
 
-def _generate(sessions: list[dict]) -> list[dict]:
+def _generate(session: dict) -> dict:
     client = MagicMock()
-    client.models.generate_content.return_value = SimpleNamespace(text=json.dumps(sessions), usage_metadata=None)
+    client.models.generate_content.return_value = SimpleNamespace(text=json.dumps([session]), usage_metadata=None)
     with (
         patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
         patch("google.genai.Client", return_value=client),
@@ -45,24 +46,55 @@ def _generate(sessions: list[dict]) -> list[dict]:
                 block_number=1,
             )
         )
-    return workouts
+    return next(w for w in workouts if w["day_of_week"] == "Friday" and w["type"] != "Rest")
 
 
-def test_rebuilt_easy_run_keeps_its_strides():
-    # steps add up to 15 of 40 min, so the text is rebuilt from the header
-    [wo] = [
-        w
-        for w in _generate([_session("Aerobic Base Run + Strides", 5, 15, "Warm up 5 min → 5 min easy → 5 min cool")])
-        if "Strides" in (w.get("title") or "")
-    ]
-    assert wo["interval_reps"] == 5
-    assert "5 × 15 s strides" in wo["description"]
+def test_easy_run_strides_become_their_own_step_before_the_cooldown():
+    # the steps already add up (prod case), so nothing else rewrites the text
+    wo = _generate(
+        _session(
+            "Aerobic Base Run + Strides",
+            "Easy",
+            40,
+            5,
+            15,
+            "Warm-up 5 min easy → 30 min steady Zone 2 → Cool-down 5 min easy.",
+        )
+    )
+    assert wo["interval_reps"] is None
+    steps = wo["description"].rstrip(".").split(" → ")
+    assert steps[-2] == "5 × 15 s strides with easy jog back between"
+    assert steps[-1].startswith("Cool-down")
 
 
-def test_rebuilt_run_drops_rep_fields_it_cannot_describe():
-    [wo] = [
-        w
-        for w in _generate([_session("Recovery Run + Core", 3, 45, "Warm up 5 min → 5 min easy → 5 min cool")])
-        if "Core" in (w.get("title") or "") or w.get("day_of_week") == "Friday"
-    ]
+def test_rep_fields_without_strides_or_sprints_are_dropped():
+    wo = _generate(
+        _session(
+            "Recovery Run + Core",
+            "Easy",
+            40,
+            3,
+            45,
+            "Warm-up 5 min easy → 30 min steady Zone 2 → Cool-down 5 min easy.",
+        )
+    )
     assert wo["interval_reps"] is None and wo["interval_rep_value"] is None
+    assert "×" not in wo["description"]
+
+
+def test_gym_session_gets_warmup_and_cooldown_steps_around_its_exercises():
+    wo = _generate(
+        _session(
+            "Gym ME",
+            "Muscular Endurance",
+            45,
+            0,
+            0,
+            "Process: Step-ups 4x10/leg, 30s rest → Walking Lunges 4x10/leg, 30s rest. Overall: climbing legs.",
+        )
+    )
+    body, note = wo["description"].split(" Overall:")
+    steps = body.removeprefix("Process: ").rstrip(".").split(" → ")
+    assert steps[0].startswith("Warm-up") and steps[-1].startswith("Cool-down")
+    assert steps[1:3] == ["Step-ups 4x10/leg, 30s rest", "Walking Lunges 4x10/leg, 30s rest"]
+    assert note.strip() == "climbing legs."
