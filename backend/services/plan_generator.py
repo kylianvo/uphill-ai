@@ -1663,6 +1663,42 @@ class PlanGenerator:
                         )
                         eve["grade_percent"] = long.get("grade_percent") or 0
 
+        def _respect_days(wos: list[dict[str, Any]]) -> None:
+            """A week never has more training days than the athlete chose: the model adds a fourth session for a
+            three-day athlete. The lowest-value extras (strength, recovery, then the shortest easy run) become rest."""
+            limit = int(days_per_week or 0)
+            if not limit:
+                return
+            by_week: dict[int, list[dict[str, Any]]] = {}
+            for wo in wos:
+                if isinstance(wo.get("week_number"), int):
+                    by_week.setdefault(wo["week_number"], []).append(wo)
+            order = ("Strength", "Recovery", "Easy", "Aerobic Capacity")
+            for rows in by_week.values():
+                active = [r for r in rows if r.get("type") != "Rest" and float(r.get("duration_minutes") or 0) > 0]
+                while len({r["day_of_week"] for r in active}) > limit:
+                    extras = [r for r in active if r.get("type") in order]
+                    if not extras:
+                        break
+                    drop = min(extras, key=lambda r: (order.index(r["type"]), float(r["duration_minutes"])))
+                    drop.update(
+                        type="Rest",
+                        title="Rest & Regeneration" if lang != "vi" else "Nghỉ ngơi và phục hồi",
+                        description="Rest day. Sleep, light stretching and recovery."
+                        if lang != "vi"
+                        else "Ngày nghỉ. Ngủ đủ, giãn cơ nhẹ và phục hồi.",
+                        duration_minutes=0.0,
+                        target_pace="",
+                        distance_km=0.0,
+                        elevation_gain_m=0.0,
+                        grade_percent=0.0,
+                        treadmill_incline="0",
+                        treadmill_speed="0",
+                        mountain_mode=None,
+                        mountain_climb_rate=None,
+                    )
+                    active.remove(drop)
+
         def _trail_steps(description: str | None, rate: float) -> str | None:
             """Step paces on a trail session follow the climb: the flat easy-to-tempo band is scaled by it."""
             if not description or not rate:
@@ -1705,15 +1741,25 @@ class PlanGenerator:
                     if r.get("day_of_week") in days_idx
                     and (r.get("type") == "Muscular Endurance" or plan_lint._climbs(r))
                 ]  # ME and other climbing sessions: keep the climb session a day clear of them
-                pool = [
-                    r
+
+                def _candidates(clear_of: list[int]) -> list[dict[str, Any]]:
+                    return [
+                        r
+                        for r in rows
+                        if r.get("type") in ("Easy", "Aerobic Capacity")
+                        and r.get("day_of_week") != eve
+                        and all(abs(days_idx.get(r["day_of_week"], -9) - i) > 1 for i in clear_of)
+                        and not venues.hills_on(r["day_of_week"])
+                        and float(r.get("duration_minutes") or 0) >= 40
+                    ]
+
+                climb_days = [
+                    days_idx[r["day_of_week"]]
                     for r in rows
-                    if r.get("type") in ("Easy", "Aerobic Capacity")
-                    and r.get("day_of_week") != eve
-                    and all(abs(days_idx.get(r["day_of_week"], -9) - i) > 1 for i in legs)
-                    and not venues.hills_on(r["day_of_week"])
-                    and float(r.get("duration_minutes") or 0) >= 40
+                    if r.get("day_of_week") in days_idx and plan_lint._climbs(r)
                 ]
+                # Prefer a day clear of ME and other climbs; with few run days, only keep clear of other climbs.
+                pool = _candidates(legs) or _candidates(climb_days)
                 if not pool:
                     continue
                 wo = max(pool, key=lambda r: float(r["duration_minutes"]))
@@ -1870,6 +1916,10 @@ class PlanGenerator:
                 wo["treadmill_incline"], wo["treadmill_speed"] = PlanGenerator.resolve_treadmill_settings(
                     wo, flat_pace, use_treadmill, max_incline=venues.treadmill_incline_cap
                 )
+                if venues.hills_on(wo["day_of_week"]) and any(
+                    kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS
+                ):  # sprints on a day with hills run outdoors: no treadmill settings
+                    wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
                 # An incline session climbs: report the vert it earns instead of the 0 m an indoor run would show.
                 try:
                     incline = sum(float(x) for x in str(wo["treadmill_incline"]).split("-")) / len(
@@ -1922,6 +1972,7 @@ class PlanGenerator:
                 if isinstance(wo.get("week_number"), int):
                     wo["phase"] = PlanGenerator.phase_for_week(wo["week_number"], total_weeks)
             _cap_hard_dose(wos)
+            _respect_days(wos)
             _ramp_volume(wos)
             _progress_long_runs(wos)
             _add_climb_session(wos)
