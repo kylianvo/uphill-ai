@@ -59,7 +59,7 @@ export default function RaceBreakdownCard({
         <p style={{ margin: 0, fontSize: "13px", color: "var(--text-secondary)" }}>
           {lang === "en"
             ? "No athletes currently have an active plan with a target race."
-            : "Chưa có VĐV nào có giáo án với race mục tiêu."}
+            : "Chưa có VĐV nào có plan với race mục tiêu."}
         </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

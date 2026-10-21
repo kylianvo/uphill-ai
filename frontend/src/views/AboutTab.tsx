@@ -94,7 +94,7 @@ export default function AboutTab({ isMobile, handleTabSwitch }: { isMobile: bool
 
                 ? " to ensure your training plans are rooted in proven aerobic capacity building and terrain-specific muscular endurance."
 
-                : ". Nhờ đó, các giáo án tập luyện của bạn luôn được xây dựng dựa trên những phương pháp cải thiện sức bền hiếu khí và sức bền cơ bắp đặc thù theo từng địa hình đã được kiểm chứng."}
+                : ". Nhờ đó, các plan tập luyện của bạn luôn được xây dựng dựa trên những phương pháp cải thiện sức bền hiếu khí và sức bền cơ bắp đặc thù theo từng địa hình đã được kiểm chứng."}
 
             </p>
 
@@ -144,7 +144,7 @@ export default function AboutTab({ isMobile, handleTabSwitch }: { isMobile: bool
 
                 ? " using these exact principles, this app was built to democratize that specific training science for everyone."
 
-                : " nhờ áp dụng chính xác các nguyên lý này, ứng dụng được ra đời với mong muốn chia sẻ và đưa những kiến thức khoa học tập luyện chuyên sâu này đến gần hơn với tất cả mọi người."
+                : " nhờ áp dụng chính xác các nguyên lý này, ứng dụng được ra đời với mong muốn chia sẻ và đưa những kiến thức khoa học tập luyện này đến gần hơn với tất cả mọi người."
 
               }
 
