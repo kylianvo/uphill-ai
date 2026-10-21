@@ -2068,6 +2068,21 @@ class PlanGenerator:
             from services.plan_quality import _STEP_MIN
 
             pace_token = re.compile(r"\s*@?\s*\d{1,2}:\d{2}(?:\s*[-–]\s*\d{1,2}:\d{2})?\s*/\s*km")
+
+            def _rebuilt(wo: dict[str, Any], text: str) -> str:
+                """A rebuilt description keeps the strides / hill sprints the rep fields describe; rep fields the
+                new text cannot describe are cleared, or the app shows them as the main set."""
+                title = (wo.get("title") or "").lower()
+                kind = "hill sprints" if "sprint" in title else "strides" if "stride" in title else None
+                reps, value, unit = wo.get("interval_reps"), wo.get("interval_rep_value"), wo.get("interval_rep_unit")
+                if not (kind and reps and value and unit):
+                    wo["interval_reps"] = wo["interval_rep_value"] = wo["interval_rep_unit"] = None
+                    return text
+                block = f"{reps} × {float(value):g} {unit}"
+                if lang == "vi":
+                    return f"{text} Cuối phần chính: {block} {kind}, chạy nhẹ hồi phục giữa các lần."
+                return f"{text} Near the end of the main block: {block} {kind}, easy jog between."
+
             for wo in wos:
                 typ = wo.get("type")
                 minutes = int(round(float(wo.get("duration_minutes") or 0)))
@@ -2105,12 +2120,13 @@ class PlanGenerator:
                     if naturalness_issues(clean_title, _proper_nouns):
                         wo["title"] = _VI_TITLES.get(typ, clean_title)
                     if naturalness_issues(clean_desc, _proper_nouns) and typ != "Interval":
-                        desc = wo["description"] = (
+                        desc = wo["description"] = _rebuilt(
+                            wo,
                             _long_text(minutes, climbing)
                             if typ == "Long Run"
                             else _me_text()
                             if typ in ("Muscular Endurance", "Strength")
-                            else _easy_text(minutes, wo.get("target_zone"), incline, climbing)
+                            else _easy_text(minutes, wo.get("target_zone"), incline, climbing),
                         )
                 if climbing and incline < 3:  # the header carries the trail pace; road paces in the steps contradict it
                     desc = re.sub(r" {2,}", " ", pace_token.sub("", desc))
@@ -2118,10 +2134,11 @@ class PlanGenerator:
                 if typ in ("Easy", "Aerobic Capacity", "Recovery", "Long Run", "Tempo"):
                     nums = [int(n) for n in _STEP_MIN.findall(desc)]
                     if len(nums) >= 2 and abs(sum(nums) - minutes) / minutes > 0.15:
-                        wo["description"] = (
+                        wo["description"] = _rebuilt(
+                            wo,
                             _long_text(minutes, climbing)
                             if typ == "Long Run"
-                            else _easy_text(minutes, wo.get("target_zone"), incline, climbing)
+                            else _easy_text(minutes, wo.get("target_zone"), incline, climbing),
                         )
                         note = VN_MOUNTAIN_NOTE_VI if lang == "vi" else VN_MOUNTAIN_NOTE_EN
                         keep_note = f" {note}" if note in (wo.get("fueling_tip") or "") else ""
