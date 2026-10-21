@@ -173,4 +173,18 @@ def assess(workouts: list[dict[str, Any]], race: dict[str, Any], zone2_pace: str
     checks.append(
         Check("step minutes add up to the session (no padding)", len(padded) <= 3, f"{len(padded)}: {padded[:3]}")
     )
+    if race.get("lang") == "vi":
+        from services.vi_style import naturalness_issues
+
+        flagged = [
+            (
+                w["week_number"],
+                w["day_of_week"][:3],
+                naturalness_issues(f"{w.get('title') or ''}. {w.get('description') or ''}"),
+            )
+            for w in _real(workouts)
+            if w.get("type") != "Race"
+        ]
+        flagged = [f for f in flagged if f[2]]
+        checks.append(Check("Vietnamese copy: no unnatural wording", not flagged, f"{len(flagged)}: {flagged[:3]}"))
     return checks

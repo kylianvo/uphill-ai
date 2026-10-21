@@ -25,6 +25,7 @@ from services.plan_rules import build_rules_block, me_runway, me_status_block
 from services.training_mountains import MOUNTAINS, default_min_minutes, long_run_climb_rate
 from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
 from services.training_venues import INCLINE_TRAINER_MIN, STANDARD_TREADMILL_MAX, Venues
+from services.vi_style import naturalness_issues, sanitize_belt, sanitize_vi, vi_sentence_case  # noqa: F401
 
 _logger = get_logger(__name__)
 
@@ -176,7 +177,11 @@ def narrative_lang_instruction(race_info: dict[str, Any], text_sample: str) -> s
             "- Style: titles and sentences in sentence case (only the first word capitalised, never Title Case). No hype adjectives in titles or steps "
             "('Bùng Nổ', 'Tươi Mới', 'Tiến Hóa', 'Mạnh Mẽ'). Do not translate Hill Sprints, Strides, Warm-up, Cool-down, Power-hiking: keep them in English. "
             "Write minutes as 'phút'. Never double a word ('dốc dốc'); use plain words a Zalo running group uses ('leo dốc', 'xả mỏi cơ'), not invented or physiology-textbook phrases. "
-            "Never tell the athlete to jump onto a moving treadmill belt: start the belt at walking speed, then step on."
+            "Never tell the athlete to jump onto a moving treadmill belt: start the belt at walking speed, then step on.\n"
+            "- Do not mention internal planning rules (weekly caps, percentages, minimum-duration requirements) in titles, steps or notes.\n"
+            "- Examples. Bad: 'Hill Sprints Bùng Nổ', 'Strides Tươi Mới', 'Tiến Hóa Tuần 3', 'bốc dốc', 'giải phóng ứ đọng cơ', "
+            "'phát triển ti thể và đốt chất béo'. Good: 'Hill Sprints', 'Easy Run và Strides', 'Tuần 3', 'leo dốc', 'xả mỏi cơ', "
+            "'tích lũy khối lượng aerobic', 'chủ động chuyển sang power-hiking ở các đoạn dốc trên 10% để giữ nhịp tim'."
         )
     else:
         lang_instruction = "Respond in English."
@@ -194,85 +199,6 @@ VN_MOUNTAIN_NOTE_VI = (
     "sau mưa đá và đất sét rất trơn, hãy rút ngắn sải chân, dùng gậy hoặc tay ở đoạn dốc đứng; chuyến xe về cũng là "
     "một phần tải, hãy ăn uống trên xe và giữ ngày hôm sau nhẹ."
 )
-
-_VI_TECH_TERMS = {  # kept as written when a Title Case heading is converted to sentence case
-    "Easy", "Run", "Long", "Tempo", "Threshold", "Interval", "Recovery", "Muscular", "Endurance", "ME", "Strength",
-    "Zone", "AeT", "AnT", "HR", "Deload", "Taper", "D+", "Race", "Ultra", "Trail", "Road", "Treadmill", "Hill",
-    "Sprints", "Strides", "Warm-up", "Cool-down", "Power-hiking", "Climb", "Session", "Fartlek", "Surges", "Pace",
-    "Plan", "Coach", "Aerobic", "Anaerobic", "RPE", "Fueling", "Carbs", "Sodium", "GPX", "Repeats", "Repeat",
-}  # fmt: skip
-
-
-def vi_sentence_case(title: str, keep: frozenset[str] = frozenset()) -> str:
-    """A Title Case Vietnamese heading ('Buổi Chạy Đường Dài') becomes sentence case; English technical terms,
-    numbers and acronyms keep their form. Short or already sentence-case titles are untouched."""
-    words = title.split()
-    capped = [w for w in words if w[:1].isupper()]
-    if len(words) < 3 or len(capped) < 0.6 * len(words):
-        return title
-    out = [
-        w
-        if (
-            w.strip(".,:;()") in _VI_TECH_TERMS
-            or w.strip(".,:;()") in keep
-            or any(c.isdigit() for c in w)
-            or w.isupper()
-        )
-        else w.lower()
-        for w in words
-    ]  # proper nouns (mountain and race names) in `keep` stay capitalised
-    out[0] = out[0][:1].upper() + out[0][1:]
-    return " ".join(out)
-
-
-_UNSAFE_BELT = (  # never a jump onto a moving treadmill belt, in either language
-    (r"jump(?:ing)?\s+(?:on|onto)\s+(?:the\s+)?(?:moving\s+)?(?:belt|treadmill)", "step onto the belt only after it is running at walking speed"),
-    (r"nhảy\s+(?:vào|lên)\s+(?:belt|băng chuyền|máy chạy)(?:\s+bứt tốc)?", "bước lên belt khi belt đang chạy ở tốc độ đi bộ"),
-)  # fmt: skip
-
-_VI_REPLACEMENTS = (  # the app's Vietnamese copy contract: never these words for training volume or hype
-    (r"\s+bùng nổ", ""),
-    (r"\s+tươi mới", ""),
-    (r"tiến hóa", "tiến triển"),
-    (r"bằng phẳng phẳng lặng", "bằng phẳng"),
-    (r"\bdốc dốc\b", "dốc"),
-    (r"\bphẳng phẳng\b", "phẳng"),
-    (r"bốc dốc", "leo dốc"),
-    (r"giải phóng ứ đọng cơ", "xả mỏi cơ"),
-    (r"phát triển ti thể", "phát triển nền tảng aerobic"),
-    (r"đốt (?:chất )?béo(?: làm năng lượng)?", "dùng mỡ làm năng lượng"),
-    (r"\bly tâm\b", "lệch tâm"),  # eccentric, not centrifugal
-    (r"vô tội vạ", "thoải mái"),
-    (r"nước rút hiếu khí", "tăng tốc ngắn"),
-    (r"thể tích(?! tâm thu)", "khối lượng"),  # "thể tích tâm thu" is stroke volume and stays
-    (r"tối ưu hóa", "cải thiện"),
-    (r"bứt phá", "tăng tốc"),
-    (r"chuyên sâu", "chuyên biệt"),
-    (r"đột phá", "cải thiện rõ rệt"),
-    (r"giáo án", "lịch tập"),
-    (r"sinh lý", "thể chất"),
-)
-
-
-def sanitize_vi(text: str) -> str:
-    """Replaces the banned Vietnamese words and phrases (skill: uphill-ai-vietnamese-copy) the model still writes,
-    and rewrites any instruction to jump onto a moving treadmill belt."""
-    import re
-
-    for pattern, replacement in _VI_REPLACEMENTS + _UNSAFE_BELT:
-        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
-    # a word the model repeats by accident ("Khởi động động", "nước rút rút", "dốc dốc")
-    text = re.sub(r"\b(\w{3,})\s+\1\b", r"\1", text, flags=re.IGNORECASE)
-    text = re.sub(r"(Khởi động) động\b", r"\1", text)
-    text = re.sub(r"(nước rút) rút\b", r"\1", text)
-    return text
-
-
-def sanitize_belt(text: str) -> str:
-    """The same treadmill-belt safety rewrite for English plans."""
-    import re
-
-    return re.sub(_UNSAFE_BELT[0][0], _UNSAFE_BELT[0][1], text, flags=re.IGNORECASE)
 
 
 class PlanGenerator:
@@ -1770,6 +1696,24 @@ class PlanGenerator:
                 return "Take 30-60 g carbs per hour and fluids."
             return "Take 60-90 g carbs and 500-700 mg sodium per hour; practise the race products."
 
+        _VI_TITLES = {
+            "Easy": "Easy Run",
+            "Aerobic Capacity": "Aerobic Run",
+            "Recovery": "Recovery Run",
+            "Long Run": "Long Run",
+            "Tempo": "Tempo Run",
+            "Muscular Endurance": "Buổi ME",
+            "Strength": "Buổi Strength",
+        }
+
+        def _me_text() -> str:
+            if lang == "vi":
+                return (
+                    "Warm-up 10 phút nhẹ → 3-4 vòng step-up, squat, lunge và plank, nghỉ 2-3 phút giữa các vòng "
+                    "→ Cool-down 5 phút nhẹ."
+                )
+            return "Warm-up 10 min easy → 3-4 rounds of step-ups, squats, lunges and planks, 2-3 min rest between rounds → Cool-down 5 min easy."
+
         def _easy_text(minutes: int, zone: str | None, incline: float, climbing: bool) -> str:
             warm = 10 if minutes >= 45 else (5 if minutes >= 20 else 0)
             cool = 5 if minutes >= 30 else 0
@@ -1863,6 +1807,18 @@ class PlanGenerator:
                     continue
                 km = float(wo.get("distance_km") or 0)
                 climbing = km > 0 and float(wo.get("elevation_gain_m") or 0) / km >= 15
+                if lang == "vi":  # naturalness gate: text that still reads unnatural becomes a reviewed template
+                    clean_title, clean_desc = sanitize_vi(wo.get("title") or ""), sanitize_vi(desc)
+                    if naturalness_issues(clean_title, _proper_nouns):
+                        wo["title"] = _VI_TITLES.get(typ, clean_title)
+                    if naturalness_issues(clean_desc, _proper_nouns) and typ != "Interval":
+                        desc = wo["description"] = (
+                            _long_text(minutes, climbing)
+                            if typ == "Long Run"
+                            else _me_text()
+                            if typ in ("Muscular Endurance", "Strength")
+                            else _easy_text(minutes, wo.get("target_zone"), incline, climbing)
+                        )
                 if climbing and incline < 3:  # the header carries the trail pace; road paces in the steps contradict it
                     desc = re.sub(r" {2,}", " ", pace_token.sub("", desc))
                     wo["description"] = desc

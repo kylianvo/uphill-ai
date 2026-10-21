@@ -1453,3 +1453,22 @@ class TestTrailStepPaces:
         out = scale_step_paces(text, (4.4, 6.2), 60)  # 60 m D+/km: x1.72
         assert "9:28" in out and "8:19" in out  # 5:30 and 4:50 scaled
         assert "3:20/km" in out  # sprint pace untouched
+
+
+class TestViStyle:
+    def test_known_weird_phrases_are_flagged_and_clean_text_is_not(self):
+        from services.vi_style import naturalness_issues, sanitize_vi
+
+        assert naturalness_issues("Hill Sprints Bùng Nổ cho bạn")  # banned hype word
+        assert "doubled-word" in naturalness_issues("Chạy dốc dốc nhẹ nhàng")
+        assert "title-case" in naturalness_issues("Buổi Chạy Đường Dài Cuối Tuần Này")
+        assert "english-sentence" in naturalness_issues("Warm up gently and run steadily on the soft grass today")
+        clean = "Warm-up 10 phút nhẹ → 40 phút Zone 2 đều, power-hiking đoạn dốc trên 10% → Cool-down 5 phút."
+        assert naturalness_issues(sanitize_vi(clean)) == []
+
+    def test_the_lexicon_replacements_cover_the_coach_examples(self):
+        from services.vi_style import sanitize_vi
+
+        out = sanitize_vi("giải phóng ứ đọng cơ, bốc dốc, vô tội vạ, ly tâm, thể tích tâm thu")
+        assert "ứ đọng" not in out and "bốc dốc" not in out and "vô tội vạ" not in out and "lệch tâm" in out
+        assert "thể tích tâm thu" in out  # stroke volume stays
