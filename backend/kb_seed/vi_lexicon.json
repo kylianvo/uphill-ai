@@ -104,6 +104,26 @@
     [
       "sinh lý",
       "thể chất"
+    ],
+    [
+      "\\bWarning:",
+      "Lưu ý:"
+    ],
+    [
+      "\\bFueling/notes:",
+      "Fueling / ghi chú:"
+    ],
+    [
+      "(\\d+)\\s*min\\b",
+      "\\1 phút"
+    ],
+    [
+      "\\bWarm up\\b",
+      "Warm-up"
+    ],
+    [
+      "mô phỏng độ cao",
+      "mô phỏng leo dốc"
     ]
   ],
   "banned": [

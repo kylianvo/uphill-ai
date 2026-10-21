@@ -49,7 +49,13 @@ def sanitize_vi(text: str) -> str:
     # a word the model repeats by accident ("Khởi động động", "nước rút rút", "dốc dốc")
     text = re.sub(r"\b(\w{3,})\s+\1\b", r"\1", text, flags=re.IGNORECASE)
     text = re.sub(r"(Khởi động) động\b", r"\1", text)
-    return re.sub(r"(nước rút) rút\b", r"\1", text)
+    text = re.sub(r"(nước rút) rút\b", r"\1", text)
+    from services.training_mountains import MOUNTAINS
+
+    for m in MOUNTAINS.values():  # the model lowercases place names ("núi hàm lợn")
+        place = m.name_vi.split(" ", 1)[1] if m.name_vi.split()[0] in ("Núi", "Trail") else m.name_vi
+        text = re.sub(rf"\b(núi|Núi|trail|Trail)\s+{re.escape(place)}\b", rf"\1 {place}", text, flags=re.IGNORECASE)
+    return text
 
 
 def vi_sentence_case(title: str, keep: frozenset[str] = frozenset()) -> str:

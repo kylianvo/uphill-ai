@@ -1597,7 +1597,7 @@ class PlanGenerator:
                 )
                 wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0
                 wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
-                wo["title"] = "AeT Drift Test (Zone 2)" if lang != "vi" else "Test drift AeT (Zone 2)"
+                wo["title"] = "AeT Drift Test (Zone 2)" if lang != "vi" else "Kiểm tra AeT bằng HR drift (Zone 2)"
                 wo["description"] = (
                     f"Warm-up 10 min easy → {main} min steady at the top of Zone 2 on flat ground, same effort "
                     f"throughout; note your average HR for the first and second half → Cool-down 10 min easy. If the "
