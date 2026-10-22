@@ -92,7 +92,15 @@ private struct MainTabs: View {
             }
             SwiftUI.Tab("Plan", systemImage: "figure.run", value: Tab.plan) {
                 PlanView(model: app.plan, generation: app.generation,
-                         onBuildPlan: { overlay = .setup(app.makeSetup(mode: app.session.user?.onboardingComplete == false ? .onboarding : .newPlan)) },
+                         onBuildPlan: {
+                             if app.actingAsAthlete != nil {
+                                 // Coaching: build for the runner, never for the coach's own account.
+                                 guard let athlete = app.coachedAthleteProfile else { return }
+                                 overlay = .setup(app.makeSetup(mode: .newPlan, athlete: athlete))
+                             } else {
+                                 overlay = .setup(app.makeSetup(mode: app.session.user?.onboardingComplete == false ? .onboarding : .newPlan))
+                             }
+                         },
                          onViewProgress: { overlay = .progress }, user: app.session.user,
                          onSharpen: { destination in
                              app.trainingDestination = destination

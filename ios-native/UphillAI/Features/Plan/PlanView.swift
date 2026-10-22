@@ -206,6 +206,16 @@ struct PlanView: View {
                         // 1. Race and goal header
                         raceGoalHeader
 
+                        if let app, let athlete = app.actingAsAthlete {
+                            CoachFocusCard(app: app, athleteId: athlete.athleteId, athleteName: athlete.displayName,
+                                           plan: model.snapshot?.plan,
+                                           onAdapt: { showAdapt = true },
+                                           onBuildPlan: onBuildPlan,
+                                           onBuildNextWeek: { showNextWeek = model.nextWeekOffer != nil },
+                                           onChanged: { await model.load() })
+                                .padding(.horizontal, UH.Space.regular)
+                        }
+
                         // 3. Summary carousel
                         SummaryCarousel(model: model,
                                         adapting: generation.running?.kind == .adaptWeek ? model.selectedWeek : nil,

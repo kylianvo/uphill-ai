@@ -78,6 +78,40 @@ struct Phase6CoachScreenshots {
         save(try athletes().environment(\.locale, AppLanguage.vi.locale), name: "athletes-vi", size: CGSize(width: 402, height: 2100))
     }
 
+    /// The coach card on a runner's Plan tab, served by a stub backend.
+    private func focusCard(_ name: String, review: String) throws -> some View {
+        let notes = try Fixture.data("coaching_notes.json")
+        let base = StubURLProtocol.register { request in
+            let path = request.url?.path ?? ""
+            if path.hasSuffix("/review") { return (200, Data(review.utf8)) }
+            if path.hasSuffix("/notes") { return (200, notes) }
+            return (200, json([:]))
+        }
+        let app = AppModel(tokenStore: InMemoryTokenStore("tok"), baseURL: { base }, session: StubURLProtocol.session(), cache: .inMemory())
+        app.coachDashboard = CoachDashboardData(overview: overview, roster: roster, invites: [])
+        let athlete = try #require(overview.athletes.first { $0.name == name })
+        let plan = try #require(athletePlan.plan)
+        let decodedReview = try JSONCoding.decoder.decode(PlanReview.self, from: Data(review.utf8))
+        let note = try Fixture.decode(CoachNotesResponse.self, "coaching_notes.json").notes.first
+        return ScrollView {
+            CoachFocusCard(app: app, athleteId: athlete.athleteId, athleteName: athlete.name, plan: plan,
+                           onAdapt: {}, onBuildPlan: {}, onBuildNextWeek: {}, onChanged: {},
+                           review: decodedReview, latestNote: note)
+                .padding(16)
+        }
+        .background(UH.Palette.surface)
+    }
+
+    @Test func renderCoachFocusActNow() async throws {
+        let view = try focusCard("Minh Tran", review: #"{"generated_block":6,"reviewed_block":6,"issues":[],"levers":[]}"#)
+        save(view, name: "coach-card-act-now", size: CGSize(width: 402, height: 520))
+    }
+
+    @Test func renderCoachFocusReview() async throws {
+        let review = #"{"generated_block":1,"reviewed_block":null,"issues":[{"code":"VOLUME_JUMP","week":1,"message":"m"},{"code":"LONG_RUN_GRADIENT","week":1,"message":"m"}],"feasibility":"stretch","levers":[]}"#
+        save(try focusCard("Huy Le", review: review), name: "coach-card-review", size: CGSize(width: 402, height: 620))
+    }
+
     @Test func renderAthletesNoMatch() throws {
         save(try athletes(RosterFilter(race: "Nowhere 10K")), name: "athletes-no-match")
     }
