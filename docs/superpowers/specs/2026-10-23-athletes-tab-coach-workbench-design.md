@@ -112,7 +112,7 @@ A pure function, `services/coach_signals.py: signals_for(athlete_ctx, today) -> 
 | act_now | `reported_pain` / `reported_sick` | a session missed with reason `pain` / `sick` in the last 7 days | "Logged pain Tue" |
 | act_now | `missed_many` | ≥3 sessions missed in the last 7 days | "Missed 3 sessions this week" |
 | act_now | `overload` | completed minutes in the current or previous week > 130% of planned (planned ≥ 60 min) | "Ran 78 km vs 52 planned" |
-| review_build | `plan_to_review` | any runner (Review **or** Coached) whose active plan was created by the athlete (`created_by_user_id = athlete`) and whose latest generated block is newer than the last reviewed block (`generated_block > coalesce(coach_reviewed_block, 0)`, see Phase 3). `params`: `block`, and `waiting_hours` since `plans.created_at` for block 1 (later blocks have no generation timestamp, so no wait time is shown) | "New plan · waiting 31 h" / "Block 2 to review" |
+| review_build | `plan_to_review` | any runner (Review **or** Coached) whose active plan was created by the athlete (`created_by_user_id = athlete`) and whose latest generated block is newer than the last reviewed block (`generated_block > coalesce(coach_reviewed_block, 0)`, see Phase 3). `params`: `block`, and `waiting_hours` since `plans.created_at` for block 1 (later blocks have no generation timestamp, so no wait time is shown) | "New plan · waiting 31 h" / "Week 5 to review" |
 | review_build | `needs_plan` | Coached runner with no active and no draft plan | "No plan yet" |
 | review_build | `draft_unpublished` | any runner with a draft plan (only coaches create drafts) | "Draft plan not published" |
 | review_build | `next_block_due` | the last **generated** week of the plan (current block) ends in ≤7 days and `total_weeks` is not reached | "Next block due in 5 days" |
@@ -209,7 +209,7 @@ Tapping a runner calls the existing `app.enterAthleteView` and switches to the P
 
 - It is computed on read and nothing is stored, because lint findings aren't persisted today.
 - `plan_lint.Issue` is only `{code, week, message}`, and `message` is English text written for the model retry prompt. So the device shows **one EN/VI sentence per `code`** plus the week number ("Week 9: volume jumps too fast"), and falls back to the raw `message` for an unknown code. `plan_lint.py` is not changed.
-- **Review happens per block** (decided by you). The next block's weeks are written into the **same** `plans` row (`_generate_next_block_for_athlete` saves into `request.plan_id`), so the review state is the last reviewed block number, not a single flag.
+- **Review happens per block, and a block is one week today** (`settings.WEEKS_PER_BLOCK = 1`), so **every new week a runner generates comes back to the coach** (decided by you, knowing it means weekly reviews). The next block's weeks are written into the **same** `plans` row (`_generate_next_block_for_athlete` saves into `request.plan_id`), so the review state is the last reviewed block number, not a single flag.
 - `generated_block` = the block containing the plan's highest generated `week_number` (`db.week_range_for_block` / `WEEKS_PER_BLOCK`).
 - `POST .../review` with `{ "note": "optional" }` sets `coach_reviewed_block = generated_block`, `coach_reviewed_at = NOW()`, `coach_reviewed_by`, and saves the note as a `coach_notes` row (`target_type='plan'`, `target_id=plan_id`). Calling it again for the same block changes nothing (idempotent).
 - Adapting a week does **not** clear the reviewed state. Generating the next block raises `generated_block`, so the plan shows up as "to review" again. When the **coach** generates the next block (`/api/coaching/athletes/{id}/generate-next-block`), that job also sets `coach_reviewed_block` to the new block on success: the coach built it, so there's nothing to review. A brand-new plan is a new row and starts unreviewed.
@@ -261,4 +261,4 @@ Access: every new endpoint uses `require_athlete_access` (or `require_coach` for
 
 ## Rollout
 
-Three PRs in order: Phase 1 → Phase 2 → Phase 3. Each one can be released on its own (Phase 1's iOS fixes need a TestFlight build). Migrations ship with Phase 2 (`plan_type`) and Phase 3 (`coach_reviewed_*`).
+Three PRs in order: Phase 1 → Phase 2 → Phase 3. Each one can be released on its own (Phase 1's iOS fixes need a TestFlight build). Both migrations (`plan_type` and `coach_reviewed_*`) ship with Phase 2, because the `plan_to_review` signal reads the review columns.
