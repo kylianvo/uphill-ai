@@ -15230,6 +15230,226 @@
           }
         }
       }
+    },
+    "Logged pain on %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Báo đau vào %@"
+          }
+        }
+      }
+    },
+    "Logged illness on %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Báo ốm vào %@"
+          }
+        }
+      }
+    },
+    "Missed %lld sessions this week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ %lld buổi tập tuần này"
+          }
+        }
+      }
+    },
+    "Did %lld min vs %lld planned": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tập %lld phút, plan %lld phút"
+          }
+        }
+      }
+    },
+    "New plan · waiting %lld h": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan mới · chờ %lld giờ"
+          }
+        }
+      }
+    },
+    "Week %lld to review": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần %lld cần duyệt"
+          }
+        }
+      }
+    },
+    "Draft plan not published": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan nháp chưa gửi"
+          }
+        }
+      }
+    },
+    "Next week due in %lld days": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ngày nữa đến tuần mới"
+          }
+        }
+      }
+    },
+    "%lld changes to approve": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld thay đổi cần duyệt"
+          }
+        }
+      }
+    },
+    "No watch sync for %lld days": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ngày chưa đồng bộ đồng hồ"
+          }
+        }
+      }
+    },
+    "Missed %@ on %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ %@ vào %@"
+          }
+        }
+      }
+    },
+    "Done %lld%% → %lld%%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn thành %lld%% → %lld%%"
+          }
+        }
+      }
+    },
+    "Done %lld%%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn thành %lld%%"
+          }
+        }
+      }
+    },
+    "HRV low %lld of the last 3 days": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HRV thấp %lld/3 ngày gần nhất"
+          }
+        }
+      }
+    },
+    "%lld easy days felt hard": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld buổi nhẹ thấy nặng"
+          }
+        }
+      }
+    },
+    "Races %1$@ in %2$lld days": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Còn %2$lld ngày đến %1$@"
+          }
+        }
+      }
+    },
+    "Starts %@ this week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vào %@ tuần này"
+          }
+        }
+      }
+    },
+    "Starts %@ next week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vào %@ tuần tới"
+          }
+        }
+      }
+    },
+    "Longest Long Run: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Long Run dài nhất: %@"
+          }
+        }
+      }
+    },
+    "Finished %@ phase": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xong giai đoạn %@"
+          }
+        }
+      }
+    },
+    "New result: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết quả mới: %@"
+          }
+        }
+      }
+    },
+    "New result: %@ %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết quả mới: %@ %@"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
