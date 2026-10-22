@@ -10,7 +10,15 @@ import telemetry
 from config import settings
 from db import block_number_for_week, get_plan_by_id, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
-from services import goal_demands, observability, plan_lint, race_readiness, recovery_baseline, week_layout
+from services import (
+    goal_demands,
+    observability,
+    plan_lint,
+    race_readiness,
+    recovery_baseline,
+    ultra_rules,
+    week_layout,
+)
 from services.athlete_tier import (
     LONG_SHARE_SOFT,
     MEASURED_THRESHOLD_SOURCES,
@@ -107,6 +115,23 @@ _NEVER_PRIORITY_TYPES = {"Rest", "Recovery", "Easy"}
 _PRIORITY_DAY_ORDER = {
     d: i for i, d in enumerate(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 }
+
+
+def rows_after_race(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The sessions planned after the goal race in its week: the day after a race is rest, never a recovery run.
+    Only the last race counts, so a mid-plan tune-up race keeps the rest of its week."""
+    races = [w for w in workouts if w.get("type") == "Race"]
+    if not races:
+        return []
+    goal = max(races, key=lambda w: (w.get("week_number") or 0, _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), 7)))
+    after = _PRIORITY_DAY_ORDER.get(goal.get("day_of_week"), 7)
+    return [
+        w
+        for w in workouts
+        if w.get("type") not in ("Race", "Rest")
+        and w.get("week_number") == goal.get("week_number")
+        and _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), -1) > after
+    ]
 
 
 def apply_priority_guard(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1106,13 +1131,13 @@ class PlanGenerator:
             profile = graduated_profile(
                 profile, max((race_readiness.weekly_km(ws, flat_pace_min_km) for ws in built.values()), default=0)
             )
-        profile = for_race(profile, race_info.get("course_distance_km"))
+        venues = Venues.from_race_info(race_info)
+        profile = for_race(profile, race_info.get("course_distance_km"), bool(venues.mountain_days))
         combined = prior + workouts
         try:
             days_per_week = int(race_info.get("days_per_week") or 0) or None
         except (TypeError, ValueError):
             days_per_week = None
-        venues = Venues.from_race_info(race_info)
         prefs = plan_lint.Prefs(
             long_run_day=race_info.get("long_run_day"),
             days_per_week=days_per_week,
@@ -1120,6 +1145,7 @@ class PlanGenerator:
             demands=None if target_week is not None else PlanGenerator.goal_demands_for(race_info, cutoff_time_hours),
             flat_only=not venues.local_hills and not venues.training_mountain and not venues.mountain_days,
             total_weeks=total_weeks,
+            mountain_day=bool(venues.mountain_days),
         )
         issues = plan_lint.lint_weeks(combined, weeks, profile, prefs)
         first = min(weeks) if weeks else 1
@@ -1379,8 +1405,15 @@ class PlanGenerator:
             )
         # Session caps follow the volume the athlete trains (like the lint), not only the level resolved at the start.
         tier_profile = for_race(
-            graduated_profile(get_profile(athlete_tier), current_weekly_km), race_info.get("course_distance_km")
+            graduated_profile(get_profile(athlete_tier), current_weekly_km),
+            race_info.get("course_distance_km"),
+            bool(venues.mountain_days),
         )
+        # An ultra trained on a weekly mountain day follows Quang's ladder (services/ultra_rules.py).
+        ultra = ultra_rules.applies(course_distance_km, venues.mountain_days)
+        ultra_advanced = ultra_rules.is_advanced(tier_profile.key)
+        ultra_quality_weeks = ultra_rules.quality_weeks(total_weeks) if ultra else frozenset()
+        ultra_gated = bool(hard_banned)  # AeT gate on: one minimum-dose Zone 3 session in the window (book)
 
         # Extract Zone 2 bounds and calculate personalized pacing zone ranges.
         # goal_type comes from the PLAN, not the user: the same athlete can hold a
@@ -1431,8 +1464,9 @@ class PlanGenerator:
             for wo in wos:
                 minutes = float(wo.get("duration_minutes") or 0)
                 zone = wo.get("target_zone")
+                z3_cap = ultra_rules.QUALITY_MAX_MIN if wo.get("week_number") in ultra_quality_weeks else 75
                 if wo.get("type") == "Race" or not (
-                    (zone == "Zone 3" and minutes > 75) or (zone in ("Zone 4", "Zone 5") and minutes > 70)
+                    (zone == "Zone 3" and minutes > z3_cap) or (zone in ("Zone 4", "Zone 5") and minutes > 70)
                 ):
                     continue
                 _to_easy(
@@ -1527,6 +1561,35 @@ class PlanGenerator:
         def _gate_hard(wos: list[dict[str, Any]]) -> None:
             """Book: with a measured AeT-AnT gap above 10% (or, while the thresholds are only estimates, in the Base
             phase) every run stays in Zones 1-2. Zone 3-5 sessions become easy runs; hill sprints and strides stay."""
+            if ultra:  # ladder plans: Zone 3 only, only in the quality window, at most the week's count
+                kept: dict[int, int] = {}
+                for wo in sorted(
+                    wos, key=lambda w: (w.get("week_number") or 0, _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), 7))
+                ):
+                    title = (wo.get("title") or "").lower()
+                    if (
+                        wo.get("target_zone") not in ("Zone 3", "Zone 4", "Zone 5")
+                        or wo.get("type") in ("Race", "Muscular Endurance", "Strength", "Rest")
+                        or any(kw in title for kw in plan_lint.NEUROMUSCULAR_KEYWORDS)
+                    ):
+                        continue
+                    week_no = wo.get("week_number") or 0
+                    allowed = (
+                        ultra_rules.quality_per_week(ultra_advanced, ultra_gated)
+                        if week_no in ultra_quality_weeks
+                        else 0
+                    )
+                    if wo.get("target_zone") == "Zone 3" and kept.get(week_no, 0) < allowed:
+                        kept[week_no] = kept.get(week_no, 0) + 1
+                        continue
+                    _to_easy(
+                        wo,
+                        "Easy Aerobic Run",
+                        "Easy Run nhẹ",
+                        "Easy aerobic run, Zone 2, conversational pace.",
+                        "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được.",
+                    )
+                return
             if not hard_banned:
                 return
             for wo in wos:
@@ -1547,30 +1610,32 @@ class PlanGenerator:
                         "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được.",
                     )
 
-        def _cap_start_load(wos: list[dict[str, Any]]) -> None:
-            """Week 1 may not exceed what the athlete runs now by more than RECENT_LOAD_GROWTH. The excess comes off
-            the easy runs (30 min minimum); the long run, ME and quality sessions stay."""
+        def _cap_start_load(wos: list[dict[str, Any]], weeks: tuple[int, ...] = (1,), floor: int = 30) -> None:
+            """The first weeks may not exceed what the athlete runs now by more than RECENT_LOAD_GROWTH. The excess
+            comes off the easy runs (`floor` min minimum); the long run, ME and quality sessions stay."""
             recent = recent_weekly_minutes(
                 current_weekly_km, PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier)
             )
-            rows = _week_rows(wos).get(1)
-            if not recent or not rows:
-                return
-            excess = plan_lint.week_minutes(rows) - recent * RECENT_LOAD_GROWTH
-            easy = [
-                r
-                for r in rows
-                if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")
-                and float(r.get("duration_minutes") or 0) > 30
-                and not r.get("mountain_mode")
-            ]
-            for r in sorted(easy, key=lambda r: -float(r["duration_minutes"])):
-                if excess <= 0:
-                    break
-                cut = min(excess, float(r["duration_minutes"]) - 30)
-                new = int(round((float(r["duration_minutes"]) - cut) / 5) * 5)
-                excess -= float(r["duration_minutes"]) - new
-                _resize(r, new)
+            by_week = _week_rows(wos)
+            for week_no in weeks:
+                rows = by_week.get(week_no)
+                if not recent or not rows:
+                    continue
+                excess = plan_lint.week_minutes(rows) - recent * RECENT_LOAD_GROWTH
+                easy = [
+                    r
+                    for r in rows
+                    if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")
+                    and float(r.get("duration_minutes") or 0) > floor
+                    and not r.get("mountain_mode")
+                ]
+                for r in sorted(easy, key=lambda r: -float(r["duration_minutes"])):
+                    if excess <= 0:
+                        break
+                    cut = min(excess, float(r["duration_minutes"]) - floor)
+                    new = int(round((float(r["duration_minutes"]) - cut) / 5) * 5)
+                    excess -= float(r["duration_minutes"]) - new
+                    _resize(r, new)
 
         def _cap_week_vert(wos: list[dict[str, Any]]) -> None:
             """No week carries more than 80% of the race's climbing: that is the race, not training for it. The excess
@@ -1605,9 +1670,11 @@ class PlanGenerator:
                     r["grade_percent"] = r["elevation_gain_m"] / (r["distance_km"] * 10) if r["distance_km"] else 0.0
 
         def _fit_taper_long_share(wos: list[dict[str, Any]]) -> None:
-            """A taper week whose short runs became rest keeps the long run within the athlete's long-run share."""
+            """A taper week whose short runs became rest keeps the long run within the athlete's long-run share, and
+            is lighter than the week before (the lint's TAPER_MAX_SHARE): the long run gives up the difference."""
             share = tier_profile.long_run_share_cap + LONG_SHARE_SOFT
-            for rows in _week_rows(wos).values():
+            by_week = _week_rows(wos)
+            for week_no, rows in sorted(by_week.items()):
                 long = next((r for r in rows if r.get("type") == "Long Run"), None)
                 if not long or rows[0].get("phase") != "Taper":
                     continue
@@ -1615,6 +1682,17 @@ class PlanGenerator:
                     float(r.get("duration_minutes") or 0) for r in rows if r is not long and r.get("type") != "Rest"
                 )
                 cap = max(others * share / (1 - share), 30.0)
+                before = plan_lint.week_minutes(by_week.get(week_no - 1) or [])
+                if before:
+                    cap = min(
+                        cap,
+                        max(
+                            before * plan_lint.TAPER_MAX_SHARE
+                            - plan_lint.week_minutes(rows)
+                            + float(long["duration_minutes"]),
+                            30.0,
+                        ),
+                    )
                 if float(long["duration_minutes"]) > cap:
                     _resize(long, int(cap // 5 * 5) or 30)
 
@@ -1771,7 +1849,7 @@ class PlanGenerator:
                 prior = get_plan_workouts(plan_id) if plan_id else []
             except Exception:  # noqa: BLE001
                 prior = []
-            cap_min = float(session_cap_minutes(tier_profile, course_distance_km))
+            cap_min = float(session_cap_minutes(tier_profile, course_distance_km, bool(venues.mountain_days)))
             by_week: dict[int, list[dict[str, Any]]] = {}
             for wo in wos:
                 if isinstance(wo.get("week_number"), int):
@@ -1793,6 +1871,20 @@ class PlanGenerator:
                     cap = peak_long * (0.6 if week_no == first_taper else 0.4)
                     if long and cap and float(long["duration_minutes"]) > cap * 1.05:
                         _resize(long, int(round(cap / 5) * 5))  # taper long run: about 60% then 40% of the peak
+                    continue
+                if ultra:  # Quang's ladder replaces the growth ask and the back-to-back weekend
+                    long = next((r for r in rows if r.get("type") == "Long Run"), None)
+                    recent = max(
+                        (
+                            float(w.get("duration_minutes") or 0)
+                            for w in prior + wos
+                            if w.get("type") == "Long Run" and week_no - 2 <= (w.get("week_number") or 0) < week_no
+                        ),
+                        default=0.0,
+                    )
+                    target = ultra_rules.long_run_target(ultra, ultra_advanced, week_no, total_weeks, recent or None)
+                    if long and target:
+                        _resize(long, target)
                     continue
                 if rows[0].get("phase") not in ("Base", "Build", "Peak") or PlanGenerator.is_deload_week(
                     week_no, total_weeks
@@ -1870,6 +1962,74 @@ class PlanGenerator:
                             float(long.get("elevation_gain_m") or 0) * sat_min / max(float(long["duration_minutes"]), 1)
                         )
                         eve["grade_percent"] = long.get("grade_percent") or 0
+
+        def _ultra_week_shape(wos: list[dict[str, Any]]) -> None:
+            """Quang's week around the mountain day: weekday easy runs in the band's range (the extra volume goes
+            here), the other weekend day shorter after a longer mountain day, and no ME in a week with a 6 h+ run."""
+            lo, hi = ultra_rules.weekday_minutes(ultra, ultra_advanced)
+            by_week = _week_rows(wos)
+            for week_no, rows in sorted(by_week.items()):
+                if rows[0].get("phase") not in ("Base", "Build", "Peak"):
+                    continue
+                long = next((r for r in rows if r.get("type") == "Long Run"), None)
+                long_min = float(long["duration_minutes"]) if long else 0.0
+                deload = ultra_rules.is_deload(week_no, total_weeks)
+                for wo in rows:
+                    day, kind = wo.get("day_of_week"), wo.get("type")
+                    minutes = float(wo.get("duration_minutes") or 0)
+                    if kind == "Muscular Endurance" and long_min >= ultra_rules.ME_FREE_LONG_RUN_MIN:
+                        _to_easy(
+                            wo,
+                            "Easy Aerobic Run",
+                            "Easy Run nhẹ",
+                            "Easy aerobic run, Zone 2, conversational pace. No ME this week: the long mountain day "
+                            "is the leg work.",
+                            "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được. Tuần này không tập ME: buổi leo núi dài "
+                            "đã đủ cho chân.",
+                        )
+                        _resize(wo, lo)
+                    elif (
+                        kind not in ("Easy", "Aerobic Capacity", "Recovery") or minutes <= 0 or wo.get("mountain_mode")
+                    ):
+                        continue
+                    elif long and day in ("Saturday", "Sunday") and day != long.get("day_of_week"):
+                        other = ultra_rules.other_day_minutes(long_min)
+                        if other != minutes:
+                            _resize(wo, other)
+                    elif day not in ("Saturday", "Sunday"):
+                        want = min(minutes if deload else max(minutes, lo), hi)
+                        if want != minutes:
+                            _resize(wo, int(want))
+                before = by_week.get(week_no - 1)
+                if not deload and before and not ultra_rules.is_deload(week_no - 1, total_weeks) and week_no > 1:
+                    # the ladder step is Quang's; the rest of the week still grows by the tier's weekly cap
+                    def rest_of(ws: list[dict[str, Any]]) -> float:
+                        return plan_lint.week_minutes([r for r in ws if r.get("type") != "Long Run"])
+
+                    excess = rest_of(rows) - rest_of(before) * (1 + tier_profile.max_weekly_progression)
+                    easy = [r for r in rows if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")]
+                    for r in sorted(easy, key=lambda r: -float(r.get("duration_minutes") or 0)):
+                        if excess <= 0:
+                            break
+                        minutes = float(r.get("duration_minutes") or 0)
+                        new = max(
+                            lo if r.get("day_of_week") not in ("Saturday", "Sunday") else 45,
+                            int((minutes - excess) // 5 * 5),
+                        )
+                        if new < minutes:
+                            excess -= minutes - new
+                            _resize(r, new)
+                if deload and before:  # a recovery week is one: at most 80% of the week before, off the easy runs
+                    excess = plan_lint.week_minutes(rows) - 0.8 * plan_lint.week_minutes(before)
+                    easy = [r for r in rows if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")]
+                    for r in sorted(easy, key=lambda r: -float(r.get("duration_minutes") or 0)):
+                        if excess <= 0:
+                            break
+                        minutes = float(r.get("duration_minutes") or 0)
+                        new = max(30, int((minutes - excess) // 5 * 5))
+                        if new < minutes:
+                            excess -= minutes - new
+                            _resize(r, new)
 
         def _make_rest(wo: dict[str, Any]) -> None:
             wo.update(
@@ -2142,10 +2302,28 @@ class PlanGenerator:
             """Book: a sub-elite ultra runner gets Zone 3 work in the build and peak weeks. When a build week has no
             Zone 3 or 4 session, one weekday easy run becomes a 30-40 min Zone 3 tempo, two days clear of the long
             run, ME and the back-to-back."""
-            if tier_profile.key != "sub_elite":
+            if tier_profile.key != "sub_elite" and not ultra:
                 return
             days = list(_PRIORITY_DAY_ORDER)
             for week_no, rows in _week_rows(wos).items():
+                if ultra:  # Quang's quality sessions: uphill/rolling Zone 3 intervals, only in the final 8 weeks
+                    if week_no not in ultra_quality_weeks:
+                        continue
+                    quality = [
+                        r
+                        for r in rows
+                        if r.get("target_zone") in ("Zone 3", "Zone 4", "Zone 5")
+                        and r.get("type") not in ("Race", "Muscular Endurance", "Strength")
+                        and not any(k in (r.get("title") or "").lower() for k in plan_lint.NEUROMUSCULAR_KEYWORDS)
+                    ]
+                    want = ultra_rules.quality_per_week(ultra_advanced, ultra_gated)
+                    for r in [q for q in quality if q.get("target_zone") != "Zone 3"][
+                        : max(0, want - sum(1 for q in quality if q.get("target_zone") == "Zone 3"))
+                    ]:
+                        _make_uphill_intervals(r)  # no Zone 4 for an ultra: the interval day becomes Zone 3
+                    for _ in range(want - len(quality)):
+                        _add_uphill_intervals(rows, days)
+                    continue
                 if (
                     rows[0].get("phase") not in ("Build", "Peak")
                     or rows[0].get("phase") in hard_banned
@@ -2198,6 +2376,59 @@ class PlanGenerator:
                 )
                 wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0
                 wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
+
+        def _add_uphill_intervals(rows: list[dict[str, Any]], days: list[str]) -> None:
+            """One weekday session becomes Zone 3 uphill or rolling intervals, two days clear of the long run, ME and
+            other hard sessions (the finisher dose, 3 x 10 min, or 4 x 12 min for an ungated advanced runner). An ME
+            day goes first: in the final 8 weeks mountain runners swap ME for uphill intervals (book)."""
+            anchors = [
+                r
+                for r in rows
+                if r.get("day_of_week") in days
+                and (
+                    r.get("type") in ("Long Run", "Muscular Endurance")
+                    or plan_lint.is_hard(r)
+                    or float(r.get("duration_minutes") or 0) >= 120
+                )
+            ]
+            pool = [
+                r
+                for r in rows
+                if r.get("type") in ("Muscular Endurance", "Easy", "Aerobic Capacity")
+                and r.get("day_of_week") in days[:5]
+                and all(
+                    abs(days.index(r["day_of_week"]) - days.index(a["day_of_week"])) > 1 for a in anchors if a is not r
+                )
+            ]
+            if not pool:
+                return
+            _make_uphill_intervals(
+                max(pool, key=lambda r: (r.get("type") == "Muscular Endurance", float(r.get("duration_minutes") or 0)))
+            )
+
+        def _make_uphill_intervals(wo: dict[str, Any]) -> None:
+            reps, rep = (4, 12) if ultra_advanced and not ultra_gated else (3, 10)
+            total = 15 + reps * rep + (reps - 1) * 3 + 10
+            wo.update(
+                type="Interval",
+                target_zone="Zone 3",
+                target_hr_range=z3_range,
+                duration_minutes=float(total),
+                title="Uphill Intervals (Zone 3)" if lang != "vi" else "Interval leo dốc (Zone 3)",
+                description=(
+                    f"Warm-up 15 min easy → {reps} x {rep} min Zone 3 uphill or rolling (8-12% treadmill, stairs or "
+                    f"an overpass), breathing-limited, 3 min easy jog or walk between → Cool-down 10 min easy."
+                    if lang != "vi"
+                    else f"Warm-up 15 phút nhẹ → {reps} x {rep} phút Zone 3 leo dốc hoặc địa hình lên xuống "
+                    f"(máy chạy 8-12%, cầu thang hoặc cầu vượt), giới hạn bởi hơi thở, nghỉ 3 phút chạy nhẹ hoặc đi bộ "
+                    f"→ Cool-down 10 phút nhẹ."
+                ),
+                fueling_tip=_fuel_text(total),
+            )
+            wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                "Zone 3", float(total), est_zones
+            )
+            wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
 
         def _space_hard_days(wos: list[dict[str, Any]]) -> None:
             """ME and the long run stay 48 h clear of hard sessions (book). A hard session on the day before or after
@@ -2532,6 +2763,10 @@ class PlanGenerator:
             _cap_week_vert(wos)
             _soften_recovery_weeks(wos)
             _gate_hard(wos)
+            if ultra:
+                _ultra_week_shape(wos)
+                _add_tempo(wos)  # weekday runs are clamped now (no 2 h+ "hard" days): top up the window's quality
+                _cap_start_load(wos, weeks=(1, 2), floor=ultra_rules.weekday_minutes(ultra, ultra_advanced)[0])
             for wo in wos:  # a recovery run is short; a longer one is an easy Zone 1 aerobic run, same length
                 if wo.get("type") == "Recovery" and float(wo.get("duration_minutes") or 0) > 60:
                     minutes = float(wo["duration_minutes"])
@@ -2548,6 +2783,8 @@ class PlanGenerator:
                     )
             _normalise_sessions(wos)
             _fit_taper_long_share(wos)
+            for wo in rows_after_race(wos):
+                _make_rest(wo)
             _fix_labels(wos)
             for wo in wos:
                 for field in ("title", "description", "fueling_tip"):
@@ -2795,6 +3032,16 @@ class PlanGenerator:
 
             if demands and is_event_goal:
                 goal_description += "\n" + goal_demands.prompt_block(demands, lang)
+            if ultra:  # Quang's ladder for this block's weeks (services/ultra_rules.py)
+                block_ladder = ultra_rules.ladder(ultra, ultra_advanced, total_weeks)
+                goal_description += "\n" + ultra_rules.prompt_block(
+                    ultra,
+                    ultra_advanced,
+                    {w: block_ladder[w] for w in range(block_start_week, block_end_week + 1) if w in block_ladder},
+                    total_weeks,
+                    ultra_gated,
+                    lang,
+                )
 
             if is_event_goal:
                 program_summary = (
@@ -3509,7 +3756,9 @@ class PlanGenerator:
             if course_distance_km and course_distance_km > 0:
                 scale_factor = min(1.5, max(1.0, course_distance_km / 42.2))
                 sat_dur = sat_dur * scale_factor
-            sat_dur = min(float(session_cap_minutes(tier_profile, course_distance_km)), sat_dur)
+            sat_dur = min(
+                float(session_cap_minutes(tier_profile, course_distance_km, bool(venues.mountain_days))), sat_dur
+            )
 
             if phase == "Recovery":
                 workouts.append(
@@ -3730,7 +3979,7 @@ class PlanGenerator:
                     week_minutes=week_minutes,
                     long_run_share_cap=week_caps.long_run_share_cap + LONG_SHARE_SOFT,
                     weekday_max_minutes=week_caps.weekday_minutes[1],
-                    max_long_minutes=session_cap_minutes(tier_profile, course_distance_km),
+                    max_long_minutes=session_cap_minutes(tier_profile, course_distance_km, bool(venues.mountain_days)),
                     recovery=is_recovery_week,
                 )
 

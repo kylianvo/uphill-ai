@@ -101,7 +101,9 @@ def test_plan_b_week_2_jumps_volume_and_loads_the_weekend():
     # 33% long run is inside the recreational cap (33% + tolerance): the generic 25% is not the rule here
     assert "LONG_SHARE" not in codes(got)
     jump = next(i for i in got if i.code == "VOLUME_JUMP")
-    assert "28%" in jump.message and "cap the increase at 10%" in jump.message.lower()
+    assert (
+        "35%" in jump.message
+    )  # ME is not volume: 290 run minutes vs 215 and "cap the increase at 10%" in jump.message.lower()
 
 
 def test_long_run_share_uses_the_athletes_own_tier_cap():
@@ -450,3 +452,77 @@ def test_the_back_to_back_ask_moves_to_the_next_week_when_the_first_fell_on_a_re
     plan = quiet(7) + quiet(8, 0.7) + quiet(9)  # week 8 is a recovery week
     assert "B2B_MISSING" not in codes(lint_weeks(plan, {8}, SUB, prefs))
     assert "B2B_MISSING" in codes(lint_weeks(plan, {9}, SUB, prefs))
+
+
+# --- ultras on a mountain day: Quang's ladder (services/ultra_rules.py) ----------------------------
+
+from dataclasses import replace  # noqa: E402
+
+from services.plan_lint import week_minutes  # noqa: E402
+
+REC = TIER_PROFILES["recreational"]
+ULTRA_PREFS = Prefs(long_run_day="Saturday", mountain_day=True, total_weeks=20, demands=D100_ULTRA)
+
+
+def test_me_not_counted_in_week_minutes():
+    assert week_minutes([s(1, "Tuesday", "Easy", 60), s(1, "Thursday", "Muscular Endurance", 45)]) == 60
+
+
+def test_ladder_step_is_not_a_long_run_jump():
+    # 180 -> 240 is +33% (over MAX_LONG_RUN_GROWTH 25%, step 60 > 20), and ladder("100k", False, 20)[3] == 240
+    wk = filler(2, 300) + [s(2, "Saturday", "Long Run", 180)]
+    wk += [s(3, "Tuesday", "Easy", 60), s(3, "Saturday", "Long Run", 240)]
+    assert "LONG_RUN_JUMP" not in codes(lint_week(wk, 3, REC, ULTRA_PREFS))
+
+
+def test_same_jump_without_mountain_day_is_flagged():
+    wk = filler(2, 300) + [s(2, "Saturday", "Long Run", 180)]
+    wk += [s(3, "Tuesday", "Easy", 60), s(3, "Saturday", "Long Run", 240)]
+    assert "LONG_RUN_JUMP" in codes(lint_week(wk, 3, REC, replace(ULTRA_PREFS, mountain_day=False)))
+
+
+def test_weekday_short_and_ladder_short():
+    wk = [s(9, "Tuesday", "Easy", 45, phase="Build"), s(9, "Saturday", "Long Run", 200, phase="Build")]
+    got = codes(lint_week(wk, 9, REC, ULTRA_PREFS))
+    assert "WEEKDAY_SHORT" in got and "ULTRA_LADDER" in got
+
+
+def test_no_b2b_missing_for_ladder_plans():
+    # week 16 of 20 is total - 4 - taper_shift: today's B2B_MISSING ask week
+    wk = [s(16, "Tuesday", "Easy", 60, phase="Peak"), s(16, "Saturday", "Long Run", 420, phase="Peak")]
+    assert "B2B_MISSING" not in codes(lint_week(wk, 16, REC, ULTRA_PREFS))
+    assert "B2B_MISSING" in codes(lint_week(wk, 16, REC, replace(ULTRA_PREFS, mountain_day=False)))
+
+
+def test_quality_count_only_in_the_window():
+    base = [
+        s(5, "Tuesday", "Interval", 60, zone="Zone 3", phase="Base"),
+        s(5, "Saturday", "Long Run", 240, phase="Base"),
+    ]
+    assert "QUALITY_COUNT" in codes(lint_week(base, 5, REC, ULTRA_PREFS))  # week 5 is before the window
+    window = [s(10, "Thursday", "Easy", 60, phase="Build"), s(10, "Saturday", "Long Run", 300, phase="Build")]
+    assert "QUALITY_COUNT" in codes(lint_week(window, 10, REC, ULTRA_PREFS))  # window week with none
+    window.append(s(10, "Tuesday", "Interval", 75, zone="Zone 3", phase="Build"))
+    assert "QUALITY_COUNT" not in codes(lint_week(window, 10, REC, ULTRA_PREFS))
+    sprints = s(5, "Wednesday", "Interval", 30, zone="Zone 5", phase="Base", title="Hill Sprints")
+    assert "QUALITY_COUNT" not in codes(lint_week(base[1:] + [sprints], 5, REC, ULTRA_PREFS))
+
+
+def test_me_load_on_ladder_plans():
+    wk = [
+        s(3, "Monday", "Muscular Endurance", 40),
+        s(3, "Thursday", "Muscular Endurance", 40),
+        s(3, "Saturday", "Long Run", 120),
+    ]
+    assert "ME_LOAD" not in codes(lint_week(wk, 3, REC, Prefs()))  # non-ladder plans: the prompt sets no ME limit
+    assert "ME_LOAD" in codes(lint_week(wk, 3, REC, ULTRA_PREFS))
+    ok = [s(3, "Monday", "Muscular Endurance", 30), s(3, "Wednesday", "Easy", 200), s(3, "Saturday", "Long Run", 150)]
+    two = [
+        s(3, "Monday", "Muscular Endurance", 30),
+        s(3, "Wednesday", "Muscular Endurance", 30),
+        s(3, "Thursday", "Easy", 300),
+        s(3, "Saturday", "Long Run", 300),
+    ]
+    assert "ME_LOAD" not in codes(lint_week(two, 3, SUB, ULTRA_PREFS))  # advanced, Base: 2 sessions, 60 of 660 min
+    assert "ME_LOAD" in codes(lint_week(two, 3, REC, ULTRA_PREFS))
+    assert "ME_LOAD" not in codes(lint_week(ok, 3, REC, Prefs()))

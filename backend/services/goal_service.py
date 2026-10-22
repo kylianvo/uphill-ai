@@ -296,6 +296,7 @@ def feasibility_for(plan: dict[str, Any], assessment: dict[str, Any] | None = No
             pace_is_estimated,
             mountain_min_minutes=plan.get("mountain_min_minutes"),
             flat_only=not venues.local_hills and not venues.training_mountain and not venues.mountain_days,
+            mountain_day=bool(venues.mountain_days),
         )
     except Exception:
         _logger.exception("feasibility failed", extra={"fields": {"plan_id": plan.get("id")}})

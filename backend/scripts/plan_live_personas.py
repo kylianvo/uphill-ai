@@ -299,10 +299,10 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict, feasibility: 
     )
     prefs = plan_lint.Prefs(
         long_run_day=p.get("long_run_day"), days_per_week=p.get("days_per_week"), demands=demands,
-        flat_only=venues_flat, total_weeks=plan["total_weeks"],
+        flat_only=venues_flat, total_weeks=plan["total_weeks"], mountain_day=bool(p.get("mountain_days")),
     )  # fmt: skip
     weeks = sorted({w["week_number"] for w in ws})
-    issues = plan_lint.lint_weeks(ws, set(weeks), for_race(get_profile(tier), dist), prefs)
+    issues = plan_lint.lint_weeks(ws, set(weeks), for_race(get_profile(tier), dist, prefs.mountain_day), prefs)
     hard = {
         "ME_SPACING",
         "HARD_ADJACENT",
