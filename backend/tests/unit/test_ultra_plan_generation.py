@@ -142,3 +142,18 @@ def test_gated_runner_gets_one_zone3_in_the_window(rule_based_plan):
     window = ultra_rules.quality_weeks(20)
     assert hard and all(w["week_number"] in window and w["target_zone"] == "Zone 3" for w in hard)
     assert max(sum(1 for w in hard if w["week_number"] == wk) for wk in window) == 1
+
+
+def _row(week, day, kind, minutes):
+    return {"week_number": week, "day_of_week": day, "type": kind, "duration_minutes": minutes}
+
+
+def test_rows_after_a_saturday_race_are_returned_for_rest():
+    week = [_row(11, "Thursday", "Easy", 30), _row(11, "Saturday", "Race", 900), _row(11, "Sunday", "Recovery", 30)]
+    assert plan_generator.rows_after_race(week + [_row(12, "Sunday", "Easy", 30)]) == [week[2]]
+
+
+def test_a_sunday_race_has_nothing_after_it():
+    week = [_row(11, "Saturday", "Easy", 20), _row(11, "Sunday", "Race", 900)]
+    assert plan_generator.rows_after_race(week) == []
+    assert plan_generator.rows_after_race([_row(3, "Sunday", "Easy", 30)]) == []

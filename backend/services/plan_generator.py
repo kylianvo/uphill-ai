@@ -117,6 +117,22 @@ _PRIORITY_DAY_ORDER = {
 }
 
 
+def rows_after_race(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The sessions planned after the race in race week: the day after a race is rest, never a recovery run."""
+    races = {
+        w.get("week_number"): _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), 7)
+        for w in workouts
+        if w.get("type") == "Race"
+    }
+    return [
+        w
+        for w in workouts
+        if w.get("type") not in ("Race", "Rest")
+        and w.get("week_number") in races
+        and _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), -1) > races[w.get("week_number")]
+    ]
+
+
 def apply_priority_guard(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Normalise `is_priority` on freshly generated workouts (mutates and returns them).
 
@@ -2766,6 +2782,8 @@ class PlanGenerator:
                     )
             _normalise_sessions(wos)
             _fit_taper_long_share(wos)
+            for wo in rows_after_race(wos):
+                _make_rest(wo)
             _fix_labels(wos)
             for wo in wos:
                 for field in ("title", "description", "fueling_tip"):
