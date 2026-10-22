@@ -12,6 +12,7 @@ struct WorkoutDetailSheet: View {
     @State private var rpe: Int?
     @State private var notes: String = ""
     @State private var isBusy = false
+    @State private var aboutExpanded = false
     @State private var showSaved = false
     @State private var didLoadLog = false
     @State private var isTreadmill = false
@@ -78,37 +79,7 @@ struct WorkoutDetailSheet: View {
                             statTiles(workout)
                             quietLine(workout)
 
-                            // Nutrition / Fueling tip
-                            if let tip = workout.fuelingTip, !tip.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                fuelingTipSection(tip)
-                            }
-
-                            if workout.isMatched {
-                                matchedWatchCard(workout)
-                            } else if canFixMatch(workout) && !isFuture(workout) {
-                                linkWatchRunRow
-                            }
-
-                            // b & f. Step timeline with Treadmill toggle
-                            stepTimelineSection(workout)
-
-                            // c. About this session block (Overall, Why/reason, Benefit)
-                            let parsed = content?.description ?? ParsedWorkoutDescription(overview: nil, process: nil, benefit: nil, warning: nil, coachNotes: nil)
-                            let extractedSections = content?.sections ?? DescriptionSections(overall: nil, process: nil, reason: nil, benefit: nil, warning: nil)
-                            aboutThisSessionSection(sections: extractedSections, parsed: parsed)
-
-                            // d. Distinct caution callout for warning
-                            let warningText = extractedSections.warning ?? parsed.warning
-                            if let warningText, !warningText.isEmpty {
-                                cautionCalloutSection(warningText)
-                            }
-
-                            // e. Coach Uphill note
-                            if let coachQuote = parsed.coachNotes, !coachQuote.isEmpty {
-                                coachQuoteSection(coachQuote)
-                            }
-
-                            // g. Primary action & How did it feel? (Log)
+                            // Done action first, so it is never below the fold
                             if workout.approvedAt == nil {
                                 if let athlete = actingAsAthlete, let service = coachingService, let plan = model.snapshot?.plan {
                                     VStack(spacing: 8) {
@@ -148,6 +119,18 @@ struct WorkoutDetailSheet: View {
                                 }
                             } else {
                                 if model.athleteId == nil { bottomActionBar(workout) }
+                            }
+
+                            // Steps, with the fueling line as their last line
+                            stepTimelineSection(workout)
+
+                            if workout.isMatched {
+                                matchedWatchCard(workout)
+                            } else if canFixMatch(workout) && !isFuture(workout) {
+                                linkWatchRunRow
+                            }
+
+                            if workout.approvedAt != nil {
                                 if model.athleteId == nil && !workout.isRest && !workout.isDone && isTodayOrFuture(workout) {
                                     sendToCorosSection(workout)
                                 }
@@ -155,6 +138,8 @@ struct WorkoutDetailSheet: View {
                                     howDidItFeelSection(workout)
                                 }
                             }
+
+                            aboutFold(workout)
 
                             // Coach / Athlete Note Thread
                             if content != nil,
@@ -421,6 +406,13 @@ struct WorkoutDetailSheet: View {
                 ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
                     timelineRow(step: step, isLast: index == steps.count - 1, workout: w)
                 }
+                if let fuel = content?.fuelingLine {
+                    Label(fuel, systemImage: "fork.knife")
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+                        .padding(.top, UH.Space.compact)
+                        .accessibilityIdentifier("detail.fuelingTip")
+                }
             }
             .padding(UH.Space.regular)
             .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
@@ -496,146 +488,62 @@ struct WorkoutDetailSheet: View {
         }
     }
 
-    // MARK: - Nutrition & Fueling Tip
+    // MARK: - About This Session (overall, why, benefit, caution, coach note), one fold
 
-    private func fuelingTipSection(_ tip: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "fork.knife.circle.fill")
-                .font(.system(size: 16))
-                .foregroundStyle(Color(red: 16/255, green: 185/255, blue: 129/255))
-                .padding(.top, 1)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("NUTRITION & FUELING")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(Color(red: 5/255, green: 150/255, blue: 105/255))
-
-                Text(tip)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(UH.Palette.ink)
-                    .lineSpacing(2)
-            }
-        }
-        .padding(UH.Space.small)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.08), in: RoundedRectangle(cornerRadius: UH.Radius.control))
-        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.3), lineWidth: 1))
-        .accessibilityIdentifier("detail.fuelingTip")
-    }
-
-    // MARK: - About This Session (Overall, Why, Benefit)
-
-    private func aboutThisSessionSection(sections: DescriptionSections, parsed: ParsedWorkoutDescription) -> some View {
-        let overall = sections.overall ?? parsed.overview ?? parsed.intent
-        let reason = sections.reason ?? parsed.reason
-        let benefit = sections.benefit ?? parsed.benefit
-
-        let hasContent = (overall != nil && !overall!.isEmpty) ||
-                         (reason != nil && !reason!.isEmpty) ||
-                         (benefit != nil && !benefit!.isEmpty)
-
-        return Group {
-            if hasContent {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "info.circle.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(UH.Palette.accentInk)
-                        Text("ABOUT THIS SESSION")
-                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                            .foregroundStyle(UH.Palette.accentInk)
+    @ViewBuilder
+    private func aboutFold(_ w: Workout) -> some View {
+        let lines = content?.about ?? []
+        let quote = content?.description.coachNotes.flatMap { $0.isEmpty ? nil : $0 }
+        if !lines.isEmpty || quote != nil {
+            DisclosureGroup(isExpanded: $aboutExpanded) {
+                VStack(alignment: .leading, spacing: UH.Space.compact) {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                        aboutLine(line)
                     }
-
-                    if let overall, !overall.isEmpty {
-                        Text(overall)
-                            .font(.system(size: 14, weight: .medium))
+                    if let quote {
+                        Text(verbatim: "“\(quote)” — Coach Uphill")
+                            .font(UH.TextStyle.body.italic())
                             .foregroundStyle(UH.Palette.ink)
-                            .lineSpacing(2)
-                    }
-
-                    if let reason, !reason.isEmpty {
-                        HStack(alignment: .top, spacing: 6) {
-                            Text("Why:")
-                                .font(.system(size: 12.5, weight: .bold))
-                                .foregroundStyle(UH.Palette.secondary)
-                            Text(reason)
-                                .font(.system(size: 12.5))
-                                .foregroundStyle(UH.Palette.secondary)
-                                .lineSpacing(1.5)
-                        }
-                    }
-
-                    if let benefit, !benefit.isEmpty {
-                        HStack(alignment: .top, spacing: 6) {
-                            Text("Benefit:")
-                                .font(.system(size: 12.5, weight: .bold))
-                                .foregroundStyle(Color(red: 16/255, green: 185/255, blue: 129/255))
-                            Text(benefit)
-                                .font(.system(size: 12.5))
-                                .foregroundStyle(UH.Palette.ink)
-                                .lineSpacing(1.5)
-                        }
                     }
                 }
-                .padding(UH.Space.regular)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
-                .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
-                .accessibilityIdentifier("detail.aboutSession")
+                .padding(.top, UH.Space.compact)
+            } label: {
+                Text("About this session")
+                    .font(UH.TextStyle.label)
+                    .foregroundStyle(UH.Palette.ink)
+                    .frame(minHeight: 44, alignment: .leading)
             }
+            .tint(UH.Palette.secondary)
+            .padding(.horizontal, UH.Space.regular)
+            .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.panel))
+            .overlay(RoundedRectangle(cornerRadius: UH.Radius.panel).stroke(UH.Palette.line))
+            .accessibilityIdentifier("detail.aboutSession")
+            // A caution stays visible: the fold opens by itself when there is one.
+            .onAppear { if lines.contains(where: { $0.kind == .caution }) { aboutExpanded = true } }
         }
     }
 
-    // MARK: - Caution Callout (Warning)
-
-    private func cautionCalloutSection(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 14))
-                .foregroundStyle(UH.Palette.danger)
-                .padding(.top, 1)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("CAUTION")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(UH.Palette.danger)
-
-                Text(text)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(UH.Palette.ink)
-                    .lineSpacing(1.5)
-            }
+    private func aboutLine(_ line: WorkoutDetailContent.AboutLine) -> some View {
+        let title: String? = switch line.kind {
+        case .overall: nil
+        case .reason: L("Why")
+        case .benefit: L("Benefit")
+        case .caution: L("Caution")
         }
-        .padding(UH.Space.small)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(UH.Palette.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: UH.Radius.control))
-        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.danger.opacity(0.3), lineWidth: 1))
-        .accessibilityIdentifier("detail.cautionCallout")
-    }
-
-    // MARK: - Coach Uphill Note (e)
-
-    private func coachQuoteSection(_ quote: String) -> some View {
-        HStack(spacing: 12) {
-            Rectangle()
-                .fill(UH.Palette.accentInk)
-                .frame(width: 3)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("“\(quote)”")
-                    .font(.system(size: 13, weight: .medium))
-                    .italic()
-                    .foregroundStyle(UH.Palette.ink)
-
-                Text("— Coach Uphill")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundStyle(UH.Palette.accentInk)
+        return VStack(alignment: .leading, spacing: 2) {
+            if let title {
+                Text(verbatim: title)
+                    .font(UH.TextStyle.disclosure)
+                    .foregroundStyle(line.kind == .caution ? UH.Palette.danger : UH.Palette.secondary)
             }
+            Text(verbatim: line.text)
+                .font(UH.TextStyle.body)
+                .foregroundStyle(UH.Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(UH.Space.small)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.control))
-        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(line.kind == .caution ? "detail.cautionCallout" : "detail.about.\(line.kind)")
     }
 
     // MARK: - Bottom Action Bar (g)
