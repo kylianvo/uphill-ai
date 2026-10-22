@@ -13,6 +13,9 @@ final class ProgressViewModel {
     private(set) var days = 28
 
     private let service: any ProgressServicing
+    /// Bumped on sign-out (and on each new load): a reply for an older revision is dropped,
+    /// so a request still in flight can't show one athlete's health data to the next account.
+    private var revision = 0
 
     init(service: any ProgressServicing) {
         self.service = service
@@ -25,17 +28,22 @@ final class ProgressViewModel {
 
     func load() async {
         if response?.section != section.rawValue { state = .loading }
+        revision += 1
+        let mine = revision
         do {
             let result = try await service.progress(section: section, days: days)
+            guard mine == revision else { return }
             response = result
             state = .loaded
         } catch {
+            guard mine == revision else { return }
             state = .failed(error.localizedDescription)
         }
     }
 
     /// Sign-out: the next account must never see this athlete's health data.
     func reset() {
+        revision += 1
         response = nil
         section = .training
         state = .loading

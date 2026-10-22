@@ -87,3 +87,31 @@ struct ProgressResetTests {
         #expect(model.response == nil && model.section == .training && model.state == .loading)
     }
 }
+
+/// Holds every request until `release()`, so a test can sign out while a load is in flight.
+private actor GatedProgressService: ProgressServicing {
+    let response: ProgressResponse
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    init(_ response: ProgressResponse) { self.response = response }
+    func progress(section: ProgressSection, days: Int) async throws -> ProgressResponse {
+        await withCheckedContinuation { waiters.append($0) }
+        return response
+    }
+    func release() { waiters.forEach { $0.resume() }; waiters = [] }
+    var waiting: Int { waiters.count }
+}
+
+@MainActor
+struct ProgressSignOutRaceTests {
+    @Test func aLoadFinishingAfterResetIsDiscarded() async throws {
+        let service = GatedProgressService(try Fixture.decode(ProgressResponse.self, "progress_health.json"))
+        let model = ProgressViewModel(service: service)
+        let load = Task { await model.load() }
+        while await service.waiting == 0 { await Task.yield() }
+        model.reset()
+        await service.release()
+        await load.value
+        #expect(model.response == nil)
+        #expect(model.state == .loading)
+    }
+}
