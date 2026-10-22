@@ -311,3 +311,17 @@ async def test_activities_are_saved_before_a_daily_metrics_failure_is_raised(mon
     with pytest.raises(CorosDailyMetricsUnavailableError):
         await coros_sync.persist(user_id=7, adapter=MetricsDown(), days=30)
     assert len(saved) == 1
+
+
+@pytest.mark.asyncio
+async def test_long_sync_asks_for_90_days_of_metrics(monkeypatch):
+    monkeypatch.setattr(coros_sync.db, "mark_connection_synced", lambda uid, p: None)
+    asked = {}
+
+    class Recording(EmptyAdapter):
+        async def fetch_daily_metrics(self, days=7):
+            asked["days"] = days
+            return []
+
+    await coros_sync.persist(user_id=7, adapter=Recording(), days=365)
+    assert asked["days"] == 90

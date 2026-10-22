@@ -17,6 +17,7 @@ from services.mcp_client import McpClient
 from services.providers.coros import PROVIDER, CorosAdapter
 
 logger = get_logger(__name__)
+METRICS_HISTORY_DAYS = 90  # sleep and HRV accept explicit dates; resting HR and load cap themselves
 
 FITNESS_REFRESH_TIMEOUT_SECONDS = 15
 
@@ -102,7 +103,7 @@ async def persist(user_id: int, adapter, days: int) -> dict[str, int]:
     known_ids = db.get_activity_external_ids(user_id, PROVIDER)
     activities, metrics = await asyncio.gather(
         adapter.fetch_activities(since, until, exclude_ids=known_ids),
-        adapter.fetch_daily_metrics(days=min(days, 30)),
+        adapter.fetch_daily_metrics(days=min(days, METRICS_HISTORY_DAYS)),
         return_exceptions=True,
     )
     if isinstance(activities, BaseException):
