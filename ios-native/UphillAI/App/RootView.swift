@@ -83,7 +83,7 @@ private struct MainTabs: View {
         TabView(selection: $selection) {
             if app.session.user?.isCoach == true {
                 SwiftUI.Tab("Athletes", systemImage: "person.3.sequence.fill", value: Tab.athletes) {
-                    CoachDashboardView(app: app, onSelectTab: { tabIndex in
+                    AthletesView(app: app, onSelectTab: { tabIndex in
                         if tabIndex == 1 {
                             selection = .plan
                         }

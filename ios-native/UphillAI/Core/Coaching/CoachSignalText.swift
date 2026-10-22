@@ -32,7 +32,8 @@ enum CoachSignalText {
         case "needs_plan": return L("No plan yet", in: lang)
         case "draft_unpublished": return L("Draft plan not published", in: lang)
         case "next_block_due": return L("Next week due in %lld days", in: lang, n("days"))
-        case "changes_to_approve": return L("%lld changes to approve", in: lang, n("count"))
+        case "changes_to_approve":
+            return n("count") == 1 ? L("1 change to approve", in: lang) : L("%lld changes to approve", in: lang, n("count"))
         case "no_sync": return L("No watch sync for %lld days", in: lang, n("days"))
         case "missed_key": return L("Missed %@ on %@", in: lang, str("title"), day("day"))
         case "adherence_drop":

@@ -155,6 +155,8 @@ final class AppModel {
         }
     }
     var actingAsAthlete: CoachedAthleteRow? = nil
+    /// The action a coach tapped on the Athletes tab, picked up once by the runner's Plan tab.
+    var pendingCoachAction: CoachAction? = nil
     var coachedAthleteProfile: User? = nil
     var pendingInvites: [CoachingInvite] = []
     let generation: GenerationCenter

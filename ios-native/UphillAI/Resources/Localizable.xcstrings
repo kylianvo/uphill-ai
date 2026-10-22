@@ -15450,6 +15450,576 @@
           }
         }
       }
+    },
+    "Act now": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần xử lý ngay"
+          }
+        }
+      }
+    },
+    "Review & build": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duyệt & lên plan"
+          }
+        }
+      }
+    },
+    "Check in": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hỏi thăm"
+          }
+        }
+      }
+    },
+    "Adapt week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điều chỉnh tuần"
+          }
+        }
+      }
+    },
+    "Review plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duyệt plan"
+          }
+        }
+      }
+    },
+    "Build plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lên plan"
+          }
+        }
+      }
+    },
+    "Open draft": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở bản nháp"
+          }
+        }
+      }
+    },
+    "Build next week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lên tuần tới"
+          }
+        }
+      }
+    },
+    "Review changes": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duyệt thay đổi"
+          }
+        }
+      }
+    },
+    "Note": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú"
+          }
+        }
+      }
+    },
+    "Coached": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coached"
+          }
+        }
+      }
+    },
+    "Review": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review"
+          }
+        }
+      }
+    },
+    "Open plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở plan"
+          }
+        }
+      }
+    },
+    "No plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có plan"
+          }
+        }
+      }
+    },
+    "%lld d": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ngày"
+          }
+        }
+      }
+    },
+    "THIS WEEK": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TUẦN NÀY"
+          }
+        }
+      }
+    },
+    "%lld WEEKS AGO": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld TUẦN TRƯỚC"
+          }
+        }
+      }
+    },
+    "sessions done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "buổi hoàn thành"
+          }
+        }
+      }
+    },
+    "key sessions": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "buổi chính"
+          }
+        }
+      }
+    },
+    "volume vs plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "khối lượng so với plan"
+          }
+        }
+      }
+    },
+    "Group by": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhóm theo"
+          }
+        }
+      }
+    },
+    "Race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race"
+          }
+        }
+      }
+    },
+    "Plan type": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loại plan"
+          }
+        }
+      }
+    },
+    "Easy %@ · Long Run %@ · Quality %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Easy %@ · Long Run %@ · Quality %@"
+          }
+        }
+      }
+    },
+    "No race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có race"
+          }
+        }
+      }
+    },
+    "Beginner": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mới bắt đầu"
+          }
+        }
+      }
+    },
+    "Intermediate": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trung bình"
+          }
+        }
+      }
+    },
+    "Advanced": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nâng cao"
+          }
+        }
+      }
+    },
+    "Elite": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elite"
+          }
+        }
+      }
+    },
+    "Runner's account email": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email tài khoản runner"
+          }
+        }
+      }
+    },
+    "The runner must already have an Uphill AI account.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runner cần có sẵn tài khoản Uphill AI."
+          }
+        }
+      }
+    },
+    "Invite runner": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mời runner"
+          }
+        }
+      }
+    },
+    "Write a note": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viết ghi chú"
+          }
+        }
+      }
+    },
+    "Note to %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú cho %@"
+          }
+        }
+      }
+    },
+    "Send": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi"
+          }
+        }
+      }
+    },
+    "Search runners": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tìm runner"
+          }
+        }
+      }
+    },
+    "Remove from your roster?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gỡ khỏi danh sách của bạn?"
+          }
+        }
+      }
+    },
+    "%@ will stop sharing their plan and data with you.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ sẽ ngừng chia sẻ plan và dữ liệu với bạn."
+          }
+        }
+      }
+    },
+    "No runners match these filters.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có runner nào khớp bộ lọc."
+          }
+        }
+      }
+    },
+    "Nothing needs you today": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hôm nay không có việc cần xử lý"
+          }
+        }
+      }
+    },
+    "All %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tất cả %lld"
+          }
+        }
+      }
+    },
+    "Review %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review %lld"
+          }
+        }
+      }
+    },
+    "Coached %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coached %lld"
+          }
+        }
+      }
+    },
+    "Phase": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giai đoạn"
+          }
+        }
+      }
+    },
+    "HIGHLIGHTS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ĐIỂM NỔI BẬT"
+          }
+        }
+      }
+    },
+    "Sort": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sắp xếp"
+          }
+        }
+      }
+    },
+    "Done %": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "% hoàn thành"
+          }
+        }
+      }
+    },
+    "Sort on-track runners": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sắp xếp runner đúng hướng"
+          }
+        }
+      }
+    },
+    "Invited (%lld)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã mời (%lld)"
+          }
+        }
+      }
+    },
+    "Cancel invite to %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Huỷ lời mời %@"
+          }
+        }
+      }
+    },
+    "No runners yet": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có runner nào"
+          }
+        }
+      }
+    },
+    "Invite a runner who already has an Uphill AI account.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mời một runner đã có tài khoản Uphill AI."
+          }
+        }
+      }
+    },
+    "More for %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm cho %@"
+          }
+        }
+      }
+    },
+    "Switch to Review": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chuyển sang Review"
+          }
+        }
+      }
+    },
+    "Switch to Coached": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chuyển sang Coached"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gỡ"
+          }
+        }
+      }
+    },
+    "1 change to approve": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 thay đổi cần duyệt"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

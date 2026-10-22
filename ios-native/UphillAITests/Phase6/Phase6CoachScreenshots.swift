@@ -54,44 +54,32 @@ struct Phase6CoachScreenshots {
 
     private var athlete: CoachedAthleteRow { roster.first { $0.isActive }! }
 
-    @Test func renderCoachDashboardOverview() throws {
-        let app = try makeApp()
-        let view = NavigationStack {
-            CoachDashboardView(
-                app: app,
-                initialSection: .overview,
-                initialOverview: overview,
-                initialRoster: roster
-            )
-        }
-        save(view, name: "phase6-coach-dashboard-overview")
+    private func athletes(_ filter: RosterFilter = RosterFilter(), overview: CoachOverview? = nil) throws -> some View {
+        AthletesView(app: try makeApp(), initialOverview: overview ?? self.overview, initialRoster: roster, initialFilter: filter)
     }
 
-    /// The whole Overview scroll content (adherence badges, charts) in one tall frame.
-    @Test func renderCoachDashboardOverviewFull() throws {
-        let app = try makeApp()
-        let view = NavigationStack {
-            CoachDashboardView(
-                app: app,
-                initialSection: .overview,
-                initialOverview: overview,
-                initialRoster: roster
-            )
-        }
-        save(view, name: "phase6-coach-dashboard-overview-full", size: CGSize(width: 402, height: 1780))
+    @Test func renderAthletesTop() throws {
+        save(try athletes(), name: "athletes-top")
     }
 
-    @Test func renderCoachDashboardRoster() throws {
-        let app = try makeApp()
-        let view = NavigationStack {
-            CoachDashboardView(
-                app: app,
-                initialSection: .roster,
-                initialOverview: overview,
-                initialRoster: roster
-            )
-        }
-        save(view, name: "phase6-coach-dashboard-roster")
+    /// The whole Athletes scroll in one tall frame: filters, this week, highlights, inbox, on track, invited.
+    @Test func renderAthletesFull() throws {
+        save(try athletes(), name: "athletes-full", size: CGSize(width: 402, height: 2100))
+    }
+
+    @Test func renderAthletesCoachedFilter() throws {
+        save(try athletes(RosterFilter(planType: "coached")), name: "athletes-filter-coached", size: CGSize(width: 402, height: 1400))
+    }
+
+    @Test func renderAthletesVietnamese() throws {
+        let previous = UserDefaults.standard.string(forKey: AppLanguage.storageKey)
+        UserDefaults.standard.set("vi", forKey: AppLanguage.storageKey)
+        defer { UserDefaults.standard.set(previous, forKey: AppLanguage.storageKey) }
+        save(try athletes().environment(\.locale, AppLanguage.vi.locale), name: "athletes-vi", size: CGSize(width: 402, height: 2100))
+    }
+
+    @Test func renderAthletesNoMatch() throws {
+        save(try athletes(RosterFilter(race: "Nowhere 10K")), name: "athletes-no-match")
     }
 
     @Test func renderCoachedAthleteProfile() throws {
