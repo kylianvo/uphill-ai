@@ -140,9 +140,9 @@ _RESOURCE_VALUES = {
     "deployment.environment.name": frozenset({"development", "staging", "production", "test"}),
 }
 _SPAN_KINDS = frozenset({"LLM", "CHAIN", "AGENT", "TOOL", "RETRIEVER", "EMBEDDING", "RERANKER"})
-_PROVIDERS = frozenset({"google"})
-_SYSTEMS = frozenset({"google", "gemini"})
-_MODELS = frozenset({"gemini-3.8-flash"})
+_PROVIDERS = frozenset({"google", "anthropic"})
+_SYSTEMS = frozenset({"google", "gemini", "anthropic"})
+_MODELS = frozenset({"gemini-3.8-flash", "claude-haiku-5-5"})
 _ENVIRONMENTS = frozenset({"development", "staging", "production", "test"})
 _OBSERVATION_TYPES = frozenset({"span", "generation", "agent", "tool", "chain", "retriever", "evaluator"})
 _OBSERVATION_LEVELS = frozenset({"DEFAULT", "DEBUG", "WARNING", "ERROR"})
@@ -186,7 +186,7 @@ _ERROR_TYPES = frozenset(
         "ValueError",
     }
 )
-_ENGINES = frozenset({"gemini", "gemini_retry", "rule_based", "mock"})
+_ENGINES = frozenset({"gemini", "gemini_retry", "claude", "claude_retry", "rule_based", "mock"})
 _TIERS = frozenset({"primary", "retry", "fallback"})
 _GENERATION_STATUSES = frozenset({"ok", "error", "attempt", "success", "used", "fallback"})
 _LANGUAGES = frozenset({"en", "vi"})

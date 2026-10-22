@@ -55,7 +55,7 @@ FEATURES = frozenset(
         "goal_estimate",
     }
 )
-METRIC_MODELS = frozenset({"gemini-3.8-flash"})
+METRIC_MODELS = frozenset({"gemini-3.8-flash", "claude-haiku-5-5"})
 METRIC_STATUSES = frozenset({"ok", "error", "attempt", "success", "used", "fallback"})
 
 _warned: set[str] = set()
@@ -67,7 +67,7 @@ _UNIT_INTERVAL = "unit_interval"
 _SCORE_SPECS: dict[str, Any] = {
     "thumbs": frozenset({-1, 1}),
     "proposal_applied": frozenset({0, 1}),
-    "plan_engine": frozenset({"gemini", "gemini_retry", "rules"}),
+    "plan_engine": frozenset({"gemini", "gemini_retry", "claude", "claude_retry", "rules"}),
     "judge_grounded": _UNIT_INTERVAL,
     "judge_safe": _UNIT_INTERVAL,
     "judge_actionable": _UNIT_INTERVAL,
@@ -143,6 +143,20 @@ class Usage:
             output_tokens=getattr(usage_metadata, "candidates_token_count", None) or 0,
             thinking_tokens=getattr(usage_metadata, "thoughts_token_count", None) or 0,
             cached_tokens=getattr(usage_metadata, "cached_content_token_count", None) or 0,
+        )
+
+    @classmethod
+    def from_anthropic(cls, usage: Any) -> "Usage":
+        """Anthropic input_tokens exclude cache reads/writes and output_tokens already include thinking."""
+        if usage is None:
+            return cls()
+        cached = getattr(usage, "cache_read_input_tokens", None) or 0
+        return cls(
+            input_tokens=(getattr(usage, "input_tokens", None) or 0)
+            + cached
+            + (getattr(usage, "cache_creation_input_tokens", None) or 0),
+            output_tokens=getattr(usage, "output_tokens", None) or 0,
+            cached_tokens=cached,
         )
 
 

@@ -95,3 +95,19 @@ def test_calibration_agreement_counts_only_labelled_criteria():
         ]
     )
     assert table == {"safe": {"tp": 1, "tn": 0, "fp": 1, "fn": 0}, "grounded": {"tp": 0, "tn": 1, "fp": 0, "fn": 0}}
+
+
+def test_plan_engine_score_accepts_claude_engines(monkeypatch):
+    from services import observability
+
+    class Client:
+        calls: list = []
+
+        def create_score(self, **kw):
+            self.calls.append(kw)
+
+    client = Client()
+    monkeypatch.setattr(observability, "_client", client)
+    observability.score(trace_id="a" * 32, name="plan_engine", value="claude")
+    observability.score(trace_id="a" * 32, name="plan_engine", value="claude_retry")
+    assert [c["value"] for c in client.calls] == ["claude", "claude_retry"]
