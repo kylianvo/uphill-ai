@@ -457,3 +457,14 @@ async def test_three_failing_still_returns_the_fourth():
     )
     metrics = await CorosAdapter(stub).fetch_daily_metrics(days=1)
     assert [m.sleep_minutes for m in metrics] == [418]
+
+
+@pytest.mark.asyncio
+async def test_default_window_reaches_one_day_past_the_server_date():
+    # Athletes ahead of UTC wake up "tomorrow" in server terms; that night must be fetched.
+    from datetime import timedelta
+
+    stub = StubMcp({"queryRestingHeartRate": RESTING_HR_TEXT})
+    await CorosAdapter(stub).fetch_daily_metrics(days=30)
+    ends = [a["endDate"] for name, a in stub.calls if name == "querySleepHrv"]
+    assert max(ends) == (date.today() + timedelta(days=1)).strftime("%Y%m%d")

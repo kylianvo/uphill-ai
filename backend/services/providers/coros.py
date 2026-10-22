@@ -227,7 +227,8 @@ class CorosAdapter:
         fills their history. A source counts as failed only if every one of
         its calls failed.
         """
-        today = today or date.today()
+        # One day past the server date: athletes ahead of UTC wake up "tomorrow" in server terms.
+        today = today or date.today() + timedelta(days=1)
         failures: list[tuple[str, Exception]] = []
         semaphore = asyncio.Semaphore(DETAIL_CONCURRENCY)
 

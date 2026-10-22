@@ -322,7 +322,8 @@ def build(user: dict, section: str, today: date | None = None, days: int = 28) -
     today = today or date.today()
     uid = user["id"]
     plan = db.get_active_plan(uid)
-    metrics = db.get_daily_metrics(uid, today - timedelta(days=max(days, WINDOW_DAYS)))
+    # Two weeks of slack: a 28-row card must not stay pending because of a few unsynced days.
+    metrics = db.get_daily_metrics(uid, today - timedelta(days=max(days, WINDOW_DAYS) + 14))
     coros = db.get_connection(uid, "coros")
     connected = bool(coros and coros.get("status") == "active") or any(
         m["source_provider"] == "apple_health" and (today - _day(m["metric_date"])).days < APPLE_CONNECTED_DAYS

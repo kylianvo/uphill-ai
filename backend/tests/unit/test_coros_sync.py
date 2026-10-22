@@ -13,6 +13,18 @@ def _no_stored_activities(monkeypatch):
     monkeypatch.setattr(coros_sync.db, "get_activity_external_ids", lambda uid, provider: set())
 
 
+@pytest.fixture(autouse=True)
+def _no_drift_update(monkeypatch, request):
+    """persist() fills long-run drift from the database; these tests stub the database, so skip it."""
+    if "update_hr_drift" in request.node.name:
+        return
+
+    async def nothing(*a, **k):
+        return 0
+
+    monkeypatch.setattr(coros_sync, "update_hr_drift", nothing)
+
+
 class StubAdapter:
     def __init__(self):
         self.activities = [

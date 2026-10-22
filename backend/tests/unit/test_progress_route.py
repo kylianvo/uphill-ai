@@ -1,6 +1,6 @@
 """GET /api/progress with the database stubbed out -- no DB, no network."""
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi import FastAPI
@@ -12,7 +12,7 @@ from services import progress_cards
 app = FastAPI()
 app.include_router(progress.router, prefix="/api")
 client = TestClient(app)
-TODAY = date.today()
+TODAY = datetime.now(UTC).date()  # the server date the endpoint uses without client_today
 
 
 @pytest.fixture()
@@ -103,3 +103,32 @@ def test_bad_section_is_422(stub_db):
 
 def test_requires_auth():
     assert TestClient(app).get("/api/progress?section=health").status_code == 401
+
+
+def test_client_today_keeps_the_athletes_newest_night(stub_db):
+    # Vietnam is UTC+7: before 07:00 local, the night just slept is dated "tomorrow" in server (UTC) terms.
+    tomorrow = TODAY + timedelta(days=1)
+    stub_db["metrics"] = [
+        {"metric_date": tomorrow - timedelta(days=i), "source_provider": "coros", "resting_hr": 50 if i == 0 else 56}
+        for i in range(10)
+    ]
+    body = client.get(f"/api/progress?section=health&client_today={tomorrow.isoformat()}").json()
+    rhr = next(c for c in body["cards"] if c["key"] == "resting_hr")
+    assert rhr["as_of"] == tomorrow.isoformat()
+
+
+def test_load_shows_despite_a_few_missing_days(stub_db):
+    # 30 load rows spread over 36 days (gaps on rest days or unsynced days) must still qualify.
+    days = [i for i in range(36) if i % 6 != 5]
+    stub_db["metrics"] = [
+        {
+            "metric_date": TODAY - timedelta(days=i),
+            "source_provider": "coros",
+            "training_load_short": 90.0,
+            "training_load_long": 95.0,
+            "load_ratio": 0.95,
+        }
+        for i in days
+    ]
+    body = client.get("/api/progress?section=training").json()
+    assert "load" in [c["key"] for c in body["cards"]]
