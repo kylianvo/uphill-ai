@@ -19,9 +19,9 @@ struct AdaptWeekSheet: View {
         _schedule = State(initialValue: ScheduleDraft(plan: model.snapshot?.plan))
     }
 
-    /// Last week's sessions marked missed, so the athlete can say why before the week is rebuilt.
+    /// Last week's sessions marked missed or never logged, so the athlete can say why before the week is rebuilt.
     private var missedLastWeek: [Workout] {
-        (model.snapshot?.workouts ?? []).filter { $0.weekNumber == week - 1 && $0.isMissedFlag && !$0.isRest }
+        (model.snapshot?.workouts ?? []).filter { $0.weekNumber == week - 1 && !$0.isRest && model.needsMissedReason($0) }
     }
 
     var body: some View {

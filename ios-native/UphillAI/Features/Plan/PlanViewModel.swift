@@ -423,6 +423,14 @@ final class PlanViewModel {
         return L("Done · %lld of %lld this week", sessions.filter(\.isDone).count, sessions.count)
     }
 
+    /// Marked missed, or past with no outcome: either way the athlete can still say why.
+    func needsMissedReason(_ w: Workout) -> Bool {
+        guard !w.isMissedFlag else { return true }
+        guard let snapshot else { return false }
+        let date = PlanCalendar.date(week: w.weekNumber, weekday: w.weekday, plan: snapshot.plan, workouts: snapshot.workouts)
+        return PlanCalendar.isUnloggedPast(w, on: date)
+    }
+
     func setMissed(_ workout: Workout, reason: String? = nil) async {
         _ = await write { try await self.service.log(workoutID: workout.id, WorkoutLogUpdate(isMissed: 1, missedReason: reason)) }
     }

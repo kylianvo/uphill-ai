@@ -225,7 +225,7 @@ struct PlanCalendarGridView: View {
             HStack(alignment: .bottom, spacing: 2) {
                 ForEach(sessions) { w in
                     let share = month.maxSessionLoad > 0 ? w.calendarLoad / month.maxSessionLoad : 0
-                    SessionBar(color: WorkoutTypePresentation.zoneColor(for: w), state: SessionBar.Fill(w))
+                    SessionBar(color: WorkoutTypePresentation.zoneColor(for: w), state: SessionBar.Fill(w, on: cell.date))
                         .frame(width: sessions.count > 1 ? 9 : 11, height: min(ceiling, max(5, ceiling * share)))
                 }
             }
@@ -274,7 +274,7 @@ struct PlanCalendarGridView: View {
             if cell.weekNumber != nil { parts.append(L("Rest")) }
         } else {
             for w in cell.sessions {
-                parts.append("\(w.title), \(WorkoutTypePresentation.formatMetrics(for: w)), \(SessionBar.Fill(w).name)")
+                parts.append("\(w.title), \(WorkoutTypePresentation.formatMetrics(for: w)), \(SessionBar.Fill(w, on: cell.date).name)")
             }
         }
         return parts.joined(separator: ", ")
@@ -326,15 +326,18 @@ struct PlanCalendarGridView: View {
 /// One session: solid when done, tinted outline when planned, dashed grey when missed.
 private struct SessionBar: View {
     enum Fill: Hashable {
-        case done, planned, missed
+        case done, planned, missed, unlogged
 
-        init(_ w: Workout) { self = w.isDone ? .done : (w.isMissedFlag ? .missed : .planned) }
+        init(_ w: Workout, on date: Date? = nil) {
+            self = w.isDone ? .done : w.isMissedFlag ? .missed : PlanCalendar.isUnloggedPast(w, on: date) ? .unlogged : .planned
+        }
 
         var name: String {
             switch self {
             case .done: L("Done")
             case .planned: L("Planned")
             case .missed: L("Missed")
+            case .unlogged: L("Not logged")
             }
         }
     }
@@ -349,7 +352,7 @@ private struct SessionBar: View {
             shape.fill(color)
         case .planned:
             shape.fill(color.opacity(0.22)).overlay(shape.stroke(color, lineWidth: 1.5))
-        case .missed:
+        case .missed, .unlogged:
             shape.fill(color.opacity(0.08)).overlay(shape.stroke(color, style: StrokeStyle(lineWidth: 1.5, dash: [2.5, 2])))
         }
     }

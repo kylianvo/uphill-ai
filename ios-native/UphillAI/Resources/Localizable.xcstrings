@@ -5831,6 +5831,16 @@
         }
       }
     },
+    "Not logged": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa ghi nhận"
+          }
+        }
+      }
+    },
     "Missed by Day": {
       "localizations": {
         "vi": {

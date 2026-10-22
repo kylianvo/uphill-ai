@@ -91,7 +91,7 @@ struct NextWeekSheet: View {
     /// before the block is built. The backend applies the missed-session rules to these reasons.
     private var missedBeforeBlock: [Workout] {
         (model.snapshot?.workouts ?? []).filter {
-            $0.weekNumber == currentOffer.weekStart - 1 && $0.isMissedFlag && !$0.isRest
+            $0.weekNumber == currentOffer.weekStart - 1 && !$0.isRest && model.needsMissedReason($0)
         }
     }
 

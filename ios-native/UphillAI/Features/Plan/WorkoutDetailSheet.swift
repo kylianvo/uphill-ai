@@ -656,8 +656,8 @@ struct WorkoutDetailSheet: View {
                 .accessibilityIdentifier("detail.markDone")
             }
 
-            if w.isMissedFlag {
-                Text("Marked as missed")
+            if model.needsMissedReason(w) {
+                Text(w.isMissedFlag ? "Marked as missed" : "Not logged")
                     .font(UH.TextStyle.caption)
                     .foregroundStyle(UH.Palette.muted)
                 VStack(alignment: .leading, spacing: UH.Space.compact) {

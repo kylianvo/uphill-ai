@@ -62,4 +62,16 @@ struct WorkoutRowTests {
         let intervalColor = WorkoutTypePresentation.zoneColor(for: makeWorkout(type: "Hill Repeats", zone: "Z4"))
         #expect(easyColor != intervalColor)
     }
+
+    @Test func unloggedPastWaitsOneDayAndIgnoresDoneMissedAndRest() {
+        let cal = PlanCalendar.calendar
+        let sat = cal.date(from: DateComponents(year: 2026, month: 10, day: 17))!
+        let sun = cal.date(byAdding: .day, value: 1, to: sat)!
+        let mon = cal.date(byAdding: .day, value: 2, to: sat)!
+        #expect(!PlanCalendar.isUnloggedPast(makeWorkout(), on: sat, now: sun))
+        #expect(PlanCalendar.isUnloggedPast(makeWorkout(), on: sat, now: mon))
+        #expect(!PlanCalendar.isUnloggedPast(makeWorkout(isCompleted: 1), on: sat, now: mon))
+        #expect(!PlanCalendar.isUnloggedPast(makeWorkout(isMissed: 1), on: sat, now: mon))
+        #expect(!PlanCalendar.isUnloggedPast(makeWorkout(type: "Rest", duration: 0), on: sat, now: mon))
+    }
 }
