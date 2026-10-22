@@ -33,8 +33,11 @@
   - 50k: 45–90 min
   - 100k: 60–90 min
   - 100mi: 60–90 min, advanced up to 150
-- **Other weekend day:** 60–90 min easy.
-- **Quality:** finishers 1 a week, advanced 2. Each is a hill repeat or interval of 90 min or less.
+- **Other weekend day:** 45–90 min easy, shorter after a longer mountain day: long run ≤ 240 → 90, ≤ 300 → 60, longer → 45 (Zone 1).
+- **Quality** (uphill/rolling intervals, Zone 3 only, never Zone 4; whole session ≤ 90 min):
+  - only in the **quality window**: the 8 weeks up to and including `peak_week`, deload weeks excluded; none before it and none in the taper (hill sprints and strides stay everywhere and never count)
+  - count: finishers 1, advanced 2; **gated** runners 1 whatever their level (gated = the generator's `hard_banned` is non-empty: measured gap > 10% or estimated thresholds)
+  - work: finishers and gated 20–30 min, advanced 40–60 min
 - **First 2 weeks:** at the athlete's current weekly volume (× `RECENT_LOAD_GROWTH`).
 - **Long-run share cap** for ladder plans: 0.60. **Growth rule:** ladder steps are exempt from `LONG_RUN_JUMP`.
 - **Back-to-back:** off for ladder plans, unchanged for every other plan.
@@ -44,7 +47,7 @@
   - at most 1 a week; advanced up to 2 in Base and Build
   - none in a week with a long run ≥ 360 min (ladder plans)
 - **All plans:** every session after the race, in race week, becomes Rest.
-- **Intensity switch:** `ULTRA_QUALITY_IGNORES_AET_GATE`, default `false`. When it is true and the plan is a ladder plan, the AeT gate (`hard_banned`) is lifted. Zone 3 quality never exceeds `_cap_hard_dose` limits.
+- **AeT gate for ladder plans:** the window's quality sessions are allowed even for gated runners (book: "within about eight weeks of your event you better start adding specific training in"). Outside the window, ladder plans have no Zone 3+ at all. No config switch.
 - Prompt wording changes follow `.claude/skills/llm-change-process/SKILL.md`. The new text goes into the `goal_description` variable, not the Langfuse template, but the golden-set eval and checklist still apply.
 
 ## Review Focus
@@ -71,12 +74,15 @@
   - `is_advanced(tier_key: str) -> bool`
   - `session_cap(band: Band, advanced: bool) -> int`
   - `weekday_minutes(band: Band, advanced: bool) -> tuple[int, int]`
-  - `quality_per_week(advanced: bool) -> int`
+  - `quality_weeks(total_weeks: int) -> frozenset[int]`: weeks `peak_week - 7` … `peak_week`, minus deload weeks
+  - `quality_per_week(advanced: bool, gated: bool) -> int`
+  - `quality_work_minutes(advanced: bool, gated: bool) -> tuple[int, int]`: (20, 30) or (40, 60)
+  - `other_day_minutes(long_run_min: float) -> int`: 90 / 60 / 45
   - `peak_week(total_weeks: int) -> int`: `total_weeks - 3 - taper_shift(total_weeks)`, the same "last build" as `goal_demands.long_run_ask`
   - `is_deload(week: int, total_weeks: int) -> bool`: the same rule as `PlanGenerator.is_deload_week`, kept here to avoid an import cycle
   - `ladder(band: Band, advanced: bool, total_weeks: int) -> dict[int, int]`: minutes for each week from 1 to `peak_week`, with the recovery value on deload weeks
   - `long_run_target(band, advanced, week, total_weeks, recent_longest: float | None) -> int | None`: `None` after the peak week. Otherwise `min(ladder[week], recent_longest + STEP_CAP_MIN)` when `recent_longest` is set.
-  - Constants: `LONG_SHARE_CAP = 0.60`, `STEP_CAP_MIN = 60`, `QUALITY_MAX_MIN = 90`, `OTHER_WEEKEND_DAY = (60, 90)`, `ME_FREE_LONG_RUN_MIN = 360`, `ME_MAX_SHARE = 0.10`
+  - Constants: `LONG_SHARE_CAP = 0.60`, `STEP_CAP_MIN = 60`, `QUALITY_MAX_MIN = 90`, `ME_FREE_LONG_RUN_MIN = 360`, `ME_MAX_SHARE = 0.10`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -123,7 +129,14 @@ def test_numbers():
     assert u.weekday_minutes("50k", False) == (45, 90)
     assert u.weekday_minutes("100k", True) == (60, 90)
     assert u.weekday_minutes("100mi", True) == (60, 150)
-    assert u.quality_per_week(False) == 1 and u.quality_per_week(True) == 2
+    assert u.quality_per_week(False, False) == 1 and u.quality_per_week(True, False) == 2
+    assert u.quality_per_week(True, True) == 1
+    assert u.quality_work_minutes(True, False) == (40, 60) and u.quality_work_minutes(True, True) == (20, 30)
+    assert [u.other_day_minutes(m) for m in (180, 240, 300, 360, 420)] == [90, 90, 60, 45, 45]
+
+def test_quality_window_is_8_weeks_to_peak_without_deloads():
+    assert u.quality_weeks(20) == frozenset({9, 10, 11, 13, 14, 15, 16})  # peak 16, deload 12
+    assert u.quality_weeks(8) == frozenset({1, 2, 3, 5})  # short plan: the whole build, deload 4
 ```
 
 - [ ] **Step 2: Run the tests and confirm they fail.** Run `cd backend && pytest tests/unit/test_ultra_rules.py -v`. Expected: ImportError.
@@ -187,14 +200,15 @@ def test_no_mountain_day_keeps_book_caps():
 **Interfaces:**
 - Consumes:
   - `Prefs.mountain_day`, `Prefs.total_weeks`, `Prefs.demands.distance_km`
-  - `ultra_rules.applies`, `ladder`, `weekday_minutes`, `quality_per_week`, `is_advanced`, `ME_MAX_SHARE`
+  - `ultra_rules.applies`, `ladder`, `weekday_minutes`, `quality_weeks`, `quality_per_week`, `is_advanced`, `ME_MAX_SHARE`
+  - new `Prefs.quality_gated: bool = False`, set at `plan_generator.py:1116` from `bool(hard_banned)`
 - Produces:
   - `week_minutes(ws)` now leaves out ME rows (C8). Callers in the generator keep the same signature.
   - `_ultra(prefs, profile) -> tuple[Band, bool] | None`: the band and whether the athlete is advanced, or `None` when ultra rules don't apply.
   - New issue codes:
     - `WEEKDAY_SHORT`: a non-down week, ultra only. An Easy/Aerobic Capacity row that isn't on the long-run day is under the band minimum. The message names the row and the minimum.
     - `ULTRA_LADDER`: a non-down build week, ultra only. The longest Long Run is below 90% of `ladder[week]`. The message says "make the Long Run about N min".
-    - `QUALITY_COUNT`: a Build/Peak non-down week, ultra only. The number of `is_hard` rows plus rows with a hill-repeat title is ≠ `quality_per_week`.
+    - `QUALITY_COUNT`: ultra only. In a `quality_weeks` week, the number of `is_hard` rows (titles containing "sprint" or "stride" excluded) is ≠ `quality_per_week(advanced, prefs.quality_gated)`. Outside the window, any such row is flagged. Zone 4/5 rows are always flagged for ultras.
     - `ME_LOAD` (all plans): more ME rows than allowed (1; advanced 2 in Base/Build), or ME minutes > 10% of `week_minutes`.
   - `LONG_RUN_JUMP` is skipped when ultra applies and `longest_now <= ladder[week]`.
   - `B2B_MISSING` and the back-to-back window are skipped when ultra applies (C7).
@@ -257,9 +271,9 @@ def test_me_load_all_plans():
   - `_progress_long_runs`: when `ultra` is set, for each week ≤ `peak_week` (deload weeks included), the Long Run becomes `long_run_target(ultra, advanced, week, total_weeks, recent_longest)`, raised or lowered with `_resize`. `recent_longest` is the max Long Run of the two prior weeks (prior blocks included). The `long_run_ask` / share-limit path and the back-to-back block are skipped. Taper handling is unchanged.
   - `_ultra_week_shape(wos)`, called right after `_progress_long_runs` and only when `ultra` is set:
     - Easy/Aerobic Capacity rows on non-long-run days are clamped into `weekday_minutes(ultra, advanced)` with `_resize`.
-    - The other weekend day (Saturday/Sunday, whichever isn't the long-run day), when it's a run, is clamped into `OTHER_WEEKEND_DAY`.
+    - The other weekend day (Saturday/Sunday, whichever isn't the long-run day), when it's a run, becomes an easy run of `other_day_minutes(long run minutes)`; Zone 1 when that is 45.
     - In weeks where the Long Run is ≥ `ME_FREE_LONG_RUN_MIN`, ME rows become easy runs (`_to_easy`).
-    - In Build/Peak non-deload weeks, quality rows beyond `quality_per_week` become easy runs (`_to_easy`), and quality rows are capped at `QUALITY_MAX_MIN`.
+    - Quality rows are capped at `QUALITY_MAX_MIN` (90). In `_cap_hard_dose`, a Zone 3 row of an ultra plan in a quality week may run to 90 min instead of 75. (Which rows stay hard is Task 6.)
   - `_cap_start_load(wos, weeks: tuple[int, ...] = (1,), floor: int = 30)`: the existing call is unchanged. When `ultra` is set, a second call runs after `_ultra_week_shape` with `weeks=(1, 2)` and `floor=weekday_minutes(ultra, advanced)[0]`. The long run is never cut (it already isn't).
 
 - [ ] **Step 1: Write the failing tests.** They cover the 100K race from `plan_reliability.RACES`, `mountain_days=["Saturday"]`, long-run day Saturday and 6 days a week:
@@ -317,51 +331,69 @@ def test_no_me_in_6h_weeks(rule_based_plan):
 
 ---
 
-### Task 6: Intensity switch (C6)
+### Task 6: Quality window and the AeT gate for ladder plans (C6)
 
 **Files:**
-- Modify: `backend/config.py` (next to `PLAN_LINT_*`): add `ULTRA_QUALITY_IGNORES_AET_GATE: bool = os.getenv("ULTRA_QUALITY_IGNORES_AET_GATE", "false").lower() == "true"`
-- Modify: `backend/services/ultra_rules.py`. Add `gate(hard_banned: frozenset[str], band: Band | None, ignore_gate: bool) -> frozenset[str]`. It returns `frozenset()` when `band` and `ignore_gate` are both set, and `hard_banned` otherwise.
-- Modify: `backend/services/plan_generator.py:1299`. Wrap the result: `hard_banned = ultra_rules.gate(hard_work_banned_phases(...), ultra, settings.ULTRA_QUALITY_IGNORES_AET_GATE)`. `ultra` (Task 4) has to be computed before line 1299, so move its line up next to `venues` (1315) if needed.
-- Test: `backend/tests/unit/test_ultra_rules.py`
+- Modify: `backend/services/plan_generator.py`: `_gate_hard` (1527) gets an ultra branch; `ultra`, `advanced` and `aet_gated = bool(hard_banned)` must be computed before 1299, so move the `venues` line (1315) up if needed.
+- Test: `backend/tests/unit/test_ultra_plan_generation.py`
 
-- [ ] **Step 1: Write the failing test:**
+**Interfaces:**
+- Consumes: `ultra_rules.quality_weeks`, `quality_per_week`, `quality_work_minutes`; the `rule_based_plan` fixture from Task 4, extended with optional `aet_hr`, `ant_hr`, `threshold_source` keyword arguments passed into the user profile (`threshold_source="lab"` must be in `MEASURED_THRESHOLD_SOURCES`; check and use a listed value).
+- Produces: when `ultra` is set, `_gate_hard` ignores `hard_banned` and applies one rule to every non-Race row with `is_hard` true (hill sprints / strides by `HILL_SPRINT_TITLE_KEYWORDS` untouched):
+  - Zone 4/5 rows → `_to_easy`.
+  - Week not in `quality_weeks(total_weeks)` → `_to_easy`.
+  - Week in the window → keep the first `quality_per_week(advanced, aet_gated)` Zone 3 rows by day; the rest → `_to_easy`.
+
+- [ ] **Step 1: Write the failing tests**
 
 ```python
-def test_gate_switch():
-    base = frozenset({"Base"})
-    assert u.gate(base, "100k", False) == base
-    assert u.gate(base, "100k", True) == frozenset()
-    assert u.gate(base, None, True) == base
+def test_ultra_quality_only_in_the_window(rule_based_plan):
+    wos = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="sub_elite")
+    window = ultra_rules.quality_weeks(20)
+    hard = [w for w in wos if plan_lint.is_hard(w) and w["type"] != "Race"
+            and not any(k in w["title"].lower() for k in ("sprint", "stride"))]
+    assert all(w["week_number"] in window for w in hard)
+    assert all(w["target_zone"] == "Zone 3" for w in hard)
+    per_week = Counter(w["week_number"] for w in hard)
+    assert max(per_week.values()) <= 2
+
+def test_gated_runner_gets_one_zone3_in_the_window(rule_based_plan):
+    wos = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="sub_elite",
+                          aet_hr=140, ant_hr=170, threshold_source="lab")  # 18% gap: ADS
+    hard = [w for w in wos if plan_lint.is_hard(w) and w["type"] != "Race"
+            and not any(k in w["title"].lower() for k in ("sprint", "stride"))]
+    assert hard and max(Counter(w["week_number"] for w in hard).values()) == 1
 ```
 
-- [ ] **Step 2: Run the test and confirm it fails.** Run `pytest tests/unit/test_ultra_rules.py -k gate -v`.
-- [ ] **Step 3: Implement `gate` and wire it in.**
-- [ ] **Step 4: Run the test and confirm it passes.**
-- [ ] **Step 5: Commit.** `git commit -m "feat(plan): ULTRA_QUALITY_IGNORES_AET_GATE switch, default off"`
+  If the rule-based template has no Zone 3 session in some window week, the generator does not invent one; the lint's `QUALITY_COUNT` (Task 3) asks the model for it on the Gemini path. The tests therefore check the upper bounds and that gated runners keep at least one.
+- [ ] **Step 2: Run the tests and confirm they fail.** Run `pytest tests/unit/test_ultra_plan_generation.py -k "window or gated" -v`.
+- [ ] **Step 3: Implement the ultra branch of `_gate_hard`.**
+- [ ] **Step 4: Run the tests.** Run `pytest tests/unit -q`. Expected: pass.
+- [ ] **Step 5: Commit.** `git commit -m "feat(plan): ultra quality sessions only in the final 8 weeks, gated runners get one"`
 
 ---
 
 ### Task 7: Prompt block for the model
 
 **Files:**
-- Modify: `backend/services/ultra_rules.py`. Add `prompt_block(band: Band, advanced: bool, weeks: dict[int, int], aet_gated: bool, lang: str) -> str`.
-- Modify: `backend/services/plan_generator.py:2797`. Next to `goal_demands.prompt_block`, append `ultra_rules.prompt_block(ultra, advanced, {w: target for the block's weeks}, aet_gated=bool(hard_banned), lang=lang)` when `ultra` is set.
+- Modify: `backend/services/ultra_rules.py`. Add `prompt_block(band: Band, advanced: bool, weeks: dict[int, int], total_weeks: int, aet_gated: bool, lang: str) -> str`.
+- Modify: `backend/services/plan_generator.py:2797`. Next to `goal_demands.prompt_block`, append `ultra_rules.prompt_block(ultra, advanced, {w: target for the block's weeks}, total_weeks, aet_gated=aet_gated, lang=lang)` when `ultra` is set.
 - Test: `backend/tests/unit/test_ultra_rules.py`
 
 **Interfaces:**
 - Produces: a rule block that handles `lang` the same way `goal_demands.prompt_block` does. It says:
   - this week's Long Run minutes for each week of the block, on the mountain day
-  - the other weekend day is 60–90 min easy
+  - the other weekend day's minutes for each week (`other_day_minutes`)
   - the weekday easy range
-  - the quality count. When `aet_gated`, quality means "steep Zone 2 hill repeats (8–12% treadmill, stairs or an overpass), breathing-limited, never ME"; otherwise "hill repeats or intervals, Zone 3, ≤ 90 min".
+  - for each block week in `quality_weeks`: the count and work minutes, as "uphill or rolling intervals in Zone 3 (8–12% treadmill, stairs or an overpass where there are no hills), breathing-limited, never ME, no Zone 4, whole session ≤ 90 min"; for block weeks outside the window: "no Zone 3+; hill sprints, strides and ME only"
   - extra volume goes on weekdays
   - no back-to-back weekend
   - this ladder overrides the long-run share and growth rules
 
 - [ ] **Step 1: Write the failing tests:**
-  - `"420" in prompt_block("100k", False, {16: 420}, False, "en")`
-  - `"Zone 2 hill repeats" in prompt_block(..., aet_gated=True, ...)`
+  - `"420" in prompt_block("100k", False, {16: 420}, 20, False, "en")`
+  - week 16 block, `aet_gated=True`: the text holds "1" session and "20-30" min, and not "Zone 4" as an instruction to do Zone 4
+  - week 5 block (outside the window): "no Zone 3" in the lowered text
   - `"back-to-back" in ...lower()`
 - [ ] **Step 2: Run the tests and confirm they fail.**
 - [ ] **Step 3: Implement `prompt_block` and wire it into `plan_generator.py`.**
@@ -381,8 +413,7 @@ def test_gate_switch():
   - add `mountain_days` to scenarios
   - add rows for 50K / 100K × finisher (`65km 6d`) / advanced (`100km 6d`) × mountain day yes/no
   - for mountain-day rows, ladder plans may show `LONG_SHARE`-free, `LONG_RUN_JUMP`-free weeks; no new exemptions needed
-- Modify: `CLAUDE.md` (Goal-reliable plans paragraph): one sentence on `services/ultra_rules.py` and `ULTRA_QUALITY_IGNORES_AET_GATE`.
-- Modify: `docs/superpowers/specs/2026-10-23-ultra-rules-design.md`: paste the NotebookLM answers into "Stated deviation from the book" when the user provides them.
+- Modify: `CLAUDE.md` (Goal-reliable plans paragraph): one sentence on `services/ultra_rules.py` (ladder, quality window).
 
 - [ ] **Step 1: Run the scorecard.** Run `python scripts/plan_reliability.py`. Expected: exit 0 with the new rows.
 - [ ] **Step 2: Re-render the HCMC persona pack.** Run `python scripts/render_persona_pack.py` and hand the output to the user for Quang's review. This is a manual step; don't send it to anyone.
