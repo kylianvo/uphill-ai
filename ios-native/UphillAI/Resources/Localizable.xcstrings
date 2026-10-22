@@ -15270,6 +15270,36 @@
           }
         }
       }
+    },
+    "Coach's pick": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach chọn"
+          }
+        }
+      }
+    },
+    "%lld sessions": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld buổi"
+          }
+        }
+      }
+    },
+    "Matched with %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã khớp với %@"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
