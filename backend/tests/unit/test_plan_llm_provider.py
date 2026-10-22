@@ -137,3 +137,14 @@ def test_gemini_default_unchanged(run, monkeypatch):
     _, genai, anthropic_ctor = run(FakeAnthropic([]))
     assert genai.models.generate_content.call_count == 2  # first attempt + reduced retry, both fail in this test
     anthropic_ctor.assert_not_called()
+
+
+def test_claude_prompt_draft_keeps_every_variable():
+    import re
+    from pathlib import Path
+
+    from services.plan_generator import PLAN_GENERATION_PROMPT
+
+    draft = (Path(__file__).resolve().parents[2] / "prompts" / "plan_generation.claude.txt").read_text()
+    variables = re.compile(r"{{\s*(\w+)\s*}}")
+    assert set(variables.findall(draft)) == set(variables.findall(PLAN_GENERATION_PROMPT))
