@@ -79,6 +79,11 @@ def volume(workouts: list[dict], activities: list[dict], plan_monday: date, curr
         if 1 <= week < current_week:
             km, climb = actual.setdefault(week, [0.0, 0.0])
             actual[week] = [km + (a.get("distance_km") or 0.0), climb + (a.get("elevation_gain_m") or 0.0)]
+    # A session marked done with no watch activity counts at its planned distance: athletes without a device log by hand.
+    for w in _planned(workouts, current_week):
+        if w.get("is_completed") == 1 and not w.get("matched_activity_id"):
+            km, climb = actual.setdefault(w["week_number"], [0.0, 0.0])
+            actual[w["week_number"]] = [km + (w.get("distance_km") or 0.0), climb + (w.get("elevation_gain_m") or 0.0)]
     weeks = sorted(w for w, (km, _) in actual.items() if km > 0)
     if len(weeks) < VOLUME_MIN_WEEKS:
         return Pending("volume", VOLUME_MIN_WEEKS, len(weeks))

@@ -57,13 +57,13 @@ def test_consistency_counts_watch_matched_as_done():
 
 def test_volume_pending_below_threshold():
     acts = [_run(MONDAY), _run(MONDAY + timedelta(days=7))]
-    out = pc.volume([_wk(1), _wk(2), _wk(3)], acts, MONDAY, current_week=4)
+    out = pc.volume([_wk(w, matched=w) for w in (1, 2, 3)], acts, MONDAY, current_week=4)
     assert out == Pending("volume", needs=3, have=2)
 
 
 def test_volume_card_at_threshold():
     acts = [_run(MONDAY + timedelta(days=7 * i), km=12.0, climb=300.0) for i in range(3)]
-    out = pc.volume([_wk(1), _wk(2), _wk(3)], acts, MONDAY, current_week=4)
+    out = pc.volume([_wk(w, matched=w) for w in (1, 2, 3)], acts, MONDAY, current_week=4)
     assert isinstance(out, Card) and out.value == 12.0 and out.unit == "km"
     assert out.series[0] == {"week": 1, "km": 12.0, "km_planned": 10.0, "climb_m": 300.0, "climb_planned": 100.0}
 
@@ -129,3 +129,9 @@ def test_aerobic_speed_card_with_path():
     assert out.value == 6.0 and out.unit == "min/km"
     assert out.note == {"key": "aerobic_speed", "b": "on", "a": "behind", "measured_pct": 3.2}
     assert out.series == [{"week": 1, "pace": 6.2}, {"week": 2, "pace": 6.1}, {"week": 4, "pace": 6.0}]
+
+
+def test_volume_counts_logged_sessions_without_a_watch():
+    ws = [_wk(w, done=1, km=8.0, climb=80.0) for w in (1, 2, 3)]
+    out = pc.volume(ws, [], MONDAY, current_week=4)
+    assert isinstance(out, Card) and out.value == 8.0
