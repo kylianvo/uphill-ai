@@ -15230,6 +15230,16 @@
           }
         }
       }
+    },
+    "Adapt this week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điều chỉnh tuần này"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -233,31 +233,6 @@ struct PlanView: View {
                             }
                         }
 
-                        // Adapt week button
-                        if model.canAdaptWeek(model.selectedWeek) {
-                            HStack {
-                                Spacer()
-                                Button {
-                                    showAdapt = true
-                                } label: {
-                                    HStack(spacing: 5) {
-                                        Image(systemName: "sparkles")
-                                            .font(.system(size: 11, weight: .bold))
-                                        Text("Adapt Week \(model.selectedWeek)")
-                                            .font(.system(size: 12, weight: .semibold))
-                                    }
-                                    .foregroundStyle(UH.Palette.accentInk)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(UH.Palette.activeFill, in: Capsule())
-                                    .overlay(Capsule().stroke(UH.Palette.accentInk.opacity(0.3), lineWidth: 1))
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("plan.adaptWeek")
-                            }
-                            .padding(.horizontal, UH.Space.regular)
-                        }
-
                         // 4. Week switcher with List / Calendar toggle
                         WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek, viewMode: $viewMode)
                             .padding(.horizontal, UH.Space.regular)
@@ -528,7 +503,7 @@ struct PlanView: View {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(plan.raceName)
-                            .font(.system(size: 19, weight: .bold))
+                            .font(UH.TextStyle.sectionTitle)
                             .foregroundStyle(UH.Palette.ink)
                             .lineLimit(1)
 
@@ -548,20 +523,21 @@ struct PlanView: View {
                         }
                     }
 
-                    Spacer()
+                }
 
-                    if let pill = model.goalPillText {
-                        Button { showGoal = true } label: {
-                            Text(pill)
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                .foregroundStyle(model.goalIsOutOfReach ? UH.Palette.danger : model.goal?.status.kind == .behind ? UH.Palette.warningInk : UH.Palette.accentInk)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(UH.Palette.hover, in: Capsule())
-                                .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 1))
-                        }
-                        .accessibilityIdentifier("plan.goalpill")
-                    }
+                Text(verbatim: PlanSummary.weekLine(PlanSummary.volume(week: model.selectedWeek, workouts: model.snapshot?.workouts ?? [])))
+                    .font(UH.TextStyle.label)
+                    .foregroundStyle(UH.Palette.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("plan.weekLine")
+
+                if model.canAdaptWeek(model.selectedWeek) {
+                    Button(L("Adapt this week")) { showAdapt = true }
+                        .font(UH.TextStyle.disclosure)
+                        .foregroundStyle(UH.Palette.accentInk)
+                        .frame(minHeight: 44)
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("plan.adaptWeek")
                 }
             }
         }
