@@ -42,7 +42,8 @@ Paths are under `backend/services/` unless stated.
   Peak → Taper → Race week → Recovery.
 - **R-P2 Deload every 4th week**, never the last build week (`is_deload_week`). A deload week is
   **at most 80% of the week before**, cut from easy runs (`_ramp_volume`). *UA: 3:1 loading.*
-- **R-P3 Two-step taper** for plans of 12+ weeks (week −2 ≤85%, week −1 ≤70% of peak). Taper weeks
+- **R-P3 Two-step taper** for plans of 12+ weeks (code: about 70%, then 50% of the peak week; one step at 50%
+  for shorter plans; the lint holds each taper week to ≤85% of the week before). Taper weeks
   are built by code from the real peak (`TAPER_BY_RULES`), with no new hard work. *UA taper.*
 
 ### Volume
@@ -57,14 +58,36 @@ Paths are under `backend/services/` unless stated.
   (`_ramp_volume`), within R-V2 and the tier's weekday maximum.
 
 ### Long run
-- **R-L1 Long run grows toward the race's time on feet**, at most +20%/week, capped by the session
-  cap (300 min; 480 min sub-elite 100-mile) and the long-run share (tier cap ±5%,
-  `LONG_SHARE_SOFT`).
-- **R-L2 Back-to-back weekend** for ultras in the last build weeks.
+- **R-L1 Long run grows toward the race's time on feet**, asked at most +20%/week (the lint allows +25%,
+  `LONG_RUN_JUMP`), capped by the session cap (300 min; 480 min sub-elite 100-mile) and the long-run share
+  (tier cap ±5%, `LONG_SHARE_SOFT`). Mountain-day ultras follow R-U instead.
+- **R-L2 Back-to-back weekend** for ultras in the last build weeks (not for mountain-day ultras: R-U).
 - **R-L3 Taper long run** about 60%, then 40% of the peak, and inside the long-run share even when
   short taper runs are dropped (`_fit_taper_long_share`).
 - **R-L4 Mountain minimum.** On a mountain day the long run is at least the athlete's chosen
   minimum (default 180 min), except in recovery/taper/deload weeks ("chill" mode).
+
+### Ultras with a mountain day (R-U, coach Quang 2026-10-22)
+Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
+`docs/superpowers/specs/2026-10-23-ultra-rules-design.md`, which records where this departs from the book).
+- **R-U1 Long-run ladder** in hours, read back from the peak week: 100 km 3, 3, 4, 4, 5 … 6, 7 h; 50 km
+  3 h ×4 → 4 → 4.5 → 5 h; 100 mi as 100 km, 8 h peak for sub-elite/elite. Deload weeks 3 h (50 km) or 4 h.
+  Never more than 60 min above the last two weeks' longest. Session cap 300 / 420 / 420–480 min, long-run
+  share 60%; ladder steps are exempt from `LONG_RUN_JUMP` and the weekly growth checks measure the rest of
+  the week.
+- **R-U2 Week shape.** Weekday easy runs 45–90 min (50 km) or 60–90 min (100 km+; 150 for advanced 100 mi);
+  the other weekend day at most 90 / 60 / 45 min after a ≤4 h / 5 h / 6 h+ mountain day; no back-to-back;
+  no ME in a week with a 6 h+ long run; deload weeks ≤80% of the week before; first 2 weeks at current load.
+- **R-U3 Quality sessions** only in the 8 weeks up to the peak (deloads excluded): Zone 3 uphill or
+  rolling intervals, ≤90 min, 1 a week (2 for ungated sub-elite/elite), none before or in the taper; no
+  Zone 4. Gated runners (R-I1) still get one at 20–30 min of work. `QUALITY_COUNT`, `_add_tempo`,
+  `_gate_hard`.
+
+### All plans (2026-10-23)
+- **R-A1 ME is not volume.** `plan_lint.week_minutes` leaves ME out (volume growth, recovery detection,
+  start load); the long-run share and back-to-back checks still use all training time. `ME_LOAD`: one ME
+  session a week (two for sub-elite/elite in Base/Build), and what goes beyond one stays under 10%.
+- **R-A2 Rest after the race.** Sessions after the race in race week become rest (`rows_after_race`).
 
 ### Intensity
 - **R-I1 AeT gate.** *UA: aerobic deficiency.*
