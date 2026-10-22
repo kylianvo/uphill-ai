@@ -15230,6 +15230,696 @@
           }
         }
       }
+    },
+    "% done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "% hoàn thành"
+          }
+        }
+      }
+    },
+    "% drift": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "% drift"
+          }
+        }
+      }
+    },
+    "%lld bpm above your usual": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cao hơn mức thường %lld bpm"
+          }
+        }
+      }
+    },
+    "%lld bpm below your usual": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thấp hơn mức thường %lld bpm"
+          }
+        }
+      }
+    },
+    "3M": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3T"
+          }
+        }
+      }
+    },
+    "4W": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4T"
+          }
+        }
+      }
+    },
+    "Aerobic speed appears after 3 weeks of easy runs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aerobic speed hiện sau 3 tuần chạy Easy"
+          }
+        }
+      }
+    },
+    "Ahead of the path to your B goal": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang nhanh hơn lộ trình mục tiêu B"
+          }
+        }
+      }
+    },
+    "Behind the path to your B goal": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang chậm hơn lộ trình mục tiêu B"
+          }
+        }
+      }
+    },
+    "Build a plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo plan"
+          }
+        }
+      }
+    },
+    "Build a plan to track consistency, volume and your goal.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo plan để theo dõi độ đều, khối lượng và mục tiêu."
+          }
+        }
+      }
+    },
+    "Coach's read": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach nhận xét"
+          }
+        }
+      }
+    },
+    "Connect COROS or Apple Health to see sleep, HRV and resting heart rate.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối COROS hoặc Apple Health để xem giấc ngủ, HRV và Resting HR."
+          }
+        }
+      }
+    },
+    "Connect a device": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối thiết bị"
+          }
+        }
+      }
+    },
+    "Consistency": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Độ đều"
+          }
+        }
+      }
+    },
+    "Consistency appears after 2 plan weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Độ đều hiện sau 2 tuần theo plan"
+          }
+        }
+      }
+    },
+    "Couldn't load your progress. Pull to try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa tải được tiến độ. Kéo xuống để thử lại."
+          }
+        }
+      }
+    },
+    "Durability": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Độ bền"
+          }
+        }
+      }
+    },
+    "Durability appears after 3 long runs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Độ bền hiện sau 3 buổi Long Run"
+          }
+        }
+      }
+    },
+    "Everything is within your usual range.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mọi chỉ số đều trong mức thường của bạn."
+          }
+        }
+      }
+    },
+    "Goal": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu"
+          }
+        }
+      }
+    },
+    "HRV": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HRV"
+          }
+        }
+      }
+    },
+    "HRV appears after 14 nights of data": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HRV hiện sau 14 đêm có dữ liệu"
+          }
+        }
+      }
+    },
+    "HRV is above your normal range": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HRV cao hơn mức bình thường"
+          }
+        }
+      }
+    },
+    "HRV is below your normal range": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HRV thấp hơn mức bình thường"
+          }
+        }
+      }
+    },
+    "HRV is in your normal range": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HRV trong mức bình thường"
+          }
+        }
+      }
+    },
+    "Health": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sức khỏe"
+          }
+        }
+      }
+    },
+    "Heart rate drift on your last long runs. Lower is steadier.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Độ trôi nhịp tim ở các buổi Long Run gần đây. Càng thấp càng ổn định."
+          }
+        }
+      }
+    },
+    "Hours asleep each night, naps included, against your own usual range. Duration and timing are what watches measure well.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số giờ ngủ mỗi đêm, tính cả ngủ trưa, so với mức thường của bạn. Đồng hồ đo tốt thời lượng và giờ ngủ."
+          }
+        }
+      }
+    },
+    "How much your heart rate drifts against grade-adjusted pace from the first half of a steady long run to the second. Lower and later drift means better endurance.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhịp tim trôi bao nhiêu so với pace đã quy đổi độ dốc, từ nửa đầu đến nửa sau một buổi Long Run đều. Trôi ít và muộn nghĩa là sức bền tốt hơn."
+          }
+        }
+      }
+    },
+    "Kilometres and climb you ran each week, against what the plan asked for.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số km và D+ bạn chạy mỗi tuần, so với plan."
+          }
+        }
+      }
+    },
+    "Last 7 days are above your usual load": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 ngày qua cao hơn mức tải thường"
+          }
+        }
+      }
+    },
+    "Last 7 days are below your usual load": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 ngày qua thấp hơn mức tải thường"
+          }
+        }
+      }
+    },
+    "Last 7 days are within your usual load": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 ngày qua trong mức tải thường"
+          }
+        }
+      }
+    },
+    "Less sleep than your usual this week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần này ngủ ít hơn mức thường"
+          }
+        }
+      }
+    },
+    "More sleep than your usual this week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần này ngủ nhiều hơn mức thường"
+          }
+        }
+      }
+    },
+    "Most missed because: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lý do lỡ buổi nhiều nhất: %@"
+          }
+        }
+      }
+    },
+    "On the path to your B goal": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đúng lộ trình mục tiêu B"
+          }
+        }
+      }
+    },
+    "Outside your usual: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lệch mức thường: %@"
+          }
+        }
+      }
+    },
+    "Overnight heart rate variability from one device, against its normal range. Use it as a warning sign, not a fitness score. Compare it only with yourself.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HRV ban đêm từ một thiết bị, so với mức bình thường của thiết bị đó. Dùng như tín hiệu cảnh báo, không phải điểm thể lực. Chỉ so với chính bạn."
+          }
+        }
+      }
+    },
+    "Planned sessions done in recent weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi tập đã hoàn thành trong các tuần gần đây"
+          }
+        }
+      }
+    },
+    "Planned sessions you completed in each finished week. Sessions your watch matched count as done.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số buổi trong plan bạn đã tập ở mỗi tuần đã qua. Buổi được đồng hồ ghép tính là đã tập."
+          }
+        }
+      }
+    },
+    "Progress": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiến độ"
+          }
+        }
+      }
+    },
+    "Range": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khoảng"
+          }
+        }
+      }
+    },
+    "Resting HR appears after 7 days of data": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resting HR hiện sau 7 ngày có dữ liệu"
+          }
+        }
+      }
+    },
+    "Resting HR is in your usual range": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resting HR trong mức thường"
+          }
+        }
+      }
+    },
+    "Sleep": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giấc ngủ"
+          }
+        }
+      }
+    },
+    "Sleep appears after 7 nights of data": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giấc ngủ hiện sau 7 đêm có dữ liệu"
+          }
+        }
+      }
+    },
+    "Sleep is within your usual range": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giấc ngủ trong mức thường"
+          }
+        }
+      }
+    },
+    "Source: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nguồn: %@"
+          }
+        }
+      }
+    },
+    "The pace you hold at your aerobic threshold heart rate on easy runs. Getting faster at the same heart rate means your aerobic base is growing.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace bạn giữ được ở nhịp tim AeT trong các buổi Easy Run. Nhanh hơn ở cùng nhịp tim nghĩa là nền Aerobic đang tăng."
+          }
+        }
+      }
+    },
+    "Training load": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Training load"
+          }
+        }
+      }
+    },
+    "Training load appears after 28 days of data": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Training load hiện sau 28 ngày có dữ liệu"
+          }
+        }
+      }
+    },
+    "Volume & climb": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối lượng & D+"
+          }
+        }
+      }
+    },
+    "Volume appears after 3 weeks of runs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối lượng hiện sau 3 tuần chạy"
+          }
+        }
+      }
+    },
+    "Weekly km and climb against your plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Km và D+ mỗi tuần so với plan"
+          }
+        }
+      }
+    },
+    "What this means": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ý nghĩa"
+          }
+        }
+      }
+    },
+    "Your heart rate at rest, against your own usual range. A few beats above usual for several days can mean fatigue, illness or stress.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhịp tim lúc nghỉ, so với mức thường của bạn. Cao hơn vài nhịp trong nhiều ngày có thể do mệt, ốm hoặc căng thẳng."
+          }
+        }
+      }
+    },
+    "Your last 7 days of training against your last 6 weeks. Above usual is normal in a build week; several weeks above usual is worth a look.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 ngày tập gần nhất so với 6 tuần qua. Cao hơn mức thường là bình thường ở tuần Build. Nhiều tuần liền cao hơn thì nên xem lại."
+          }
+        }
+      }
+    },
+    "Your trends appear here as data comes in.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xu hướng của bạn sẽ hiện ở đây khi có dữ liệu."
+          }
+        }
+      }
+    },
+    "busy": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bận"
+          }
+        }
+      }
+    },
+    "h asleep": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "giờ ngủ"
+          }
+        }
+      }
+    },
+    "km last week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "km tuần trước"
+          }
+        }
+      }
+    },
+    "other": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "khác"
+          }
+        }
+      }
+    },
+    "pain": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "đau"
+          }
+        }
+      }
+    },
+    "sick": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ốm"
+          }
+        }
+      }
+    },
+    "tired": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mệt"
+          }
+        }
+      }
+    },
+    "weather": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "thời tiết"
+          }
+        }
+      }
+    },
+    "× your usual": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "× mức thường"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

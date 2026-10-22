@@ -76,3 +76,14 @@ struct ProgressViewModelTests {
         #expect(response.section == "health")
     }
 }
+
+@MainActor
+struct ProgressResetTests {
+    @Test func resetClearsTheAthletesData() async throws {
+        let response = try Fixture.decode(ProgressResponse.self, "progress_health.json")
+        let model = ProgressViewModel(service: StubProgressService(.success(response)))
+        await model.select(.health)
+        model.reset()
+        #expect(model.response == nil && model.section == .training && model.state == .loading)
+    }
+}

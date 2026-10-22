@@ -34,6 +34,13 @@ final class ProgressViewModel {
         }
     }
 
+    /// Sign-out: the next account must never see this athlete's health data.
+    func reset() {
+        response = nil
+        section = .training
+        state = .loading
+    }
+
     /// A detail screen's range; reads independently so the tab's own data stays at 28 days.
     func detail(days: Int) async throws -> ProgressResponse {
         try await service.progress(section: section, days: days)
