@@ -199,3 +199,9 @@ def test_model_prompt_carries_the_ladder_block(monkeypatch):
         )
     prompt = str(client.models.generate_content.call_args_list[0])
     assert "MOUNTAIN-DAY ULTRA RULES" in prompt and "Week 3: Long Run 240 min" in prompt
+
+
+def test_a_mid_plan_tune_up_race_does_not_rest_the_week():
+    tune_up = [_row(6, "Wednesday", "Race", 120), _row(6, "Saturday", "Long Run", 180)]
+    goal = [_row(12, "Saturday", "Race", 900), _row(12, "Sunday", "Recovery", 30)]
+    assert plan_generator.rows_after_race(tune_up + goal) == [goal[1]]

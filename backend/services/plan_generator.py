@@ -118,18 +118,19 @@ _PRIORITY_DAY_ORDER = {
 
 
 def rows_after_race(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """The sessions planned after the race in race week: the day after a race is rest, never a recovery run."""
-    races = {
-        w.get("week_number"): _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), 7)
-        for w in workouts
-        if w.get("type") == "Race"
-    }
+    """The sessions planned after the goal race in its week: the day after a race is rest, never a recovery run.
+    Only the last race counts, so a mid-plan tune-up race keeps the rest of its week."""
+    races = [w for w in workouts if w.get("type") == "Race"]
+    if not races:
+        return []
+    goal = max(races, key=lambda w: (w.get("week_number") or 0, _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), 7)))
+    after = _PRIORITY_DAY_ORDER.get(goal.get("day_of_week"), 7)
     return [
         w
         for w in workouts
         if w.get("type") not in ("Race", "Rest")
-        and w.get("week_number") in races
-        and _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), -1) > races[w.get("week_number")]
+        and w.get("week_number") == goal.get("week_number")
+        and _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), -1) > after
     ]
 
 

@@ -508,13 +508,14 @@ def test_quality_count_only_in_the_window():
     assert "QUALITY_COUNT" not in codes(lint_week(base[1:] + [sprints], 5, REC, ULTRA_PREFS))
 
 
-def test_me_load_all_plans():
+def test_me_load_on_ladder_plans():
     wk = [
         s(3, "Monday", "Muscular Endurance", 40),
         s(3, "Thursday", "Muscular Endurance", 40),
         s(3, "Saturday", "Long Run", 120),
     ]
-    assert "ME_LOAD" in codes(lint_week(wk, 3, REC, Prefs()))
+    assert "ME_LOAD" not in codes(lint_week(wk, 3, REC, Prefs()))  # non-ladder plans: the prompt sets no ME limit
+    assert "ME_LOAD" in codes(lint_week(wk, 3, REC, ULTRA_PREFS))
     ok = [s(3, "Monday", "Muscular Endurance", 30), s(3, "Wednesday", "Easy", 200), s(3, "Saturday", "Long Run", 150)]
     two = [
         s(3, "Monday", "Muscular Endurance", 30),
@@ -522,6 +523,6 @@ def test_me_load_all_plans():
         s(3, "Thursday", "Easy", 300),
         s(3, "Saturday", "Long Run", 300),
     ]
-    assert "ME_LOAD" not in codes(lint_week(two, 3, SUB, Prefs()))  # advanced, Base: 2 sessions, 60 of 660 min
-    assert "ME_LOAD" in codes(lint_week(two, 3, REC, Prefs()))
+    assert "ME_LOAD" not in codes(lint_week(two, 3, SUB, ULTRA_PREFS))  # advanced, Base: 2 sessions, 60 of 660 min
+    assert "ME_LOAD" in codes(lint_week(two, 3, REC, ULTRA_PREFS))
     assert "ME_LOAD" not in codes(lint_week(ok, 3, REC, Prefs()))

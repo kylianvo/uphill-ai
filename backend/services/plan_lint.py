@@ -445,7 +445,7 @@ def lint_week(
 
     if ultra:
         issues += _ultra_issues(weeks, ws, week, ultra, recent_long, prefs)
-    issues += _me_load(ws, week, profile, total)
+        issues += _me_load(ws, week, profile, total)  # only ladder plans' prompt states the ME limit
 
     if not _is_down(weeks, week):
         builds, wk = 1, week - 1
