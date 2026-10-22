@@ -4003,6 +4003,16 @@ def get_activities_for_pace(user_id: int, since, until) -> list[dict[str, Any]]:
     return [_row_to_dict(row) for row in rows]
 
 
+def get_daily_metrics(user_id: int, since) -> list[dict[str, Any]]:
+    """Every provider's daily rows from `since`; callers pick one provider per metric."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT * FROM daily_metrics WHERE user_id = :u AND metric_date >= :since ORDER BY metric_date"),
+            {"u": user_id, "since": since},
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
+
+
 def get_activities_needing_drift(
     user_id: int, provider: str, since, min_seconds: int = 5400, limit: int = 10
 ) -> list[dict[str, Any]]:

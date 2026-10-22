@@ -70,3 +70,16 @@ def test_drift_helpers_select_unchecked_long_runs_and_mark_them(user_id):
     assert db.get_activities_needing_drift(user_id, "coros", now - timedelta(days=90)) == []
     pace_rows = db.get_activities_for_pace(user_id, now - timedelta(days=10), now)
     assert [r["hr_drift_pct"] for r in pace_rows if r["duration_seconds"] == 9000] == [1.6]
+
+
+def test_build_health_against_real_rows(user_id):
+    from services import progress_cards
+
+    today = date.today()
+    for i in range(10):
+        db.upsert_daily_metric(
+            user_id, CanonicalDailyMetric(today - timedelta(days=i), "coros", resting_hr=52, sleep_minutes=420)
+        )
+    body = progress_cards.build({"id": user_id}, "health", today=today)
+    assert [c["key"] for c in body["cards"]] == ["coach_read", "sleep", "resting_hr"]
+    assert body["cards"][1]["source"] == "coros" and body["connected"] is False

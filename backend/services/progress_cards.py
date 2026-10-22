@@ -6,11 +6,14 @@ neither can draw an empty chart. Interpretations are keys plus numbers, worded b
 """
 
 from collections import Counter
-from dataclasses import dataclass, field
-from datetime import date, datetime
+from dataclasses import asdict, dataclass, field
+from datetime import date, datetime, timedelta
 from statistics import median
+from types import SimpleNamespace
 from typing import Any
 
+import db
+from services import aerobic_speed, fitness_tracking
 from services.aerobic_speed import _HARD_WORKOUTS, MIN_WEEKS_FOR_PATH
 
 CONSISTENCY_MIN_WEEKS = 2
@@ -289,3 +292,79 @@ def health_summary(cards: list[Card]) -> Card | None:
     return Card(
         "coach_read", None, None, note={"key": "health.off" if off else "health.all_usual", "contributors": off}
     )
+
+
+# ─── Assembly: the only part that reads the database ───
+
+HISTORY_DAYS = (28, 90)
+APPLE_CONNECTED_DAYS = 30
+TRAINING_ORDER = ("goal", "aerobic_speed", "consistency", "volume", "durability", "load")
+HEALTH_ORDER = ("coach_read", "sleep", "resting_hr", "hrv")
+
+
+def _single_provider(metrics: list[dict]) -> list[dict]:
+    """Newest provider wins, COROS on a tie -- the readiness rule (db._pick_readiness_provider)."""
+    if not metrics:
+        return []
+    rows = sorted(metrics, key=lambda m: m["metric_date"], reverse=True)
+    provider = db._pick_readiness_provider([SimpleNamespace(**r) for r in rows])
+    return [m for m in metrics if m["source_provider"] == provider]
+
+
+def _payload(card: Card) -> dict:
+    out = asdict(card)
+    out["band"] = list(card.band) if card.band else None
+    out["as_of"] = card.as_of.isoformat() if card.as_of else None
+    return out
+
+
+def build(user: dict, section: str, today: date | None = None, days: int = 28) -> dict:
+    today = today or date.today()
+    uid = user["id"]
+    plan = db.get_active_plan(uid)
+    metrics = db.get_daily_metrics(uid, today - timedelta(days=max(days, WINDOW_DAYS)))
+    coros = db.get_connection(uid, "coros")
+    connected = bool(coros and coros.get("status") == "active") or any(
+        m["source_provider"] == "apple_health" and (today - _day(m["metric_date"])).days < APPLE_CONNECTED_DAYS
+        for m in metrics
+    )
+    results: list[Card | Pending] = []
+    if section == "training":
+        since = today - timedelta(days=90)
+        if plan:
+            monday = aerobic_speed.plan_monday(plan["start_date"])
+            since = min(since, monday)
+        activities = db.get_activities_for_pace(
+            uid,
+            datetime.combine(since, datetime.min.time()),
+            datetime.combine(today + timedelta(days=1), datetime.min.time()),
+        )
+        if plan:
+            current_week = (today - monday).days // 7 + 1
+            workouts = db.get_plan_workouts_with_match(plan["id"])
+            path = fitness_tracking.path_payload(fitness_tracking.refresh(plan, db.get_user_by_id(uid), today))
+            results += [
+                Card("goal", None, None),
+                aerobic_speed_card(db.get_fitness_checkpoints(plan["id"]), path),
+                consistency(workouts, current_week),
+                volume(workouts, [a for a in activities if _day(a["start_time"]) >= monday], monday, current_week),
+            ]
+        results += [durability(activities), training_load(metrics, days)]
+        order = TRAINING_ORDER
+    else:
+        rows = _single_provider(
+            [m for m in metrics if any(m.get(f) is not None for f in ("sleep_minutes", "resting_hr", "hrv_ms"))]
+        )
+        health = [sleep(rows, today, days), resting_hr(rows, today, days), hrv(rows, today, days)]
+        summary = health_summary([c for c in health if isinstance(c, Card)])
+        results += ([summary] if summary else []) + health
+        order = HEALTH_ORDER
+    cards = sorted((r for r in results if isinstance(r, Card)), key=lambda c: order.index(c.key))
+    return {
+        "section": section,
+        "connected": connected,
+        "has_plan": plan is not None,
+        "plan_id": plan["id"] if plan else None,
+        "cards": [_payload(c) for c in cards],
+        "pending": [asdict(r) for r in results if isinstance(r, Pending)],
+    }
