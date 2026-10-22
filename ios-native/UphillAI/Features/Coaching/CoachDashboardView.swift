@@ -7,7 +7,6 @@ struct CoachDashboardView: View {
     @State private var activeSection: Section = .overview
     @State private var overview: CoachOverview? = nil
     @State private var roster: [CoachedAthleteRow] = []
-    @State private var pendingInvites: [CoachingInvite] = []
 
     @State private var daysFilter: Int = 14
     @State private var levelFilter: String = "all"
@@ -15,6 +14,8 @@ struct CoachDashboardView: View {
     @State private var inviteEmail: String = ""
 
     @State private var isLoading = false
+    @State private var loadError: String? = nil
+    @State private var raceAthleteIds: Set<Int>? = nil
     @State private var isInviting = false
     @State private var inviteError: String? = nil
     @State private var inviteSuccess: String? = nil
@@ -70,12 +71,12 @@ struct CoachDashboardView: View {
                 }
                 .padding(.vertical, UH.Space.small)
             }
-            .navigationTitle("Coach Hub")
+            .navigationTitle("Athletes")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        Task { await loadData() }
+                        Task { await loadData(force: true) }
                     } label: {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 13, weight: .semibold))
@@ -169,6 +170,16 @@ struct CoachDashboardView: View {
             .trainingCard()
             .padding(.horizontal, UH.Space.regular)
 
+            if let loadError {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(loadError).font(UH.TextStyle.caption).foregroundStyle(Color.red)
+                    Button("Retry") { Task { await loadData(force: true) } }
+                        .font(UH.TextStyle.label)
+                }
+                .trainingCard()
+                .padding(.horizontal, UH.Space.regular)
+            }
+
             if isLoading && overview == nil {
                 ProgressView().padding(.vertical, UH.Space.section)
             } else if let ov = overview {
@@ -181,10 +192,8 @@ struct CoachDashboardView: View {
 
                         ForEach(ov.phaseAlerts) { alert in
                             Button {
-                                if let found = roster.first(where: { $0.athleteId == alert.athleteId }) {
-                                    app.enterAthleteView(athlete: found)
+                                app.enterAthleteView(athlete: athleteRef(alert.athleteId, alert.athleteName))
                                     onSelectTab?(1)
-                                }
                             } label: {
                                 HStack(spacing: 8) {
                                     Circle()
@@ -247,10 +256,8 @@ struct CoachDashboardView: View {
                         VStack(spacing: 6) {
                             ForEach(ov.actionItems.draftPlans) { item in
                                 Button {
-                                    if let found = roster.first(where: { $0.athleteId == item.athleteId }) {
-                                        app.enterAthleteView(athlete: found)
+                                    app.enterAthleteView(athlete: athleteRef(item.athleteId, item.athleteName))
                                         onSelectTab?(1)
-                                    }
                                 } label: {
                                     HStack {
                                         Text("\(item.athleteName): Draft plan \"\(item.raceName)\"")
@@ -265,10 +272,8 @@ struct CoachDashboardView: View {
                             }
                             ForEach(ov.actionItems.pendingWorkoutApprovals) { item in
                                 Button {
-                                    if let found = roster.first(where: { $0.athleteId == item.athleteId }) {
-                                        app.enterAthleteView(athlete: found)
+                                    app.enterAthleteView(athlete: athleteRef(item.athleteId, item.athleteName))
                                         onSelectTab?(1)
-                                    }
                                 } label: {
                                     HStack {
                                         Text("\(item.athleteName): Session \"\(item.title)\" needs approval")
@@ -346,10 +351,8 @@ struct CoachDashboardView: View {
                                     }
 
                                     Button {
-                                        if let found = roster.first(where: { $0.athleteId == athlete.athleteId }) {
-                                            app.enterAthleteView(athlete: found)
+                                        app.enterAthleteView(athlete: athleteRef(athlete.athleteId, athlete.name))
                                             onSelectTab?(1)
-                                        }
                                     } label: {
                                         HStack(spacing: 4) {
                                             Text("View")
@@ -381,7 +384,8 @@ struct CoachDashboardView: View {
                     MissedByDayChartView(missedByDay: ov.missedByDay)
                     WorkoutTypeMixChartView(mix: ov.workoutTypeMix)
                     RaceBreakdownCardView(races: ov.races) { selectedRace in
-                        rosterSearch = selectedRace
+                        raceAthleteIds = Set(ov.races.first { $0.raceName == selectedRace }?.athletes.map(\.athleteId) ?? [])
+                        rosterSearch = ""
                         activeSection = .roster
                     }
                 }
@@ -467,6 +471,7 @@ struct CoachDashboardView: View {
 
             // Athletes List
             let filtered = roster.filter { a in
+                if let raceAthleteIds, !raceAthleteIds.contains(a.athleteId) { return false }
                 if rosterSearch.isEmpty { return true }
                 return a.displayName.localizedCaseInsensitiveContains(rosterSearch) ||
                        a.athleteEmail.localizedCaseInsensitiveContains(rosterSearch)
@@ -588,25 +593,28 @@ struct CoachDashboardView: View {
 
     // MARK: - Actions
 
-    private func loadData() async {
+    /// The roster row for an athlete, or one built from overview data so a tap never does nothing.
+    private func athleteRef(_ id: Int, _ name: String) -> CoachedAthleteRow {
+        roster.first { $0.athleteId == id } ?? CoachedAthleteRow(fromOverview: CoachOverviewAthlete(athleteId: id, name: name))
+    }
+
+    private func loadData(force: Bool = false) async {
         if overview == nil, let cached = app.coachDashboard {
             overview = cached.overview
             roster = cached.roster
-            pendingInvites = cached.invites
         }
-        if overview != nil && !roster.isEmpty { return }
+        if !force && overview != nil && !roster.isEmpty { return }
         isLoading = true
         do {
             async let ov = app.coachingService.fetchOverview(days: daysFilter, athleteId: nil, level: levelFilter)
             async let rst = app.coachingService.fetchRoster()
-            async let invs = app.coachingService.fetchMyInvites()
-            let (fetchedOv, fetchedRst, fetchedInvs) = try await (ov, rst, invs)
+            let (fetchedOv, fetchedRst) = try await (ov, rst)
             self.overview = fetchedOv
             self.roster = fetchedRst
-            self.pendingInvites = fetchedInvs
-            app.coachDashboard = CoachDashboardData(overview: fetchedOv, roster: fetchedRst, invites: fetchedInvs)
+            app.coachDashboard = CoachDashboardData(overview: fetchedOv, roster: fetchedRst, invites: app.coachDashboard?.invites ?? [])
+            loadError = nil
         } catch {
-            print("Failed to load coach overview/roster: \(error)")
+            loadError = error.localizedDescription
         }
         isLoading = false
     }
@@ -615,7 +623,7 @@ struct CoachDashboardView: View {
         do {
             self.overview = try await app.coachingService.fetchOverview(days: daysFilter, athleteId: nil, level: levelFilter)
         } catch {
-            print("Failed to fetch overview: \(error)")
+            loadError = error.localizedDescription
         }
     }
 

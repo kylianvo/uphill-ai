@@ -37,6 +37,10 @@ struct CoachedAthleteRow: Codable, Sendable, Identifiable, Equatable {
         self.invitedAt = invitedAt
         self.respondedAt = respondedAt
     }
+    /// A row for opening an athlete from overview data alone, when the roster fetch didn't return them.
+    init(fromOverview athlete: CoachOverviewAthlete) {
+        self.init(id: 0, athleteId: athlete.athleteId, athleteName: athlete.name, athleteEmail: "")
+    }
 }
 
 struct CoachingInvite: Codable, Sendable, Identifiable, Equatable {

@@ -141,4 +141,30 @@ struct CoachCoachingTests {
         #expect(approved.id == workout.id)
         #expect(approved.title == workout.title)
     }
+
+    @Test func testScopedGeneratePlanHitsCoachingRoute() async throws {
+        let paths = PathRecorder()
+        let client = makeStubClient { request in
+            paths.append(request.url?.path ?? "")
+            return (200, Data(#"{"job_id":"j1"}"#.utf8))
+        }
+        let body = PlanSetupDraft(prefill: nil, today: .now, calendar: .current).planBody(calendar: .current)
+        _ = try await GenerationService(client: client).scoped(toAthlete: 7).generatePlan(body)
+        _ = try await GenerationService(client: client).generatePlan(body)
+        #expect(paths.all == ["/api/coaching/athletes/7/generate-plan", "/api/coach/generate-plan"])
+    }
+
+    @Test func testOverviewAthleteFallsBackToRowWhenRosterMissing() {
+        let row = CoachedAthleteRow(fromOverview: CoachOverviewAthlete(athleteId: 9, name: "Lan Pham"))
+        #expect(row.athleteId == 9)
+        #expect(row.displayName == "Lan Pham")
+        #expect(row.isActive)
+    }
+}
+
+final class PathRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var paths: [String] = []
+    func append(_ p: String) { lock.lock(); paths.append(p); lock.unlock() }
+    var all: [String] { lock.lock(); defer { lock.unlock() }; return paths }
 }
