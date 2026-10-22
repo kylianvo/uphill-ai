@@ -2309,6 +2309,9 @@ class PlanGenerator:
                         wo["fueling_tip"] = _fuel_text(minutes) + keep_note
 
             for wo in wos:
+                # Strides / hill sprints typed "Interval" at an easy zone: the app shows Interval as hard work
+                if wo.get("type") == "Interval" and wo.get("target_zone") in ("Zone 1", "Zone 2"):
+                    wo["type"] = "Easy"
                 _reps_into_text(wo)
                 if wo.get("type") in ("Muscular Endurance", "Strength"):
                     _strength_steps(wo)
