@@ -94,4 +94,9 @@ struct PlanSummaryTests {
         let v = WeekVolume(week: 1, km: 40, minutes: 330, gainM: 0, generated: true)
         #expect(PlanSummary.weekLine(v) == "Week 1 · 5.5 h · 40 km")
     }
+
+    @Test func weekLineEmptyWeekHasNoZeroHours() {
+        let v = WeekVolume(week: 12, km: 0, minutes: 0, gainM: 0, generated: true, phase: "Taper")
+        #expect(PlanSummary.weekLine(v) == "Week 12 · Taper")
+    }
 }

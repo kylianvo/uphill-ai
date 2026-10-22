@@ -5,7 +5,7 @@ enum RowStatus: Equatable { case done, missed, matched, none }
 enum WorkoutTypePresentation {
     /// The one status a day row shows beside the type chip.
     static func rowStatus(for workout: Workout) -> RowStatus {
-        if workout.isMatched && workout.isDone { return .matched }
+        if workout.isMatched { return .matched }
         if workout.isDone { return .done }
         if workout.isMissedFlag { return .missed }
         return .none

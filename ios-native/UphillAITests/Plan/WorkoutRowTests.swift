@@ -54,6 +54,7 @@ struct WorkoutRowTests {
     @Test func rowStatus() {
         #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout(isCompleted: 1, matchedId: 9)) == .matched)
         #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout(isCompleted: 1)) == .done)
+        #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout(isCompleted: 0, matchedId: 9)) == .matched)
         #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout(isMissed: 1)) == .missed)
         #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout()) == .none)
     }

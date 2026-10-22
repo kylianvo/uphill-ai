@@ -68,7 +68,7 @@ enum PlanSummary {
     static func weekLine(_ v: WeekVolume) -> String {
         var parts = [L("Week %lld", v.week)]
         if let phase = v.phase, !phase.isEmpty { parts.append(L(phase)) }
-        parts.append("\(v.hours.formatted(.number.precision(.fractionLength(0...1)).locale(Locale(identifier: "en_US")))) h")
+        if v.hours > 0 { parts.append("\(v.hours.formatted(.number.precision(.fractionLength(0...1)).locale(Locale(identifier: "en_US")))) h") }
         if v.km >= 0.5 { parts.append("\(Int(v.km.rounded())) km") }
         return parts.joined(separator: " · ")
     }
