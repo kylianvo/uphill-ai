@@ -18,7 +18,7 @@ struct WeekSwitcher: View {
             if viewMode?.wrappedValue == .calendar {
                 HStack(spacing: 6) {
                     Image(systemName: "calendar")
-                        .font(.system(size: 14))
+                        .font(UH.TextStyle.body)
                         .foregroundStyle(UH.Palette.accentInk)
                     Text("Month Calendar")
                         .font(UH.TextStyle.sectionTitle)

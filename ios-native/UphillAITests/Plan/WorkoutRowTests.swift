@@ -15,7 +15,8 @@ struct WorkoutRowTests {
         isPriority: Bool = false,
         isCompleted: Int? = 0,
         isMissed: Int? = 0,
-        slot: String? = "main"
+        slot: String? = "main",
+        matchedId: Int? = nil
     ) -> Workout {
         let json = """
         {
@@ -33,7 +34,8 @@ struct WorkoutRowTests {
             "is_completed": \(isCompleted != nil ? String(isCompleted!) : "null"),
             "is_missed": \(isMissed != nil ? String(isMissed!) : "null"),
             "is_priority": \(isPriority),
-            "session_slot": \(slot != nil ? "\"\(slot!)\"" : "null")
+            "session_slot": \(slot != nil ? "\"\(slot!)\"" : "null"),
+            "matched_activity_id": \(matchedId.map(String.init) ?? "null")
         }
         """.data(using: .utf8)!
         return try! JSONCoding.decoder.decode(Workout.self, from: json)
@@ -47,6 +49,14 @@ struct WorkoutRowTests {
         #expect(WorkoutTypePresentation.chipLabel(for: makeWorkout(type: "Muscular Endurance")) == "ME")
         #expect(WorkoutTypePresentation.chipLabel(for: makeWorkout(type: "Strength")) == "Strength")
         #expect(WorkoutTypePresentation.chipLabel(for: makeWorkout(type: "Tempo")) == "Tempo")
+    }
+
+    @Test func rowStatus() {
+        #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout(isCompleted: 1, matchedId: 9)) == .matched)
+        #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout(isCompleted: 1)) == .done)
+        #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout(isCompleted: 0, matchedId: 9)) == .matched)
+        #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout(isMissed: 1)) == .missed)
+        #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout()) == .none)
     }
 
     @Test func formatMetrics() {

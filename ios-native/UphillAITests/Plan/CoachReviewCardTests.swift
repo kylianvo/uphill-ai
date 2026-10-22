@@ -13,4 +13,16 @@ struct CoachReviewCardTests {
 
         #expect(vm.snapshot?.workouts.first?.isPriority == true)
     }
+
+    @Test func oneMessageNudgeFirst() {
+        #expect(CoachReviewCard.message(nudge: "Easy this week.", why: "Base", welcome: ["Hi."], pick: "Hills") == "Easy this week.")
+    }
+
+    @Test func oneMessageWhyThenWelcomeThenPick() {
+        #expect(CoachReviewCard.message(nudge: nil, why: "Build aerobic base.", welcome: nil, pick: "Hills") == "Build aerobic base.")
+        #expect(CoachReviewCard.message(nudge: nil, why: nil, welcome: ["Welcome.", "Run easy."], pick: "Hills") == "Welcome. Run easy.")
+        #expect(CoachReviewCard.message(nudge: nil, why: nil, welcome: nil, pick: "Hills")
+                == L("If you do one session well this week, make it %@.", "Hills"))
+        #expect(CoachReviewCard.message(nudge: nil, why: nil, welcome: nil, pick: nil) == nil)
+    }
 }
