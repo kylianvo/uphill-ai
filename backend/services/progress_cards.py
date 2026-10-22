@@ -165,3 +165,127 @@ def aerobic_speed_card(checkpoints: list[dict], path: dict | None) -> Card | Pen
     ]
     note = {"key": "aerobic_speed", "b": path["b"], "a": path["a"], "measured_pct": path["measured_pct"]}
     return Card("aerobic_speed", series[-1]["pace"] if series else None, "min/km", series, note=note)
+
+
+# ─── Health: each function receives ONE provider's rows (HRV methods differ between devices) ───
+
+SLEEP_MIN_NIGHTS = 7
+RHR_MIN_DAYS = 7
+HRV_MIN_NIGHTS = 14
+WINDOW_DAYS = 28
+CURRENT_DAYS = 7  # the "now" value is the last week's mean, read against the window's usual range
+
+
+def usual_range(values: list[float], floor: float) -> tuple[float, float, float]:
+    """(low, mid, high): the median with a robust half-width (1.4826 x MAD), never narrower than `floor`."""
+    mid = median(values)
+    half = max(floor, 1.4826 * median(abs(v - mid) for v in values))
+    return mid - half, mid, mid + half
+
+
+def _present(rows: list[dict], field: str, today: date, window_days: int) -> list[dict]:
+    return sorted(
+        (r for r in rows if r.get(field) is not None and 0 <= (today - _day(r["metric_date"])).days < window_days),
+        key=lambda r: r["metric_date"],
+    )
+
+
+def _current(rows: list[dict], field: str, today: date) -> float:
+    recent = [r[field] for r in rows if (today - _day(r["metric_date"])).days < CURRENT_DAYS] or [rows[-1][field]]
+    return sum(recent) / len(recent)
+
+
+def _status(value: float, low: float, high: float) -> str:
+    return "below" if value < low else "above" if value > high else "within"
+
+
+def _metric_card(
+    key: str,
+    note_prefix: str,
+    rows: list[dict],
+    field: str,
+    unit: str,
+    today: date,
+    needs: int,
+    window_days: int,
+    band: tuple[float, float] | None,
+    floor: float,
+    extra_fields: tuple[str, ...] = (),
+) -> tuple[Card | Pending, float | None]:
+    present = _present(rows, field, today, max(window_days, WINDOW_DAYS))
+    counted = [r for r in present if (today - _day(r["metric_date"])).days < WINDOW_DAYS]
+    if len(counted) < needs:
+        return Pending(key, needs, len(counted)), None
+    low, mid, high = usual_range([r[field] for r in counted], floor)
+    if band:
+        low, high = band
+    current = _current(counted, field, today)
+    series = [
+        {
+            "date": _day(r["metric_date"]).isoformat(),
+            "value": r[field],
+            **{f: r[f] for f in extra_fields if r.get(f) is not None},
+        }
+        for r in present
+        if (today - _day(r["metric_date"])).days < window_days
+    ]
+    card = Card(
+        key,
+        round(current, 1),
+        unit,
+        series,
+        band=(round(low, 1), round(high, 1)),
+        note={"key": f"{note_prefix}.{_status(current, low, high)}"},
+        as_of=_day(counted[-1]["metric_date"]),
+        source=counted[-1].get("source_provider"),
+    )
+    return card, current - mid
+
+
+def sleep(metrics: list[dict], today: date, window_days: int = WINDOW_DAYS) -> Card | Pending:
+    """Minutes asleep per night (naps included) against the athlete's own usual range. Duration and
+    timing only: wearables don't stage sleep reliably."""
+    card, _ = _metric_card(
+        "sleep",
+        "sleep",
+        metrics,
+        "sleep_minutes",
+        "min",
+        today,
+        SLEEP_MIN_NIGHTS,
+        window_days,
+        None,
+        30,
+        ("sleep_start", "sleep_end"),
+    )
+    return card
+
+
+def resting_hr(metrics: list[dict], today: date, window_days: int = WINDOW_DAYS) -> Card | Pending:
+    card, delta = _metric_card(
+        "resting_hr", "rhr", metrics, "resting_hr", "bpm", today, RHR_MIN_DAYS, window_days, None, 2
+    )
+    if isinstance(card, Card):
+        card.note["delta"] = round(delta)
+    return card
+
+
+def hrv(metrics: list[dict], today: date, window_days: int = WINDOW_DAYS) -> Card | Pending:
+    """Overnight HRV against the device's own normal range when it reports one (COROS), else the usual range."""
+    ranged = [m for m in metrics if m.get("hrv_range_low") is not None and m.get("hrv_range_high") is not None]
+    band = None
+    if ranged:
+        latest = max(ranged, key=lambda m: m["metric_date"])
+        band = (latest["hrv_range_low"], latest["hrv_range_high"])
+    card, _ = _metric_card("hrv", "hrv", metrics, "hrv_ms", "ms", today, HRV_MIN_NIGHTS, window_days, band, 3)
+    return card
+
+
+def health_summary(cards: list[Card]) -> Card | None:
+    """The rule-based Coach's read: which signals sit outside the athlete's usual range."""
+    if not cards:
+        return None
+    off = [c.key for c in cards if not c.note.get("key", "").endswith(".within")]
+    return Card(
+        "coach_read", None, None, note={"key": "health.off" if off else "health.all_usual", "contributors": off}
+    )

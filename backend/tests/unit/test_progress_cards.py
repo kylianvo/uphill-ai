@@ -135,3 +135,78 @@ def test_volume_counts_logged_sessions_without_a_watch():
     ws = [_wk(w, done=1, km=8.0, climb=80.0) for w in (1, 2, 3)]
     out = pc.volume(ws, [], MONDAY, current_week=4)
     assert isinstance(out, Card) and out.value == 8.0
+
+
+# ─── health ───
+
+TODAY = date(2026, 10, 23)
+
+
+def _nights(values, field, **extra):
+    """values[0] is the oldest night; the last is today. None = no data that night."""
+    n = len(values)
+    return [
+        {"metric_date": TODAY - timedelta(days=n - 1 - i), "source_provider": "coros", field: v, **extra}
+        for i, v in enumerate(values)
+    ]
+
+
+def test_usual_range_floor_applies():
+    assert pc.usual_range([50, 50, 50, 50], floor=2) == (48, 50, 52)
+
+
+def test_sleep_pending_below_threshold():
+    assert pc.sleep(_nights([420] * 6, "sleep_minutes"), TODAY) == Pending("sleep", 7, 6)
+
+
+def test_sleep_ignores_missing_nights():
+    assert pc.sleep(_nights([420] * 6 + [None] * 3, "sleep_minutes"), TODAY) == Pending("sleep", 7, 6)
+
+
+def test_sleep_card_at_threshold():
+    out = pc.sleep(_nights([420] * 7, "sleep_minutes"), TODAY)
+    assert isinstance(out, Card) and out.value == 420 and out.unit == "min"
+    assert out.band == (390, 450) and out.note == {"key": "sleep.within"}
+    assert out.source == "coros" and out.as_of == TODAY and len(out.series) == 7
+
+
+def test_sleep_short_week_reads_below():
+    out = pc.sleep(_nights([480] * 21 + [300] * 7, "sleep_minutes"), TODAY)
+    assert out.note == {"key": "sleep.below"}
+
+
+def test_resting_hr_threshold_and_delta():
+    assert pc.resting_hr(_nights([52] * 6, "resting_hr"), TODAY) == Pending("resting_hr", 7, 6)
+    out = pc.resting_hr(_nights([55] * 21 + [50] * 7, "resting_hr"), TODAY)
+    assert out.note == {"key": "rhr.below", "delta": -5}
+
+
+def test_hrv_pending_below_threshold():
+    assert pc.hrv(_nights([60.0] * 13, "hrv_ms"), TODAY) == Pending("hrv", 14, 13)
+
+
+def test_hrv_prefers_coros_range():
+    out = pc.hrv(_nights([60.0] * 14, "hrv_ms", hrv_range_low=51.0, hrv_range_high=75.0), TODAY)
+    assert out.band == (51.0, 75.0) and out.note == {"key": "hrv.within"}
+
+
+def test_hrv_apple_uses_usual_range():
+    rows = _nights([60.0] * 14, "hrv_ms")
+    for r in rows:
+        r["source_provider"] = "apple_health"
+    out = pc.hrv(rows, TODAY)
+    assert out.band == (57.0, 63.0) and out.source == "apple_health"
+
+
+def test_window_widens_series_only():
+    rows = _nights([420] * 60, "sleep_minutes")
+    assert len(pc.sleep(rows, TODAY).series) == 28
+    assert len(pc.sleep(rows, TODAY, window_days=90).series) == 60
+
+
+def test_summary_names_off_contributors():
+    within = Card("sleep", 420, "min", note={"key": "sleep.within"})
+    low = Card("hrv", 40, "ms", note={"key": "hrv.below"})
+    assert pc.health_summary([within, low]).note == {"key": "health.off", "contributors": ["hrv"]}
+    assert pc.health_summary([within]).note == {"key": "health.all_usual", "contributors": []}
+    assert pc.health_summary([]) is None
