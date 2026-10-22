@@ -210,3 +210,62 @@ def test_summary_names_off_contributors():
     assert pc.health_summary([within, low]).note == {"key": "health.off", "contributors": ["hrv"]}
     assert pc.health_summary([within]).note == {"key": "health.all_usual", "contributors": []}
     assert pc.health_summary([]) is None
+
+
+# ─── today ───
+
+
+def test_today_pairs_readiness_with_the_next_session():
+    monday = date(2026, 10, 19)
+    ws = [
+        {
+            "id": 1,
+            "week_number": 1,
+            "day_of_week": "Monday",
+            "type": "Rest",
+            "title": "Rest",
+            "duration_minutes": 0,
+            "is_completed": 0,
+        },
+        {
+            "id": 2,
+            "week_number": 1,
+            "day_of_week": "Wednesday",
+            "type": "Easy Run",
+            "title": "Easy Run",
+            "duration_minutes": 50,
+            "is_completed": 1,
+        },
+        {
+            "id": 3,
+            "week_number": 1,
+            "day_of_week": "Friday",
+            "type": "Tempo",
+            "title": "Tempo 3x10",
+            "duration_minutes": 60,
+            "is_completed": 0,
+        },
+    ]
+    summary = Card("coach_read", None, None, note={"key": "health.off", "contributors": ["hrv"]})
+    out = pc.today_card(ws, monday, date(2026, 10, 22), summary)
+    assert out.key == "today"
+    assert out.note == {
+        "key": "today",
+        "health": "health.off",
+        "contributors": ["hrv"],
+        "next": {"title": "Tempo 3x10", "type": "Tempo", "date": "2026-10-23", "duration_minutes": 60},
+    }
+
+
+def test_today_without_plan_or_health_is_absent():
+    assert pc.today_card([], None, TODAY, None) is None
+
+
+def test_today_with_health_only():
+    summary = Card("coach_read", None, None, note={"key": "health.all_usual", "contributors": []})
+    assert pc.today_card([], None, TODAY, summary).note == {
+        "key": "today",
+        "health": "health.all_usual",
+        "contributors": [],
+        "next": None,
+    }

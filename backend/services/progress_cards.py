@@ -13,7 +13,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import db
-from services import aerobic_speed, fitness_tracking
+from services import aerobic_speed, calendar_rules, fitness_tracking
 from services.aerobic_speed import _HARD_WORKOUTS, MIN_WEEKS_FOR_PATH
 
 CONSISTENCY_MIN_WEEKS = 2
@@ -294,11 +294,45 @@ def health_summary(cards: list[Card]) -> Card | None:
     )
 
 
+def today_card(workouts: list[dict], plan_monday: date | None, today_date: date, summary: Card | None) -> Card | None:
+    """What to do today: the health read (from the Health section) and the next unfinished session."""
+    upcoming = []
+    if plan_monday:
+        for w in workouts:
+            if w.get("type") == "Rest" or w.get("is_completed") == 1 or w.get("is_missed"):
+                continue
+            day = calendar_rules.workout_date(plan_monday, w["week_number"], w["day_of_week"])
+            if day >= today_date:
+                upcoming.append((day, w))
+    nxt = None
+    if upcoming:
+        day, w = min(upcoming, key=lambda pair: pair[0])
+        nxt = {
+            "title": w.get("title"),
+            "type": w.get("type"),
+            "date": day.isoformat(),
+            "duration_minutes": w.get("duration_minutes"),
+        }
+    if nxt is None and summary is None:
+        return None
+    return Card(
+        "today",
+        None,
+        None,
+        note={
+            "key": "today",
+            "health": summary.note["key"] if summary else None,
+            "contributors": summary.note["contributors"] if summary else [],
+            "next": nxt,
+        },
+    )
+
+
 # ─── Assembly: the only part that reads the database ───
 
 HISTORY_DAYS = (28, 90)
 APPLE_CONNECTED_DAYS = 30
-TRAINING_ORDER = ("goal", "aerobic_speed", "consistency", "volume", "durability", "load")
+TRAINING_ORDER = ("today", "goal", "aerobic_speed", "consistency", "volume", "durability", "load")
 HEALTH_ORDER = ("coach_read", "sleep", "resting_hr", "hrv")
 
 
@@ -330,6 +364,11 @@ def build(user: dict, section: str, today: date | None = None, days: int = 28) -
         for m in metrics
     )
     results: list[Card | Pending] = []
+    rows = _single_provider(
+        [m for m in metrics if any(m.get(f) is not None for f in ("sleep_minutes", "resting_hr", "hrv_ms"))]
+    )
+    health = [sleep(rows, today, days), resting_hr(rows, today, days), hrv(rows, today, days)]
+    summary = health_summary([c for c in health if isinstance(c, Card)])
     if section == "training":
         since = today - timedelta(days=90)
         if plan:
@@ -345,11 +384,15 @@ def build(user: dict, section: str, today: date | None = None, days: int = 28) -
             workouts = db.get_plan_workouts_with_match(plan["id"])
             path = fitness_tracking.path_payload(fitness_tracking.refresh(plan, db.get_user_by_id(uid), today))
             results += [
+                today_card(workouts, monday, today, summary),
                 Card("goal", None, None),
                 aerobic_speed_card(db.get_fitness_checkpoints(plan["id"]), path),
                 consistency(workouts, current_week),
                 volume(workouts, [a for a in activities if _day(a["start_time"]) >= monday], monday, current_week),
             ]
+        else:
+            results.append(today_card([], None, today, summary))
+        results = [r for r in results if r is not None]
         results += [durability(activities), training_load(metrics, days)]
         order = TRAINING_ORDER
     else:
