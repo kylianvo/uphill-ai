@@ -1,0 +1,190 @@
+{
+ "source": "activityDetail",
+ "sportType": 102,
+ "columns": [
+  {
+   "name": "avgHr",
+   "label": "平均心率"
+  },
+  {
+   "name": "adjustedPace",
+   "label": "等价配速"
+  }
+ ],
+ "lapGroups": [
+  {
+   "type": 11,
+   "lapDistance": 500000,
+   "laps": [
+    {
+     "lapIndex": 1,
+     "distance": 500000,
+     "avgHr": 148,
+     "adjustedPace": 340
+    }
+   ]
+  },
+  {
+   "type": 2,
+   "lapDistance": 100000,
+   "laps": [
+    {
+     "lapIndex": 1,
+     "distance": 100000,
+     "avgHr": 138,
+     "adjustedPace": 340
+    },
+    {
+     "lapIndex": 2,
+     "distance": 100000,
+     "avgHr": 147,
+     "adjustedPace": 347
+    },
+    {
+     "lapIndex": 3,
+     "distance": 100000,
+     "avgHr": 150,
+     "adjustedPace": 348
+    },
+    {
+     "lapIndex": 4,
+     "distance": 100000,
+     "avgHr": 153,
+     "adjustedPace": 346
+    },
+    {
+     "lapIndex": 5,
+     "distance": 100000,
+     "avgHr": 152,
+     "adjustedPace": 359
+    },
+    {
+     "lapIndex": 6,
+     "distance": 100000,
+     "avgHr": 153,
+     "adjustedPace": 356
+    },
+    {
+     "lapIndex": 7,
+     "distance": 100000,
+     "avgHr": 156,
+     "adjustedPace": 336
+    },
+    {
+     "lapIndex": 8,
+     "distance": 100000,
+     "avgHr": 159,
+     "adjustedPace": 339
+    },
+    {
+     "lapIndex": 9,
+     "distance": 100000,
+     "avgHr": 149,
+     "adjustedPace": 356
+    },
+    {
+     "lapIndex": 10,
+     "distance": 100000,
+     "avgHr": 153,
+     "adjustedPace": 338
+    },
+    {
+     "lapIndex": 11,
+     "distance": 100000,
+     "avgHr": 156,
+     "adjustedPace": 350
+    },
+    {
+     "lapIndex": 12,
+     "distance": 100000,
+     "avgHr": 158,
+     "adjustedPace": 340
+    },
+    {
+     "lapIndex": 13,
+     "distance": 100000,
+     "avgHr": 159,
+     "adjustedPace": 335
+    },
+    {
+     "lapIndex": 14,
+     "distance": 100000,
+     "avgHr": 155,
+     "adjustedPace": 352
+    },
+    {
+     "lapIndex": 15,
+     "distance": 100000,
+     "avgHr": 159,
+     "adjustedPace": 351
+    },
+    {
+     "lapIndex": 16,
+     "distance": 100000,
+     "avgHr": 157,
+     "adjustedPace": 348
+    },
+    {
+     "lapIndex": 17,
+     "distance": 100000,
+     "avgHr": 155,
+     "adjustedPace": 362
+    },
+    {
+     "lapIndex": 18,
+     "distance": 100000,
+     "avgHr": 151,
+     "adjustedPace": 326
+    },
+    {
+     "lapIndex": 19,
+     "distance": 100000,
+     "avgHr": 157,
+     "adjustedPace": 316
+    },
+    {
+     "lapIndex": 20,
+     "distance": 100000,
+     "avgHr": 156,
+     "adjustedPace": 351
+    },
+    {
+     "lapIndex": 21,
+     "distance": 100000,
+     "avgHr": 158,
+     "adjustedPace": 333
+    },
+    {
+     "lapIndex": 22,
+     "distance": 100000,
+     "avgHr": 158,
+     "adjustedPace": 342
+    },
+    {
+     "lapIndex": 23,
+     "distance": 100000,
+     "avgHr": 160,
+     "adjustedPace": 335
+    },
+    {
+     "lapIndex": 24,
+     "distance": 100000,
+     "avgHr": 159,
+     "adjustedPace": 335
+    },
+    {
+     "lapIndex": 25,
+     "distance": 100000,
+     "avgHr": 161,
+     "adjustedPace": 335
+    },
+    {
+     "lapIndex": 26,
+     "distance": 64351,
+     "avgHr": 152,
+     "adjustedPace": 339
+    }
+   ]
+  }
+ ]
+}

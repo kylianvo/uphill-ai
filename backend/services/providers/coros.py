@@ -16,6 +16,7 @@ from datetime import date, timedelta
 from typing import Any, Protocol
 
 from log_utils import get_logger
+from services import hr_drift
 from services.mcp_client import McpError
 from services.providers import coros_parsers as parsers
 from services.providers.base import CanonicalActivity, CanonicalDailyMetric
@@ -309,6 +310,26 @@ class CorosAdapter:
                 )
             )
         return metrics
+
+    async def fetch_hr_drift(self, label_id: str, sport_type: int) -> float | None:
+        """Long-run heart-rate drift from the activity's 1 km laps; None when COROS can't supply them."""
+        try:
+            return hr_drift.drift_pct(
+                await self._mcp.call_tool("queryActivityLapData", {"labelId": label_id, "sportType": sport_type})
+            )
+        except McpError as exc:
+            logger.warning(
+                "coros lap data unavailable",
+                extra={
+                    "fields": {
+                        "service": "coros_adapter",
+                        "event": "laps_missing",
+                        "label_id": label_id,
+                        "error": str(exc),
+                    }
+                },
+            )
+            return None
 
     async def fetch_fitness_overview(self) -> dict[str, Any]:
         """Fetch COROS EvoLab fitness overview (threshold pace, VO2max, etc.)."""
