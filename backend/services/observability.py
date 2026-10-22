@@ -1219,7 +1219,7 @@ def get_prompt_template(
 _PROMPT_VARIABLE_RE = re.compile(r"\{\{(\w+)\}\}")
 
 
-def load_prompt(name: str, fallback: str) -> PromptTemplate:
+def load_prompt(name: str, fallback: str, label: str | None = None) -> PromptTemplate:
     """Fetch a service prompt at the configured label, falling back to the in-code template.
 
     A Langfuse version that drops any {{variable}} the fallback uses is rejected, so an
@@ -1227,7 +1227,7 @@ def load_prompt(name: str, fallback: str) -> PromptTemplate:
     """
     tpl = get_prompt_template(
         name,
-        label=settings.COACH_CHAT_PROMPT_LABEL,
+        label=label or settings.COACH_CHAT_PROMPT_LABEL,
         fallback=fallback,
         cache_ttl_seconds=settings.COACH_CHAT_PROMPT_CACHE_TTL_SECONDS,
     )

@@ -207,3 +207,25 @@ def test_generation_exports_first_token_time_once(langfuse_spans):
 
     attrs = _attrs(_by_name(langfuse_spans, "generation"))
     assert attrs["langfuse.observation.completion_start_time"].startswith('"20')
+
+
+def test_load_prompt_uses_explicit_label(monkeypatch):
+    from services import observability as obs
+
+    seen = {}
+
+    def fake(name, label, fallback, cache_ttl_seconds):
+        seen["label"] = label
+        return obs.PromptTemplate(name=name, version="local", template=fallback, source="local_fallback")
+
+    monkeypatch.setattr(obs, "get_prompt_template", fake)
+    obs.load_prompt("plan_generation", "x {{a}}", label="claude-staging")
+    assert seen["label"] == "claude-staging"
+
+
+def test_missing_claude_label_falls_back_to_in_code_prompt():
+    from services import observability as obs
+    from services.plan_generator import PLAN_GENERATION_PROMPT
+
+    tpl = obs.load_prompt("plan_generation", PLAN_GENERATION_PROMPT, label="claude-production")
+    assert tpl.template == PLAN_GENERATION_PROMPT

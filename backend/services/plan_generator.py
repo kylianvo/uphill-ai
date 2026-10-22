@@ -3278,7 +3278,12 @@ class PlanGenerator:
                 else ""
             )
 
-            _plan_prompt_tpl = observability.load_prompt("plan_generation", PLAN_GENERATION_PROMPT)
+            _plan_prompt_tpl = observability.load_prompt(
+                "plan_generation",
+                PLAN_GENERATION_PROMPT,
+                # The Claude variant lives under its own labels; none yet -> the in-code prompt.
+                label=f"claude-{settings.COACH_CHAT_PROMPT_LABEL}" if settings.PLAN_LLM_PROVIDER == "claude" else None,
+            )
             _ai_prompt = observability.compile_prompt(
                 _plan_prompt_tpl,
                 {
