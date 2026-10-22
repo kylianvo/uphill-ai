@@ -19,7 +19,7 @@ Ultra plans with a mountain day are too light. A 3–4 h long run at Núi Dinh c
 
 | Rule | 50 km band | 100 km band | 100 miles band |
 |---|---|---|---|
-| Long run on the mountain day | 3 h weeks 1–4 → 4 h → 4.5 h → 5 h peak; recovery week 3 h (**open: Quang to confirm**) | 3 h, 3 h, 4 h, 4 h, then 5 h; 6 h → 7 h at peak; recovery week 4 h | 100 km ladder, peak 7 h (finishers) or 8 h (advanced) |
+| Long run on the mountain day | 3 h weeks 1–4 → 4 h → 4.5 h → 5 h peak; recovery week 3 h (confirmed by Quang 2026-10-23) | 3 h, 3 h, 4 h, 4 h, then 5 h; 6 h → 7 h at peak; recovery week 4 h | 100 km ladder, peak 7 h (finishers) or 8 h (advanced) |
 | Other weekend day | 45–90 min easy, shorter after a longer mountain day: long run ≤ 4 h → 90, 5 h → 60, ≥ 6 h → 45 (Zone 1) | same | same |
 | Weekday easy runs | 45–90 min | 60–90 min | 60–90 min (advanced up to 150) |
 | Quality per week, final 8 weeks before taper only (uphill/rolling intervals, Zone 3, ≤ 90 min each) | finishers 1, advanced 2; gated 1 | same | same |
@@ -89,7 +89,7 @@ C1, C2 and C3 follow Quang, not Johnston. NotebookLM answers (2026-10-23, six pr
 
 ## Open
 
-1. 50 km ladder: Quang to confirm the scaled ladder.
+None. (50 km ladder confirmed by Quang 2026-10-23.)
 
 ## Checks
 
