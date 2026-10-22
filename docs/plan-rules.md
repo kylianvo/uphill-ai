@@ -84,10 +84,10 @@ Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
   `_gate_hard`.
 
 ### All plans (2026-10-23)
-- **R-A1 ME is not volume.** `plan_lint.week_minutes` leaves ME out (volume growth, recovery detection,
+- **R-G1 ME is not volume.** `plan_lint.week_minutes` leaves ME out (volume growth, recovery detection,
   start load); the long-run share and back-to-back checks still use all training time. `ME_LOAD` (R-U plans only): one ME
   session a week (two for sub-elite/elite in Base/Build), and what goes beyond one stays under 10%.
-- **R-A2 Rest after the race.** Sessions after the goal race in its week become rest (`rows_after_race`); tune-up races are left alone.
+- **R-G2 Rest after the race.** Sessions after the goal race in its week become rest (`rows_after_race`); tune-up races are left alone.
 
 ### Intensity
 - **R-I1 AeT gate.** *UA: aerobic deficiency.*
