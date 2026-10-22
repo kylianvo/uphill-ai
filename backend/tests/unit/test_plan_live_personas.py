@@ -36,3 +36,19 @@ def test_ladder_personas_no_longer_expect_back_to_back():
         if p["plan"].get("mountain_days") and p["plan"]["course_distance_km"] >= 45:
             assert not p["expect"].get("b2b"), n
             assert p["expect"].get("ladder"), n
+
+
+def test_latency_summary_percentiles():
+    runs = {
+        i: {"engine": "claude", "cost_usd": 0.0, "seconds": s, "model_seconds": s - 1}
+        for i, s in enumerate([10, 20, 30, 40, 100])
+    }
+    assert P.latency_summary(runs) == {"blocks": 5, "p50_s": 30, "p95_s": 100, "model_p50_s": 29, "model_p95_s": 99}
+
+
+def test_model_seconds_come_from_the_latency_histogram():
+    from telemetry import rag_latency_seconds
+
+    before = P._counters()
+    rag_latency_seconds.labels(service="plan_generator", engine="claude").observe(12.5)
+    assert round(P._counters()["model_s"] - before["model_s"], 1) == 12.5

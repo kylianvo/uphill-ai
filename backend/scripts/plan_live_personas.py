@@ -521,7 +521,25 @@ def _counters() -> dict:
     cost = sum(
         s.value for m in REGISTRY.collect() if m.name == "llm_cost_usd" for s in m.samples if s.name.endswith("_total")
     )
-    return {**used, "usd": cost, "t": time.time()}
+    model_s = sum(
+        REGISTRY.get_sample_value("rag_latency_seconds_sum", {"service": "plan_generator", "engine": e}) or 0.0
+        for e in ENGINES
+    )
+    return {**used, "usd": cost, "model_s": model_s, "t": time.time()}
+
+
+def latency_summary(runs: dict) -> dict:
+    """Nearest-rank p50/p95 of block wall-clock seconds and of the model call alone."""
+
+    def pct(values, q):
+        values = sorted(values)
+        return values[max(0, -(-len(values) * q // 100) - 1)] if values else None
+
+    rows = list(runs.values())
+    wall = [r["seconds"] for r in rows]
+    model = [r.get("model_seconds", 0) for r in rows if r.get("model_seconds")]
+    return {"blocks": len(rows), "p50_s": pct(wall, 50), "p95_s": pct(wall, 95),
+            "model_p50_s": pct(model, 50), "model_p95_s": pct(model, 95)}  # fmt: skip
 
 
 def _record(runs: dict, week: int, before: dict) -> None:
@@ -530,6 +548,7 @@ def _record(runs: dict, week: int, before: dict) -> None:
         "engine": engine_for(before, after),
         "cost_usd": round(after["usd"] - before["usd"], 5),
         "seconds": round(after["t"] - before["t"], 1),
+        "model_seconds": round(after["model_s"] - before["model_s"], 1),
     }
     SPENT["usd"] += after["usd"] - before["usd"]
 
@@ -725,7 +744,7 @@ def main() -> int:
         for c in r["checks"]:
             print(f"   {'PASS' if c['ok'] else 'FAIL'} {c['check']}: {c['detail']}")
         engines = [v["engine"] for v in r["runs"].values()]
-        print(f"   engines {engines}  spent ${SPENT['usd']:.3f}")
+        print(f"   engines {engines}  spent ${SPENT['usd']:.3f}  latency {latency_summary(r['runs'])}")
         if r["stopped"]:
             print(f"== stopped: {r['stopped']} cap ${args.budget_usd}")
             break
