@@ -15300,6 +15300,36 @@
           }
         }
       }
+    },
+    "Read this week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đọc trong tuần này"
+          }
+        }
+      }
+    },
+    "Read the full review": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đọc toàn bộ nhận xét"
+          }
+        }
+      }
+    },
+    "Coach's review": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhận xét của Coach"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

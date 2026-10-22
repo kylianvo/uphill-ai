@@ -7,14 +7,13 @@ struct PlanView: View {
     let onViewProgress: () -> Void
     var user: User? = nil
     var onSharpen: (TrainingDestination) -> Void = { _ in }
-    var initialCoachExpanded: Bool = false
     var initialVolumeMode: VolumeChartMode = .weekDays
     var app: AppModel? = nil
     @State private var viewMode: PlanViewMode = .list
 
     init(model: PlanViewModel, generation: GenerationCenter, onBuildPlan: @escaping () -> Void,
          onViewProgress: @escaping () -> Void, user: User? = nil, onSharpen: @escaping (TrainingDestination) -> Void = { _ in },
-         initialViewMode: PlanViewMode = .list, initialCoachExpanded: Bool = false,
+         initialViewMode: PlanViewMode = .list,
          initialVolumeMode: VolumeChartMode = .weekDays,
          app: AppModel? = nil) {
         self.model = model
@@ -23,7 +22,6 @@ struct PlanView: View {
         self.onViewProgress = onViewProgress
         self.user = user
         self.onSharpen = onSharpen
-        self.initialCoachExpanded = initialCoachExpanded
         self.initialVolumeMode = initialVolumeMode
         self.app = app
         _viewMode = State(initialValue: initialViewMode)
@@ -212,7 +210,7 @@ struct PlanView: View {
                                         initialVolumeMode: initialVolumeMode)
 
                         // 4. Coach review card
-                        CoachReviewCard(model: model, onOpenReview: { showReview = true }, initialExpanded: initialCoachExpanded)
+                        CoachReviewCard(model: model, onOpenReview: { showReview = true })
                             .padding(.horizontal, UH.Space.regular)
                             .task(id: briefTaskID) { await model.loadWeekBrief() }
 
@@ -256,13 +254,12 @@ struct PlanView: View {
                             .padding(.horizontal, UH.Space.regular)
                         }
 
-                        // 6. Coach's pick this week (contextual knowledge card)
+                        // 6. Read this week (contextual knowledge card)
                         if let card = model.contextKnowledgeCard {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text(verbatim: L("COACH'S PICK THIS WEEK"))
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                    .tracking(0.5)
-                                    .foregroundStyle(UH.Palette.muted)
+                                Text("Read this week")
+                                    .font(UH.TextStyle.eyebrow)
+                                    .foregroundStyle(UH.Palette.secondary)
                                     .padding(.horizontal, 2)
 
                                 KnowledgeCardView(card: card)
