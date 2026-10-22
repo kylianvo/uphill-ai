@@ -172,7 +172,9 @@ final class AppModel {
     /// The setup behind the last generation, so "Try again" re-submits the same answers.
     private(set) var lastSetup: PlanSetupViewModel?
 
-    func makeSetup(mode: PlanSetupViewModel.Mode) -> PlanSetupViewModel {
+    /// With `athlete`, a coach builds a plan for that runner: their profile prefills the setup and the
+    /// request goes to the runner's coaching route (a draft the coach then publishes).
+    func makeSetup(mode: PlanSetupViewModel.Mode, athlete: User? = nil) -> PlanSetupViewModel {
         // Onboarding treats "nothing found" as success; only a failed connect returns a message.
         var connectHealth: (@MainActor () async -> String?)?
         if appleHealthEnabled {
@@ -182,7 +184,8 @@ final class AppModel {
                 return self.appleHealthConnected ? nil : self.appleHealthMessage
             }
         }
-        let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session, raceService: RaceMatchService(client: client),
+        let setup = PlanSetupViewModel(mode: mode, user: athlete ?? session.user,
+                                       service: generationService.scoped(toAthlete: athlete?.id), generation: generation, session: session, raceService: RaceMatchService(client: client),
                                        goalEstimateService: goalEstimateService, raceHistoryService: raceHistoryService,
                                        deviceService: deviceConnectionService,
                                        loadWatchVolume: { [client] in

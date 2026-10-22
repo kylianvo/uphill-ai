@@ -132,7 +132,12 @@ struct PlanService: PlanServicing {
 
     func activePlan() async throws -> PlanSnapshot? {
         let response: ActivePlanResponse = try await client.send(.get(coachPrefix.map { "\($0)/active-plan" } ?? "/api/coach/active-plan"))
-        guard var snapshot = response.snapshot else { return nil }
+        guard var snapshot = response.snapshot else {
+            // A coach sees a runner's unpublished draft when there's no active plan to show.
+            guard let coachPrefix else { return nil }
+            let draft: DraftPlanResponse = try await client.send(.get("\(coachPrefix)/plans/draft"))
+            return draft.snapshot
+        }
         // Watch matches are read for the signed-in user only.
         guard athleteId == nil else { return snapshot }
         snapshot.workouts = await withWatchMatches(snapshot.workouts, planID: snapshot.plan.id)
