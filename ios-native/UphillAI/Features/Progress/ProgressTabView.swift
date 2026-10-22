@@ -9,6 +9,7 @@ struct ProgressTabView: View {
     let onBuildPlan: () -> Void
 
     @State private var showConnect = false
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         NavigationStack {
@@ -18,7 +19,8 @@ struct ProgressTabView: View {
                         Text(L("Training")).tag(ProgressSection.training)
                         Text(L("Health")).tag(ProgressSection.health)
                     }
-                    .pickerStyle(.segmented)
+                    // Segmented labels don't grow with accessibility text sizes; a menu does.
+                    .modifier(SectionPickerStyle(large: typeSize.isAccessibilitySize))
                     content
                 }
                 .padding(UH.Space.regular)
@@ -56,23 +58,31 @@ struct ProgressTabView: View {
             message(L("Your trends appear here as data comes in."), action: nil)
         }
         ForEach(response.cards) { card in
-            if card.key == "goal" {
+            if card.key == "today" {
+                todayCard(card)
+            } else if card.key == "goal" {
                 if let goalPath {
                     VStack(alignment: .leading, spacing: UH.Space.small) {
                         Label(ProgressText.title("goal"), systemImage: ProgressText.symbol("goal"))
                             .font(UH.TextStyle.label).foregroundStyle(UH.Palette.accentInk)
-                        GoalPathRow(path: goalPath)
+                        GoalPathRow(path: goalPath, framed: false)
+                        if goalPath.a == "behind" {
+                            Text(ProgressText.aGoalNextStep)
+                                .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                        }
                     }
                     .uhCard()
                 }
             } else if card.key == "coach_read" {
                 ProgressCardView(card: card)
             } else {
-                NavigationLink { ProgressDetailView(card: card, model: model) } label: { ProgressCardView(card: card) }
+                NavigationLink { ProgressDetailView(card: card, model: model) } label: { ProgressCardView(card: card, isLink: true) }
                     .buttonStyle(.plain)
             }
         }
-        if let next = response.pending.first(where: { !ProgressText.pending($0).isEmpty }) {
+        // The hint only makes sense once the section has something going (a plan, or health data coming in).
+        if isTraining ? response.hasPlan : response.connected,
+           let next = response.pending.first(where: { !ProgressText.pending($0).isEmpty }) {
             Text(ProgressText.pending(next))
                 .font(UH.TextStyle.caption)
                 .foregroundStyle(UH.Palette.muted)
@@ -80,11 +90,42 @@ struct ProgressTabView: View {
         }
     }
 
+    private func todayCard(_ card: ProgressCard) -> some View {
+        VStack(alignment: .leading, spacing: UH.Space.small) {
+            Label(ProgressText.title("today"), systemImage: ProgressText.symbol("today"))
+                .font(UH.TextStyle.label).foregroundStyle(UH.Palette.accentInk)
+            if let next = card.note["next"]?.objectValue, let line = ProgressText.nextSession(next) {
+                Text(line).font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
+            }
+            if let health = card.noteString("health") {
+                let read = ProgressCard(key: "coach_read", value: nil, unit: nil, series: [], band: nil,
+                                        note: ["key": .string(health), "contributors": card.note["contributors"] ?? .array([])],
+                                        asOf: nil, source: nil)
+                Text(ProgressText.note(read)).foregroundStyle(UH.Palette.secondary)
+            }
+            if let advice = ProgressText.todayAdvice(card) {
+                Text(advice).font(UH.TextStyle.body).foregroundStyle(UH.Palette.warningInk)
+            }
+        }
+        .uhCard()
+        .accessibilityElement(children: .combine)
+    }
+
+    private struct SectionPickerStyle: ViewModifier {
+        let large: Bool
+        func body(content: Content) -> some View {
+            if large { content.pickerStyle(.menu) } else { content.pickerStyle(.segmented) }
+        }
+    }
+
     private func message(_ text: String, action: (String, () -> Void)?) -> some View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
             Text(text).foregroundStyle(UH.Palette.ink)
             if let action {
-                Button(action.0, action: action.1).buttonStyle(.borderedProminent).tint(UH.Palette.accentInk)
+                Button(action.0, action: action.1)
+                    .buttonStyle(.borderedProminent)
+                    .tint(UH.Palette.accentInk)
+                    .foregroundStyle(UH.Palette.onSolid)  // accentInk is light emerald in dark mode
             }
         }
         .uhCard()

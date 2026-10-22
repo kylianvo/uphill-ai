@@ -22,7 +22,7 @@ struct ProgressCard: Decodable, Equatable, Sendable, Identifiable {
     let key: String
     let value: Double?
     let unit: String?
-    /// Snake-case keys arrive camel-cased (the decoder converts dictionary keys too).
+    /// Dictionary keys keep the backend's snake_case: the decoder converts struct keys only.
     let series: [[String: JSONValue]]
     let band: [Double]?
     let note: [String: JSONValue]

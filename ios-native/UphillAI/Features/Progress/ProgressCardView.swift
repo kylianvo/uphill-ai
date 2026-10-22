@@ -4,6 +4,8 @@ import SwiftUI
 /// number, a compact chart and one plain sentence.
 struct ProgressCardView: View {
     let card: ProgressCard
+    /// Opens a detail screen: shows the disclosure chevron. Cards that don't open anything show none.
+    var isLink = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
@@ -16,6 +18,12 @@ struct ProgressCardView: View {
                     Text(date, format: .dateTime.day().month(.abbreviated))
                         .font(UH.TextStyle.caption)
                         .foregroundStyle(UH.Palette.muted)
+                }
+                if isLink {
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
                 }
             }
             if let value = ProgressText.value(card) {

@@ -51,7 +51,12 @@ struct ProgressScreenshots {
             let p: Double = 6.4 - Double(week) * 0.05
             pace.append(["week": week, "pace": p])
         }
+        let tomorrow = Calendar(identifier: .gregorian).date(byAdding: .day, value: 1, to: Date())!
+        let nextDay = ProgressPoint.day.string(from: tomorrow)
         var cards: [[String: Any]] = [
+            ["key": "today", "series": [], "note": ["key": "today", "health": "health.off", "contributors": ["hrv"],
+                                                     "next": ["title": "Tempo 3×10 min", "type": "Tempo", "date": nextDay,
+                                                              "duration_minutes": 60]]],
             ["key": "goal", "series": [], "note": [:]],
             ["key": "aerobic_speed", "value": 6.1, "unit": "min/km", "series": pace,
              "note": ["key": "aerobic_speed", "b": "on", "a": "behind", "measured_pct": 3.2]],

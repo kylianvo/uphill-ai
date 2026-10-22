@@ -14,6 +14,7 @@ enum ProgressText {
         case "consistency": L("Consistency")
         case "aerobic_speed": L("Aerobic speed")
         case "goal": L("Goal")
+        case "today": L("Today")
         case "coach_read": L("Coach's read")
         default: key
         }
@@ -30,6 +31,7 @@ enum ProgressText {
         case "consistency": "checkmark.circle.fill"
         case "aerobic_speed": "speedometer"
         case "goal": "flag.checkered"
+        case "today": "sun.horizon.fill"
         default: "text.bubble.fill"
         }
     }
@@ -38,13 +40,13 @@ enum ProgressText {
     static func value(_ card: ProgressCard) -> (number: String, unit: String)? {
         guard let v = card.value else { return nil }
         switch card.key {
-        case "sleep": return (String(format: "%d:%02d", Int(v) / 60, Int(v) % 60), L("h asleep"))
+        case "sleep": return (L("%lldh %02lldm", Int(v) / 60, Int(v) % 60), L("asleep"))
         case "resting_hr": return ("\(Int(v.rounded()))", "bpm")
         case "hrv": return ("\(Int(v.rounded()))", "ms")
         case "durability": return (String(format: "%.1f", v), L("% drift"))
         case "load": return (String(format: "%.2f", v), L("× your usual"))
         case "volume": return (String(format: "%.0f", v), L("km last week"))
-        case "consistency": return ("\(Int(v))", L("% done"))
+        case "consistency": return ("\(Int(v))", L("% of sessions"))
         case "aerobic_speed": return (String(format: "%d:%02d", Int(v), Int((v - v.rounded(.down)) * 60)), "/km")
         default: return nil
         }
@@ -68,7 +70,7 @@ enum ProgressText {
         case "durability": return L("Heart rate drift on your last long runs. Lower is steadier.")
         case "volume": return L("Weekly km and climb against your plan")
         case "consistency":
-            guard let reason = card.noteString("topMissedReason") else { return L("Planned sessions done in recent weeks") }
+            guard let reason = card.noteString("top_missed_reason") else { return L("Planned sessions done in recent weeks") }
             return L("Most missed because: %@", missedReason(reason))
         case "aerobic_speed":
             switch card.noteString("b") {
@@ -83,6 +85,26 @@ enum ProgressText {
         default: return ""
         }
     }
+
+    /// The next session as one line: "Fri · Tempo 3x10 · 60 min".
+    static func nextSession(_ next: [String: JSONValue]) -> String? {
+        guard let title = next["title"]?.stringValue, let day = next["date"]?.stringValue,
+              let date = ProgressPoint.day.date(from: day) else { return nil }
+        var parts = [date.formatted(.dateTime.weekday(.abbreviated).locale(AppLanguage.current.locale)), title]
+        if let minutes = next["duration_minutes"]?.doubleValue, minutes > 0 { parts.append(L("%lld min", Int(minutes))) }
+        return parts.joined(separator: " · ")
+    }
+
+    /// A hard session on a day the body reads off: suggest the easy option, never prescribe.
+    static func todayAdvice(_ card: ProgressCard) -> String? {
+        guard card.noteString("health") == "health.off",
+              let type = card.note["next"]?.objectValue?["type"]?.stringValue,
+              ["Tempo", "Threshold", "Interval", "Intervals", "Hill Intervals", "Hill Repeats", "VO2max", "Race"].contains(type)
+        else { return nil }
+        return L("Your body reads off today. Consider an easy run instead of the hard session.")
+    }
+
+    static let aGoalNextStep = L("To reach A: keep easy runs at AeT heart rate and complete every long run.")
 
     static func missedReason(_ reason: String) -> String {
         switch reason {

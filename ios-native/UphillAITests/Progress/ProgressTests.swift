@@ -118,3 +118,17 @@ struct ProgressSignOutRaceTests {
         #expect(model.state == .loading)
     }
 }
+
+struct ProgressSnakeKeyTests {
+    /// Dictionary keys inside series/note keep the backend's snake_case (only struct keys are converted).
+    @Test func readsSnakeCaseKeysInsideSeriesAndNote() throws {
+        let json = """
+        {"key": "consistency", "value": 75, "unit": "%", "series": [{"week": 1, "km": 40, "km_planned": 45}],
+         "band": null, "note": {"key": "consistency", "pct": 75, "top_missed_reason": "busy"}, "as_of": null, "source": null}
+        """
+        let card = try JSONCoding.decoder.decode(ProgressCard.self, from: Data(json.utf8))
+        #expect(ProgressText.note(card) == L("Most missed because: %@", L("busy")))
+        let next: [String: JSONValue] = ["title": .string("Tempo"), "date": .string("2026-10-23"), "duration_minutes": .int(60)]
+        #expect(ProgressText.nextSession(next)?.hasSuffix(L("%lld min", 60)) == true)
+    }
+}

@@ -15920,6 +15920,56 @@
           }
         }
       }
+    },
+    "%lldh %02lldm": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld giờ %02lld phút"
+          }
+        }
+      }
+    },
+    "asleep": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ngủ"
+          }
+        }
+      }
+    },
+    "% of sessions": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "% số buổi"
+          }
+        }
+      }
+    },
+    "Your body reads off today. Consider an easy run instead of the hard session.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hôm nay cơ thể chưa hồi phục tốt. Cân nhắc chạy Easy thay buổi nặng."
+          }
+        }
+      }
+    },
+    "To reach A: keep easy runs at AeT heart rate and complete every long run.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để đạt A: giữ Easy Run ở nhịp tim AeT và tập đủ mọi buổi Long Run."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
