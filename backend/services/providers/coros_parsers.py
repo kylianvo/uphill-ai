@@ -21,7 +21,7 @@ athlete with no history yet.
 
 import json
 import re
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from typing import Any
 
 _RECORD_HEADER = re.compile(r"^\s*(\d+)\.\s+(.+?)\s+[—–-]\s+(\d{4}-\d{2}-\d{2})\s*$", re.M)
@@ -271,6 +271,8 @@ def parse_sleep_hrv(text: str) -> dict[date, dict[str, Any]]:
             "hrv_ms": float(avg.group(1)),
             "hrv_status": avg.group(2).strip(),
             "hrv_baseline_ms": _search_float(r"Baseline:\s*([\d.]+)\s*ms", body),
+            "hrv_range_low": _search_float(r"Normal Range:\s*([\d.]+)\s*-", body),
+            "hrv_range_high": _search_float(r"Normal Range:\s*[\d.]+\s*-\s*([\d.]+)\s*ms", body),
         }
 
     if not date_headers:
@@ -285,6 +287,51 @@ def parse_sleep_hrv(text: str) -> dict[date, dict[str, Any]]:
             raise CorosParseError(
                 "querySleepHrv output has an 'HRV Assessment' header but no parsable "
                 "date rows -- response shape may have changed"
+            )
+    return out
+
+
+def _hm_minutes(value: str) -> int:
+    """'6h 58min' -> 418, '45 min' -> 45"""
+    hours = re.search(r"(\d+)\s*h", value)
+    mins = re.search(r"(\d+)\s*min", value)
+    return (int(hours.group(1)) * 60 if hours else 0) + (int(mins.group(1)) if mins else 0)
+
+
+def parse_sleep_overview(text: str) -> dict[date, dict[str, Any]]:
+    """Wake-up date -> asleep minutes (naps included) and the main sleep window (local wall clock).
+
+    Older days carry only "Main Sleep:" and no "Daily Sleep" line; a nap-only day has no main sleep
+    or window. Both are real shapes, not errors.
+    """
+    text = _clean_text(text)
+    if "Sleep Overview" not in text:
+        raise CorosParseError("querySleepOverview output missing its 'Sleep Overview' header")
+
+    out: dict[date, dict[str, Any]] = {}
+    days = list(_DATE_LINE.finditer(text))
+    for index, match in enumerate(days):
+        end = days[index + 1].start() if index + 1 < len(days) else len(text)
+        block = text[match.start() : end]
+        asleep = (
+            re.search(r"^Daily Sleep:\s*(.+?)(?:\(|$)", block, re.M)
+            or re.search(r"^Main Sleep \(asleep\):\s*(.+)$", block, re.M)
+            or re.search(r"^Main Sleep:\s*(.+)$", block, re.M)
+        )
+        if not asleep:
+            continue
+        window = re.search(r"Main Sleep Window:\s*\S+\s+(\d{2}):(\d{2})\s*-\s*\S+\s+(\d{2}):(\d{2})", block)
+        out[date.fromisoformat(match.group(1))] = {
+            "sleep_minutes": _hm_minutes(asleep.group(1)),
+            "sleep_start": time(int(window.group(1)), int(window.group(2))) if window else None,
+            "sleep_end": time(int(window.group(3)), int(window.group(4))) if window else None,
+        }
+
+    if not days:
+        remaining = _drop_lines(text, r"Sleep Overview.*", r"=+", r"Note:.*")
+        if remaining:
+            raise CorosParseError(
+                "querySleepOverview output has a header but no parsable date rows -- response shape may have changed"
             )
     return out
 
