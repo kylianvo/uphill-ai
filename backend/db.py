@@ -2746,7 +2746,7 @@ def get_roster_overview_data(
                 JOIN plans p ON p.id = w.plan_id
                 JOIN coach_athletes ca ON ca.athlete_id = p.user_id AND ca.coach_id = :cid AND ca.status = 'active'
                 JOIN users u ON u.id = p.user_id
-                WHERE w.approved_at IS NULL
+                WHERE w.approved_at IS NULL AND p.plan_status <> 'draft'
                 ORDER BY w.id
             """),
             {"cid": coach_id},

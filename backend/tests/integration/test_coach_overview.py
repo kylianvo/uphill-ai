@@ -882,3 +882,44 @@ class TestOverviewEndpoint:
         data = resp.json()
         assert len(data["athletes"]) == 1
         assert data["athletes"][0]["athlete_id"] == a1
+
+
+def test_pending_approvals_exclude_draft_plans_keep_active_rest():
+    coach_id = _create_user("overview-pending-coach@uphill.ai")
+    athlete_id = _create_user("overview-pending-athlete@uphill.ai")
+    _link_active(coach_id, athlete_id)
+    active_id = _make_plan_with_workouts(athlete_id, current_week=2)
+    draft_id = create_plan(
+        user_id=athlete_id,
+        race_name="Draft 50K",
+        race_date="2027-02-01",
+        goal_type="finish",
+        target_time_hours=8.0,
+        total_weeks=12,
+        plan_status="draft",
+    )
+    save_workouts(
+        draft_id,
+        [
+            {
+                "week_number": 1,
+                "day_of_week": d,
+                "phase": "base",
+                "title": t,
+                "type": t,
+                "duration_minutes": 40,
+                "target_zone": "Z2",
+            }
+            for d, t in [("Monday", "Easy"), ("Tuesday", "Rest"), ("Wednesday", "Long Run")]
+        ],
+        auto_approve=False,
+    )
+    rest = get_plan_workouts(active_id)[0]
+    with engine.connect() as conn:  # a coach turning a session into rest leaves it pending
+        conn.execute(text("UPDATE workouts SET type = 'Rest', approved_at = NULL WHERE id = :id"), {"id": rest["id"]})
+        conn.commit()
+
+    ov = get_roster_overview_data(coach_id)
+
+    assert len(ov["action_items"]["draft_plans"]) == 1
+    assert [p["plan_id"] for p in ov["action_items"]["pending_workout_approvals"]] == [active_id]
