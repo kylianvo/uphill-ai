@@ -2092,6 +2092,28 @@ class PlanGenerator:
                     _make_rest(drop)
                     active.remove(drop)
 
+        def _pair_strength_with_run(wos: list[dict[str, Any]]) -> None:
+            """Claude puts Strength/ME on a training day of its own, so that day carries no run and the volume ramp
+            has nowhere to add the week's minutes. Each such day gets an afternoon easy run, copied from the week."""
+            if settings.PLAN_LLM_PROVIDER != "claude":
+                return
+            by_day: dict[tuple[int, str], list[dict[str, Any]]] = {}
+            for wo in wos:
+                if isinstance(wo.get("week_number"), int):
+                    by_day.setdefault((wo["week_number"], wo.get("day_of_week")), []).append(wo)
+            for (week_no, day), rows in list(by_day.items()):
+                if not all(r.get("type") in ("Strength", "Muscular Endurance") for r in rows):
+                    continue
+                easy = [w for (wk, _), rs in by_day.items() if wk == week_no for w in rs if w.get("type") == "Easy"]
+                if not easy:
+                    continue
+                run = {**min(easy, key=lambda r: float(r.get("duration_minutes") or 0)), "day_of_week": day}
+                run["session_slot"] = "afternoon"
+                for r in rows:
+                    r["session_slot"] = "morning"
+                _resize(run, int(tier_profile.weekday_minutes[0]))
+                wos.append(run)
+
         def _fuel_text(minutes: int) -> str:
             if lang == "vi":
                 if minutes < 60:
@@ -2778,6 +2800,7 @@ class PlanGenerator:
                     wo["phase"] = PlanGenerator.phase_for_week(wo["week_number"], total_weeks)
             _cap_hard_dose(wos)
             _respect_days(wos)
+            _pair_strength_with_run(wos)
             _ramp_volume(wos)
             _cap_start_load(wos)
             _progress_long_runs(wos)

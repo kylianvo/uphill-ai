@@ -148,3 +148,12 @@ def test_claude_prompt_draft_keeps_every_variable():
     draft = (Path(__file__).resolve().parents[2] / "prompts" / "plan_generation.claude.txt").read_text()
     variables = re.compile(r"{{\s*(\w+)\s*}}")
     assert set(variables.findall(draft)) == set(variables.findall(PLAN_GENERATION_PROMPT))
+
+
+def test_claude_strength_only_day_gets_an_afternoon_run(run, monkeypatch):
+    _claude(monkeypatch)
+    me = {**ROW, "day_of_week": "Thursday", "title": "ME", "type": "Muscular Endurance", "duration_minutes": 45}
+    workouts, _, _ = run(FakeAnthropic([_message(json.dumps([ROW, me]))]))
+    thursday = [w for w in workouts if w["day_of_week"] == "Thursday" and w["week_number"] == 1]
+    assert {w["type"] for w in thursday} >= {"Muscular Endurance", "Easy"}
+    assert {w.get("session_slot") for w in thursday} == {"morning", "afternoon"}

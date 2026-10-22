@@ -26,6 +26,8 @@ Name the actual exercises instead of a placeholder such as 'Perform the bodyweig
    - `is_priority` (boolean: true for the 1-2 sessions per week that matter most for the athlete's goal, usually the key quality session and the long run; false otherwise. Always false for a rest, recovery or easy run.)
    - `session_slot` (string, optional: set this only on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)
 
+Training days per week are running days. Put Strength and Muscular Endurance on a running day as a second session (session_slot 'morning' for the strength work, 'afternoon' for the run), never on a day of their own, so every training day carries a run.
+
 {{block_scope_instruction}}{{start_date_constraint}}{{week_schedule_constraints}}{{rules_block}}{{equipment_terrain_rule}}{{lang_rule}}
 
 Athlete Profile:
