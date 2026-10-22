@@ -58,3 +58,50 @@ Task 6:
 - Claude runs at low, then medium (then high if budget remains), $5 cap.
 - Golden gate.
 - Coach review packs.
+
+## 4. Paid gate: Claude only, no Gemini (2026-10-22/23)
+
+All paid runs used the in-code prompt (Langfuse off locally) and the scratch DB. Total spend was about $2.60 of the $5 cap. Gemini was not called.
+
+### Low vs medium effort, 5 key personas
+
+"Block time" is wall clock per block: the model call or calls, plus post-processing.
+
+| Persona | Low: cost / block p50 / p95 | Medium: cost / block p50 / p95 | Checks failed (low → medium) |
+|---|---|---|---|
+| quang_aptrc80 | $0.144 / 137 s / 157 s | $0.230 / 201 s / 321 s | ladder (QUALITY_COUNT) → same |
+| vn_masters_100k_gated_vi | $0.238 / 117 s / 145 s | $0.346 / 181 s / 262 s | none → none |
+| sub_elite_100mi_mountain | $0.176 / 61 s / 145 s | $0.230 / 76 s / 197 s | ladder (QUALITY_COUNT) → same |
+| vn_flat_city_treadmill_only | $0.121 / 104 s / 205 s | $0.164 / 108 s / 482 s | none → progression, taper, race missing (run ended early) |
+| vi_beginner_10k_road | $0.032 / 32 s / 65 s | $0.044 / 48 s / 96 s | none → none |
+
+- **Cut-off replies (`max_tokens` 32,000):** 0 at low, 5 at medium. Two of the medium ones needed `claude_retry`.
+- **Fall-through to the rules:** none at either effort, apart from the taper weeks, which the rules always build.
+- **Verdict:** low effort. Medium costs about 40% more and is about 1.5× slower, with no better checks and more cut-offs. Medium would need a `max_tokens` above 32,000.
+- **Latency is the open risk:** at low effort a block takes 30–140 s (p50) and up to about 3.5 min (p95). Gemini's production p50/p95 for `plan_generation` still has to be pulled from Langfuse or Prometheus before the flip.
+
+### Quality vs the Gemini replay (low effort, 7 personas)
+
+Haiku scored ≥ Gemini on all 4 personas that have a real Gemini baseline:
+
+| Persona | Haiku | Gemini |
+|---|---|---|
+| novice_trail_half | 10/10 | 9/10 |
+| recreational_50k | 10/10 | 8/10 |
+| quang_aptrc80 | 7/10 | 6/10 |
+| vn_flat_city_treadmill_only | 11/12 | 10/12 |
+
+The 3 new personas have no Gemini run, only the rules-only plan.
+
+### Quang's HCMC pack (A–E) re-run on Haiku low
+
+- **Output:** `~/Downloads/uphill-plan-mau-hcm-vi-ban2.docx`, same format as the 22/10 doc. It adds an old-vs-new table, the coach's notes and a goal check per runner.
+- **Long Run ladder:** every runner now follows it (50 km to 5 h, 100 km to 7 h). In the old plans the long run stayed at 3–4.5 h.
+- **Runner D's first run** stopped at week 6 with HTTP 403 (the 70% block-completion gate), although the script marks every session done. The re-run finished cleanly. Not reproduced, so watch for it.
+
+### Open findings (same with Gemini and the rules; not Haiku-specific)
+
+- **Quality sessions per week:** QUALITY_COUNT is off on ladder plans. Sub-elite runners get 1 quality session a week instead of 2, and Zone 3 sessions run 70–75 min.
+- **Deloads:** the week-4 deload is sometimes not lighter than week 3.
+- **Week 1:** for novice and recreational runners, week 1 starts above their current volume.
+- **Labels:** Strides and Hill Sprints are typed "Interval" at Zone 1–2.
