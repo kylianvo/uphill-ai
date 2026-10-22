@@ -102,3 +102,53 @@ def quality_weeks(total_weeks: int) -> frozenset[int]:
     return frozenset(
         w for w in range(max(1, peak - QUALITY_WINDOW_WEEKS + 1), peak + 1) if not is_deload(w, total_weeks)
     )
+
+
+def prompt_block(
+    band: Band, advanced: bool, weeks: dict[int, int], total_weeks: int, aet_gated: bool, lang: str
+) -> str:
+    """Rule lines for the generator: this block's ladder long runs and quality sessions. Technical terms stay in
+    English in Vietnamese, like goal_demands.prompt_block."""
+    lo, hi = weekday_minutes(band, advanced)
+    n = quality_per_week(advanced, aet_gated)
+    work_lo, work_hi = quality_work_minutes(advanced, aet_gated)
+    window = quality_weeks(total_weeks)
+    vi = lang == "vi"
+    lines = [
+        "MOUNTAIN-DAY ULTRA RULES (coach's ladder; they override the long-run share and growth rules):"
+        if not vi
+        else "LUẬT ULTRA CÓ NGÀY LÊN NÚI (ladder của coach; thay cho luật tỉ lệ và tăng trưởng Long Run):"
+    ]
+    for week, minutes in sorted(weeks.items()):
+        other = other_day_minutes(minutes)
+        if week in window:
+            quality = (
+                f"{n} session{'s' if n > 1 else ''} a week of uphill or rolling intervals in Zone 3 ({work_lo}-{work_hi} min "
+                f"of work, 8-12% treadmill, stairs or an overpass where there are no hills; breathing-limited, never "
+                f"ME; no Zone 4; at most {QUALITY_MAX_MIN} min in all; 48 h from the long run and ME)"
+                if not vi
+                else f"{n} buổi interval leo dốc hoặc lên xuống Zone 3 ({work_lo}-{work_hi} phút làm việc; máy chạy "
+                f"8-12%, cầu thang hoặc cầu vượt nếu không có dốc; giới hạn bởi hơi thở, không phải ME; không Zone 4; "
+                f"tối đa {QUALITY_MAX_MIN} phút cả buổi; cách Long Run và ME 48 h)"
+            )
+        else:
+            quality = (
+                "no Zone 3+ sessions: hill sprints, strides and ME only"
+                if not vi
+                else "không có buổi Zone 3+: chỉ hill sprints, strides và ME"
+            )
+        lines.append(
+            f"- Week {week}: Long Run {minutes} min on the mountain day; the other weekend day at most {other} min "
+            f"easy; {quality}."
+            if not vi
+            else f"- Tuần {week}: Long Run {minutes} phút vào ngày lên núi; ngày cuối tuần còn lại tối đa {other} "
+            f"phút nhẹ; {quality}."
+        )
+    lines.append(
+        f"Weekday easy runs {lo}-{hi} min; extra volume goes on weekdays, never on the long run. No back-to-back "
+        f"weekend. No ME in a week with a Long Run of {ME_FREE_LONG_RUN_MIN // 60} h or more."
+        if not vi
+        else f"Easy run ngày thường {lo}-{hi} phút; khối lượng thêm đặt vào ngày thường, không cộng vào Long Run. "
+        f"Không chạy back-to-back cuối tuần. Không tập ME trong tuần có Long Run từ {ME_FREE_LONG_RUN_MIN // 60} h trở lên."
+    )
+    return "\n".join(lines)

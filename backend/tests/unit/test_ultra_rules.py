@@ -57,3 +57,23 @@ def test_numbers():
 def test_quality_window_is_8_weeks_to_peak_without_deloads():
     assert u.quality_weeks(20) == frozenset({9, 10, 11, 13, 14, 15, 16})  # peak 16, deload 12
     assert u.quality_weeks(8) == frozenset({1, 2, 3, 5})  # short plan: the whole build, deload 4
+
+
+def test_prompt_block_peak_week():
+    text = u.prompt_block("100k", False, {16: 420}, 20, False, "en")
+    assert "420" in text and "back-to-back" in text.lower()
+    assert "1 session" in text and "20-30" in text
+
+
+def test_prompt_block_gated_advanced_gets_one_minimum_dose_session():
+    text = u.prompt_block("100k", True, {16: 420}, 20, True, "en")
+    assert "1 session" in text and "20-30" in text and "no zone 4" in text.lower()
+
+
+def test_prompt_block_outside_the_window_has_no_zone3():
+    text = u.prompt_block("100k", False, {5: 240}, 20, False, "en")
+    assert "no zone 3" in text.lower()
+
+
+def test_prompt_block_vietnamese():
+    assert "420" in u.prompt_block("100k", False, {16: 420}, 20, False, "vi")

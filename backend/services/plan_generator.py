@@ -3031,6 +3031,16 @@ class PlanGenerator:
 
             if demands and is_event_goal:
                 goal_description += "\n" + goal_demands.prompt_block(demands, lang)
+            if ultra:  # Quang's ladder for this block's weeks (services/ultra_rules.py)
+                block_ladder = ultra_rules.ladder(ultra, ultra_advanced, total_weeks)
+                goal_description += "\n" + ultra_rules.prompt_block(
+                    ultra,
+                    ultra_advanced,
+                    {w: block_ladder[w] for w in range(block_start_week, block_end_week + 1) if w in block_ladder},
+                    total_weeks,
+                    ultra_gated,
+                    lang,
+                )
 
             if is_event_goal:
                 program_summary = (

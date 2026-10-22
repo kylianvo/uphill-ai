@@ -157,3 +157,45 @@ def test_a_sunday_race_has_nothing_after_it():
     week = [_row(11, "Saturday", "Easy", 20), _row(11, "Sunday", "Race", 900)]
     assert plan_generator.rows_after_race(week) == []
     assert plan_generator.rows_after_race([_row(3, "Sunday", "Easy", 30)]) == []
+
+
+def test_model_prompt_carries_the_ladder_block(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock, patch
+
+    monkeypatch.setattr(settings, "PLAN_DEMANDS_ENABLED", True)
+    monkeypatch.setattr(settings, "PLAN_LINT_ENABLED", False)
+    monkeypatch.setattr(plan_generator, "get_plan_workouts", lambda plan_id: [])
+    monkeypatch.setattr("services.kb_retrieval._client", lambda: None)
+    client = MagicMock()
+    client.models.generate_content.side_effect = RuntimeError("no model in tests")
+    client.models.embed_content.return_value = SimpleNamespace(embeddings=[SimpleNamespace(values=[0.1])])
+    race_info = {
+        "name": "VHT 100K",
+        "date": (START + timedelta(weeks=18, days=5)).isoformat(),
+        "plan_start_date": START.isoformat(),
+        "terrain": "trail",
+        "course_distance_km": 104.2,
+        "course_elevation_gain_m": 5533,
+        "goal_type": "finish",
+        "long_run_day": "Saturday",
+        "days_per_week": 6,
+        "mountain_days": json.dumps(["Saturday"]),
+        "training_mountain": "nui_dinh",
+        "athlete_tier": "recreational",
+    }
+    with patch("google.genai.Client", return_value=client):
+        asyncio.run(
+            PlanGenerator.generate_plan_workouts(
+                plan_id=0,
+                user_profile={"max_hr": 185, "resting_hr": 55, "current_weekly_km": 65.0},
+                race_info=race_info,
+                total_weeks=20,
+                api_key="test-key",
+                cutoff_time_hours=29,
+                block_number=1,
+                weeks_per_block=4,
+            )
+        )
+    prompt = str(client.models.generate_content.call_args_list[0])
+    assert "MOUNTAIN-DAY ULTRA RULES" in prompt and "Week 3: Long Run 240 min" in prompt
