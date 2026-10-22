@@ -1750,6 +1750,53 @@ def approve_workout(workout_id: int, plan_id: int, athlete_id: int, coach_id: in
     return _row_to_dict(updated)
 
 
+def generated_block(plan_id: int) -> int:
+    """The block holding the plan's latest generated week; 0 before any week exists."""
+    with engine.connect() as conn:
+        top = conn.execute(text("SELECT MAX(week_number) FROM workouts WHERE plan_id = :p"), {"p": plan_id}).scalar()
+    return (top - 1) // settings.WEEKS_PER_BLOCK + 1 if top else 0
+
+
+def mark_plan_reviewed(plan_id: int, athlete_id: int, coach_id: int) -> dict[str, Any] | None:
+    """Records that the coach has reviewed every week generated so far. None if the plan isn't this athlete's."""
+    block = generated_block(plan_id)
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                UPDATE plans SET coach_reviewed_block = :b, coach_reviewed_at = NOW(), coach_reviewed_by = :c
+                WHERE id = :p AND user_id = :a
+                RETURNING id, coach_reviewed_block, coach_reviewed_at, coach_reviewed_by
+            """),
+            {"b": block, "c": coach_id, "p": plan_id, "a": athlete_id},
+        ).fetchone()
+        conn.commit()
+    return _row_to_dict(row) if row else None
+
+
+def publish_plan(plan_id: int, athlete_id: int, coach_id: int) -> dict[str, Any] | None:
+    """Approves every pending workout on the plan and, for a draft, makes it the athlete's active plan,
+    in one transaction. None if the plan isn't this athlete's."""
+    with engine.connect() as conn:
+        status = conn.execute(
+            text("SELECT plan_status FROM plans WHERE id = :p AND user_id = :a"), {"p": plan_id, "a": athlete_id}
+        ).scalar()
+        if status is None:
+            return None
+        approved = conn.execute(
+            text("UPDATE workouts SET approved_at = NOW() WHERE plan_id = :p AND approved_at IS NULL"), {"p": plan_id}
+        ).rowcount
+        if status == "draft":
+            conn.execute(
+                text("""
+                    UPDATE plans SET plan_status = 'active', approved_by_user_id = :c, approved_at = NOW()
+                    WHERE id = :p
+                """),
+                {"c": coach_id, "p": plan_id},
+            )
+        conn.commit()
+    return {"plan_id": plan_id, "plan_status": "active" if status == "draft" else status, "approved_count": approved}
+
+
 def make_rest_day(workout_id: int, editor_user_id: int) -> dict[str, Any] | None:
     """'Removes' a workout by converting it to a rest day in place, rather
     than deleting the row -- keeps the week's day structure intact. Fully
