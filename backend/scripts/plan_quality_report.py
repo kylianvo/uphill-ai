@@ -32,4 +32,11 @@ for d in sys.argv[1:]:
             z2,
         )
         bad = [f"{c.name.split(':')[0][:34]} [{c.detail[:45]}]" for c in rows if not c.ok]
-        print(f"{run['persona']:30} {len(rows) - len(bad)}/{len(rows)}  " + "; ".join(bad))
+        runs = list((run.get("runs") or {}).values())
+        cost = (
+            f"  [{sum(r['engine'] == 'rules' for r in runs)}/{len(runs)} rules, "
+            f"${sum(r['cost_usd'] for r in runs):.3f}, {max(r['seconds'] for r in runs):.0f}s max block]"
+            if runs
+            else ""
+        )
+        print(f"{run['persona']:30} {len(rows) - len(bad)}/{len(rows)}{cost}  " + "; ".join(bad))
