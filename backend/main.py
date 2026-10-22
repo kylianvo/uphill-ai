@@ -80,6 +80,7 @@ from db import (
     replace_shoe_rotation,
     save_block_review,
     save_workouts,
+    set_coach_athlete_plan_type,
     set_max_continuous_jog_min,
     set_plan_active,
     set_plan_athlete_tier,
@@ -1592,6 +1593,18 @@ def decline_invite(invite_id: int, user: dict[str, Any] = Depends(get_current_us
 @app.delete("/api/coaching/roster/{link_id}")
 def remove_from_roster(link_id: int, user: dict[str, Any] = Depends(get_current_user)):
     updated = remove_coach_athlete_link(link_id, user["id"])
+    if not updated:
+        raise HTTPException(status_code=404, detail="Roster link not found.")
+    return updated
+
+
+class PlanTypeRequest(BaseModel):
+    plan_type: Literal["review", "coached"]
+
+
+@app.patch("/api/coaching/roster/{link_id}")
+def set_roster_plan_type(link_id: int, request: PlanTypeRequest, coach: dict[str, Any] = Depends(require_coach)):
+    updated = set_coach_athlete_plan_type(link_id, coach["id"], request.plan_type)
     if not updated:
         raise HTTPException(status_code=404, detail="Roster link not found.")
     return updated

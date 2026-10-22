@@ -984,6 +984,11 @@ def init_db():
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS is_missed INTEGER DEFAULT 0",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS missed_reason TEXT",
+            # Coach workbench: which subscription the runner is on, and the last plan week the coach reviewed.
+            "ALTER TABLE coach_athletes ADD COLUMN IF NOT EXISTS plan_type TEXT NOT NULL DEFAULT 'review'",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS coach_reviewed_block INTEGER",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS coach_reviewed_at TIMESTAMPTZ",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS coach_reviewed_by INTEGER REFERENCES users(id)",
             # Backfill: workouts that predate per-workout approval, on plans already
             # active, are implicitly approved -- only draft-plan workouts (and any
             # newly-inserted coach workout going forward) should read as pending.
@@ -2612,7 +2617,7 @@ def get_roster_for_coach(coach_id: int) -> list[dict[str, Any]]:
     with engine.connect() as conn:
         rows = conn.execute(
             text("""
-                SELECT ca.id, ca.athlete_id, ca.status, ca.invited_at, ca.responded_at,
+                SELECT ca.id, ca.athlete_id, ca.status, ca.plan_type, ca.invited_at, ca.responded_at,
                        u.email AS athlete_email, u.name AS athlete_name
                 FROM coach_athletes ca
                 JOIN users u ON u.id = ca.athlete_id
@@ -2991,6 +2996,21 @@ def remove_coach_athlete_link(link_id: int, actor_user_id: int) -> dict[str, Any
             return None
         row = conn.execute(text("SELECT * FROM coach_athletes WHERE id = :id"), {"id": link_id}).fetchone()
     return _row_to_dict(row)
+
+
+def set_coach_athlete_plan_type(link_id: int, coach_id: int, plan_type: str) -> dict[str, Any] | None:
+    """Sets review | coached on one of this coach's non-removed links. None if the link isn't theirs."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                UPDATE coach_athletes SET plan_type = :pt
+                WHERE id = :id AND coach_id = :cid AND status != 'removed'
+                RETURNING *
+            """),
+            {"pt": plan_type, "id": link_id, "cid": coach_id},
+        ).fetchone()
+        conn.commit()
+    return _row_to_dict(row) if row else None
 
 
 def create_coach_note(
