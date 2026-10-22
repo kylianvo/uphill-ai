@@ -81,7 +81,7 @@ def is_hard(w: dict[str, Any]) -> bool:
     return w.get("type") in HARD_TYPES or w.get("target_zone") in HARD_ZONES
 
 
-def _is_long(w: dict[str, Any]) -> bool:
+def is_long(w: dict[str, Any]) -> bool:
     return (w.get("type") or "").strip().lower() == "long run"
 
 
@@ -136,7 +136,7 @@ def is_b2b_week(ws: list[dict[str, Any]]) -> bool:
 def b2b_targets(workouts: list[dict[str, Any]], week: int, longest_target: float) -> tuple[int, int]:
     """(Saturday, Sunday) minutes for a back-to-back weekend: the Sunday long run stays close to last week's
     (the growth cap still applies) and Saturday is almost as long, so the pair is what adds the volume."""
-    prior = [_min(w) for w in workouts if (w.get("week_number") or 0) < week and _is_long(w)]
+    prior = [_min(w) for w in workouts if (w.get("week_number") or 0) < week and is_long(w)]
     recent = max(prior[-2:], default=120.0)
     sun = min(recent * (1 + MAX_LONG_RUN_GROWTH) * 0.9, longest_target, MAX_SESSION_MIN)
     sat = min(max(sun * 0.85, B2B_DAY_MIN), 180.0)
@@ -151,7 +151,7 @@ def _ultra(prefs: Prefs | None, profile: TierProfile) -> tuple["ultra_rules.Band
     return (band, ultra_rules.is_advanced(profile.key)) if band else None
 
 
-def _is_quality(w: dict[str, Any]) -> bool:
+def is_quality(w: dict[str, Any]) -> bool:
     """A Zone 3+ session; hill sprints and strides are neuromuscular work, not quality sessions."""
     title = (w.get("title") or "").lower()
     return is_hard(w) and w.get("type") != "Race" and not any(k in title for k in NEUROMUSCULAR_KEYWORDS)
@@ -198,7 +198,7 @@ def lint_week(
     # Strength needs 48 h clear of the long run and of hard sessions (DOMS peaks ~48 h).
     for me in (w for w in ws if _is_me(w) and _day(w) is not None):
         for other in ws:
-            if other is me or _day(other) is None or not (_is_long(other) or is_hard(other)):
+            if other is me or _day(other) is None or not (is_long(other) or is_hard(other)):
                 continue
             gap = abs(_day(other) - _day(me)) * 24
             if 0 < gap < 48:
@@ -226,8 +226,8 @@ def lint_week(
 
     cap = profile.max_weekly_progression
     # On a ladder plan the long run's step is Quang's (ultra_rules), so growth is judged on the rest of the week.
-    lr_now = max((_min(w) for w in ws if _is_long(w)), default=0.0) if ultra else 0.0
-    lr_prev = max((_min(w) for w in _active(prev_ws) if _is_long(w)), default=0.0) if ultra else 0.0
+    lr_now = max((_min(w) for w in ws if is_long(w)), default=0.0) if ultra else 0.0
+    lr_prev = max((_min(w) for w in _active(prev_ws) if is_long(w)), default=0.0) if ultra else 0.0
     if prev_total and not _is_down(weeks, week - 1) and total - lr_now > (prev_total - lr_prev) * (1 + cap) + 1:
         issues.append(
             Issue(
@@ -241,7 +241,7 @@ def lint_week(
 
     prev_vert = _vert(prev_ws)
     vert_now, vert_prev = (
-        (_vert([w for w in ws if not _is_long(w)]), _vert([w for w in prev_ws if not _is_long(w)]))
+        (_vert([w for w in ws if not is_long(w)]), _vert([w for w in prev_ws if not is_long(w)]))
         if ultra
         else (_vert(ws), prev_vert)
     )
@@ -272,7 +272,7 @@ def lint_week(
     phase_for_share = next((w.get("phase") for w in ws if w.get("phase")), "")
     if phase_for_share == "Taper":
         long_cap += TAPER_LONG_SHARE_BONUS  # volume drops faster than the long run does
-    if any(_is_long(w) and _min(w) > MAX_SESSION_MIN for w in ws):
+    if any(is_long(w) and _min(w) > MAX_SESSION_MIN for w in ws):
         long_cap = max(long_cap, BIG_DAY_LONG_SHARE)  # an 8-hour day is about a third of a 150 mile build week
 
     # A recovery week is for recovering: no Zone 3+ session. (Taper and race weeks have their own shape.)
@@ -347,7 +347,7 @@ def lint_week(
 
     # the share caps were calibrated on all training time, ME included; volume (`total`) leaves ME out
     all_minutes = sum(_min(w) for w in ws)
-    longest = max((_min(w) for w in ws if _is_long(w)), default=0.0)
+    longest = max((_min(w) for w in ws if is_long(w)), default=0.0)
     if longest and longest / all_minutes > long_cap + LONG_SHARE_TOLERANCE:
         issues.append(
             Issue(
@@ -379,7 +379,7 @@ def lint_week(
                 )
                 break
 
-    long_runs = [w for w in ws if _is_long(w) and _day(w) is not None]
+    long_runs = [w for w in ws if is_long(w) and _day(w) is not None]
     if (
         prefs
         and prefs.long_run_day in DAYS
@@ -408,7 +408,7 @@ def lint_week(
             )
         )
     recent_long = max(
-        (_min(w) for back in (1, 2) for w in weeks.get(week - back, []) if _is_long(w)),
+        (_min(w) for back in (1, 2) for w in weeks.get(week - back, []) if is_long(w)),
         default=0.0,
     )
     longest_now = max((_min(w) for w in long_runs), default=0.0)
@@ -491,7 +491,7 @@ def _ultra_issues(
                 )
                 break
         target = ultra_rules.long_run_target(band, advanced, week, prefs.total_weeks, recent_long or None)
-        longest = max((_min(w) for w in ws if _is_long(w)), default=0.0)
+        longest = max((_min(w) for w in ws if is_long(w)), default=0.0)
         if target and not ultra_rules.is_deload(week, prefs.total_weeks) and longest < target * 0.9:
             out.append(
                 Issue(
@@ -501,7 +501,7 @@ def _ultra_issues(
                     f"{target} min (the long-run ladder for this race).",
                 )
             )
-    quality = [w for w in ws if _is_quality(w)]
+    quality = [w for w in ws if is_quality(w)]
     if any(w.get("target_zone") in ("Zone 4", "Zone 5") for w in quality):
         out.append(
             Issue(
@@ -628,7 +628,7 @@ def _specificity(
             x
             for w in late
             for x in by[w]
-            if _is_long(x) and x.get("mountain_mode") not in _NO_CLIMB_MODES and float(x.get("distance_km") or 0) > 0
+            if is_long(x) and x.get("mountain_mode") not in _NO_CLIMB_MODES and float(x.get("distance_km") or 0) > 0
         ]
         best = max((float(x.get("elevation_gain_m") or 0) / float(x["distance_km"]) for x in longs), default=need)
         if longs and best < need:
