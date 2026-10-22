@@ -17,26 +17,16 @@ enum VolumeChartMode: String, CaseIterable, Identifiable {
 
 struct SummaryCarousel: View {
     let model: PlanViewModel
-    var adapting: Int? = nil
-    let onReview: () -> Void
-    let onAdapt: () -> Void
     let onGoal: () -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var volumeChartMode: VolumeChartMode = .weekDays
 
     init(
         model: PlanViewModel,
-        adapting: Int? = nil,
-        onReview: @escaping () -> Void,
-        onAdapt: @escaping () -> Void,
         onGoal: @escaping () -> Void,
         initialVolumeMode: VolumeChartMode = .weekDays
     ) {
         self.model = model
-        self.adapting = adapting
-        self.onReview = onReview
-        self.onAdapt = onAdapt
         self.onGoal = onGoal
         _volumeChartMode = State(initialValue: initialVolumeMode)
     }
@@ -44,14 +34,13 @@ struct SummaryCarousel: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: UH.Space.compact) {
-                volumeCard
-                if let progress = model.goalProgress { goalProgressCard(progress) }
                 weekCard
-                raceCard
-                phaseCard
+                if let progress = model.goalProgress { goalProgressCard(progress) }
             }
+            .scrollTargetLayout()
             .padding(.horizontal, UH.Space.regular)
         }
+        .scrollTargetBehavior(.viewAligned)
     }
 
     private func card<Content: View>(_ content: Content) -> some View {
@@ -72,90 +61,44 @@ struct SummaryCarousel: View {
             .foregroundStyle(UH.Palette.secondary)
     }
 
-    // MARK: - Volume Card (Week Days & Every Week Trend)
+    // MARK: - This Week Card (sessions and volume, days or every-week trend)
 
-    private var volumeCard: some View {
-        let volume = model.selectedVolume
+    private var weekCard: some View {
         let comp = model.weekComparison
-        let dayVols = model.dayVolumes
+        let done = model.dayStates.filter { $0.state == .done }.count
+        let active = model.dayStates.filter { $0.state != .rest }.count
 
         return card(
-            VStack(alignment: .leading, spacing: 3) {
-                // Header: Eyebrow + Mode Switcher [Days | Trend]
+            VStack(alignment: .leading, spacing: UH.Space.compact) {
                 HStack(alignment: .center) {
-                    eyebrow(L("Week %lld Volume", model.selectedWeek))
-
+                    eyebrow(model.selectedWeek == model.currentWeek ? L("This week") : L("Week %lld", model.selectedWeek))
                     Spacer()
-
-                    // Segmented pill switcher
-                    HStack(spacing: 2) {
+                    Picker(L("Volume chart"), selection: $volumeChartMode) {
                         ForEach(VolumeChartMode.allCases) { mode in
-                            Button {
-                                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) {
-                                    volumeChartMode = mode
-                                }
-                            } label: {
-                                Text(L(mode.rawValue))
-                                    .font(.system(size: 10, weight: volumeChartMode == mode ? .bold : .medium, design: .monospaced))
-                                    .foregroundStyle(volumeChartMode == mode ? UH.Palette.accentInk : UH.Palette.secondary)
-                                    .padding(.horizontal, 7)
-                                    .padding(.vertical, 2.5)
-                                    .background(volumeChartMode == mode ? UH.Palette.hover : Color.clear, in: Capsule())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("volume.mode.\(mode == .weekDays ? "days" : "trend")")
-                            .accessibilityLabel(mode.accessibilityTitle)
+                            Text(L(mode.rawValue))
+                                .tag(mode)
+                                .accessibilityLabel(mode.accessibilityTitle)
+                                .accessibilityIdentifier("volume.mode.\(mode == .weekDays ? "days" : "trend")")
                         }
                     }
-                    .padding(2)
-                    .background(UH.Palette.line.opacity(0.35), in: Capsule())
+                    .pickerStyle(.segmented)
+                    .fixedSize()
                 }
 
-                // Middle: Big Numbers
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(String(format: "%.1f", volume.km))
-                        .font(.system(size: 26, weight: .bold, design: .monospaced))
-                        .foregroundStyle(UH.Palette.ink)
-                    Text("km")
-                        .font(UH.TextStyle.label)
-                        .foregroundStyle(UH.Palette.secondary)
+                Spacer(minLength: 0)
 
-                    Spacer()
-
-                    Text("\(String(format: "%.1f", volume.hours)) h · \(Int(volume.gainM)) m D+")
-                        .font(.system(size: 12.5, weight: .medium, design: .monospaced))
-                        .foregroundStyle(UH.Palette.secondary)
-                }
-
-                // Subline: Planned vs Actual or Trend progression
-                HStack(spacing: 4) {
-                    if volumeChartMode == .weekDays {
-                        Text("Planned \(String(format: "%.1f", comp.plannedKm)) km · Actual \(String(format: "%.1f", comp.actualKm)) km")
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
-                            .foregroundStyle(UH.Palette.secondary)
-                    } else {
-                        if let diff = comp.diffHours, let prev = comp.previousHours, prev > 0 {
-                            let pct = Int((diff / prev * 100).rounded())
-                            let sign = pct >= 0 ? "+" : ""
-                            Text("\(sign)\(pct)% vs last wk · Total \(model.snapshot?.plan.totalWeeks ?? 0) weeks")
-                                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                                .foregroundStyle(pct >= 0 ? UH.Palette.accentInk : UH.Palette.secondary)
-                        } else {
-                            Text("Total \(model.snapshot?.plan.totalWeeks ?? 0) weeks progression")
-                                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                                .foregroundStyle(UH.Palette.secondary)
-                        }
-                    }
-                }
-
-                Spacer(minLength: 4)
-
-                // Chart: Week Days Breakdown or Every Week Trend
                 if volumeChartMode == .weekDays {
-                    weekDaysChart(dayVols)
+                    weekDaysChart(model.dayVolumes)
                 } else {
                     weekTrendChart
                 }
+
+                Text(verbatim: L("%lld of %lld sessions done", done, active) + " · "
+                     + L("%@ of %@ km", comp.actualKm.formatted(.number.precision(.fractionLength(0...1))),
+                         comp.plannedKm.formatted(.number.precision(.fractionLength(0...1)))))
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+                    .monospacedDigit()
             }
         )
         .accessibilityElement(children: .contain)
@@ -249,173 +192,6 @@ struct SummaryCarousel: View {
         .accessibilityLabel("Weekly volume trend")
     }
 
-    // MARK: - Sessions Card (Adherence %)
-
-    private var weekCard: some View {
-        let comp = model.weekComparison
-        let done = model.dayStates.filter { $0.state == .done }.count
-        let active = model.dayStates.filter { $0.state != .rest }.count
-
-        return card(
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    eyebrow(model.selectedWeek == model.currentWeek ? L("This week") : L("Week %lld", model.selectedWeek))
-                    Spacer()
-                    // Adherence % pill
-                    Text("\(comp.adherencePct)% adherence")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(UH.Palette.accentInk)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(UH.Palette.activeFill, in: Capsule())
-                }
-
-                HStack(spacing: 0) {
-                    ForEach(model.dayStates, id: \.weekday) { item in
-                        VStack(spacing: 4) {
-                            Text(AppLanguage.current == .vi ? L(String(item.weekday.rawValue.prefix(3))) : String(item.weekday.rawValue.prefix(1)))
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                .foregroundStyle(UH.Palette.muted)
-                            dot(item.state)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("\(item.weekday.rawValue), \(label(item.state))")
-                    }
-                }
-                .padding(.vertical, 4)
-
-                Spacer(minLength: 2)
-
-                HStack {
-                    Text("\(done) of \(active) sessions completed")
-                        .font(UH.TextStyle.caption)
-                        .foregroundStyle(UH.Palette.ink)
-                    Spacer()
-                    if model.canAdaptWeek(model.selectedWeek) {
-                        Button(action: onAdapt) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 10, weight: .bold))
-                                Text("Adapt Week \(model.selectedWeek)")
-                                    .font(.system(size: 11, weight: .bold))
-                            }
-                            .foregroundStyle(UH.Palette.accentInk)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(UH.Palette.activeFill, in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("plan.summary.adaptWeek")
-                    } else {
-                        Text("Planned vs Actual")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(UH.Palette.secondary)
-                    }
-                }
-            }
-        )
-    }
-
-    @ViewBuilder
-    private func dot(_ state: DayState) -> some View {
-        switch state {
-        case .done:
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(UH.Palette.accentInk).font(.system(size: 20))
-        case .missed:
-            Image(systemName: "xmark.circle").foregroundStyle(UH.Palette.danger).font(.system(size: 20))
-        case .planned:
-            Image(systemName: "circle").foregroundStyle(UH.Palette.line).font(.system(size: 20))
-        case .rest:
-            Circle().fill(UH.Palette.line.opacity(0.8)).frame(width: 6, height: 6).frame(height: 20)
-        }
-    }
-
-    private func label(_ state: DayState) -> String {
-        switch state {
-        case .done: "done"
-        case .missed: "missed"
-        case .planned: "planned"
-        case .rest: "rest"
-        }
-    }
-
-    // MARK: - Race Card
-
-    private var raceCard: some View {
-        let plan = model.snapshot?.plan
-        let raceDay = PlanCalendar.day(from: plan?.raceDate)
-        return card(
-            VStack(alignment: .leading, spacing: 4) {
-                eyebrow(L("Race Target"))
-                Text(plan?.raceName ?? "")
-                    .font(UH.TextStyle.sectionTitle)
-                    .foregroundStyle(UH.Palette.ink)
-                    .lineLimit(1)
-
-                if let raceDay {
-                    Text(raceDay, format: .dateTime.weekday(.abbreviated).day().month(.abbreviated).year())
-                        .font(UH.TextStyle.caption)
-                        .foregroundStyle(UH.Palette.secondary)
-                }
-
-                Spacer(minLength: 0)
-
-                if plan?.courseDistanceKm != nil || plan?.courseElevationGainM != nil {
-                    HStack(alignment: .firstTextBaseline, spacing: 18) {
-                        if let km = plan?.courseDistanceKm {
-                            raceStat(String(format: "%.0f", km), unit: "km")
-                        }
-                        if let gain = plan?.courseElevationGainM {
-                            raceStat(Int(gain).formatted(), unit: "m D+")
-                        }
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("plan.race.stats")
-                    .padding(.bottom, 4)
-                }
-
-                HStack {
-                    if let days = model.daysToRace {
-                        Text(days == 0 ? L("Race day") : days < 7 ? L("Race week") : L("%lld days to go", days))
-                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(UH.Palette.accentInk)
-                    }
-
-                    Spacer()
-
-                    if let pill = model.goalPillText {
-                        Button(action: onGoal) {
-                            Text(pill)
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundStyle(model.goalIsOutOfReach ? UH.Palette.danger : model.goal?.status.kind == .behind ? UH.Palette.warningInk : UH.Palette.accentInk)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .contentShape(Capsule())
-                                .background(UH.Palette.hover, in: Capsule())
-                                .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 1))
-                        }
-                        .accessibilityIdentifier("plan.goalpill")
-                    } else if let goal = model.goalText {
-                        Text(goal).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
-                    }
-                }
-            }
-        )
-        .accessibilityElement(children: .contain)
-    }
-
-    private func raceStat(_ value: String, unit: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(value)
-                .font(.system(size: 20, weight: .bold, design: .monospaced))
-                .foregroundStyle(UH.Palette.ink)
-            Text(unit)
-                .font(UH.TextStyle.label)
-                .foregroundStyle(UH.Palette.secondary)
-        }
-    }
-
     // MARK: - Goal Progress Card
 
     func goalProgressCard(_ progress: GoalProgress) -> some View {
@@ -497,52 +273,4 @@ struct SummaryCarousel: View {
         }
     }
 
-    // MARK: - Phase Card
-
-    private var phaseWeekText: String {
-        let total = model.snapshot?.plan.totalWeeks ?? 0
-        guard let phase = model.phase, let inPhase = model.weekInPhase else {
-            return L("Week %lld of %lld", model.selectedWeek, total)
-        }
-        return L("Week %lld of %lld in %@", inPhase.index, inPhase.total, L(phase))
-    }
-
-    /// What this phase is for; same wording as the web carousel.
-    private var phasePurpose: String? {
-        let phase = (model.phase ?? "").lowercased()
-        let purposes: [(String, String)] = [
-            ("base", "Build aerobic endurance with easy, consistent running."),
-            ("build", "Add race-specific fitness on top of your aerobic base."),
-            ("peak", "Sharpen with your hardest, most race-like sessions."),
-            ("taper", "Cut volume to arrive at the start line fresh."),
-            ("recovery", "Absorb the work; rest is the training."),
-            ("transition", "Ease back into structured training."),
-        ]
-        return purposes.first { phase.contains($0.0) }.map { L($0.1) }
-    }
-
-    private var phaseCard: some View {
-        card(
-            VStack(alignment: .leading, spacing: 5) {
-                eyebrow(L("Training Phase"))
-                Text(L(model.phase ?? "Base Phase"))
-                    .font(UH.TextStyle.metric)
-                    .foregroundStyle(UH.Palette.ink)
-
-                Text(verbatim: phaseWeekText)
-                    .font(.system(size: 13, weight: .medium, design: .monospaced))
-                    .foregroundStyle(UH.Palette.secondary)
-
-                Spacer(minLength: 2)
-
-                if let purpose = phasePurpose {
-                    Text(verbatim: purpose)
-                        .font(UH.TextStyle.caption)
-                        .foregroundStyle(UH.Palette.secondary)
-                        .lineLimit(3)
-                }
-            }
-        )
-        .accessibilityElement(children: .combine)
-    }
 }

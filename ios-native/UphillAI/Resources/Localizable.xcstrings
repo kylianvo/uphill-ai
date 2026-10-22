@@ -15240,6 +15240,36 @@
           }
         }
       }
+    },
+    "Volume chart": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biểu đồ khối lượng"
+          }
+        }
+      }
+    },
+    "%lld of %lld sessions done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xong %lld/%lld buổi"
+          }
+        }
+      }
+    },
+    "%@ of %@ km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/%@ km"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

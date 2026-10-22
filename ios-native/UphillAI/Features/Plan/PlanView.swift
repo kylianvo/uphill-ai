@@ -208,8 +208,6 @@ struct PlanView: View {
 
                         // 3. Summary carousel
                         SummaryCarousel(model: model,
-                                        adapting: generation.running?.kind == .adaptWeek ? model.selectedWeek : nil,
-                                        onReview: { showReview = true }, onAdapt: { showAdapt = true },
                                         onGoal: { showGoal = true },
                                         initialVolumeMode: initialVolumeMode)
 
