@@ -262,6 +262,7 @@ class TestGetRosterOverviewData:
         coach_id = _create_user("overview-coach9@uphill.ai")
 
         data = get_roster_overview_data(coach_id)
+        assert isinstance(data.pop("generated_at"), str)
         assert data == {
             "athletes": [],
             "action_items": {"draft_plans": [], "pending_workout_approvals": []},
@@ -836,6 +837,7 @@ class TestOverviewEndpoint:
         assert resp.status_code == 200
         body = resp.json()
         assert set(body.keys()) == {
+            "generated_at",
             "athletes",
             "action_items",
             "phase_alerts",
@@ -923,3 +925,104 @@ def test_pending_approvals_exclude_draft_plans_keep_active_rest():
 
     assert len(ov["action_items"]["draft_plans"]) == 1
     assert [p["plan_id"] for p in ov["action_items"]["pending_workout_approvals"]] == [active_id]
+
+
+LEGACY_TOP_KEYS = {
+    "athletes",
+    "action_items",
+    "phase_alerts",
+    "workout_type_mix",
+    "adherence_trend",
+    "missed_by_day",
+    "rpe_distribution",
+    "race_readiness",
+    "roster_totals",
+    "most_consistent",
+    "races",
+    "athletes_without_race",
+}
+LEGACY_ATHLETE_KEYS = {
+    "athlete_id",
+    "name",
+    "runner_level",
+    "needs_attention",
+    "active_plan",
+    "adherence_pct",
+    "last_completed",
+    "missed_streak",
+}
+
+
+def test_overview_keeps_legacy_keys():
+    coach_id = _create_user("ov-legacy-coach@uphill.ai")
+    athlete_id = _create_user("ov-legacy-athlete@uphill.ai")
+    _link_active(coach_id, athlete_id)
+    _make_plan_with_workouts(athlete_id, current_week=3)
+    ov = get_roster_overview_data(coach_id)
+    assert LEGACY_TOP_KEYS <= set(ov)
+    a = ov["athletes"][0]
+    assert LEGACY_ATHLETE_KEYS <= set(a)
+    assert isinstance(a["needs_attention"], bool) and isinstance(a["missed_streak"], int)
+    assert set(ov["race_readiness"]) == {"on_track", "at_risk", "behind"}
+
+
+def test_overview_athlete_signals_pain():
+    coach_id = _create_user("ov-pain-coach@uphill.ai")
+    athlete_id = _create_user("ov-pain-athlete@uphill.ai")
+    _link_active(coach_id, athlete_id)
+    plan_id = _make_plan_with_workouts(athlete_id, current_week=3)
+    today = date.today()
+    start = today - timedelta(days=(3 - 1) * 7 + 3)
+    start_monday = start - timedelta(days=start.weekday())
+    from services.workout_calendar import workout_date
+
+    past = [
+        w for w in get_plan_workouts(plan_id) if workout_date(start_monday, w["week_number"], w["day_of_week"]) < today
+    ]
+    recent = max(past, key=lambda w: workout_date(start_monday, w["week_number"], w["day_of_week"]))
+    update_workout_log(recent["id"], is_missed=1, missed_reason="pain")
+
+    a = get_roster_overview_data(coach_id)["athletes"][0]
+    assert a["status"] == "act_now"
+    assert a["signals"][0]["code"] == "reported_pain"
+    assert a["plan_type"] == "review"
+    assert a["week"]["sessions_planned"] >= 1
+    assert len(a["prev_weeks"]) == 3 and len(a["load_4w_minutes"]) == 4
+    assert set(a["mix_minutes"]) == {"easy", "long", "quality"}
+
+
+def test_overview_athlete_without_plan_has_null_week():
+    coach_id = _create_user("ov-noplan-coach@uphill.ai")
+    review_id = _create_user("ov-noplan-review@uphill.ai")
+    coached_id = _create_user("ov-noplan-coached@uphill.ai")
+    _link_active(coach_id, review_id)
+    _link_active(coach_id, coached_id)
+    with engine.connect() as conn:
+        conn.execute(text("UPDATE coach_athletes SET plan_type = 'coached' WHERE athlete_id = :a"), {"a": coached_id})
+        conn.commit()
+    by_id = {a["athlete_id"]: a for a in get_roster_overview_data(coach_id)["athletes"]}
+    assert by_id[review_id]["week"] is None and by_id[review_id]["signals"] == []
+    assert by_id[review_id]["status"] == "on_track"
+    assert [s["code"] for s in by_id[coached_id]["signals"]] == ["needs_plan"]
+    assert by_id[coached_id]["recovery"] is None and by_id[coached_id]["last_sync_at"] is None
+
+
+def test_overview_query_count_constant():
+    from sqlalchemy import event
+
+    def count_for(n: int) -> int:
+        coach_id = _create_user(f"ov-q{n}-coach@uphill.ai")
+        for i in range(n):
+            athlete_id = _create_user(f"ov-q{n}-ath{i}@uphill.ai")
+            _link_active(coach_id, athlete_id)
+            _make_plan_with_workouts(athlete_id, current_week=3)
+        calls = []
+        listener = lambda *a, **k: calls.append(1)  # noqa: E731
+        event.listen(engine, "before_cursor_execute", listener)
+        try:
+            get_roster_overview_data(coach_id)
+        finally:
+            event.remove(engine, "before_cursor_execute", listener)
+        return len(calls)
+
+    assert count_for(1) == count_for(10)

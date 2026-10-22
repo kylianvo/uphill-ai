@@ -2677,6 +2677,161 @@ def compute_current_week(start_date: str | None, total_weeks: int | None) -> int
     return max(1, min(week, total_weeks))
 
 
+def _attach_coach_fields(
+    athlete_rows: list[dict[str, Any]],
+    workouts_by_plan: dict[int, list[dict[str, Any]]],
+    athletes: list[dict[str, Any]],
+) -> None:
+    """Adds the coach-workbench fields (week stats, signals, recovery) to each
+    overview athlete in place. Every input is fetched roster-wide, so the query
+    count doesn't grow with the roster."""
+    from services import coach_signals, plan_lint
+    from services.workout_calendar import plan_start_monday, workout_date
+
+    ids = [r["athlete_id"] for r in athlete_rows]
+    if not ids:
+        return
+    plan_ids = [pid for pid in workouts_by_plan]
+    now = datetime.datetime.now().astimezone()  # server-local, like compute_current_week's date.today()
+    with engine.connect() as conn:
+
+        def q(sql: str, **params: Any) -> list[dict[str, Any]]:
+            stmt = text(sql).bindparams(*(bindparam(k, expanding=True) for k in params if isinstance(params[k], list)))
+            return [_row_to_dict(r) for r in conn.execute(stmt, params).fetchall()]
+
+        drafts = q(
+            "SELECT user_id, MAX(id) AS plan_id FROM plans WHERE user_id IN :ids AND plan_status = 'draft' GROUP BY user_id",
+            ids=ids,
+        )
+        last_sync = q(
+            "SELECT user_id, MAX(start_time) AS at FROM activities WHERE user_id IN :ids GROUP BY user_id", ids=ids
+        )
+        actual = (
+            q(
+                "SELECT matched_workout_id AS wid, SUM(duration_seconds) / 60.0 AS minutes FROM activities "
+                "WHERE matched_workout_id IN (SELECT id FROM workouts WHERE plan_id IN :pids) GROUP BY matched_workout_id",
+                pids=plan_ids,
+            )
+            if plan_ids
+            else []
+        )
+        metrics = q(
+            "SELECT user_id, metric_date, source_provider, hrv_status, resting_hr, sleep_minutes FROM daily_metrics "
+            "WHERE user_id IN :ids AND metric_date >= CURRENT_DATE - 6 ORDER BY metric_date DESC",
+            ids=ids,
+        )
+        results = q(
+            "SELECT DISTINCT ON (user_id) user_id, race_name, finish_time_sec FROM race_results "
+            "WHERE user_id IN :ids AND created_at >= NOW() - INTERVAL '7 days' AND NOT hidden "
+            "ORDER BY user_id, created_at DESC",
+            ids=ids,
+        )
+
+    draft_by = {r["user_id"]: r["plan_id"] for r in drafts}
+    sync_by = {r["user_id"]: r["at"] for r in last_sync}
+    actual_by = {r["wid"]: float(r["minutes"]) for r in actual}
+    result_by = {r["user_id"]: r for r in results}
+    metrics_by: dict[int, list[dict[str, Any]]] = {}
+    for m in metrics:
+        metrics_by.setdefault(m["user_id"], []).append(m)
+
+    for row, a in zip(athlete_rows, athletes, strict=True):
+        uid, plan_id = row["athlete_id"], row["plan_id"]
+        # Readiness rule: one provider at a time, newest wins, COROS on a tie.
+        ms = metrics_by.get(uid, [])
+        if ms:
+            newest = max(ms, key=lambda m: (m["metric_date"], m["source_provider"] == "coros"))["source_provider"]
+            ms = [m for m in ms if m["source_provider"] == newest]
+        sleeps = [m["sleep_minutes"] for m in ms if m["sleep_minutes"]]
+        a["recovery"] = (
+            {
+                "hrv_status": ms[0]["hrv_status"],
+                "resting_hr": ms[0]["resting_hr"],
+                "sleep_avg_7d_min": round(sum(sleeps) / len(sleeps)) if sleeps else None,
+            }
+            if ms
+            else None
+        )
+        a["plan_type"] = row["plan_type"]
+        a["last_sync_at"] = sync_by[uid].isoformat() if sync_by.get(uid) else None
+
+        wos: list[dict[str, Any]] = []
+        plan = None
+        current_week = 1
+        if plan_id is not None:
+            plan = {
+                "id": plan_id,
+                "user_id": uid,
+                "created_by_user_id": row["created_by_user_id"],
+                "race_name": row["race_name"],
+                "race_date": row["race_date"],
+                "start_date": row["start_date"],
+                "total_weeks": row["total_weeks"],
+                "coach_reviewed_block": row["coach_reviewed_block"],
+                "created_at": row["plan_created_at"],
+            }
+            current_week = compute_current_week(row["start_date"], row["total_weeks"])
+            raw = workouts_by_plan.get(plan_id, [])
+            race_date = datetime.date.fromisoformat(str(row["race_date"])[:10]) if row["race_date"] else now.date()
+            monday = plan_start_monday(str(row["start_date"])[:10] if row["start_date"] else None, raw, race_date)
+            wos = [
+                {
+                    **w,
+                    "date": workout_date(monday, w["week_number"], w["day_of_week"]),
+                    "actual_minutes": actual_by.get(w["id"]),
+                }
+                for w in raw
+            ]
+
+        facts = coach_signals.AthleteFacts(
+            plan_type=row["plan_type"],
+            plan=plan,
+            draft_plan_id=draft_by.get(uid),
+            workouts=wos,
+            current_week=current_week,
+            pending_active_count=sum(1 for w in wos if w["approved_at"] is None),
+            last_activity_at=sync_by.get(uid),
+            hrv_last3=[m["hrv_status"] for m in ms if (now.date() - m["metric_date"]).days < 3],
+            new_result=result_by.get(uid),
+            now=now,
+        )
+        signals = coach_signals.signals_for(facts)
+        a["signals"] = [{"code": s.code, "severity": s.severity, "params": s.params} for s in signals]
+        a["status"] = coach_signals.status_of(signals)
+
+        if plan is None:
+            a.update(
+                phase=None,
+                race_date=None,
+                days_to_race=None,
+                week=None,
+                prev_weeks=[],
+                load_4w_minutes=[],
+                adherence_14d=None,
+                mix_minutes=None,
+            )
+            continue
+        cur = [w for w in wos if w["week_number"] == current_week and w["type"] != "Rest" and w["is_completed"]]
+        mins = coach_signals._done_minutes
+        recent = [w for w in wos if now.date() - datetime.timedelta(days=13) <= w["date"] <= now.date()]
+        resolved = [w for w in recent if w["is_completed"] or w["is_missed"]]
+        race_day = datetime.date.fromisoformat(str(row["race_date"])[:10]) if row["race_date"] else None
+        a.update(
+            phase=next((w["phase"] for w in wos if w["week_number"] == current_week and w["phase"]), None),
+            race_date=str(row["race_date"])[:10] if row["race_date"] else None,
+            days_to_race=(race_day - now.date()).days if race_day else None,
+            week=coach_signals.week_stats(wos, current_week),
+            prev_weeks=[coach_signals.week_stats(wos, current_week - i) for i in (1, 2, 3)],
+            load_4w_minutes=[coach_signals.week_stats(wos, current_week - i)["minutes_done"] for i in (3, 2, 1, 0)],
+            adherence_14d=round(sum(1 for w in resolved if w["is_completed"]) / len(resolved), 3) if resolved else None,
+            mix_minutes={
+                "easy": round(sum(mins(w) for w in cur if not plan_lint.is_long(w) and not plan_lint.is_quality(w))),
+                "long": round(sum(mins(w) for w in cur if plan_lint.is_long(w))),
+                "quality": round(sum(mins(w) for w in cur if plan_lint.is_quality(w))),
+            },
+        )
+
+
 def get_roster_overview_data(
     coach_id: int,
     days: int = 14,
@@ -2696,9 +2851,10 @@ def get_roster_overview_data(
     with engine.connect() as conn:
         athlete_rows = conn.execute(
             text("""
-                SELECT ca.athlete_id, u.name AS athlete_name, u.email AS athlete_email,
+                SELECT ca.athlete_id, ca.plan_type, u.name AS athlete_name, u.email AS athlete_email,
                        u.current_weekly_km,
-                       p.id AS plan_id, p.race_name, p.race_date, p.start_date, p.current_week, p.total_weeks
+                       p.id AS plan_id, p.race_name, p.race_date, p.start_date, p.current_week, p.total_weeks,
+                       p.created_by_user_id, p.coach_reviewed_block, p.created_at AS plan_created_at
                 FROM coach_athletes ca
                 JOIN users u ON u.id = ca.athlete_id
                 LEFT JOIN LATERAL (
@@ -2723,8 +2879,8 @@ def get_roster_overview_data(
         workouts_by_plan: dict[int, list[dict[str, Any]]] = {pid: [] for pid in plan_ids}
         if plan_ids:
             stmt = text("""
-                SELECT plan_id, week_number, day_of_week, phase, type, is_completed, is_missed,
-                       distance_km, duration_minutes, elevation_gain_m
+                SELECT id, plan_id, week_number, day_of_week, phase, type, title, target_zone, is_completed,
+                       is_missed, missed_reason, rpe, approved_at, distance_km, duration_minutes, elevation_gain_m
                 FROM workouts
                 WHERE plan_id IN :plan_ids
             """).bindparams(bindparam("plan_ids", expanding=True))
@@ -2960,7 +3116,10 @@ def get_roster_overview_data(
         for a in sorted(eligible, key=lambda a: (-a["adherence_pct"], a["name"]))[:3]
     ]
 
+    _attach_coach_fields(athlete_rows, workouts_by_plan, athletes)
+
     return {
+        "generated_at": datetime.datetime.now(datetime.UTC).isoformat(),
         "athletes": athletes,
         "action_items": {
             "draft_plans": draft_plans,
