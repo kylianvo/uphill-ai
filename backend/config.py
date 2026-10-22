@@ -15,7 +15,9 @@ DEFAULT_LLM_PRICES_USD_PER_M = {
     "gemini-3.8-flash": [
         {"until": "2026-12-31", "input": 0.75, "cached_input": 0.075, "output": 3.75},
         {"from": "2027-01-01", "input": 1.50, "cached_input": 0.15, "output": 7.50},
-    ]
+    ],
+    # prompts up to 100K tokens; plan prompts stay well below
+    "claude-haiku-5-5": [{"input": 0.10, "cached_input": 0.01, "output": 0.50}],
 }
 
 
@@ -71,6 +73,11 @@ class Config:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
     GEMINI_THINKING_LEVEL: str = os.getenv("GEMINI_THINKING_LEVEL", "low")
+    # Plan generation only: gemini | claude. Everything else stays on Gemini.
+    PLAN_LLM_PROVIDER: str = os.getenv("PLAN_LLM_PROVIDER", "gemini")
+    PLAN_LLM_EFFORT: str = os.getenv("PLAN_LLM_EFFORT", "medium")
+    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+    CLAUDE_PLAN_MODEL: str = os.getenv("CLAUDE_PLAN_MODEL", "claude-haiku-5-5")
     API_PORT: int = int(os.getenv("PORT", "8000"))
     API_HOST: str = os.getenv("HOST", "0.0.0.0")
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")

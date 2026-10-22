@@ -5,6 +5,7 @@ python-dotenv>=1.0.0
 fitparse>=1.2.0
 gpxpy>=1.6.2
 google-genai>=2.0.0
+anthropic==1.17.0
 python-multipart
 pypdf
 beautifulsoup4
