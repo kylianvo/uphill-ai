@@ -9,7 +9,7 @@ uploaded FIT file and a COROS sync converge on the same representation.
 """
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Any
 
 
@@ -50,3 +50,7 @@ class CanonicalDailyMetric:
     load_ratio: float | None = None
     recovery_percent: int | None = None
     sleep_minutes: int | None = None
+    sleep_start: time | None = None  # main sleep window, local wall clock
+    sleep_end: time | None = None
+    hrv_range_low: float | None = None  # the provider's own normal range, when it reports one
+    hrv_range_high: float | None = None
