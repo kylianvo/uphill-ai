@@ -9,6 +9,7 @@ retry prompt. Caps come from the athlete's tier profile, not from one-size numbe
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from services import ultra_rules
 from services.athlete_tier import (
     LONG_SHARE_SOFT,
     TierProfile,
@@ -31,6 +32,9 @@ MAX_VERT_GROWTH = 0.25
 MIN_VERT_STEP_M = 300  # ignore growth on tiny bases
 BACK_TO_BACK_SHARE = 0.50  # two consecutive big days may hold at most half the week
 BACK_TO_BACK_MIN_DAY = 0.25  # ...and a "big" day is one holding a quarter of the week (a long run + a short recovery run is not a back-to-back)
+# hill sprints, short hill repeats (PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS), bounding, strides, and the
+# "Fartlek / Surges" a hill sprint becomes on a day with no hill
+NEUROMUSCULAR_KEYWORDS = ("sprint", "stride", "bound", "hill repeat", "surges")
 MAX_SESSION_MIN = 300  # KB: the longest single session is capped at four to five hours
 # No doctrine number for one session; this catches the gross spikes (130 -> 213 min) the weekly cap misses.
 MAX_LONG_RUN_GROWTH = 0.25
@@ -47,6 +51,8 @@ class Prefs:
     demands: "Demands | None" = None  # the goal's physical demands (enables the specificity checks)
     flat_only: bool = False  # no training mountain or local hills: climbing cannot be judged on gain
     total_weeks: int | None = None  # lets the specificity checks find the last pre-taper week
+    mountain_day: bool = False  # a weekly mountain day: an ultra follows Quang's ladder (services/ultra_rules.py)
+    quality_gated: bool = False  # AeT gate on (gap > 10% or estimated thresholds): one quality session at most
 
 
 @dataclass(frozen=True)
@@ -84,7 +90,8 @@ def _is_me(w: dict[str, Any]) -> bool:
 
 
 def week_minutes(ws: list[dict[str, Any]]) -> float:
-    return sum(_min(w) for w in _active(ws))
+    """Run time of the week. ME sits on top of the aerobic volume (book), so it is not counted."""
+    return sum(_min(w) for w in _active(ws) if not _is_me(w))
 
 
 def _vert(ws: list[dict[str, Any]]) -> float:
@@ -136,9 +143,26 @@ def b2b_targets(workouts: list[dict[str, Any]], week: int, longest_target: float
     return int(round(sat / 5) * 5), int(round(sun / 5) * 5)
 
 
+def _ultra(prefs: Prefs | None, profile: TierProfile) -> tuple["ultra_rules.Band", bool] | None:
+    """(band, advanced) when the plan follows Quang's mountain-day ladder, else None."""
+    if not prefs or not prefs.mountain_day or not prefs.demands or not prefs.total_weeks:
+        return None
+    band = ultra_rules.band_for(prefs.demands.distance_km)
+    return (band, ultra_rules.is_advanced(profile.key)) if band else None
+
+
+def _is_quality(w: dict[str, Any]) -> bool:
+    """A Zone 3+ session; hill sprints and strides are neuromuscular work, not quality sessions."""
+    title = (w.get("title") or "").lower()
+    return is_hard(w) and w.get("type") != "Race" and not any(k in title for k in NEUROMUSCULAR_KEYWORDS)
+
+
 def in_ultra_window(prefs: Prefs | None, week: int) -> bool:
-    """Is `week` one of the last build weeks of an ultra plan, where a back-to-back weekend belongs?"""
+    """Is `week` one of the last build weeks of an ultra plan, where a back-to-back weekend belongs? Never for a
+    mountain-day ladder plan: one long mountain day replaces the back-to-back."""
     d = prefs.demands if prefs else None
+    if prefs and prefs.mountain_day and d is not None and ultra_rules.band_for(d.distance_km):
+        return False
     if d is None or not prefs.total_weeks or d.distance_km < ULTRA_KM or (prefs.days_per_week or 5) < 5:
         return False
     lo, hi = _B2B_WINDOW_FROM_END
@@ -169,6 +193,7 @@ def lint_week(
     prev_ws = weeks.get(week - 1) or []
     prev_total = week_minutes(prev_ws)
     issues: list[Issue] = []
+    ultra = _ultra(prefs, profile)
 
     # Strength needs 48 h clear of the long run and of hard sessions (DOMS peaks ~48 h).
     for me in (w for w in ws if _is_me(w) and _day(w) is not None):
@@ -200,7 +225,10 @@ def lint_week(
             )
 
     cap = profile.max_weekly_progression
-    if prev_total and not _is_down(weeks, week - 1) and total > prev_total * (1 + cap) + 1:
+    # On a ladder plan the long run's step is Quang's (ultra_rules), so growth is judged on the rest of the week.
+    lr_now = max((_min(w) for w in ws if _is_long(w)), default=0.0) if ultra else 0.0
+    lr_prev = max((_min(w) for w in _active(prev_ws) if _is_long(w)), default=0.0) if ultra else 0.0
+    if prev_total and not _is_down(weeks, week - 1) and total - lr_now > (prev_total - lr_prev) * (1 + cap) + 1:
         issues.append(
             Issue(
                 "VOLUME_JUMP",
@@ -212,11 +240,16 @@ def lint_week(
         )
 
     prev_vert = _vert(prev_ws)
+    vert_now, vert_prev = (
+        (_vert([w for w in ws if not _is_long(w)]), _vert([w for w in prev_ws if not _is_long(w)]))
+        if ultra
+        else (_vert(ws), prev_vert)
+    )
     if (
-        prev_vert
+        vert_prev
         and not _is_down(weeks, week - 1)  # rebuilding after a down week, like the volume rule
-        and _vert(ws) > prev_vert * (1 + MAX_VERT_GROWTH)
-        and _vert(ws) - prev_vert > MIN_VERT_STEP_M
+        and vert_now > vert_prev * (1 + MAX_VERT_GROWTH)
+        and vert_now - vert_prev > MIN_VERT_STEP_M
     ):
         issues.append(
             Issue(
@@ -312,13 +345,15 @@ def lint_week(
                 )
             )
 
+    # the share caps were calibrated on all training time, ME included; volume (`total`) leaves ME out
+    all_minutes = sum(_min(w) for w in ws)
     longest = max((_min(w) for w in ws if _is_long(w)), default=0.0)
-    if longest and longest / total > long_cap + LONG_SHARE_TOLERANCE:
+    if longest and longest / all_minutes > long_cap + LONG_SHARE_TOLERANCE:
         issues.append(
             Issue(
                 "LONG_SHARE",
                 week,
-                f"Week {week}: the long run is {longest / total * 100:.0f}% of weekly time; the cap for this "
+                f"Week {week}: the long run is {longest / all_minutes * 100:.0f}% of weekly time; the cap for this "
                 f"athlete is {long_cap * 100:.0f}%. Shorten the long run or lengthen the "
                 f"other sessions.",
             )
@@ -326,14 +361,18 @@ def lint_week(
 
     day_min = _day_minutes(ws)
     for d in sorted(day_min):
-        if d + 1 in day_min and len(ws) >= 3 and not b2b_ok:
+        # a ladder plan's mountain day and the easy day beside it are Quang's week shape, not an overreach block
+        if d + 1 in day_min and len(ws) >= 3 and not b2b_ok and not ultra:
             pair = day_min[d] + day_min[d + 1]
-            if pair > total * BACK_TO_BACK_SHARE and min(day_min[d], day_min[d + 1]) >= BACK_TO_BACK_MIN_DAY * total:
+            if (
+                pair > all_minutes * BACK_TO_BACK_SHARE
+                and min(day_min[d], day_min[d + 1]) >= BACK_TO_BACK_MIN_DAY * all_minutes
+            ):
                 issues.append(
                     Issue(
                         "BACK_TO_BACK",
                         week,
-                        f"Week {week}: {DAYS[d]} and {DAYS[d + 1]} hold {pair / total * 100:.0f}% of the week. "
+                        f"Week {week}: {DAYS[d]} and {DAYS[d + 1]} hold {pair / all_minutes * 100:.0f}% of the week. "
                         f"Back-to-back long days are only an occasional overreach block and must stay under "
                         f"{BACK_TO_BACK_SHARE * 100:.0f}% of weekly volume.",
                     )
@@ -373,8 +412,10 @@ def lint_week(
         default=0.0,
     )
     longest_now = max((_min(w) for w in long_runs), default=0.0)
+    ladder = ultra_rules.ladder(ultra[0], ultra[1], prefs.total_weeks) if ultra else {}
     if (
         recent_long
+        and not (ultra and longest_now <= ladder.get(week, 0))  # a ladder step is Quang's, not a jump
         and longest_now > recent_long * (1 + MAX_LONG_RUN_GROWTH)
         and longest_now - recent_long > MIN_LONG_RUN_STEP_MIN
     ):
@@ -388,7 +429,9 @@ def lint_week(
             )
         )
 
-    session_cap = session_cap_minutes(profile, prefs.demands.distance_km if prefs and prefs.demands else None)
+    session_cap = session_cap_minutes(
+        profile, prefs.demands.distance_km if prefs and prefs.demands else None, prefs.mountain_day if prefs else False
+    )
     for w in ws:
         if _min(w) > session_cap and w.get("type") != "Race":  # the race is not a training session
             issues.append(
@@ -399,6 +442,10 @@ def lint_week(
                     f"{session_cap // 60} hours.",
                 )
             )
+
+    if ultra:
+        issues += _ultra_issues(weeks, ws, week, ultra, recent_long, prefs)
+    issues += _me_load(ws, week, profile, total)
 
     if not _is_down(weeks, week):
         builds, wk = 1, week - 1
@@ -415,6 +462,96 @@ def lint_week(
                 )
             )
     return issues
+
+
+def _ultra_issues(
+    weeks: dict[int, list[dict[str, Any]]],
+    ws: list[dict[str, Any]],
+    week: int,
+    ultra: tuple["ultra_rules.Band", bool],
+    recent_long: float,
+    prefs: Prefs,
+) -> list[Issue]:
+    """Quang's mountain-day rules: the ladder long run, weekday minimum, quality sessions only in the window."""
+    band, advanced = ultra
+    out: list[Issue] = []
+    phase = next((w.get("phase") for w in ws if w.get("phase")), "")
+    building = phase in ("Base", "Build", "Peak") and not _is_down(weeks, week)
+    lo = ultra_rules.weekday_minutes(band, advanced)[0]
+    if building:
+        for w in ws:
+            if w.get("type") in ("Easy", "Aerobic Capacity") and _day(w) is not None and _day(w) < 5 and _min(w) < lo:
+                out.append(
+                    Issue(
+                        "WEEKDAY_SHORT",
+                        week,
+                        f"Week {week}: {_label(w)} is {_min(w):.0f} min. Weekday easy runs for this race are at "
+                        f"least {lo} min: lengthen it (the extra volume goes on weekdays, not the long run).",
+                    )
+                )
+                break
+        target = ultra_rules.long_run_target(band, advanced, week, prefs.total_weeks, recent_long or None)
+        longest = max((_min(w) for w in ws if _is_long(w)), default=0.0)
+        if target and not ultra_rules.is_deload(week, prefs.total_weeks) and longest < target * 0.9:
+            out.append(
+                Issue(
+                    "ULTRA_LADDER",
+                    week,
+                    f"Week {week}: the mountain-day Long Run is {longest:.0f} min. Make the Long Run about "
+                    f"{target} min (the long-run ladder for this race).",
+                )
+            )
+    quality = [w for w in ws if _is_quality(w)]
+    if any(w.get("target_zone") in ("Zone 4", "Zone 5") for w in quality):
+        out.append(
+            Issue(
+                "QUALITY_COUNT",
+                week,
+                f"Week {week}: no Zone 4-5 work for an ultra. Make the quality session uphill or rolling intervals "
+                f"in Zone 3.",
+            )
+        )
+    elif phase in ("Base", "Build", "Peak"):
+        in_window = week in ultra_rules.quality_weeks(prefs.total_weeks)
+        want = ultra_rules.quality_per_week(advanced, prefs.quality_gated) if in_window else 0
+        if not _is_down(weeks, week) and len(quality) != want:
+            work = ultra_rules.quality_work_minutes(advanced, prefs.quality_gated)
+            out.append(
+                Issue(
+                    "QUALITY_COUNT",
+                    week,
+                    f"Week {week} has {len(quality)} Zone 3+ sessions; it needs {want}. "
+                    + (
+                        f"Make {want} of them uphill or rolling intervals in Zone 3 ({work[0]}-{work[1]} min of work, "
+                        f"at most {ultra_rules.QUALITY_MAX_MIN} min in all), 48 h from the long run and ME."
+                        if want
+                        else "Before the last 8 build weeks an ultra has no Zone 3+ sessions: hill sprints, strides "
+                        "and ME only."
+                    ),
+                )
+            )
+    return out
+
+
+def _me_load(ws: list[dict[str, Any]], week: int, profile: TierProfile, run_minutes: float) -> list[Issue]:
+    """Book: ME once a week (advanced athletes up to twice in Base and Build), at most 10% of training time."""
+    me = [w for w in ws if _is_me(w)]
+    if not me:
+        return []
+    phase = next((w.get("phase") for w in ws if w.get("phase")), "")
+    allowed = 2 if ultra_rules.is_advanced(profile.key) and phase in ("Base", "Build") else 1
+    me_min = sum(_min(w) for w in me)
+    # one standard session (45-60 min) is always allowed; the 10% share caps what is added beyond it
+    if len(me) <= allowed and (len(me) == 1 or me_min <= ultra_rules.ME_MAX_SHARE * (run_minutes + me_min) + 1):
+        return []
+    return [
+        Issue(
+            "ME_LOAD",
+            week,
+            f"Week {week} has {len(me)} Muscular Endurance sessions ({me_min:.0f} min). Keep ME to {allowed} a week "
+            f"and at most {ultra_rules.ME_MAX_SHARE * 100:.0f}% of the week's training time.",
+        )
+    ]
 
 
 TIME_ON_FEET_SHARE = 0.90  # the longest session must reach 90% of the target (or of what the days can hold)
@@ -471,7 +608,9 @@ def _specificity(
         return []
     issues: list[Issue] = []
     held = max((_min(x) for w in training for x in by[w]), default=0.0)
-    _, long_cap = week_capacity_parts(profile, prefs.days_per_week, session_cap_minutes(profile, d.distance_km))
+    _, long_cap = week_capacity_parts(
+        profile, prefs.days_per_week, session_cap_minutes(profile, d.distance_km, prefs.mountain_day)
+    )
     target = TIME_ON_FEET_SHARE * min(d.longest_session_min, long_cap)
     if held < target:
         issues.append(

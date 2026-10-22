@@ -352,20 +352,35 @@ ELITE_ULTRA_WEEKDAY_MAX = 150  # weekday runs up to 2.5 h (doubles) in the 130-1
 ELITE_ULTRA_LONG_SHARE = 0.35
 
 
-def for_race(profile: TierProfile, race_km: float | None) -> TierProfile:
+def for_race(profile: TierProfile, race_km: float | None, mountain_day: bool = False) -> TierProfile:
     """The caps for this race: sub-elite athletes training for 100 miles get longer weekday runs and a larger
-    long-run share (Johnston's elite example). Every other athlete keeps the standard tier caps."""
+    long-run share (Johnston's elite example); an ultra trained on a mountain day follows Quang's weekday range and
+    ladder long-run share (services/ultra_rules.py). Every other athlete keeps the standard tier caps."""
+    from services import ultra_rules  # ultra_rules imports this module
+
     if profile.key == "sub_elite" and race_km and race_km >= ELITE_ULTRA_KM:
-        return replace(
+        profile = replace(
             profile,
             weekday_minutes=(profile.weekday_minutes[0], ELITE_ULTRA_WEEKDAY_MAX),
             long_run_share_cap=ELITE_ULTRA_LONG_SHARE,
         )
+    band = ultra_rules.band_for(race_km) if mountain_day else None
+    if band:
+        profile = replace(
+            profile,
+            weekday_minutes=ultra_rules.weekday_minutes(band, ultra_rules.is_advanced(profile.key)),
+            long_run_share_cap=max(profile.long_run_share_cap, ultra_rules.LONG_SHARE_CAP),
+        )
     return profile
 
 
-def session_cap_minutes(profile: TierProfile, race_km: float | None) -> int:
+def session_cap_minutes(profile: TierProfile, race_km: float | None, mountain_day: bool = False) -> int:
     """The longest single session this athlete's plan may hold."""
+    from services import ultra_rules
+
+    band = ultra_rules.band_for(race_km) if mountain_day else None
+    if band:
+        return ultra_rules.session_cap(band, ultra_rules.is_advanced(profile.key))
     if profile.key == "sub_elite" and race_km and race_km >= ELITE_ULTRA_KM:
         return ELITE_ULTRA_SESSION_MIN
     return MAX_SESSION_MIN

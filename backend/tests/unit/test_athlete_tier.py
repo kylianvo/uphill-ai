@@ -393,3 +393,21 @@ class TestResolveTier:
         """REGRESSION: next block passed plans.athlete_tier as the override, so a plan first
         resolved as recreational stayed recreational forever."""
         assert resolve_tier(explicit_tier=None, current_weekly_km=138.0, previous_tier=RECREATIONAL) == SUB_ELITE
+
+
+def test_mountain_ultra_caps():
+    from services.athlete_tier import TIER_PROFILES, for_race, session_cap_minutes
+
+    rec = TIER_PROFILES["recreational"]
+    p = for_race(rec, 104, mountain_day=True)
+    assert p.weekday_minutes == (60, 90) and p.long_run_share_cap == 0.60
+    assert session_cap_minutes(rec, 104, mountain_day=True) == 420
+    assert session_cap_minutes(TIER_PROFILES["elite"], 170, mountain_day=True) == 480
+
+
+def test_no_mountain_day_keeps_book_caps():
+    from services.athlete_tier import TIER_PROFILES, for_race, session_cap_minutes
+
+    rec = TIER_PROFILES["recreational"]
+    assert for_race(rec, 104) == rec
+    assert session_cap_minutes(rec, 104) == 300
