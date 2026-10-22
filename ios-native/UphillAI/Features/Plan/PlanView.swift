@@ -348,7 +348,8 @@ struct PlanView: View {
                 }
                 .animation(reduceMotion ? nil : UH.Motion.standard, value: readyBanner)
                 .task(id: "\(model.selectedWeek)-\(model.days.count)") {
-                    guard model.selectedWeek == model.currentWeek else { return }
+                    // A coach lands on the coach card at the top, not on today's session.
+                    guard model.selectedWeek == model.currentWeek, app?.actingAsAthlete == nil else { return }
                     // Let the lazy list lay out its rows before scrolling.
                     await Task.yield()
                     try? await Task.sleep(for: .milliseconds(150))
