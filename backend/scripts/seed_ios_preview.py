@@ -182,6 +182,86 @@ def _seed_coach(athlete_id, active_plan_id, start, total_weeks):
     )
 
 
+# (email, name, plan_type, situation) -- one runner per triage section for the Athletes tab.
+TRIAGE_ROSTER = [
+    ("ios-minh@uphill.ai", "Minh Tran", "coached", "pain"),
+    ("ios-huy@uphill.ai", "Huy Le", "review", "to_review"),
+    ("ios-thao@uphill.ai", "Thao Ngo", "coached", "no_plan"),
+    ("ios-quan@uphill.ai", "Quan Do", "review", "no_sync"),
+    ("ios-anh@uphill.ai", "Anh Vu", "review", "race_soon"),
+]
+
+
+def _seed_triage_roster(coach_id: int, this_monday: datetime.date) -> None:
+    """Five more runners so the coach overview has every status: act now, review & build, check in, on track.
+    Linked before the preview athlete, so it stays the roster's first active row (the fixture recorder's pick)."""
+    today = datetime.date.today()
+    for email, name, plan_type, situation in TRIAGE_ROSTER:
+        uid = _ensure_user(email, name)["id"]
+        with db.engine.connect() as conn:
+            conn.execute(text("DELETE FROM plans WHERE user_id = :u"), {"u": uid})
+            conn.execute(text("DELETE FROM activities WHERE user_id = :u"), {"u": uid})
+            conn.execute(
+                text(
+                    "INSERT INTO coach_athletes (coach_id, athlete_id, status, plan_type, invited_at, responded_at) "
+                    "VALUES (:c, :a, 'active', :pt, NOW() - INTERVAL '40 days', NOW() - INTERVAL '40 days')"
+                ),
+                {"c": coach_id, "a": uid, "pt": plan_type},
+            )
+            conn.commit()
+        if situation == "no_plan":
+            continue
+        weeks_in = {"pain": 6, "to_review": 1, "no_sync": 4, "race_soon": 11}[situation]
+        start = this_monday - datetime.timedelta(days=(weeks_in - 1) * 7)
+        race = (
+            today + datetime.timedelta(days=9)
+            if situation == "race_soon"
+            else start + datetime.timedelta(days=12 * 7 - 2)
+        )
+        plan_id = db.create_plan(
+            user_id=uid,
+            race_name="Vietnam Mountain Marathon 42K" if situation != "to_review" else "Dalat Ultra Trail 50K",
+            race_date=race.isoformat(),
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=12,
+            start_date=start.isoformat(),
+            created_by_user_id=uid if situation == "to_review" else coach_id,
+        )
+        db.save_workouts(plan_id, _workouts(range(1, weeks_in + 1)))
+        db.set_plan_active(uid, plan_id)
+        with db.engine.connect() as conn:
+            # Everything before today is done; the situation then overrides the last few days.
+            for w in db.get_plan_workouts(plan_id):
+                day = start + datetime.timedelta(days=(w["week_number"] - 1) * 7 + WEEK_DAYS.index(w["day_of_week"]))
+                if w["type"] != "Rest" and day < today:
+                    conn.execute(text("UPDATE workouts SET is_completed = 1, rpe = 5 WHERE id = :id"), {"id": w["id"]})
+                if situation == "pain" and w["type"] != "Rest" and today - datetime.timedelta(days=4) <= day < today:
+                    conn.execute(
+                        text(
+                            "UPDATE workouts SET is_completed = 0, is_missed = 1, missed_reason = 'pain' WHERE id = :id"
+                        ),
+                        {"id": w["id"]},
+                    )
+            if situation != "no_sync":
+                conn.execute(
+                    text(
+                        "INSERT INTO activities (user_id, source_provider, activity_type, start_time, duration_seconds) "
+                        "VALUES (:u, 'apple_health', 'run', NOW() - INTERVAL '1 day', 2700)"
+                    ),
+                    {"u": uid},
+                )
+            if situation == "to_review":
+                conn.execute(
+                    text("UPDATE plans SET created_at = NOW() - INTERVAL '31 hours' WHERE id = :p"), {"p": plan_id}
+                )
+            conn.commit()
+    print(f"Seeded triage roster: {', '.join(n for _, n, _, _ in TRIAGE_ROSTER)}.")
+
+
+WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
 def _seed_race_history(athlete_id: int) -> None:
     from services import race_history
 
@@ -373,6 +453,7 @@ def main():
 
     print(f"Seeded {EMAIL} (user {uid}): active plan {plan_id}, older plan {older}. Week 1 starts {start}.")
     _seed_coach(uid, plan_id, start, total_weeks)
+    _seed_triage_roster(db.get_user_by_email(COACH_EMAIL)["id"], this_monday)
     _seed_race_history(uid)
 
 

@@ -29,8 +29,8 @@ struct CoachCoachingTests {
 
     @Test func testCoachOverviewDecoding() throws {
         let overview = try Fixture.decode(CoachOverview.self, "coaching_overview.json")
-        #expect(overview.athletes.count == 1)
-        let athlete = try #require(overview.athletes.first)
+        #expect(overview.athletes.count == 6)
+        let athlete = try #require(overview.athletes.first { $0.name == "Preview Runner" })
         #expect(athlete.name == "Preview Runner")
         #expect(athlete.runnerLevel == "intermediate")
         // The backend sends adherence as a fraction of 1.
@@ -48,6 +48,26 @@ struct CoachCoachingTests {
         #expect(overview.rosterTotals != nil)
     }
 
+    @Test func testOverviewDecodesSignals() throws {
+        let overview = try Fixture.decode(CoachOverview.self, "coaching_overview.json")
+        let minh = try #require(overview.athletes.first { $0.name == "Minh Tran" })
+        #expect(minh.status == "act_now")
+        #expect(minh.planType == "coached")
+        #expect(minh.signals?.first?.code == "reported_pain")
+        #expect(minh.signals?.first?.severity == .actNow)
+        #expect(minh.week?.sessionsPlanned ?? 0 > 0)
+        #expect(minh.prevWeeks?.count == 3)
+        #expect(minh.load4WMinutes?.count == 4)
+        #expect(minh.mixMinutes != nil)
+        let thao = try #require(overview.athletes.first { $0.name == "Thao Ngo" })
+        #expect(thao.week == nil)
+        #expect(thao.signals?.map(\.code) == ["needs_plan"])
+        let huy = try #require(overview.athletes.first { $0.name == "Huy Le" })
+        #expect(huy.signals?.first?.params["waiting_hours"] == .int(31))
+        let roster = try Fixture.decode([CoachedAthleteRow].self, "coaching_roster.json")
+        #expect(roster.contains { $0.planType == "coached" })
+    }
+
     @Test func testWholePercentFormatting() {
         #expect(CoachFormat.wholePercent(0.94) == "94%")
         #expect(CoachFormat.wholePercent(0.087) == "9%")
@@ -57,7 +77,7 @@ struct CoachCoachingTests {
 
     @Test func testCoachRosterDecoding() throws {
         let roster = try Fixture.decode([CoachedAthleteRow].self, "coaching_roster.json")
-        #expect(roster.count == 2)
+        #expect(roster.count == 7)
         let active = try #require(roster.first { $0.isActive })
         #expect(active.displayName == "Preview Runner")
         let invited = try #require(roster.first { !$0.isActive })
@@ -67,7 +87,7 @@ struct CoachCoachingTests {
 
     @Test func testCoachNotesDecoding() throws {
         let res = try Fixture.decode(CoachNotesResponse.self, "coaching_notes.json")
-        #expect(res.notes.count == 3)
+        #expect(res.notes.count == 4)
         #expect(Set(res.notes.map(\.targetType)) == ["general", "plan", "workout"])
         #expect(res.notes.allSatisfy { !$0.note.isEmpty && $0.createdAt != nil })
     }
@@ -126,13 +146,13 @@ struct CoachCoachingTests {
 
         let service = CoachingService(client: client)
         let roster = try await service.fetchRoster()
-        #expect(roster.count == 2)
+        #expect(roster.count == 7)
 
         let invites = try await service.fetchMyInvites()
         #expect(invites.first?.displayCoachName == "Coach Kylian")
 
         let notes = try await service.fetchNotes(athleteId: roster[0].athleteId)
-        #expect(notes.count == 3)
+        #expect(notes.count == 4)
 
         let snapshot = try await service.fetchAthleteActivePlan(athleteId: roster[0].athleteId)
         #expect(snapshot?.workouts.isEmpty == false)

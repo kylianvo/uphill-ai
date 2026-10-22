@@ -8,6 +8,7 @@ protocol CoachingServicing: Sendable {
     func acceptInvite(inviteId: Int) async throws
     func declineInvite(inviteId: Int) async throws
     func removeFromRoster(linkId: Int) async throws
+    func setPlanType(linkId: Int, planType: String) async throws -> CoachedAthleteRow
     func fetchAthleteProfile(athleteId: Int) async throws -> User
     func updateAthleteProfile(athleteId: Int, payload: CoachProfileUpdatePayload) async throws -> User
     func fetchAthleteActivePlan(athleteId: Int) async throws -> PlanSnapshot?
@@ -152,6 +153,10 @@ struct CoachingService: CoachingServicing {
     func removeFromRoster(linkId: Int) async throws {
         let endpoint = Endpoint<EmptyResponse>.delete("/api/coaching/roster/\(linkId)")
         _ = try await client.send(endpoint)
+    }
+
+    func setPlanType(linkId: Int, planType: String) async throws -> CoachedAthleteRow {
+        try await client.send(.send(.patch, "/api/coaching/roster/\(linkId)", body: ["plan_type": planType]))
     }
 
     func fetchAthleteProfile(athleteId: Int) async throws -> User {

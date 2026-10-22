@@ -136,7 +136,8 @@ def _needs_plan(f: AthleteFacts) -> list[Signal]:
 
 
 def _next_block_due(f: AthleteFacts) -> list[Signal]:
-    if not f.plan or not f.workouts:
+    # Review runners generate their own next week; only a coach-built plan waits on the coach.
+    if f.plan_type != "coached" or not f.plan or not f.workouts:
         return []
     top = max(w["week_number"] for w in f.workouts)
     if top >= (f.plan.get("total_weeks") or 0):

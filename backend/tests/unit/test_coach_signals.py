@@ -164,13 +164,17 @@ def test_draft_unpublished():
 
 
 def test_next_week_due_when_generated_weeks_end_within_7_days():
-    f = facts([wo(4, "Sunday")])
+    f = facts([wo(4, "Sunday")], plan_type="coached")
     assert by_code(f, "next_block_due").params == {"days": 3}
 
 
 def test_next_week_not_due_when_plan_fully_generated():
-    f = facts([wo(4, "Sunday")], plan=plan(total_weeks=4))
+    f = facts([wo(4, "Sunday")], plan_type="coached", plan=plan(total_weeks=4))
     assert "next_block_due" not in codes(f)
+
+
+def test_review_runner_generates_own_weeks_so_no_next_week_due():
+    assert "next_block_due" not in codes(facts([wo(4, "Sunday")]))
 
 
 def test_changes_to_approve():

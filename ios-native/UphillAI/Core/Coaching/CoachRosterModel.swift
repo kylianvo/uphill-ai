@@ -8,6 +8,7 @@ struct CoachedAthleteRow: Codable, Sendable, Identifiable, Equatable {
     let status: String // "active" | "invited"
     let invitedAt: String?
     let respondedAt: String?
+    var planType: String? = nil // "review" | "coached"
 
     var displayName: String {
         if let name = athleteName, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
