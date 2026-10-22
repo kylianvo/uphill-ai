@@ -117,11 +117,11 @@ struct SummaryCarousel: View {
             .annotation(position: .top, spacing: 2) {
                 if day.km > 0 {
                     Text(String(format: "%.0f", day.km))
-                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                        .font(UH.TextStyle.eyebrow.monospacedDigit())
                         .foregroundStyle(day.color)
                 } else if day.isRest {
                     Text("–")
-                        .font(.system(size: 8.5, design: .monospaced))
+                        .font(UH.TextStyle.caption.monospacedDigit())
                         .foregroundStyle(UH.Palette.muted)
                 }
             }
@@ -132,7 +132,7 @@ struct SummaryCarousel: View {
                 AxisValueLabel {
                     if let raw = value.as(String.self), let wd = Weekday(rawValue: raw) {
                         Text(AppLanguage.current == .vi ? L(String(wd.rawValue.prefix(3))) : String(wd.rawValue.prefix(1)))
-                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                            .font(UH.TextStyle.eyebrow.monospacedDigit())
                             .foregroundStyle(wd.rawValue == "Saturday" || wd.rawValue == "Sunday" ? UH.Palette.ink : UH.Palette.secondary)
                     }
                 }
@@ -182,7 +182,7 @@ struct SummaryCarousel: View {
                 AxisValueLabel {
                     if let str = value.as(String.self) {
                         Text(str)
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
+                            .font(UH.TextStyle.eyebrow.monospacedDigit())
                             .foregroundStyle(UH.Palette.secondary)
                     }
                 }
@@ -203,7 +203,7 @@ struct SummaryCarousel: View {
                         Spacer()
                         if let pill = model.goalPillText {
                             Text(verbatim: pill)
-                                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                                .font(UH.TextStyle.eyebrow.monospacedDigit())
                                 .foregroundStyle(goalTint)
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 3)
@@ -246,8 +246,8 @@ struct SummaryCarousel: View {
         let target = model.goal?.targetTimeHours.map { Int(($0 * 60).rounded()) }
         let active = model.goal?.status.tier?.uppercased() == tier || target == Int(minutes.rounded())
         return VStack(spacing: 1) {
-            Text(verbatim: name).font(.system(size: 10, weight: .semibold))
-            Text(verbatim: PlanViewModel.formatMinutes(minutes)).font(.system(size: 12, weight: .bold).monospacedDigit())
+            Text(verbatim: name).font(UH.TextStyle.eyebrow)
+            Text(verbatim: PlanViewModel.formatMinutes(minutes)).font(UH.TextStyle.disclosure.monospacedDigit())
         }
             .foregroundStyle(active ? UH.Palette.accentInk : UH.Palette.secondary)
             .frame(maxWidth: .infinity)

@@ -150,7 +150,7 @@ struct PlanView: View {
             VStack(spacing: UH.Space.section) {
                 if generation.running?.kind == .newPlan { buildingBanner }
                 VStack(spacing: UH.Space.compact) {
-                    Image(systemName: "mountain.2").font(.system(size: 48)).foregroundStyle(UH.Palette.accentInk)
+                    Image(systemName: "mountain.2").font(Font.largeTitle).foregroundStyle(UH.Palette.accentInk)
                         .accessibilityHidden(true)
                     Text("No plan yet").font(UH.TextStyle.screenTitle).foregroundStyle(UH.Palette.ink)
                     Text("Your weekly workouts show up here once Coach Uphill builds your plan.")
@@ -339,8 +339,6 @@ struct PlanView: View {
             if offer.unlocked {
                 VStack(alignment: .leading, spacing: UH.Space.small) {
                     HStack(spacing: UH.Space.compact) {
-                        Image(systemName: "sparkles")
-                            .foregroundStyle(UH.Palette.accentInk)
                         Text(offer.title).font(UH.TextStyle.sectionTitle)
                     }
                     Text("Coach Uphill uses how this block went to shape the next one.").foregroundStyle(UH.Palette.secondary)
@@ -355,8 +353,6 @@ struct PlanView: View {
             } else {
                 VStack(alignment: .leading, spacing: UH.Space.small) {
                     HStack(spacing: UH.Space.compact) {
-                        Image(systemName: "flag.checkered")
-                            .foregroundStyle(UH.Palette.accentInk)
                         Text(verbatim: offer.sessionsToUnlock.map { L("%lld more sessions to shape Block %lld", $0, offer.blockNumber) }
                              ?? L("Keep going to shape Block %lld", offer.blockNumber))
                             .font(UH.TextStyle.sectionTitle)
@@ -436,14 +432,14 @@ struct PlanView: View {
                     .fill(UH.Palette.activeFill)
                     .frame(width: 56, height: 56)
                 Image(systemName: "sparkles")
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(UH.TextStyle.metric)
                     .foregroundStyle(UH.Palette.accentInk)
             }
             .padding(.top, 8)
 
             VStack(spacing: 4) {
                 Text("Week \(week) is ready to generate")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(UH.TextStyle.sectionTitle)
                     .foregroundStyle(UH.Palette.ink)
 
                 Text("Coach Uphill will generate your personalized workouts based on your recent training consistency and progress.")
@@ -462,11 +458,10 @@ struct PlanView: View {
                         ProgressView().tint(UH.Palette.onSolid)
                         Text("Building the next block…")
                     } else {
-                        Image(systemName: "sparkles")
                         Text("Generate Week \(week)")
                     }
                 }
-                .font(.system(size: 14, weight: .bold))
+                .font(UH.TextStyle.label)
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
                 .foregroundStyle(UH.Palette.onSolid)
@@ -537,27 +532,6 @@ struct PlanView: View {
             }
         }
         .padding(.horizontal, UH.Space.regular)
-    }
-
-    private func comingSoonBadge(_ text: String) -> some View {
-        HStack(spacing: 4) {
-            Text(text)
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(UH.Palette.muted)
-            Text("Soon")
-                .font(.system(size: 8.5, weight: .bold, design: .monospaced))
-                .foregroundStyle(UH.Palette.muted)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 1)
-                .background(UH.Palette.line.opacity(0.6), in: Capsule())
-        }
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3.5)
-        .background(UH.Palette.surface, in: Capsule())
-        .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 0.8))
-        .opacity(0.85)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(text) Coming soon")
     }
 
 }

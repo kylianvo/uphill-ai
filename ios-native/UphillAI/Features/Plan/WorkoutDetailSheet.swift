@@ -257,7 +257,7 @@ struct WorkoutDetailSheet: View {
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Text(chip)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(UH.TextStyle.disclosure)
                     .foregroundStyle(zoneColor)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
@@ -266,7 +266,7 @@ struct WorkoutDetailSheet: View {
 
                 if w.isPriority {
                     Text("PRIORITY")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(UH.TextStyle.eyebrow)
                         .tracking(0.6)
                         .foregroundStyle(UH.Palette.accentInk)
                         .padding(.horizontal, 6)
@@ -277,7 +277,7 @@ struct WorkoutDetailSheet: View {
             }
 
             Text(w.title)
-                .font(.system(size: 24, weight: .bold))
+                .font(UH.TextStyle.metric)
                 .foregroundStyle(UH.Palette.ink)
 
             Text(subtitle(w))
@@ -323,11 +323,11 @@ struct WorkoutDetailSheet: View {
     private func statTile(label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .font(UH.TextStyle.eyebrow.monospacedDigit())
                 .foregroundStyle(UH.Palette.muted)
 
             Text(value)
-                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                .font(UH.TextStyle.label.monospacedDigit())
                 .foregroundStyle(UH.Palette.ink)
                 // Wraps to a second line instead of truncating at large Dynamic Type.
                 .lineLimit(2)
@@ -355,11 +355,11 @@ struct WorkoutDetailSheet: View {
 
         return HStack(spacing: 6) {
             Image(systemName: "heart.fill")
-                .font(.system(size: 10))
+                .font(UH.TextStyle.caption)
                 .foregroundStyle(UH.Palette.muted)
 
             Text(items.joined(separator: " · "))
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .font(UH.TextStyle.caption.monospacedDigit())
                 .foregroundStyle(UH.Palette.secondary)
         }
         .padding(.horizontal, 4)
@@ -373,7 +373,7 @@ struct WorkoutDetailSheet: View {
         return VStack(alignment: .leading, spacing: UH.Space.compact) {
             HStack {
                 Text("HOW TO EXECUTE")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(UH.TextStyle.disclosure.monospacedDigit())
                     .foregroundStyle(UH.Palette.muted)
 
                 Spacer()
@@ -386,9 +386,9 @@ struct WorkoutDetailSheet: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "figure.run.treadmill")
-                            .font(.system(size: 12))
+                            .font(UH.TextStyle.caption)
                         Text("Treadmill")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(UH.TextStyle.disclosure)
                     }
                     .foregroundStyle(isTreadmill ? UH.Palette.buttonInk : UH.Palette.secondary)
                     .padding(.horizontal, 8)
@@ -432,7 +432,7 @@ struct WorkoutDetailSheet: View {
                         .frame(width: 24, height: 24)
 
                     Image(systemName: step.phase.iconName)
-                        .font(.system(size: 12, weight: .bold))
+                        .font(UH.TextStyle.disclosure)
                         .foregroundStyle(nodeColor)
                 }
 
@@ -449,23 +449,23 @@ struct WorkoutDetailSheet: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text(step.phase.rawValue.uppercased())
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(UH.TextStyle.eyebrow.monospacedDigit())
                         .foregroundStyle(nodeColor)
 
                     if let dur = step.duration {
                         Text("· \(dur)")
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .font(UH.TextStyle.caption.monospacedDigit())
                             .foregroundStyle(UH.Palette.secondary)
                     }
                 }
 
                 Text(step.target)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(UH.TextStyle.label)
                     .foregroundStyle(UH.Palette.ink)
 
                 if let rec = step.recovery {
                     Text(rec)
-                        .font(.system(size: 12))
+                        .font(UH.TextStyle.caption)
                         .foregroundStyle(UH.Palette.secondary)
                 }
 
@@ -477,7 +477,7 @@ struct WorkoutDetailSheet: View {
                     VStack(alignment: .leading, spacing: 2) {
                         ForEach(extraCues, id: \.self) { line in
                             Text(line)
-                                .font(.system(size: 12))
+                                .font(UH.TextStyle.caption)
                                 .foregroundStyle(UH.Palette.secondary)
                         }
                     }
@@ -609,25 +609,25 @@ struct WorkoutDetailSheet: View {
                             .frame(width: 14, height: 14)
                     } else {
                         Image(systemName: "applewatch")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(UH.TextStyle.label)
                     }
 
                     switch corosSendState {
                     case .sending:
                         ProgressView().controlSize(.small)
                         Text("Sending…")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(UH.TextStyle.label)
                     case .sent:
                         Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(UH.TextStyle.disclosure)
                         Text("Sent to COROS")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(UH.TextStyle.label)
                     case .notConnected:
                         Text("Connect COROS in Profile")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(UH.TextStyle.label)
                     case .idle, .error:
                         Text("Send to COROS")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(UH.TextStyle.label)
                     }
                 }
                 .foregroundStyle(corosSendState == .sent ? UH.Palette.accentInk : UH.Palette.ink)
@@ -734,7 +734,7 @@ struct WorkoutDetailSheet: View {
             }
         } label: {
             Image(systemName: "ellipsis.circle")
-                .font(.system(size: 18))
+                .font(UH.TextStyle.sectionTitle)
                 .foregroundStyle(UH.Palette.ink)
                 .frame(minWidth: 44, minHeight: 44)
         }
@@ -753,7 +753,7 @@ struct WorkoutDetailSheet: View {
         return VStack(alignment: .leading, spacing: UH.Space.small) {
             HStack {
                 Text("HOW DID IT FEEL?")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(UH.TextStyle.disclosure.monospacedDigit())
                     .foregroundStyle(UH.Palette.muted)
                 Spacer()
                 if let feel = activeFeeling {
@@ -762,7 +762,7 @@ struct WorkoutDetailSheet: View {
                             .fill(feel.color)
                             .frame(width: 6, height: 6)
                         Text(feel.label)
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .font(UH.TextStyle.disclosure.monospacedDigit())
                             .foregroundStyle(UH.Palette.ink)
                     }
                 }
@@ -775,10 +775,10 @@ struct WorkoutDetailSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Image(systemName: feel.iconName)
-                            .font(.system(size: 12, weight: .bold))
+                            .font(UH.TextStyle.disclosure)
                             .foregroundStyle(UH.Palette.ink)
                         Text(feel.label)
-                            .font(.system(size: 13, weight: .bold))
+                            .font(UH.TextStyle.label)
                             .foregroundStyle(UH.Palette.ink)
                         Spacer()
 
@@ -789,12 +789,8 @@ struct WorkoutDetailSheet: View {
                         .foregroundStyle(UH.Palette.secondary)
 
                     HStack(alignment: .top, spacing: 6) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 11))
-                            .foregroundStyle(UH.Palette.ink)
-                            .padding(.top, 1)
                         Text(feel.coachDescription)
-                            .font(.system(size: 11.5))
+                            .font(UH.TextStyle.caption)
                             .foregroundStyle(UH.Palette.ink)
                             .lineSpacing(1.5)
                     }
@@ -910,7 +906,7 @@ struct WorkoutDetailSheet: View {
                         .fill(UH.Palette.accentInk)
                         .frame(width: 5, height: 5)
                     Text("Matched")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .font(UH.TextStyle.disclosure.monospacedDigit())
                         .foregroundStyle(UH.Palette.accentInk)
                 }
                 .padding(.horizontal, 8)
@@ -994,14 +990,14 @@ struct WorkoutDetailSheet: View {
     private func comparisonTile(label: String, actual: String, target: String?) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
-                .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                .font(UH.TextStyle.eyebrow.monospacedDigit())
                 .foregroundStyle(UH.Palette.muted)
             Text(actual)
-                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .font(UH.TextStyle.label.monospacedDigit())
                 .foregroundStyle(UH.Palette.ink)
             if let target, !target.isEmpty {
                 Text("Target: \(target)")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(UH.TextStyle.caption.monospacedDigit())
                     .foregroundStyle(UH.Palette.secondary)
             }
         }
