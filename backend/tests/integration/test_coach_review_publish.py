@@ -127,3 +127,15 @@ def test_coach_next_block_counts_as_reviewed():
     coach, athlete = _user("rp-coach-f@uphill.ai"), _user("rp-athlete-f@uphill.ai")
     pid = _plan(athlete, weeks=(1, 2))
     assert mark_plan_reviewed(pid, athlete, coach)["coach_reviewed_block"] == 2
+
+
+def test_runner_cannot_publish_or_review_own_plan(client):
+    data = client.post("/api/auth/mock-login", json={"email": "rp-self@uphill.ai"}).json()
+    headers, athlete = {"Authorization": f"Bearer {data['session_token']}"}, data["user"]["id"]
+    pid = _plan(athlete, status="draft", approve=False)
+    assert client.post(f"/api/coaching/athletes/{athlete}/plans/{pid}/publish", headers=headers).status_code == 403
+    assert (
+        client.post(f"/api/coaching/athletes/{athlete}/plans/{pid}/review", json={}, headers=headers).status_code == 403
+    )
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT plan_status FROM plans WHERE id = :p"), {"p": pid}).scalar() == "draft"

@@ -1725,6 +1725,12 @@ def _review_state(plan: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _require_coach_of(athlete_id: int, acting_user: dict[str, Any]) -> None:
+    """Review and publish are the coach's sign-off: the runner can't stamp their own plan."""
+    if acting_user["id"] == athlete_id:
+        raise HTTPException(status_code=403, detail="Only the runner's coach can do this.")
+
+
 @app.get("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/review")
 def get_plan_review(athlete_id: int, plan_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
     _verify_plan_ownership(plan_id, athlete_id)
@@ -1738,6 +1744,7 @@ def post_plan_review(
     request: PlanReviewRequest,
     acting_user: dict[str, Any] = Depends(require_athlete_access),
 ):
+    _require_coach_of(athlete_id, acting_user)
     _verify_plan_ownership(plan_id, athlete_id)
     mark_plan_reviewed(plan_id, athlete_id, acting_user["id"])
     if request.note and request.note.strip():
@@ -1747,6 +1754,7 @@ def post_plan_review(
 
 @app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/publish")
 def post_plan_publish(athlete_id: int, plan_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    _require_coach_of(athlete_id, acting_user)
     result = publish_plan(plan_id, athlete_id, acting_user["id"])
     if result is None:
         raise HTTPException(status_code=404, detail="Plan not found.")

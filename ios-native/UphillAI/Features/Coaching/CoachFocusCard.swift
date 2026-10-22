@@ -188,11 +188,11 @@ struct CoachFocusCard: View {
 
     private func loadDetails() async {
         let service = app.coachingService
+        // The Athletes tab can tap an action straight through to this card; take it once, plan or not.
+        let pending = app.takePendingCoachAction()
         latestNote = (try? await service.fetchNotes(athleteId: athleteId, targetType: nil, targetId: nil))?.first
-        guard let plan else { review = nil; return }
-        review = try? await service.planReview(athleteId: athleteId, planId: plan.id)
-        // The Athletes tab can tap an action straight through to this card.
-        if let pending = app.takePendingCoachAction(), pending != .note { perform(pending) }
+        if let plan { review = try? await service.planReview(athleteId: athleteId, planId: plan.id) } else { review = nil }
+        if let pending, pending != .note { perform(pending) }
     }
 
     private func markReviewed() async {

@@ -341,6 +341,7 @@ final class AppModel {
     }
 
     func enterAthleteView(athlete: CoachedAthleteRow) {
+        pendingCoachAction = nil // an action tapped for an earlier runner must not fire on this one
         actingAsAthlete = athlete
         Task {
             async let p = try? coachingService.fetchAthleteProfile(athleteId: athlete.athleteId)

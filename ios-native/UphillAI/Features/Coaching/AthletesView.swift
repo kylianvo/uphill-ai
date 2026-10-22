@@ -330,8 +330,9 @@ struct AthletesView: View {
     }
 
     private func open(_ athlete: CoachOverviewAthlete, action: CoachAction?) {
-        app.pendingCoachAction = action
         app.enterAthleteView(athlete: rosterRow(athlete) ?? CoachedAthleteRow(fromOverview: athlete))
+        // A runner with no plan opens on the empty plan's own Build button; there's no card to run it.
+        app.pendingCoachAction = action == .buildPlan ? nil : action
         onSelectTab?(1)
     }
 

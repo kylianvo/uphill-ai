@@ -45,6 +45,14 @@ struct CoachFocusCardTests {
         #expect(app.takePendingCoachAction() == nil)
     }
 
+    @Test func testOpeningARunnerDropsAStalePendingAction() {
+        let app = AppModel(tokenStore: InMemoryTokenStore("tok"), baseURL: { URL(string: "http://localhost")! },
+                           session: StubURLProtocol.session(), cache: .inMemory())
+        app.pendingCoachAction = .buildPlan // tapped for a runner whose card never consumed it
+        app.enterAthleteView(athlete: CoachedAthleteRow(id: 1, athleteId: 9, athleteEmail: "x@uphill.ai"))
+        #expect(app.pendingCoachAction == nil)
+    }
+
     @Test func testReviewAndPublishRoutes() async throws {
         let paths = PathRecorder()
         let review = #"{"generated_block":2,"reviewed_block":1,"reviewed_at":null,"reviewed_by":null,"issues":[{"code":"VOLUME_JUMP","week":2,"message":"m"}],"feasibility":"stretch","levers":["Add a day"]}"#
