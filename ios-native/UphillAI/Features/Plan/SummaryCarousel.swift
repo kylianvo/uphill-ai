@@ -46,7 +46,8 @@ struct SummaryCarousel: View {
     private func card<Content: View>(_ content: Content) -> some View {
         content
             .padding(14)
-            .frame(width: 315, height: 184, alignment: .topLeading)
+            .frame(width: 315, alignment: .topLeading)
+            .frame(minHeight: 184, alignment: .topLeading)  // grows with Dynamic Type instead of clipping
             .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
             .overlay(
                 RoundedRectangle(cornerRadius: UH.Radius.landing)
@@ -70,19 +71,16 @@ struct SummaryCarousel: View {
 
         return card(
             VStack(alignment: .leading, spacing: UH.Space.compact) {
-                HStack(alignment: .center) {
-                    eyebrow(model.selectedWeek == model.currentWeek ? L("This week") : L("Week %lld", model.selectedWeek))
-                    Spacer()
-                    Picker(L("Volume chart"), selection: $volumeChartMode) {
-                        ForEach(VolumeChartMode.allCases) { mode in
-                            Text(L(mode.rawValue))
-                                .tag(mode)
-                                .accessibilityLabel(mode.accessibilityTitle)
-                                .accessibilityIdentifier("volume.mode.\(mode == .weekDays ? "days" : "trend")")
-                        }
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center) {
+                        eyebrow(model.selectedWeek == model.currentWeek ? L("This week") : L("Week %lld", model.selectedWeek))
+                        Spacer()
+                        chartModePicker
                     }
-                    .pickerStyle(.segmented)
-                    .fixedSize()
+                    VStack(alignment: .leading, spacing: UH.Space.compact) {
+                        eyebrow(model.selectedWeek == model.currentWeek ? L("This week") : L("Week %lld", model.selectedWeek))
+                        chartModePicker
+                    }
                 }
 
                 Spacer(minLength: 0)
@@ -102,6 +100,19 @@ struct SummaryCarousel: View {
             }
         )
         .accessibilityElement(children: .contain)
+    }
+
+    private var chartModePicker: some View {
+        Picker(L("Volume chart"), selection: $volumeChartMode) {
+            ForEach(VolumeChartMode.allCases) { mode in
+                Text(L(mode.rawValue))
+                    .tag(mode)
+                    .accessibilityLabel(mode.accessibilityTitle)
+                    .accessibilityIdentifier("volume.mode.\(mode == .weekDays ? "days" : "trend")")
+            }
+        }
+        .pickerStyle(.segmented)
+        .fixedSize()
     }
 
     @ViewBuilder
