@@ -1730,6 +1730,8 @@ class PlanGenerator:
                 )
                 if previous:  # never more than the tier's weekly progression on the week before
                     target = min(target, previous * (1 + tier_profile.max_weekly_progression))
+                    if rows[0].get("phase") == "Peak":  # the peak week is the plan's biggest, never under a build week
+                        target = max(target, previous)
                 total = plan_lint.week_minutes(rows)
                 if previous and total > previous * (1 + tier_profile.max_weekly_progression) * 1.03:
                     excess = total - previous * (1 + tier_profile.max_weekly_progression)

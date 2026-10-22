@@ -1472,3 +1472,51 @@ class TestViStyle:
         out = sanitize_vi("giải phóng ứ đọng cơ, bốc dốc, vô tội vạ, ly tâm, thể tích tâm thu")
         assert "ứ đọng" not in out and "bốc dốc" not in out and "vô tội vạ" not in out and "lệch tâm" in out
         assert "thể tích tâm thu" in out  # stroke volume stays
+
+
+def test_peak_week_is_never_smaller_than_the_last_build_week(monkeypatch):
+    import json
+
+    from config import settings
+
+    monkeypatch.setattr(settings, "PLAN_DEMANDS_ENABLED", True)
+
+    def row(week, day, typ, minutes, phase):
+        return {"week_number": week, "day_of_week": day, "phase": phase, "type": typ, "title": typ,
+                "duration_minutes": minutes, "target_zone": "Zone 2"}  # fmt: skip
+
+    days = ["Tuesday", "Wednesday", "Thursday", "Friday"]
+    build = [row(11, d, "Easy", 75, "Build") for d in days] + [row(11, "Saturday", "Long Run", 290, "Build")]
+    peak = [row(12, d, "Easy", 55, "Peak") for d in days] + [row(12, "Saturday", "Long Run", 290, "Peak")]
+    client = MagicMock()
+    client.models.generate_content.return_value = MagicMock(text=json.dumps(peak))
+    with (
+        patch("google.genai.Client", return_value=client),
+        patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+        patch("services.plan_generator.get_plan_workouts", return_value=build),
+    ):
+        workouts, _ = asyncio.run(
+            PlanGenerator.generate_plan_workouts(
+                plan_id=1,
+                user_profile={"aet_hr": 145, "ant_hr": 166, "current_weekly_km": 65},
+                race_info={
+                    "terrain": "trail",
+                    "goal_type": "finish",
+                    "course_distance_km": 100,
+                    "course_elevation_gain_m": 5000,
+                    "plan_start_date": "2026-10-19",
+                    "athlete_tier": "recreational",
+                    "preferred_days": days + ["Saturday"],
+                    "long_run_day": "Saturday",
+                    "days_per_week": 5,
+                },  # fmt: skip
+                total_weeks=16,
+                api_key="test-key",
+                block_number=12,
+                weeks_per_block=1,
+                cutoff_time_hours=28,
+            )
+        )
+    week = [w for w in workouts if w["week_number"] == 12 and w["type"] != "Rest"]
+    # The easy runs fill the gap up to the build week's 590 min (the ramp alone stopped at ~564).
+    assert all(w["duration_minutes"] >= 75 for w in week if w["type"] == "Easy")
