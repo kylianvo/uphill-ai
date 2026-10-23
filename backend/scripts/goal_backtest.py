@@ -104,7 +104,8 @@ def cases(limit: int | None) -> list[tuple[int, dict[str, Any], list[dict[str, A
         if len(trail) < 2:
             continue
         held = trail[0]  # newest first
-        prior = [r for r in rows if r["race_date"] < held["race_date"]]
+        # Results without a finish time (DNF, untimed) cannot be an anchor and break goal_context labels.
+        prior = [r for r in rows if r["race_date"] < held["race_date"] and r["finish_time_sec"]]
         if prior:
             out.append((uid, held, prior))
     return out
