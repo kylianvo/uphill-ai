@@ -1,7 +1,7 @@
 """coach plan type per athlete and per-week plan review columns
 
 Revision ID: b3c7e9a1d2f4
-Revises: a9d4c7e1f2b6
+Revises: b3f7d2e9a4c1
 Create Date: 2026-10-23
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "b3c7e9a1d2f4"
-down_revision: str | Sequence[str] | None = "a9d4c7e1f2b6"
+down_revision: str | Sequence[str] | None = "b3f7d2e9a4c1"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

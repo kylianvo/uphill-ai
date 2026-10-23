@@ -12,10 +12,11 @@ only available inside the FIT file.
 
 import asyncio
 from collections.abc import Collection
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Protocol
 
 from log_utils import get_logger
+from services import hr_drift
 from services.mcp_client import McpError
 from services.providers import coros_parsers as parsers
 from services.providers.base import CanonicalActivity, CanonicalDailyMetric
@@ -209,25 +210,33 @@ class CorosAdapter:
             )
         return activities
 
-    async def fetch_daily_metrics(self, days: int = 7) -> list[CanonicalDailyMetric]:
-        """Merge three independent COROS daily-metric sources by date.
+    async def fetch_daily_metrics(self, days: int = 7, today: date | None = None) -> list[CanonicalDailyMetric]:
+        """Merge four independent COROS daily-metric sources by date.
 
-        Each source (resting HR, sleep HRV, training load) is fetched and
-        parsed independently. One source failing (a parse error or an MCP
-        transport failure) must not discard data already obtained from the
-        other two -- so each is guarded separately and contributes an empty
-        result on failure. Only when all three fail does this raise, rather
+        Each source (resting HR, sleep HRV, training load, sleep overview) is
+        fetched and parsed independently. One source failing (a parse error or
+        an MCP transport failure) must not discard data already obtained from
+        the others -- so each is guarded separately and contributes an empty
+        result on failure. Only when all four fail does this raise, rather
         than silently returning `[]`, which downstream would otherwise read
         as "this athlete has no health data" instead of "COROS was
         unavailable".
-        """
-        failures: list[tuple[str, Exception]] = []
 
-        async def source(name: str, arguments: dict[str, Any], parse) -> dict[date, Any]:
+        Windows longer than a week fetch sleep HRV and sleep overview by
+        explicit dates (COROS caps HRV at 7 days per call), so a long sync
+        fills their history. A source counts as failed only if every one of
+        its calls failed.
+        """
+        # One day past the server date: athletes ahead of UTC wake up "tomorrow" in server terms.
+        today = today or date.today() + timedelta(days=1)
+        failures: list[tuple[str, Exception]] = []
+        semaphore = asyncio.Semaphore(DETAIL_CONCURRENCY)
+
+        async def call(name: str, arguments: dict[str, Any], parse) -> dict[date, Any] | Exception:
             try:
-                return parse(await self._mcp.call_tool(name, arguments))
+                async with semaphore:
+                    return parse(await self._mcp.call_tool(name, arguments))
             except (parsers.CorosParseError, McpError) as exc:
-                failures.append((name, exc))
                 logger.warning(
                     "coros daily metric source unavailable",
                     extra={
@@ -240,25 +249,49 @@ class CorosAdapter:
                         }
                     },
                 )
-                return {}
+                return exc
 
-        resting, hrv, load = await asyncio.gather(
-            source("queryRestingHeartRate", {"days": days}, parsers.parse_resting_hr),
-            source(
-                "querySleepHrv", {"startDate": None, "endDate": None, "days": min(days, 7)}, parsers.parse_sleep_hrv
-            ),
-            source("queryTrainingLoadAssessment", {"days": days}, parsers.parse_training_load),
+        async def source(name: str, calls: list[dict[str, Any]], parse) -> dict[date, Any]:
+            results = await asyncio.gather(*(call(name, arguments, parse) for arguments in calls))
+            merged: dict[date, Any] = {}
+            for result in results:
+                if not isinstance(result, Exception):
+                    merged.update(result)
+            if all(isinstance(result, Exception) for result in results):
+                failures.append((name, results[-1]))
+            return merged
+
+        def dated(chunk_days: int) -> list[dict[str, Any]]:
+            calls, end = [], today
+            first = today - timedelta(days=days - 1)
+            while end >= first:
+                start = max(first, end - timedelta(days=chunk_days - 1))
+                calls.append({"startDate": start.strftime("%Y%m%d"), "endDate": end.strftime("%Y%m%d"), "days": 7})
+                end = start - timedelta(days=1)
+            return calls
+
+        long_window = days > 7
+        hrv_calls = dated(7) if long_window else [{"startDate": None, "endDate": None, "days": min(days, 7)}]
+        sleep_calls = (
+            [{k: v for k, v in c.items() if k != "days"} for c in dated(30)] if long_window else [{"days": days}]
+        )
+        resting, hrv, load, sleep = await asyncio.gather(
+            source("queryRestingHeartRate", [{"days": days}], parsers.parse_resting_hr),
+            source("querySleepHrv", hrv_calls, parsers.parse_sleep_hrv),
+            source("queryTrainingLoadAssessment", [{"days": days}], parsers.parse_training_load),
+            source("querySleepOverview", sleep_calls, parsers.parse_sleep_overview),
         )
 
-        if len(failures) == 3:
+        if len(failures) == 4:
             names = ", ".join(name for name, _ in failures)
             last_exc = failures[-1][1]
             raise CorosDailyMetricsUnavailableError(f"all COROS daily-metric sources failed: {names}") from last_exc
 
         metrics: list[CanonicalDailyMetric] = []
-        for day in sorted(set(resting) | set(hrv) | set(load)):
+        for day in sorted(set(resting) | set(hrv) | set(load) | set(sleep)):
             hrv_row = hrv.get(day, {})
             load_row = load.get(day, {})
+            sleep_row = sleep.get(day, {})
             metrics.append(
                 CanonicalDailyMetric(
                     metric_date=day,
@@ -267,12 +300,37 @@ class CorosAdapter:
                     hrv_ms=hrv_row.get("hrv_ms"),
                     hrv_baseline_ms=hrv_row.get("hrv_baseline_ms"),
                     hrv_status=hrv_row.get("hrv_status"),
+                    hrv_range_low=hrv_row.get("hrv_range_low"),
+                    hrv_range_high=hrv_row.get("hrv_range_high"),
                     training_load_short=load_row.get("training_load_short"),
                     training_load_long=load_row.get("training_load_long"),
                     load_ratio=load_row.get("load_ratio"),
+                    sleep_minutes=sleep_row.get("sleep_minutes"),
+                    sleep_start=sleep_row.get("sleep_start"),
+                    sleep_end=sleep_row.get("sleep_end"),
                 )
             )
         return metrics
+
+    async def fetch_hr_drift(self, label_id: str, sport_type: int) -> float | None:
+        """Long-run heart-rate drift from the activity's 1 km laps; None when COROS can't supply them."""
+        try:
+            return hr_drift.drift_pct(
+                await self._mcp.call_tool("queryActivityLapData", {"labelId": label_id, "sportType": sport_type})
+            )
+        except McpError as exc:
+            logger.warning(
+                "coros lap data unavailable",
+                extra={
+                    "fields": {
+                        "service": "coros_adapter",
+                        "event": "laps_missing",
+                        "label_id": label_id,
+                        "error": str(exc),
+                    }
+                },
+            )
+            return None
 
     async def fetch_fitness_overview(self) -> dict[str, Any]:
         """Fetch COROS EvoLab fitness overview (threshold pace, VO2max, etc.)."""

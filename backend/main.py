@@ -110,6 +110,7 @@ from routers.analytics import router as analytics_router
 from routers.coach_chat import ChatMessage
 from routers.coach_chat import router as coach_chat_router
 from routers.integrations import router as integrations_router
+from routers.progress import router as progress_router
 from services import (
     apple_auth,
     calendar_ops,
@@ -158,6 +159,7 @@ app = FastAPI(
 
 app.include_router(analytics_router, prefix="/api")
 app.include_router(integrations_router, prefix="/api")
+app.include_router(progress_router, prefix="/api")
 app.include_router(coach_chat_router)
 
 # Set up CORS

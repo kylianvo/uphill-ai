@@ -77,7 +77,7 @@ private struct MainTabs: View {
     @State private var overlay: Overlay?
     @State private var selection = Tab.plan
 
-    private enum Tab: Hashable { case athletes, plan, coach, me }
+    private enum Tab: Hashable { case athletes, plan, progress, coach, me }
 
     var body: some View {
         TabView(selection: $selection) {
@@ -107,6 +107,11 @@ private struct MainTabs: View {
                              selection = .me
                          },
                          app: app)
+            }
+            SwiftUI.Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: Tab.progress) {
+                ProgressTabView(model: app.progress, goalPath: app.plan.goal?.path,
+                                deviceService: app.deviceConnectionService,
+                                onBuildPlan: { selection = .plan })
             }
             SwiftUI.Tab("Coach", systemImage: "bubble.left.and.bubble.right.fill", value: Tab.coach) {
                 ChatView(service: app.chat, plan: app.plan.snapshot?.plan, planModel: app.plan)
