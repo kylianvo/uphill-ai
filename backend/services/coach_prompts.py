@@ -112,8 +112,11 @@ def get_coach_prompt_template(
 ) -> PromptTemplate:
     """Fetch prompt template from Langfuse via observability wrapper with local fallback."""
     from config import settings
+    from services import claude_llm
 
-    target_label = label or settings.COACH_CHAT_PROMPT_LABEL
+    target_label = (
+        label or claude_llm.prompt_label(settings.COACH_CHAT_LLM_PROVIDER) or settings.COACH_CHAT_PROMPT_LABEL
+    )
     fallback = COACH_SUMMARY_INSTRUCTION if name == "chat_summary" else COACH_SYSTEM_INSTRUCTION
     return observability.get_prompt_template(
         name=name,
