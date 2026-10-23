@@ -18,6 +18,8 @@ DEFAULT_LLM_PRICES_USD_PER_M = {
     ],
     # prompts up to 100K tokens; plan prompts stay well below
     "claude-haiku-5-5": [{"input": 0.10, "cached_input": 0.01, "output": 0.50}],
+    # Optional coach chat override (CLAUDE_COACH_MODEL); prices for prompts up to the standard context.
+    "claude-sonnet-5-5": [{"input": 2.00, "cached_input": 0.20, "output": 10.00}],
 }
 
 
@@ -90,6 +92,9 @@ class Config:
     KNOWLEDGE_LLM_PROVIDER: str = os.getenv("KNOWLEDGE_LLM_PROVIDER", "gemini")
     KB_DISTILL_LLM_PROVIDER: str = os.getenv("KB_DISTILL_LLM_PROVIDER", "gemini")
     COACH_COPILOT_LLM_PROVIDER: str = os.getenv("COACH_COPILOT_LLM_PROVIDER", "gemini")
+    COACH_CHAT_LLM_PROVIDER: str = os.getenv("COACH_CHAT_LLM_PROVIDER", "gemini")
+    CLAUDE_COACH_MODEL: str = os.getenv("CLAUDE_COACH_MODEL", "claude-haiku-5-5")
+    CLAUDE_COACH_EFFORT: str = os.getenv("CLAUDE_COACH_EFFORT", "low")
     API_PORT: int = int(os.getenv("PORT", "8000"))
     API_HOST: str = os.getenv("HOST", "0.0.0.0")
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")

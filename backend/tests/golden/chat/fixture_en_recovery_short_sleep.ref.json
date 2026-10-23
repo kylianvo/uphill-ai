@@ -1,0 +1,13 @@
+{
+  "latency_s": 4.6,
+  "engine_used": "gemini",
+  "output": {
+    "id": "chat_en_recovery_short_sleep",
+    "category": "recovery_readiness",
+    "lang": "en",
+    "question": "I have intervals planned today. Should I still do them?",
+    "reply_text": "I strongly recommend swapping today's intervals for an easy recovery session or taking a full rest day. Your recent data shows clear signs of acute systemic fatigue, with sleep averaging just 5 hours and 18 minutes alongside suppressed HRV (38 ms) and a readiness flag. Forcing high-intensity work in this state increases injury risk and blunts the training adaptation you are looking for [4]. \n\nIf you still want to get moving, keep it strictly to an easy 30-minute Zone 1 jog or walk. Use the warm-up rule: if your legs feel heavy or you don't find a smooth, natural rhythm within the first 10 minutes, pull the plug immediately and focus on sleep and fueling so we can hit quality intervals later in the week [1, 4].",
+    "tools_called": [],
+    "status": "success"
+  }
+}
