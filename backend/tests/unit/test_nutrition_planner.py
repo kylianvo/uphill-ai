@@ -65,3 +65,25 @@ def test_gemini_engine_primary_injects_catalog_and_principles(monkeypatch):
     assert "Maurten Gel 100" in prompt_sent
     assert "Sodium in heat" in prompt_sent  # principles injected too
     assert "Target Sodium/Hour: 1000.0mg" in prompt_sent  # hot-weather macro logic untouched
+
+
+def test_claude_provider_uses_structured_output(monkeypatch):
+    from tests.unit.test_claude_llm import fake_message
+
+    monkeypatch.setattr(settings, "NUTRITION_LLM_PROVIDER", "claude")
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "anthropic-key")
+
+    def fake_get_kb_chunks(domain, kind=None):
+        if kind == "catalog_item":
+            return [{"title": "Maurten Gel 100", "payload": {"brand": "Maurten", "carbs_per_unit": 25.0}}]
+        return [{"title": "Sodium in heat", "content": "Hot races need ~1000mg sodium/h."}]
+
+    with (
+        patch("db.get_kb_chunks", side_effect=fake_get_kb_chunks),
+        patch("services.claude_llm.generate", return_value=fake_message(NUTRITION_JSON)) as generate,
+        patch("google.genai.Client") as gemini,
+    ):
+        result = asyncio.run(np_mod.nutrition_planner.generate_plan("", NutritionParams(distance_km=50)))
+    assert result["products"][0]["name"] == "Gel 100"
+    assert generate.call_args.kwargs["schema"] is np_mod.NutritionResponse
+    gemini.assert_not_called()

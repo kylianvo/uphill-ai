@@ -632,7 +632,7 @@ def compare(
             scores=scores,
             synthetic=True,
             description=f"Synthetic golden evaluation run for {service}",
-            metadata={"prompt_label": settings.COACH_CHAT_PROMPT_LABEL, "model": settings.GEMINI_MODEL},
+            metadata={"prompt_label": settings.COACH_CHAT_PROMPT_LABEL, "model": _eval_model(service)},
         )
         from services.observability import flush
 
@@ -701,6 +701,15 @@ def gate_failures(service: str, items: list[dict], scores: list[dict]) -> list[s
     return failures
 
 
+# The per-feature provider flag each service's --provider switches (docs/superpowers/specs/2026-10-23-claude-text-generation-design.md).
+PROVIDER_FLAGS = {"gear": "GEAR_LLM_PROVIDER", "nutrition": "NUTRITION_LLM_PROVIDER"}
+
+
+def _eval_model(service: str) -> str:
+    flag = PROVIDER_FLAGS.get(service)
+    return settings.CLAUDE_TEXT_MODEL if flag and getattr(settings, flag) == "claude" else settings.GEMINI_MODEL
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=["capture", "compare"])
@@ -735,16 +744,24 @@ def main():
         default=False,
         help="Publish precomputed experiment results to Langfuse (requires synthetic fixtures)",
     )
+    parser.add_argument(
+        "--provider", choices=["gemini", "claude"], default=None, help="Run the service on this provider's flag"
+    )
     parser.add_argument("--only", default=None, help="Comma-separated substrings; run only matching fixture files")
     args = parser.parse_args()
     global ONLY
     ONLY = args.only
+    if args.provider and args.service not in PROVIDER_FLAGS:
+        sys.exit(f"--provider is not wired for {args.service}")
     variant_parts = []
     if args.prompt_label:
         settings.COACH_CHAT_PROMPT_LABEL = args.prompt_label
         variant_parts.append(args.prompt_label)
+    if args.provider:
+        setattr(settings, PROVIDER_FLAGS[args.service], args.provider)
+        variant_parts.append(args.provider)
     if args.model:
-        settings.GEMINI_MODEL = args.model
+        setattr(settings, "CLAUDE_TEXT_MODEL" if args.provider == "claude" else "GEMINI_MODEL", args.model)
         variant_parts.append(args.model)
     # Always start Langfuse when configured: prompts are served from it, so without the
     # client an eval would silently test the in-code fallbacks instead of the live versions.

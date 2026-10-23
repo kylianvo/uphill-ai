@@ -78,6 +78,11 @@ class Config:
     PLAN_LLM_EFFORT: str = os.getenv("PLAN_LLM_EFFORT", "medium")
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
     CLAUDE_PLAN_MODEL: str = os.getenv("CLAUDE_PLAN_MODEL", "claude-haiku-5-5")
+    # One-shot features moved off Gemini (services/claude_llm.py); each has its own provider flag below.
+    CLAUDE_TEXT_MODEL: str = os.getenv("CLAUDE_TEXT_MODEL", "claude-haiku-5-5")
+    CLAUDE_TEXT_EFFORT: str = os.getenv("CLAUDE_TEXT_EFFORT", "low")
+    GEAR_LLM_PROVIDER: str = os.getenv("GEAR_LLM_PROVIDER", "gemini")
+    NUTRITION_LLM_PROVIDER: str = os.getenv("NUTRITION_LLM_PROVIDER", "gemini")
     API_PORT: int = int(os.getenv("PORT", "8000"))
     API_HOST: str = os.getenv("HOST", "0.0.0.0")
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
