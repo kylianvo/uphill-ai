@@ -432,3 +432,9 @@ def test_claude_plan_generation_metadata_and_attributes_pass():
     assert safe["attributes"]["llm.provider"] == "anthropic"
     assert safe["attributes"]["gen_ai.system"] == "anthropic"
     assert safe["attributes"]["llm.model_name"] == "claude-haiku-5-5"
+
+
+def test_claude_engine_span_names_pass_through_allowlist():
+    for name in ("claude", "claude_retry"):
+        safe = policy.sanitize_span_envelope({"name": name, "attributes": {}, "status": {"code": "OK"}})
+        assert safe["name"] == name

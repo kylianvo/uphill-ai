@@ -16,7 +16,7 @@ from typing import Any
 import telemetry
 from config import settings
 from log_utils import get_logger
-from services import observability, plan_journey
+from services import claude_llm, observability, plan_journey
 from services.plan_generator import narrative_lang_instruction
 
 _logger = get_logger(__name__)
@@ -243,7 +243,8 @@ def _parse(text: str) -> str | None:
 async def _worded(f: dict[str, Any], tone: str, lang: str, api_key: str) -> str | None:
     from google import genai as _genai
 
-    tpl = observability.load_prompt("coach_nudge", NUDGE_PROMPT)
+    provider = settings.COACH_NUDGE_LLM_PROVIDER
+    tpl = observability.load_prompt("coach_nudge", NUDGE_PROMPT, label=claude_llm.prompt_label(provider))
     prompt = observability.compile_prompt(
         tpl,
         {
@@ -252,10 +253,16 @@ async def _worded(f: dict[str, Any], tone: str, lang: str, api_key: str) -> str 
             "lang_instruction": narrative_lang_instruction({"lang": lang}, ""),
         },
     )
-    client = _genai.Client(api_key=api_key)
     with observability.generation(
-        "generation", feature="coach_nudge", model=settings.GEMINI_MODEL, metadata={"tier": "primary"}, prompt=tpl
+        "generation",
+        feature="coach_nudge",
+        model=claude_llm.model_for(provider),
+        metadata={"tier": "primary"},
+        prompt=tpl,
     ) as generation:
+        if claude_llm.is_claude(provider):
+            return _parse(await asyncio.to_thread(claude_llm.call, prompt, generation))
+        client = _genai.Client(api_key=api_key)
         response = await asyncio.to_thread(client.models.generate_content, model=settings.GEMINI_MODEL, contents=prompt)
         generation.set_usage(observability.Usage.from_genai(response.usage_metadata))
     return _parse(response.text)
@@ -267,6 +274,7 @@ async def nudge(f: dict[str, Any], lang: str, api_key: str | None) -> dict[str, 
     if tone is None:
         return None
     text, source = None, "rules"
+    api_key = claude_llm.key_for(settings.COACH_NUDGE_LLM_PROVIDER, api_key)
     if api_key:
         try:
             with observability.trace("coach_nudge", feature="coach_nudge"):
@@ -274,7 +282,7 @@ async def nudge(f: dict[str, Any], lang: str, api_key: str | None) -> dict[str, 
             if candidate and len(candidate) <= MAX_TEXT_CHARS and grounded(candidate, f):
                 text, source = candidate, "model"
         except Exception as ex:  # noqa: BLE001
-            _logger.warning(f"[CoachNudge] Gemini FAILED: {type(ex).__name__}: {ex}")
+            _logger.warning(f"[CoachNudge] model FAILED: {type(ex).__name__}: {ex}")
     telemetry.coach_nudge_total.labels(tone=tone, source=source).inc()
     return {
         "tone": tone,

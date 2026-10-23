@@ -117,7 +117,8 @@ asks, the VI translation prompt) stay in-code.
   `observability.Usage.from_anthropic(message.usage)` (input includes cache read/write tokens; output
   includes thinking).
 - **Allowlist** (`services/observability_policy.py`): `anthropic` provider/system and
-  `claude-haiku-5-5` are already allowed (#172). The coach chat PR adds `claude-sonnet-5-5`. No new
+  `claude-haiku-5-5` are already allowed (#172). The `claude` / `claude_retry` span names were not
+  (plan generation's Claude spans exported as `operation`); the goal judge PR adds them. The coach chat PR adds `claude-sonnet-5-5`. No new
   span names, features or metadata keys: the existing ones carry over, and the `engine` metadata value
   is `claude` instead of `gemini`.
 - **Prices** (`config.DEFAULT_LLM_PRICES_USD_PER_M`): Haiku 5.5 is present; Sonnet 5.5 is added with
@@ -145,7 +146,8 @@ Each PR leaves its flag at `gemini` and wires its service into `scripts/golden_e
 | Gear | `golden_eval.py compare --service gear --provider claude --push-langfuse --synthetic-only` (no off-catalog picks) |
 | Nutrition | `golden_eval.py compare --service nutrition --provider claude --push-langfuse --synthetic-only` |
 | Goal judge | `scripts/goal_backtest.py` with `GOAL_JUDGE_LLM_PROVIDER=claude` must beat the anchors' median, then `golden_eval.py compare --service goal_judge --provider claude` |
-| Small callers | no golden set exists; a sampled side-by-side of ~10 real-shaped inputs per feature (nudge `grounded()` pass rate, brief/card JSON validity, KB distiller row validity) |
+| Live judge | `LLM_JUDGE_PROVIDER=claude python scripts/judge_calibration.py`: every criterion ≥ 85 % agreement (llm-change-process § C) |
+| Other small callers | no golden set exists; a sampled side-by-side of ~10 synthetic inputs per feature (nudge `grounded()` pass rate, brief/card JSON validity, KB distiller rows passing `validate_domain_rows`) |
 | Coach chat | `golden_eval.py compare --service chat --provider claude` (chat gate incl. LLM judge) |
 
 Prod also needs `anthropic==1.17.0` installed in the container (still missing per #172) and

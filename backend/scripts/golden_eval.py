@@ -186,7 +186,10 @@ async def _run_chat(fixture: dict) -> tuple[dict, str]:
     question = fixture.get("question", "")
     api_key = settings.GEMINI_API_KEY
     tools = build_tools(user_id=0, kb_api_key=api_key)
-    model = coach_model.GeminiCoachModel(api_key=api_key, model=settings.GEMINI_MODEL, tools=tools)
+    if settings.COACH_CHAT_LLM_PROVIDER == "claude":
+        model = coach_model.ClaudeCoachModel(tools=tools)
+    else:
+        model = coach_model.GeminiCoachModel(api_key=api_key, model=settings.GEMINI_MODEL, tools=tools)
     graph = build_graph(
         model=model,
         retrieve_fn=lambda q: kb_retrieval.search_principles(query=q, api_key=api_key),
@@ -702,12 +705,20 @@ def gate_failures(service: str, items: list[dict], scores: list[dict]) -> list[s
 
 
 # The per-feature provider flag each service's --provider switches (docs/superpowers/specs/2026-10-23-claude-text-generation-design.md).
-PROVIDER_FLAGS = {"gear": "GEAR_LLM_PROVIDER", "nutrition": "NUTRITION_LLM_PROVIDER"}
+PROVIDER_FLAGS = {
+    "gear": "GEAR_LLM_PROVIDER",
+    "nutrition": "NUTRITION_LLM_PROVIDER",
+    "goal": "GOAL_JUDGE_LLM_PROVIDER",
+    "goal_judge": "GOAL_JUDGE_LLM_PROVIDER",
+    "chat": "COACH_CHAT_LLM_PROVIDER",
+}
 
 
 def _eval_model(service: str) -> str:
     flag = PROVIDER_FLAGS.get(service)
-    return settings.CLAUDE_TEXT_MODEL if flag and getattr(settings, flag) == "claude" else settings.GEMINI_MODEL
+    if not (flag and getattr(settings, flag) == "claude"):
+        return settings.GEMINI_MODEL
+    return settings.CLAUDE_COACH_MODEL if service == "chat" else settings.CLAUDE_TEXT_MODEL
 
 
 def main():
@@ -761,7 +772,8 @@ def main():
         setattr(settings, PROVIDER_FLAGS[args.service], args.provider)
         variant_parts.append(args.provider)
     if args.model:
-        setattr(settings, "CLAUDE_TEXT_MODEL" if args.provider == "claude" else "GEMINI_MODEL", args.model)
+        claude_model = "CLAUDE_COACH_MODEL" if args.service == "chat" else "CLAUDE_TEXT_MODEL"
+        setattr(settings, claude_model if args.provider == "claude" else "GEMINI_MODEL", args.model)
         variant_parts.append(args.model)
     # Always start Langfuse when configured: prompts are served from it, so without the
     # client an eval would silently test the in-code fallbacks instead of the live versions.
