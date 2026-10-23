@@ -16141,16 +16141,6 @@
         }
       }
     },
-    "Your body reads off today. Consider an easy run instead of the hard session.": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hôm nay cơ thể chưa hồi phục tốt. Cân nhắc chạy Easy thay buổi nặng."
-          }
-        }
-      }
-    },
     "To reach A: keep easy runs at AeT heart rate and complete every long run.": {
       "localizations": {
         "vi": {
@@ -17307,6 +17297,406 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lịch tuần của runner chưa đủ cho mục tiêu này."
+          }
+        }
+      }
+    },
+    "Training response": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đáp ứng tập luyện"
+          }
+        }
+      }
+    },
+    "Training response appears after 14 days of HRV and resting HR": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đáp ứng tập luyện hiện sau 14 ngày có HRV và Resting HR"
+          }
+        }
+      }
+    },
+    "Your last 7 days of HRV and resting HR against the 4 weeks before, read against your plan's phase. In Base, Build and Peak weeks, HRV a little down and resting HR a little up is the work landing; in Recovery and Taper weeks both should come back to usual or better. Both well outside your usual in any week is the signal to ease off.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HRV và Resting HR của 7 ngày gần nhất so với 4 tuần trước đó, đọc theo giai đoạn trong plan của bạn. Ở tuần Base, Build và Peak, HRV giảm nhẹ và Resting HR tăng nhẹ là cơ thể đang nhận bài tập; ở tuần Recovery và Taper, cả hai nên về mức thường ngày hoặc tốt hơn. Cả hai lệch xa mức thường ngày ở bất kỳ tuần nào là lúc nên giảm tải."
+          }
+        }
+      }
+    },
+    "Expected for %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mức kỳ vọng cho %@"
+          }
+        }
+      }
+    },
+    "Absorbing": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang thích nghi"
+          }
+        }
+      }
+    },
+    "Under load": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang chịu tải"
+          }
+        }
+      }
+    },
+    "→ HRV above usual   ↑ resting HR below usual": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "→ HRV cao hơn   ↑ Resting HR thấp hơn"
+          }
+        }
+      }
+    },
+    "This week against your usual": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần này so với mức thường ngày"
+          }
+        }
+      }
+    },
+    "Plan phases: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các giai đoạn plan: %@"
+          }
+        }
+      }
+    },
+    "Absorbing the work": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cơ thể đang thích nghi"
+          }
+        }
+      }
+    },
+    "Holding steady": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vẫn ổn định"
+          }
+        }
+      }
+    },
+    "Feeling the load, as planned": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang chịu tải, đúng plan"
+          }
+        }
+      }
+    },
+    "Well outside your usual": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lệch xa mức thường ngày"
+          }
+        }
+      }
+    },
+    "Rebounding": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang hồi lại"
+          }
+        }
+      }
+    },
+    "Not rebounding yet": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa hồi lại"
+          }
+        }
+      }
+    },
+    "Still under strain": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cơ thể vẫn đang căng"
+          }
+        }
+      }
+    },
+    "HRV is up and resting HR is down in a %@ phase: you're adapting to the work. Keep building as planned.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HRV tăng và Resting HR giảm trong giai đoạn %@: bạn đang thích nghi với bài tập. Cứ tăng dần theo plan."
+          }
+        }
+      }
+    },
+    "Your body is handling this %@ phase without strain. Stick to the plan.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cơ thể bạn đang chịu được giai đoạn %@ này mà không bị căng. Cứ bám theo plan."
+          }
+        }
+      }
+    },
+    "Expected in a %@ phase. Keep easy days truly easy and protect your sleep so you bounce back in the next lighter week.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bình thường trong giai đoạn %@. Giữ ngày nhẹ thật nhẹ và ngủ đủ để hồi lại ở tuần nhẹ tiếp theo."
+          }
+        }
+      }
+    },
+    "HRV and resting HR are both well outside your usual. Make the next session easy and look at sleep and stress before pushing on.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HRV và Resting HR đều lệch xa mức thường ngày. Cho buổi tới nhẹ đi và xem lại giấc ngủ, căng thẳng trước khi tập tiếp."
+          }
+        }
+      }
+    },
+    "HRV is up and resting HR is down in this %@ week: the hard weeks are turning into fitness.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HRV tăng và Resting HR giảm trong tuần %@ này: các tuần nặng đang thành thể lực."
+          }
+        }
+      }
+    },
+    "This %@ week hasn't lifted your numbers yet. That often comes late in the week; keep the easy days easy.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần %@ này chưa kéo các chỉ số lên. Việc này thường đến cuối tuần; cứ giữ ngày nhẹ thật nhẹ."
+          }
+        }
+      }
+    },
+    "Your numbers are down in a lighter week, so training is unlikely to be the cause. Look at sleep, stress and travel.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các chỉ số giảm trong một tuần nhẹ, nên khó là do tập. Xem lại giấc ngủ, căng thẳng và việc đi lại."
+          }
+        }
+      }
+    },
+    "at usual": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "như thường"
+          }
+        }
+      }
+    },
+    "%@ bpm": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bpm"
+          }
+        }
+      }
+    },
+    "This dip is expected in a loading week. Run the session as planned, but don't go past its targets.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần tăng tải nên chỉ số giảm là bình thường. Cứ chạy buổi tập theo plan, nhưng đừng vượt mục tiêu của buổi."
+          }
+        }
+      }
+    },
+    "Your body reads ready. Run it as planned at %@.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cơ thể đang sẵn sàng. Chạy theo plan ở pace %@."
+          }
+        }
+      }
+    },
+    "Your body reads ready. Run it as planned.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cơ thể đang sẵn sàng. Chạy theo plan."
+          }
+        }
+      }
+    },
+    "Your body reads off today. Swap it for %lld min easy at AeT.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hôm nay cơ thể chưa ổn. Đổi thành %lld phút chạy nhẹ ở AeT."
+          }
+        }
+      }
+    },
+    "Tonight: aim for %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tối nay: ngủ %@"
+          }
+        }
+      }
+    },
+    "long run tomorrow": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mai có Long Run"
+          }
+        }
+      }
+    },
+    "%@ short this week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tuần này thiếu %@"
+          }
+        }
+      }
+    },
+    "Last week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần trước"
+          }
+        }
+      }
+    },
+    "Short sleep before %lld of %lld long runs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngủ ít trước %lld/%lld buổi Long Run"
+          }
+        }
+      }
+    },
+    "Hard sessions on good days: %lld of %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi nặng rơi vào ngày tốt: %lld/%lld"
+          }
+        }
+      }
+    },
+    "Bank an extra 30 min the two nights before your next long run.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngủ thêm 30 phút hai đêm trước buổi Long Run tới."
+          }
+        }
+      }
+    },
+    "You timed your hard sessions well.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn xếp buổi nặng đúng lúc."
+          }
+        }
+      }
+    },
+    "When your numbers read low, move the hard session a day rather than pushing through.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khi chỉ số thấp, dời buổi nặng sang hôm sau thay vì cố tập."
+          }
+        }
+      }
+    },
+    "Every session done.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã tập đủ mọi buổi."
+          }
+        }
+      }
+    },
+    "Short sleep before your long run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngủ ít trước buổi Long Run"
           }
         }
       }

@@ -6,8 +6,24 @@ import SwiftUI
 struct ProgressChart: View {
     let card: ProgressCard
     var detailed = false
+    /// A day to show selected on appear (screenshot tests).
+    var initialSelection: Date?
+
+    /// Drag on the detail chart to read one day or week; the compact card chart stays a tap target.
+    @State private var selectedDate: Date?
+    @State private var selectedWeek: String?
 
     private var points: [ProgressPoint] { card.points }
+    private var selected: ProgressPoint? {
+        if let selectedDate {
+            return points.min { a, b in
+                guard case .day(let da) = a.x, case .day(let db) = b.x else { return false }
+                return abs(da.timeIntervalSince(selectedDate)) < abs(db.timeIntervalSince(selectedDate))
+            }
+        }
+        guard let selectedWeek else { return nil }
+        return points.first { if case .week(let w) = $0.x { "W\(w)" == selectedWeek } else { false } }
+    }
     private var usesBars: Bool { ["consistency", "volume", "load", "sleep"].contains(card.key) }
     /// Load's story is the last week against the weeks before it.
     private func emphasis(_ point: ProgressPoint) -> Double {
@@ -56,12 +72,69 @@ struct ProgressChart: View {
                     }
                 }
             }
+            if let selected {
+                switch selected.x {
+                case .day(let date):
+                    RuleMark(x: .value("Date", date, unit: .day))
+                        .foregroundStyle(UH.Palette.muted.opacity(0.5))
+                        .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                            ChartCallout(value: ProgressText.pointValue(card, selected.y),
+                                         label: date.formatted(.dateTime.day().month(.abbreviated).locale(AppLanguage.current.locale)))
+                        }
+                case .week(let week):
+                    RuleMark(x: .value("Week", "W\(week)"))
+                        .foregroundStyle(UH.Palette.muted.opacity(0.5))
+                        .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                            ChartCallout(value: ProgressText.pointValue(card, selected.y), label: L("Week %lld", week))
+                        }
+                }
+            }
         }
         .chartYScale(domain: .automatic(includesZero: usesBars))
         .chartXAxis(detailed ? .automatic : .hidden)
         .chartYAxis(detailed ? .automatic : .hidden)
+        .modifier(ChartSelection(enabled: detailed, weekly: points.first.map { if case .week = $0.x { true } else { false } } ?? false,
+                                 date: $selectedDate, week: $selectedWeek))
+        .sensoryFeedback(.selection, trigger: selected?.id)
+        .onAppear { if let initialSelection { selectedDate = initialSelection } }
         .frame(height: detailed ? 220 : 64)
         .accessibilityChartDescriptor(ProgressChartDescriptor(card: card))
+    }
+}
+
+/// Scrubbing on the detail charts only. Weekly charts select by their "W3" category, daily ones by date.
+struct ChartSelection: ViewModifier {
+    let enabled: Bool
+    var weekly = false
+    @Binding var date: Date?
+    @Binding var week: String?
+
+    func body(content: Content) -> some View {
+        if !enabled {
+            content
+        } else if weekly {
+            content.chartXSelection(value: $week)
+        } else {
+            content.chartXSelection(value: $date)
+        }
+    }
+}
+
+/// The value under the finger: the number first, then the day or week it belongs to.
+struct ChartCallout: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value).font(.system(.subheadline, design: .rounded).weight(.semibold).monospacedDigit())
+                .foregroundStyle(UH.Palette.ink)
+            Text(label).font(.caption2).foregroundStyle(UH.Palette.muted)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line, lineWidth: 1))
     }
 }
 

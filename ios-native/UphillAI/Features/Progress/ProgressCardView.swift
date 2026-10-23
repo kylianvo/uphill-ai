@@ -44,6 +44,11 @@ struct ProgressCardView: View {
                 .font(UH.TextStyle.body)
                 .foregroundStyle(card.key == "coach_read" ? UH.Palette.ink : UH.Palette.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if let tonight = ProgressText.tonight(card.note["tonight"]?.objectValue) {
+                Label(tonight, systemImage: "moon.zzz.fill")
+                    .font(UH.TextStyle.caption.weight(.semibold))
+                    .foregroundStyle(UH.Palette.accentInk)
+            }
         }
         .uhCard()
     }

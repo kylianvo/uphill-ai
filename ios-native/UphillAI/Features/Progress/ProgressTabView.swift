@@ -73,6 +73,11 @@ struct ProgressTabView: View {
                     }
                     .uhCard()
                 }
+            } else if card.key == "response" {
+                NavigationLink { TrainingResponseDetailView(card: card) } label: { TrainingResponseCardView(card: card) }
+                    .buttonStyle(.plain)
+            } else if card.key == "week_review" {
+                weekReview(card)
             } else if card.key == "coach_read" {
                 ProgressCardView(card: card)
             } else {
@@ -104,11 +109,58 @@ struct ProgressTabView: View {
                 Text(ProgressText.note(read)).foregroundStyle(UH.Palette.secondary)
             }
             if let advice = ProgressText.todayAdvice(card) {
-                Text(advice).font(UH.TextStyle.body).foregroundStyle(UH.Palette.warningInk)
+                Label(advice.text, systemImage: advice.change ? "arrow.uturn.down.circle.fill" : "checkmark.circle.fill")
+                    .font(UH.TextStyle.body)
+                    .foregroundStyle(advice.change ? UH.Palette.warningInk : UH.Palette.accentInk)
+            }
+            if let tonight = ProgressText.tonight(card.note["tonight"]?.objectValue) {
+                Label(tonight, systemImage: "moon.zzz.fill")
+                    .font(UH.TextStyle.body)
+                    .foregroundStyle(UH.Palette.ink)
             }
         }
         .uhCard()
         .accessibilityElement(children: .combine)
+    }
+
+    /// Last week's facts: the most telling one as the headline with what to do next, the rest below.
+    private func weekReview(_ card: ProgressCard) -> some View {
+        let facts = (card.note["facts"]?.arrayValue ?? []).compactMap(\.objectValue)
+        return VStack(alignment: .leading, spacing: UH.Space.small) {
+            HStack {
+                Label(ProgressText.title(card.key), systemImage: ProgressText.symbol(card.key))
+                    .font(UH.TextStyle.label).foregroundStyle(UH.Palette.accentInk)
+                Spacer()
+                if let week = card.noteNumber("week") {
+                    Text(L("Week %lld", Int(week))).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.muted)
+                }
+            }
+            if let first = facts.first {
+                Text(ProgressText.reviewHeadline(first))
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                    .foregroundStyle(UH.Palette.ink)
+                if let action = ProgressText.reviewAction(first) {
+                    Text(action).foregroundStyle(UH.Palette.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            ForEach(Array(facts.dropFirst().enumerated()), id: \.offset) { _, fact in
+                Label(ProgressText.reviewHeadline(fact), systemImage: "circle.fill")
+                    .labelStyle(BulletLabel())
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+            }
+        }
+        .uhCard()
+        .accessibilityElement(children: .combine)
+    }
+
+    private struct BulletLabel: LabelStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                configuration.icon.font(.system(size: 5)).foregroundStyle(UH.Palette.accent)
+                configuration.title
+            }
+        }
     }
 
     private struct SectionPickerStyle: ViewModifier {
