@@ -212,6 +212,20 @@ def test_summary_names_off_contributors():
     assert pc.health_summary([]) is None
 
 
+def test_summary_ignores_the_good_direction():
+    better = [
+        Card("sleep", 500, "min", note={"key": "sleep.above"}),
+        Card("resting_hr", 44, "bpm", note={"key": "rhr.below"}),
+        Card("hrv", 80, "ms", note={"key": "hrv.above"}),
+    ]
+    assert pc.health_summary(better).note == {"key": "health.all_usual", "contributors": []}
+    tired = [
+        Card("sleep", 300, "min", note={"key": "sleep.below"}),
+        Card("resting_hr", 55, "bpm", note={"key": "rhr.above"}),
+    ]
+    assert pc.health_summary(tired).note["contributors"] == ["sleep", "resting_hr"]
+
+
 # ─── today ───
 
 
@@ -253,8 +267,18 @@ def test_today_pairs_readiness_with_the_next_session():
         "key": "today",
         "health": "health.off",
         "contributors": ["hrv"],
-        "next": {"title": "Tempo 3x10", "type": "Tempo", "date": "2026-10-23", "duration_minutes": 60},
+        "next": {
+            "title": "Tempo 3x10",
+            "type": "Tempo",
+            "date": "2026-10-23",
+            "duration_minutes": 60,
+            "target_pace": None,
+        },
+        "adjust": {"kind": "swap_easy", "minutes": 45},
+        "tonight": None,
     }
+    response = Card("response", None, None, note={"key": "response.load.loading"})
+    assert pc.today_card(ws, monday, date(2026, 10, 22), summary, response).note["adjust"] == {"kind": "cap"}
 
 
 def test_today_without_plan_or_health_is_absent():
@@ -268,4 +292,189 @@ def test_today_with_health_only():
         "health": "health.all_usual",
         "contributors": [],
         "next": None,
+        "adjust": None,
+        "tonight": None,
     }
+
+
+# ─── training response ───
+
+R_MONDAY = date(2026, 9, 7)
+R_TODAY = R_MONDAY + timedelta(days=7 * 5 + 2)  # Wednesday of week 6
+
+
+def _phases(phase="Build", week=6):
+    return [{"week_number": w, "phase": "Base" if w < week else phase} for w in range(1, week + 1)]
+
+
+def _signals(base_hrv=60.0, base_rhr=48.0, now_hrv=None, now_rhr=None, days=35):
+    """Baseline days alternate around the mid (spread 2 ms / 1 bpm); the last 7 days carry `now_*`."""
+    rows = []
+    for i in range(days):
+        recent = i < 7
+        wobble = 1 if i % 2 else -1
+        hrv = now_hrv if recent and now_hrv is not None else base_hrv + 2 * wobble
+        rhr = now_rhr if recent and now_rhr is not None else base_rhr + wobble
+        rows.append(
+            {"metric_date": R_TODAY - timedelta(days=i), "source_provider": "coros", "hrv_ms": hrv, "resting_hr": rhr}
+        )
+    return rows
+
+
+def test_response_none_without_phase():
+    assert pc.training_response([], _signals(), R_MONDAY, R_TODAY) is None
+
+
+def test_response_pending_below_14_days():
+    out = pc.training_response(_phases(), _signals(days=13), R_MONDAY, R_TODAY)
+    assert out == Pending("response", needs=14, have=13)
+
+
+def test_response_none_when_recent_days_missing():
+    rows = [r for r in _signals() if (R_TODAY - r["metric_date"]).days >= 7]
+    assert pc.training_response(_phases(), rows, R_MONDAY, R_TODAY) is None
+
+
+def test_response_build_week_feeling_the_load_is_expected():
+    # HRV baseline 60 ms with a 3 ms spread (the floor), so 58.5 ms is z=-0.5; resting HR stays at its usual.
+    out = pc.training_response(_phases(), _signals(now_hrv=58.5), R_MONDAY, R_TODAY)
+    assert isinstance(out, Card) and out.note["key"] == "response.load.loading"
+    assert out.note["phase"] == "Build" and out.note["week"] == 6 and out.note["hrv_pct"] == -2
+
+
+def test_response_both_well_outside_is_strained():
+    out = pc.training_response(_phases(), _signals(now_hrv=55.5, now_rhr=49.5), R_MONDAY, R_TODAY)
+    assert out.note["key"] == "response.load.strained" and out.note["rhr_delta"] == 2
+
+
+def test_response_mild_both_down_is_still_loading():
+    out = pc.training_response(_phases(), _signals(now_hrv=58.0, now_rhr=49.0), R_MONDAY, R_TODAY)
+    assert out.note["key"] == "response.load.loading"
+
+
+def test_response_adapting_and_mixed_signals():
+    up = pc.training_response(_phases(), _signals(now_hrv=63.0, now_rhr=47.0), R_MONDAY, R_TODAY)
+    assert up.note["key"] == "response.load.adapting"
+    mixed = pc.training_response(_phases(), _signals(now_hrv=63.0, now_rhr=50.0), R_MONDAY, R_TODAY)
+    assert mixed.note["key"] == "response.load.steady"
+
+
+def test_response_taper_reads_as_down_phase():
+    rebound = pc.training_response(_phases("Taper"), _signals(now_hrv=64.0), R_MONDAY, R_TODAY)
+    assert rebound.note["key"] == "response.down.adapting"
+    stuck = pc.training_response(_phases("Taper"), _signals(now_hrv=55.0, now_rhr=51.0), R_MONDAY, R_TODAY)
+    assert stuck.note["key"] == "response.down.strained"
+
+
+def test_response_series_carries_phase_per_day():
+    out = pc.training_response(_phases(), _signals(), R_MONDAY, R_TODAY)
+    assert out.series[-1] == {"date": R_TODAY.isoformat(), "phase": "Build", "hrv": 58.0, "rhr": 47.0}
+    assert out.series[0]["phase"] == "Base" and out.band == (57.0, 63.0) and out.source == "coros"
+
+
+# ─── today's targets ───
+
+OFF = Card("coach_read", None, None, note={"key": "health.off", "contributors": ["hrv"]})
+USUAL = Card("coach_read", None, None, note={"key": "health.all_usual", "contributors": []})
+TEMPO = {"type": "Tempo", "duration_minutes": 60}
+
+
+def test_adjustment_only_for_hard_sessions_today_or_tomorrow():
+    assert pc.session_adjustment({"type": "Easy Run"}, TODAY, TODAY, OFF, None) is None
+    assert pc.session_adjustment(TEMPO, TODAY + timedelta(days=2), TODAY, OFF, None) is None
+
+
+def test_adjustment_keep_cap_or_swap():
+    loading = Card("response", None, None, note={"key": "response.load.loading"})
+    strained = Card("response", None, None, note={"key": "response.load.strained"})
+    assert pc.session_adjustment(TEMPO, TODAY, TODAY, USUAL, None) == {"kind": "as_planned"}
+    assert pc.session_adjustment(TEMPO, TODAY, TODAY, OFF, loading) == {"kind": "cap"}
+    assert pc.session_adjustment(TEMPO, TODAY, TODAY, OFF, strained) == {"kind": "swap_easy", "minutes": 45}
+    short = {"type": "Interval", "duration_minutes": 32}
+    assert pc.session_adjustment(short, TODAY, TODAY, OFF, None) == {"kind": "swap_easy", "minutes": 30}
+
+
+def _sleep_nights(usual=480, recent=None, n=28):
+    return [
+        {"metric_date": TODAY - timedelta(days=i), "sleep_minutes": recent if recent is not None and i < 7 else usual}
+        for i in range(n)
+    ]
+
+
+def test_sleep_target_pays_back_a_share_of_the_week():
+    assert pc.sleep_target(_sleep_nights(n=6), TODAY) is None
+    assert pc.sleep_target(_sleep_nights(), TODAY) == {
+        "target_min": 480,
+        "usual_min": 480,
+        "debt_min": 0,
+        "long_run_tomorrow": False,
+    }
+    # 7 nights at 465 against a usual of 480: 105 min short, a third (35) paid back tonight.
+    assert pc.sleep_target(_sleep_nights(recent=465), TODAY)["target_min"] == 520
+    # 7 nights at 450: 210 min short, but tonight's payback stops at an hour.
+    assert pc.sleep_target(_sleep_nights(recent=450), TODAY)["target_min"] == 540
+
+
+def test_sleep_target_caps_payback_and_adds_long_run_bonus():
+    monday = TODAY - timedelta(days=TODAY.weekday())
+    tomorrow = (TODAY + timedelta(days=1)).strftime("%A")
+    week = (TODAY + timedelta(days=1) - monday).days // 7 + 1
+    long_run = {"type": "Long Run", "week_number": week, "day_of_week": tomorrow, "is_completed": 0}
+    out = pc.sleep_target(_sleep_nights(recent=300), TODAY, [long_run], monday)
+    assert out["long_run_tomorrow"] and out["target_min"] == 480 + 60 + 30
+
+
+# ─── week review ───
+
+W_MONDAY = date(2026, 9, 7)
+W_TODAY = W_MONDAY + timedelta(days=14)  # Monday of week 3: week 2 just finished
+
+
+def _session(day, type_="Easy Run", done=1, week=2, minutes=60):
+    return {
+        "week_number": week,
+        "day_of_week": day,
+        "type": type_,
+        "is_completed": done,
+        "duration_minutes": minutes,
+    }
+
+
+def _health(days_back, hrv=60.0, rhr=48.0, sleep=480):
+    return {
+        "metric_date": W_TODAY - timedelta(days=days_back),
+        "hrv_ms": hrv,
+        "resting_hr": rhr,
+        "sleep_minutes": sleep,
+    }
+
+
+def test_week_review_none_in_week_one():
+    assert pc.week_review([_session("Monday", week=1)], [], W_MONDAY, W_MONDAY + timedelta(days=3)) is None
+
+
+def test_week_review_facts_in_priority_order():
+    ws = [
+        _session("Tuesday", "Tempo"),
+        _session("Thursday", "Interval"),
+        _session("Saturday", "Long Run", minutes=150),
+        _session("Sunday", done=0),
+    ]
+    rows = [_health(d, hrv=60.0 + (d % 2), rhr=48.0) for d in range(8, 40)]  # baseline before week 2
+    rows += [
+        _health(6, hrv=61.0),  # Tuesday: good
+        _health(4, hrv=50.0),  # Thursday: HRV well below
+        _health(2, sleep=360),  # Saturday: short sleep before the long run
+    ]
+    out = pc.week_review(ws, rows, W_MONDAY, W_TODAY)
+    assert out.note["week"] == 2
+    assert out.note["facts"] == [
+        {"kind": "short_sleep_long_run", "count": 1, "total": 1},
+        {"kind": "hard_on_good_days", "count": 1, "total": 2},
+        {"kind": "sessions", "count": 3, "total": 4},
+    ]
+
+
+def test_week_review_falls_back_to_sessions():
+    out = pc.week_review([_session("Tuesday")], [], W_MONDAY, W_TODAY)
+    assert out.note["facts"] == [{"kind": "sessions", "count": 1, "total": 1}]

@@ -13,7 +13,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import db
-from services import aerobic_speed, calendar_rules, fitness_tracking
+from services import aerobic_speed, calendar_rules, fitness_tracking, plan_lint
 from services.aerobic_speed import _HARD_WORKOUTS, MIN_WEEKS_FOR_PATH
 
 CONSISTENCY_MIN_WEEKS = 2
@@ -284,18 +284,163 @@ def hrv(metrics: list[dict], today: date, window_days: int = WINDOW_DAYS) -> Car
     return card
 
 
+# ─── Training response: the plan's phase read against the body's HRV / resting-HR trend ───
+# The four states follow WHOOP's published HRV training guide (Optimal, functional and non-functional
+# overreaching, restorative): HRV down with resting HR up is expected in a load phase and a warning in a
+# light one. Unlike a watch, Uphill knows which phase the athlete is in, so the read is judged against it.
+
+RESPONSE_CURRENT_DAYS = 7
+RESPONSE_WINDOW_DAYS = 35  # this week plus the four weeks before it as the baseline
+RESPONSE_MIN_DAYS = 14
+RESPONSE_MIN_CURRENT = 3
+SHIFT, LARGE_SHIFT = 0.5, 1.5  # in robust spreads of the baseline days
+
+
+def _shift(rows: list[dict], field: str, today: date, floor: float) -> dict | None:
+    current = [r[field] for r in rows if (today - _day(r["metric_date"])).days < RESPONSE_CURRENT_DAYS]
+    base = [r[field] for r in rows if (today - _day(r["metric_date"])).days >= RESPONSE_CURRENT_DAYS]
+    if len(current) < RESPONSE_MIN_CURRENT or not base:
+        return None
+    low, mid, high = usual_range(base, floor)
+    now = sum(current) / len(current)
+    return {"now": now, "mid": mid, "low": low, "high": high, "z": (now - mid) / ((high - low) / 2)}
+
+
+def _response_state(hrv: dict, rhr: dict) -> str:
+    good = (hrv["z"] >= SHIFT) + (rhr["z"] <= -SHIFT)
+    bad = (hrv["z"] <= -SHIFT) + (rhr["z"] >= SHIFT)
+    if bad == 2 and (hrv["z"] <= -LARGE_SHIFT or rhr["z"] >= LARGE_SHIFT):
+        return "strained"
+    if bad and not good:
+        return "loading"
+    if good and not bad:
+        return "adapting"
+    return "steady"
+
+
+def training_response(
+    workouts: list[dict], metrics: list[dict], plan_monday: date, today: date
+) -> Card | Pending | None:
+    """This week's HRV and resting HR against the four weeks before, read against the plan's phase.
+    None when the week has no phase or the recent days are missing (stale data is not "pending")."""
+    current_week = (today - plan_monday).days // 7 + 1
+    phase = next((w["phase"] for w in workouts if w.get("week_number") == current_week and w.get("phase")), None)
+    if not phase:
+        return None
+    hrv_rows = _present(metrics, "hrv_ms", today, RESPONSE_WINDOW_DAYS)
+    rhr_rows = _present(metrics, "resting_hr", today, RESPONSE_WINDOW_DAYS)
+    have = min(len(hrv_rows), len(rhr_rows))
+    if have < RESPONSE_MIN_DAYS:
+        return Pending("response", RESPONSE_MIN_DAYS, have)
+    hrv, rhr = _shift(hrv_rows, "hrv_ms", today, 3), _shift(rhr_rows, "resting_hr", today, 1)
+    if hrv is None or rhr is None:
+        return None
+    group = "down" if phase in plan_lint.DOWN_PHASES else "load"
+    state = _response_state(hrv, rhr)
+    phase_of = {
+        w["week_number"]: w["phase"] for w in sorted(workouts, key=lambda w: w["week_number"]) if w.get("phase")
+    }
+    by_day: dict[date, dict] = {}
+    for name, source_field, rows in (("hrv", "hrv_ms", hrv_rows), ("rhr", "resting_hr", rhr_rows)):
+        for r in rows:
+            day = _day(r["metric_date"])
+            by_day.setdefault(day, {"date": day.isoformat(), "phase": phase_of.get((day - plan_monday).days // 7 + 1)})
+            by_day[day][name] = r[source_field]
+    return Card(
+        "response",
+        None,
+        None,
+        [by_day[d] for d in sorted(by_day)],
+        band=(round(hrv["low"], 1), round(hrv["high"], 1)),
+        note={
+            "key": f"response.{group}.{state}",
+            "phase": phase,
+            "week": current_week,
+            "hrv_pct": round(100 * (hrv["now"] - hrv["mid"]) / hrv["mid"]),
+            "rhr_delta": round(rhr["now"] - rhr["mid"]),
+            "hrv_z": round(hrv["z"], 2),
+            "rhr_z": round(rhr["z"], 2),
+            "rhr_band": [round(rhr["low"], 1), round(rhr["high"], 1)],
+        },
+        as_of=max(by_day),
+        source=hrv_rows[-1].get("source_provider"),
+    )
+
+
 def health_summary(cards: list[Card]) -> Card | None:
     """The rule-based Coach's read: which signals sit outside the athlete's usual range."""
     if not cards:
         return None
-    off = [c.key for c in cards if not c.note.get("key", "").endswith(".within")]
+    # Only the tiring direction counts: more sleep, lower resting HR or higher HRV than usual is good news.
+    off = [c.key for c in cards if c.note.get("key") in ("sleep.below", "rhr.above", "hrv.below")]
     return Card(
         "coach_read", None, None, note={"key": "health.off" if off else "health.all_usual", "contributors": off}
     )
 
 
-def today_card(workouts: list[dict], plan_monday: date | None, today_date: date, summary: Card | None) -> Card | None:
-    """What to do today: the health read (from the Health section) and the next unfinished session."""
+# ─── Today's targets: what to do with the next hard session, and how much to sleep tonight ───
+
+EASY_SWAP_MAX_MIN = 45
+ADJUST_WITHIN_DAYS = 1  # today's body only speaks for today's or tomorrow's session
+SLEEP_PAYBACK_NIGHTS = 3  # a short week is paid back over a few nights, not one
+SLEEP_PAYBACK_CAP_MIN = 60
+LONG_RUN_SLEEP_BONUS_MIN = 30
+
+
+def session_adjustment(
+    w: dict, day: date, today_date: date, summary: Card | None, response: Card | Pending | None
+) -> dict | None:
+    """The next hard session, kept, capped or swapped for easy running. In a loading week where Training
+    response reads the dip as expected, the session stays and is capped at its targets."""
+    if not plan_lint.is_hard(w) or (day - today_date).days > ADJUST_WITHIN_DAYS:
+        return None
+    if not summary or summary.note["key"] != "health.off":
+        return {"kind": "as_planned"}
+    key = response.note["key"] if isinstance(response, Card) else ""
+    if key.startswith("response.load.") and key != "response.load.strained":
+        return {"kind": "cap"}
+    minutes = min(plan_lint._min(w) or EASY_SWAP_MAX_MIN, EASY_SWAP_MAX_MIN)
+    return {"kind": "swap_easy", "minutes": int(5 * round(minutes / 5))}
+
+
+def sleep_target(
+    rows: list[dict], today_date: date, workouts: list[dict] = (), plan_monday: date | None = None
+) -> dict | None:
+    """Tonight's sleep: your usual, plus a share of this week's shortfall, plus extra before a long run."""
+    present = _present(rows, "sleep_minutes", today_date, WINDOW_DAYS)
+    if len(present) < SLEEP_MIN_NIGHTS:
+        return None
+    _, usual, _ = usual_range([r["sleep_minutes"] for r in present], 30)
+    week = [r["sleep_minutes"] for r in present if (today_date - _day(r["metric_date"])).days < CURRENT_DAYS]
+    debt = sum(max(0.0, usual - m) for m in week)
+    tomorrow = today_date + timedelta(days=1)
+    long_tomorrow = bool(plan_monday) and any(
+        plan_lint.is_long(w)
+        and not w.get("is_completed")
+        and w.get("day_of_week") in calendar_rules.DAYS
+        and calendar_rules.workout_date(plan_monday, w["week_number"], w["day_of_week"]) == tomorrow
+        for w in workouts
+    )
+    target = usual + min(debt / SLEEP_PAYBACK_NIGHTS, SLEEP_PAYBACK_CAP_MIN)
+    target += LONG_RUN_SLEEP_BONUS_MIN if long_tomorrow else 0
+    return {
+        "target_min": int(10 * round(target / 10)),
+        "usual_min": round(usual),
+        "debt_min": round(debt),
+        "long_run_tomorrow": long_tomorrow,
+    }
+
+
+def today_card(
+    workouts: list[dict],
+    plan_monday: date | None,
+    today_date: date,
+    summary: Card | None,
+    response: Card | Pending | None = None,
+    tonight: dict | None = None,
+) -> Card | None:
+    """What to do today: the health read, the next unfinished session with what to do with it, and
+    tonight's sleep target."""
     upcoming = []
     if plan_monday:
         for w in workouts:
@@ -305,6 +450,7 @@ def today_card(workouts: list[dict], plan_monday: date | None, today_date: date,
             if day >= today_date:
                 upcoming.append((day, w))
     nxt = None
+    adjust = None
     if upcoming:
         day, w = min(upcoming, key=lambda pair: pair[0])
         nxt = {
@@ -312,7 +458,9 @@ def today_card(workouts: list[dict], plan_monday: date | None, today_date: date,
             "type": w.get("type"),
             "date": day.isoformat(),
             "duration_minutes": w.get("duration_minutes"),
+            "target_pace": w.get("target_pace"),
         }
+        adjust = session_adjustment(w, day, today_date, summary, response)
     if nxt is None and summary is None:
         return None
     return Card(
@@ -324,15 +472,86 @@ def today_card(workouts: list[dict], plan_monday: date | None, today_date: date,
             "health": summary.note["key"] if summary else None,
             "contributors": summary.note["contributors"] if summary else [],
             "next": nxt,
+            "adjust": adjust,
+            "tonight": tonight,
         },
     )
+
+
+# ─── Weekly review: one pattern from last week, from data already stored ───
+
+
+def _good_days(rows: list[dict], start: date, end: date) -> dict[date, bool]:
+    """Per day in [start, end): True when neither HRV nor resting HR reads on the tiring side of the usual
+    range of the 28 days before `start`. Days with neither signal are left out."""
+    before = [r for r in rows if 0 < (start - _day(r["metric_date"])).days <= WINDOW_DAYS]
+    bands = {}
+    for name, floor in (("hrv_ms", 3), ("resting_hr", 1)):
+        values = [r[name] for r in before if r.get(name) is not None]
+        if len(values) >= SLEEP_MIN_NIGHTS:
+            bands[name] = usual_range(values, floor)
+    out: dict[date, bool] = {}
+    for r in rows:
+        day = _day(r["metric_date"])
+        if not start <= day < end:
+            continue
+        checks = []
+        if "hrv_ms" in bands and r.get("hrv_ms") is not None:
+            checks.append(r["hrv_ms"] >= bands["hrv_ms"][0])
+        if "resting_hr" in bands and r.get("resting_hr") is not None:
+            checks.append(r["resting_hr"] <= bands["resting_hr"][2])
+        if checks:
+            out[day] = all(checks)
+    return out
+
+
+def week_review(workouts: list[dict], rows: list[dict], plan_monday: date, today_date: date) -> Card | None:
+    """Last finished plan week as facts, most telling first: short sleep before long runs, then whether
+    hard sessions landed on good days, then sessions done. The client words them."""
+    week = (today_date - plan_monday).days // 7  # the last finished week
+    ws = [w for w in _planned(workouts, week + 1) if w["week_number"] == week]
+    if week < 1 or not ws:
+        return None
+    start = plan_monday + timedelta(days=7 * (week - 1))
+    done = [w for w in ws if w.get("is_completed") == 1 or w.get("matched_activity_id")]
+    on_day = {
+        id(w): calendar_rules.workout_date(plan_monday, week, w["day_of_week"])
+        for w in done
+        if w.get("day_of_week") in calendar_rules.DAYS
+    }
+    facts = []
+    # Sleep on a row's date is the night that ended that morning.
+    sleep_by_day = {_day(r["metric_date"]): r["sleep_minutes"] for r in rows if r.get("sleep_minutes") is not None}
+    history = [m for d, m in sleep_by_day.items() if 0 < (start - d).days <= WINDOW_DAYS]
+    longs = [w for w in done if plan_lint.is_long(w) and on_day.get(id(w)) in sleep_by_day]
+    if longs and len(history) >= SLEEP_MIN_NIGHTS:
+        low = usual_range(history, 30)[0]
+        short = sum(1 for w in longs if sleep_by_day[on_day[id(w)]] < low)
+        if short:
+            facts.append({"kind": "short_sleep_long_run", "count": short, "total": len(longs)})
+    good = _good_days(rows, start, start + timedelta(days=7))
+    hard = [w for w in done if plan_lint.is_hard(w) and on_day.get(id(w)) in good]
+    if len(hard) >= 2:
+        facts.append({"kind": "hard_on_good_days", "count": sum(good[on_day[id(w)]] for w in hard), "total": len(hard)})
+    facts.append({"kind": "sessions", "count": len(done), "total": len(ws)})
+    return Card("week_review", None, None, note={"key": "week_review", "week": week, "facts": facts})
 
 
 # ─── Assembly: the only part that reads the database ───
 
 HISTORY_DAYS = (28, 90)
 APPLE_CONNECTED_DAYS = 30
-TRAINING_ORDER = ("today", "goal", "aerobic_speed", "consistency", "volume", "durability", "load")
+TRAINING_ORDER = (
+    "today",
+    "goal",
+    "response",
+    "week_review",
+    "aerobic_speed",
+    "consistency",
+    "volume",
+    "durability",
+    "load",
+)
 HEALTH_ORDER = ("coach_read", "sleep", "resting_hr", "hrv")
 
 
@@ -369,10 +588,14 @@ def build(user: dict, section: str, today: date | None = None, days: int = 28) -
     )
     health = [sleep(rows, today, days), resting_hr(rows, today, days), hrv(rows, today, days)]
     summary = health_summary([c for c in health if isinstance(c, Card)])
+    monday = aerobic_speed.plan_monday(plan["start_date"]) if plan else None
+    workouts = db.get_plan_workouts_with_match(plan["id"]) if plan else []
+    tonight = sleep_target(rows, today, workouts, monday)
+    if isinstance(health[0], Card):
+        health[0].note["tonight"] = tonight
     if section == "training":
         since = today - timedelta(days=90)
         if plan:
-            monday = aerobic_speed.plan_monday(plan["start_date"])
             since = min(since, monday)
         activities = db.get_activities_for_pace(
             uid,
@@ -381,26 +604,23 @@ def build(user: dict, section: str, today: date | None = None, days: int = 28) -
         )
         if plan:
             current_week = (today - monday).days // 7 + 1
-            workouts = db.get_plan_workouts_with_match(plan["id"])
             path = fitness_tracking.path_payload(fitness_tracking.refresh(plan, db.get_user_by_id(uid), today))
+            response = training_response(workouts, rows, monday, today)
             results += [
-                today_card(workouts, monday, today, summary),
+                today_card(workouts, monday, today, summary, response, tonight),
                 Card("goal", None, None),
+                response,
+                week_review(workouts, rows, monday, today),
                 aerobic_speed_card(db.get_fitness_checkpoints(plan["id"]), path),
                 consistency(workouts, current_week),
                 volume(workouts, [a for a in activities if _day(a["start_time"]) >= monday], monday, current_week),
             ]
         else:
-            results.append(today_card([], None, today, summary))
+            results.append(today_card([], None, today, summary, tonight=tonight))
         results = [r for r in results if r is not None]
         results += [durability(activities), training_load(metrics, days)]
         order = TRAINING_ORDER
     else:
-        rows = _single_provider(
-            [m for m in metrics if any(m.get(f) is not None for f in ("sleep_minutes", "resting_hr", "hrv_ms"))]
-        )
-        health = [sleep(rows, today, days), resting_hr(rows, today, days), hrv(rows, today, days)]
-        summary = health_summary([c for c in health if isinstance(c, Card)])
         results += ([summary] if summary else []) + health
         order = HEALTH_ORDER
     cards = sorted((r for r in results if isinstance(r, Card)), key=lambda c: order.index(c.key))

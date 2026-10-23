@@ -37,7 +37,7 @@ struct ProgressCard: Decodable, Equatable, Sendable, Identifiable {
     /// The series as plottable points: x is a date or plan week, y the card's main measure.
     var points: [ProgressPoint] {
         let field = ["sleep": "value", "resting_hr": "value", "hrv": "value", "durability": "pct",
-                     "load": "short", "volume": "km", "aerobic_speed": "pace", "consistency": "done"][key] ?? "value"
+                     "load": "short", "volume": "km", "aerobic_speed": "pace", "consistency": "done", "response": "hrv"][key] ?? "value"
         return series.compactMap { row in
             guard let y = row[field]?.doubleValue else { return nil }
             if let day = row["date"]?.stringValue, let date = ProgressPoint.day.date(from: day) {

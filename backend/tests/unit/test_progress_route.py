@@ -93,7 +93,7 @@ def test_training_order_and_goal_marker(stub_db):
     ]
     body = client.get("/api/progress?section=training").json()
     assert body["has_plan"] is True and body["plan_id"] == 3
-    assert [c["key"] for c in body["cards"]] == ["goal", "consistency", "volume", "durability"]
+    assert [c["key"] for c in body["cards"]] == ["goal", "week_review", "consistency", "volume", "durability"]
     assert {p["key"] for p in body["pending"]} == {"aerobic_speed", "load"}
 
 

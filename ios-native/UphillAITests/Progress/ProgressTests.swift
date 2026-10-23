@@ -36,6 +36,7 @@ private actor StubProgressService: ProgressServicing {
         requests.append((section, days))
         return try result.get()
     }
+    func fail(_ error: Error) { result = .failure(error) }
 }
 
 @MainActor
@@ -61,7 +62,29 @@ struct ProgressViewModelTests {
         let model = ProgressViewModel(service: service)
         await model.select(.training)
         let requests = await service.requests
-        #expect(requests.last?.0 == .training && requests.last?.1 == 28)
+        #expect(requests.first?.0 == .training && requests.first?.1 == 28)
+    }
+
+    @Test func otherSectionIsPrefetchedAndSwitchingShowsItAtOnce() async throws {
+        let response = try Fixture.decode(ProgressResponse.self, "progress_health.json")
+        let service = StubProgressService(.success(response))
+        let model = ProgressViewModel(service: service)
+        await model.select(.training)
+        #expect(await service.requests.map(\.0) == [.training, .health])
+        // Already cached: no spinner while the switch refreshes it.
+        let switching = Task { await model.select(.health) }
+        #expect(model.state == .loaded && model.response != nil)
+        await switching.value
+    }
+
+    @Test func failedRefreshKeepsCachedCards() async throws {
+        let response = try Fixture.decode(ProgressResponse.self, "progress_health.json")
+        let service = StubProgressService(.success(response))
+        let model = ProgressViewModel(service: service)
+        await model.select(.health)
+        await service.fail(URLError(.notConnectedToInternet))
+        await model.load()
+        #expect(model.state == .loaded && model.response?.cards.count == 4)
     }
 
     @Test func serviceHitsProgressEndpoint() async throws {
@@ -130,5 +153,64 @@ struct ProgressSnakeKeyTests {
         #expect(ProgressText.note(card) == L("Most missed because: %@", L("busy")))
         let next: [String: JSONValue] = ["title": .string("Tempo"), "date": .string("2026-10-23"), "duration_minutes": .int(60)]
         #expect(ProgressText.nextSession(next)?.hasSuffix(L("%lld min", 60)) == true)
+    }
+}
+
+struct TrainingResponseTests {
+    private func card(_ key: String, phase: String = "Build") -> ProgressCard {
+        ProgressCard(key: "response", value: nil, unit: nil, series: [], band: nil,
+                     note: ["key": .string(key), "phase": .string(phase), "week": .int(6),
+                            "hrv_pct": .int(-6), "rhr_delta": .int(2)],
+                     asOf: nil, source: nil)
+    }
+
+    /// Heavy weeks may feel heavy; only strain in a load phase, or no lift in a light one, reads as a warning.
+    @Test func expectedDependsOnPhase() {
+        #expect(TrainingResponse.isExpected(card("response.load.loading")))
+        #expect(TrainingResponse.isExpected(card("response.load.adapting")))
+        #expect(!TrainingResponse.isExpected(card("response.load.strained")))
+        #expect(TrainingResponse.isExpected(card("response.down.steady", phase: "Taper")))
+        #expect(!TrainingResponse.isExpected(card("response.down.loading", phase: "Taper")))
+    }
+
+    @Test func signalsAndPhaseLine() {
+        let c = card("response.load.loading")
+        #expect(TrainingResponse.hrvText(c) == "-6%")
+        #expect(TrainingResponse.rhrText(c) == "+2 bpm")
+        #expect(TrainingResponse.phaseLine(c) == "Build · week 6")
+        #expect(TrainingResponse.phaseRuns(["Base", "Base", "Build", "Recovery", "Build"]) == ["Base", "Build", "Recovery", "Build"])
+    }
+}
+
+struct TodayAdviceTests {
+    private func today(_ adjust: [String: JSONValue]?, pace: String? = nil) -> ProgressCard {
+        var next: [String: JSONValue] = ["type": .string("Tempo")]
+        if let pace { next["target_pace"] = .string(pace) }
+        var note: [String: JSONValue] = ["key": .string("today"), "next": .object(next)]
+        if let adjust { note["adjust"] = .object(adjust) }
+        return ProgressCard(key: "today", value: nil, unit: nil, series: [], band: nil, note: note, asOf: nil, source: nil)
+    }
+
+    @Test func keepCapOrSwap() {
+        #expect(ProgressText.todayAdvice(today(nil)) == nil)
+        let keep = ProgressText.todayAdvice(today(["kind": .string("as_planned")], pace: "4:55-5:05"))
+        #expect(keep?.text == L("Your body reads ready. Run it as planned at %@.", "4:55-5:05") && keep?.change == false)
+        #expect(ProgressText.todayAdvice(today(["kind": .string("cap")]))?.change == false)
+        let swap = ProgressText.todayAdvice(today(["kind": .string("swap_easy"), "minutes": .int(30)]))
+        #expect(swap?.text == L("Your body reads off today. Swap it for %lld min easy at AeT.", 30) && swap?.change == true)
+    }
+
+    @Test func tonightNamesItsReasons() {
+        let note: [String: JSONValue] = ["target_min": .int(490), "debt_min": .int(100), "long_run_tomorrow": .bool(true)]
+        #expect(ProgressText.tonight(note) == [L("Tonight: aim for %@", ProgressText.duration(490)), L("long run tomorrow"),
+                                               L("%@ short this week", ProgressText.duration(100))].joined(separator: " · "))
+        #expect(ProgressText.tonight(["target_min": .int(480), "debt_min": .int(10), "long_run_tomorrow": .bool(false)])
+                == L("Tonight: aim for %@", ProgressText.duration(480)))
+    }
+
+    @Test func reviewWording() {
+        let fact: [String: JSONValue] = ["kind": .string("hard_on_good_days"), "count": .int(2), "total": .int(2)]
+        #expect(ProgressText.reviewHeadline(fact) == L("Hard sessions on good days: %lld of %lld", 2, 2))
+        #expect(ProgressText.reviewAction(fact) == L("You timed your hard sessions well."))
     }
 }

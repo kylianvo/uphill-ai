@@ -56,8 +56,17 @@ struct ProgressScreenshots {
         var cards: [[String: Any]] = [
             ["key": "today", "series": [], "note": ["key": "today", "health": "health.off", "contributors": ["hrv"],
                                                      "next": ["title": "Tempo 3×10 min", "type": "Tempo", "date": nextDay,
-                                                              "duration_minutes": 60]]],
+                                                              "duration_minutes": 60, "target_pace": "4:55-5:05"],
+                                                     "adjust": ["kind": "cap"],
+                                                     "tonight": ["target_min": 510, "usual_min": 470, "debt_min": 100,
+                                                                 "long_run_tomorrow": false]]],
             ["key": "goal", "series": [], "note": [:]],
+            responseCard("response.load.loading", hrvZ: -0.9, rhrZ: 0.7, hrvPct: -6, rhrDelta: 2),
+            ["key": "week_review", "series": [], "note": ["key": "week_review", "week": 5, "facts": [
+                ["kind": "short_sleep_long_run", "count": 1, "total": 1],
+                ["kind": "hard_on_good_days", "count": 2, "total": 3],
+                ["kind": "sessions", "count": 5, "total": 6],
+            ]]],
             ["key": "aerobic_speed", "value": 6.1, "unit": "min/km", "series": pace,
              "note": ["key": "aerobic_speed", "b": "on", "a": "behind", "measured_pct": 3.2]],
             ["key": "consistency", "value": 96.0, "unit": "%", "series": weekly,
@@ -66,6 +75,65 @@ struct ProgressScreenshots {
         ]
         cards += base["cards"] as! [[String: Any]]
         return try response(["section": "training", "connected": true, "has_plan": true, "plan_id": 3, "cards": cards, "pending": []])
+    }
+
+    /// 35 days: Base then Build, with this week's HRV dipping and resting HR rising as in a loading week.
+    private func responseCard(_ key: String, phase: String = "Build", hrvZ: Double, rhrZ: Double,
+                              hrvPct: Int, rhrDelta: Int) -> [String: Any] {
+        let cal = Calendar(identifier: .gregorian)
+        let series: [[String: Any]] = (0..<35).reversed().map { i in
+            let day = cal.date(byAdding: .day, value: -i, to: Date())!
+            let recent = i < 7
+            let wobble = Double((i * 7) % 5) - 2
+            return ["date": ProgressPoint.day.string(from: day),
+                    "phase": i >= 21 ? "Base" : (i < 7 ? phase : "Build"),
+                    "hrv": (recent ? 60.0 * (1 + Double(hrvPct) / 100) : 60.0) + wobble,
+                    "rhr": (recent ? 48.0 + Double(rhrDelta) : 48.0) + wobble / 2]
+        }
+        return ["key": "response", "series": series, "band": [56.5, 63.5], "as_of": series.last!["date"]!,
+                "source": "coros",
+                "note": ["key": key, "phase": phase, "week": 6, "hrv_pct": hrvPct, "rhr_delta": rhrDelta,
+                         "hrv_z": hrvZ, "rhr_z": rhrZ, "rhr_band": [46.6, 49.4]]]
+    }
+
+    @Test func renderTrainingResponse() async throws {
+        if ProcessInfo.processInfo.environment["SCREENSHOT_VI"] != nil {
+            UserDefaults.standard.set("vi", forKey: AppLanguage.storageKey)
+        }
+        defer { UserDefaults.standard.removeObject(forKey: AppLanguage.storageKey) }
+        let states: [(String, String, String, Double, Double, Int, Int)] = [
+            ("loading", "response.load.loading", "Build", -0.9, 0.7, -6, 2),
+            ("adapting", "response.load.adapting", "Build", 0.9, -0.8, 5, -1),
+            ("strained", "response.load.strained", "Peak", -1.9, 1.7, -13, 4),
+            ("taper-stuck", "response.down.loading", "Taper", -0.8, 0.6, -5, 1),
+        ]
+        for (name, key, phase, hz, rz, pct, delta) in states {
+            let card = try JSONCoding.decoder.decode(
+                ProgressCard.self,
+                from: JSONSerialization.data(withJSONObject: responseCard(key, phase: phase, hrvZ: hz, rhrZ: rz,
+                                                                          hrvPct: pct, rhrDelta: delta)))
+            save(TrainingResponseCardView(card: card).padding(UH.Space.regular)
+                    .background(Color(.systemGroupedBackground)), name: "response-\(name)", height: 470)
+            if name == "loading" {
+                save(NavigationStack { TrainingResponseDetailView(card: card) }, name: "response-detail", height: 1250)
+                // A scrubbed day on each kind of chart: the response signal and a generic daily card.
+                let picked = Calendar(identifier: .gregorian).date(byAdding: .day, value: -3, to: Date())!
+                let days = card.series.compactMap { row -> SignalChart.Day? in
+                    guard let s = row["date"]?.stringValue, let d = ProgressPoint.day.date(from: s) else { return nil }
+                    return SignalChart.Day(date: d, value: row["hrv"]?.doubleValue, phase: row["phase"]?.stringValue ?? "")
+                }
+                save(SignalChart(title: "HRV", unit: "ms", days: days, band: card.band, initialSelection: picked)
+                        .padding(UH.Space.regular).background(Color(.systemGroupedBackground)),
+                     name: "response-scrub", height: 330)
+                let rhr = try JSONSerialization.jsonObject(with: Fixture.data("progress_health.json")) as! [String: Any]
+                let rhrCard = try JSONCoding.decoder.decode(ProgressCard.self, from: JSONSerialization.data(
+                    withJSONObject: (rhr["cards"] as! [[String: Any]]).first { $0["key"] as? String == "resting_hr" }!))
+                let rhrDay = rhrCard.points.dropLast(4).last.flatMap { if case .day(let d) = $0.x { d } else { nil } }
+                save(ProgressChart(card: rhrCard, detailed: true, initialSelection: rhrDay)
+                        .padding(UH.Space.regular).background(Color(.systemGroupedBackground)),
+                     name: "chart-scrub", height: 300)
+            }
+        }
     }
 
     private let goal = GoalPath(b: "on", a: "behind", measuredPct: 3.2, expectedPct: 2.5, weeks: 6, confidence: "medium")
