@@ -261,7 +261,7 @@ async def _worded(f: dict[str, Any], tone: str, lang: str, api_key: str) -> str 
         prompt=tpl,
     ) as generation:
         if claude_llm.is_claude(provider):
-            return _parse(await asyncio.to_thread(claude_llm.call, prompt, generation))
+            return _parse(await asyncio.to_thread(claude_llm.call, prompt, generation, thinking=False))
         client = _genai.Client(api_key=api_key)
         response = await asyncio.to_thread(client.models.generate_content, model=settings.GEMINI_MODEL, contents=prompt)
         generation.set_usage(observability.Usage.from_genai(response.usage_metadata))

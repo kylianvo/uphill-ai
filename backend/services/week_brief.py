@@ -118,7 +118,7 @@ async def _generate_week_brief(
             prompt=tpl,
         ) as generation:
             if claude_llm.is_claude(provider):
-                answer = await asyncio.to_thread(claude_llm.call, prompt, generation)
+                answer = await asyncio.to_thread(claude_llm.call, prompt, generation, thinking=False)
             else:
                 response = await asyncio.to_thread(
                     _genai.Client(api_key=api_key).models.generate_content,

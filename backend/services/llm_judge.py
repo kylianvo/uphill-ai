@@ -97,7 +97,9 @@ async def judge_reply(*, question: str, reply: str, evidence: Any, lang: str, ap
             "generation", feature="evaluation", model=claude_llm.model_for(provider), prompt=tpl
         ) as generation:
             if claude_llm.is_claude(provider):
-                answer = await asyncio.to_thread(claude_llm.call, prompt, generation, schema=JudgeScores)
+                answer = await asyncio.to_thread(
+                    claude_llm.call, prompt, generation, schema=JudgeScores, thinking=False
+                )
                 return JudgeScores.model_validate_json(answer).model_dump()
             client = genai.Client(api_key=api_key)
             response = await asyncio.to_thread(
