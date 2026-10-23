@@ -1,6 +1,7 @@
 import functools
 import re
 import time
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from types import SimpleNamespace
@@ -2815,6 +2816,18 @@ class PlanGenerator:
                 _ultra_week_shape(wos)
                 _add_tempo(wos)  # weekday runs are clamped now (no 2 h+ "hard" days): top up the window's quality
                 _cap_start_load(wos, weeks=(1, 2), floor=ultra_rules.weekday_minutes(ultra, ultra_advanced)[0])
+            # The long run (often a mountain day) is the whole day: no second run beside it, only strength.
+            long_days = {(w.get("week_number"), w.get("day_of_week")) for w in wos if w.get("type") == "Long Run"}
+            wos[:] = [
+                w
+                for w in wos
+                if w.get("type") in ("Long Run", "Strength", "Muscular Endurance")
+                or (w.get("week_number"), w.get("day_of_week")) not in long_days
+            ]
+            per_day = Counter((w.get("week_number"), w.get("day_of_week")) for w in wos)
+            for w in wos:
+                if w.get("type") == "Long Run" and per_day[(w.get("week_number"), w.get("day_of_week"))] == 1:
+                    w["session_slot"] = "main"
             for wo in wos:  # a recovery run is short; a longer one is an easy Zone 1 aerobic run, same length
                 if wo.get("type") == "Recovery" and float(wo.get("duration_minutes") or 0) > 60:
                     minutes = float(wo["duration_minutes"])

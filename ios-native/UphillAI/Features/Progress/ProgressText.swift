@@ -14,6 +14,8 @@ enum ProgressText {
         case "consistency": L("Consistency")
         case "aerobic_speed": L("Aerobic speed")
         case "goal": L("Goal")
+        case "response": L("Training response")
+        case "week_review": L("Last week")
         case "today": L("Today")
         case "coach_read": L("Coach's read")
         default: key
@@ -31,7 +33,9 @@ enum ProgressText {
         case "consistency": "checkmark.circle.fill"
         case "aerobic_speed": "speedometer"
         case "goal": "flag.checkered"
+        case "response": "arrow.triangle.2.circlepath.circle.fill"
         case "today": "sun.horizon.fill"
+        case "week_review": "calendar.badge.checkmark"
         default: "text.bubble.fill"
         }
     }
@@ -49,6 +53,20 @@ enum ProgressText {
         case "consistency": return ("\(Int(v))", L("% of sessions"))
         case "aerobic_speed": return (String(format: "%d:%02d", Int(v), Int((v - v.rounded(.down)) * 60)), "/km")
         default: return nil
+        }
+    }
+
+    /// One chart point as the callout shows it, in the card's own unit.
+    static func pointValue(_ card: ProgressCard, _ y: Double) -> String {
+        switch card.key {
+        case "sleep": L("%lldh %02lldm", Int(y) / 60, Int(y) % 60)
+        case "aerobic_speed": String(format: "%d:%02d /km", Int(y), Int((y - y.rounded(.down)) * 60))
+        case "resting_hr", "rhr": "\(Int(y.rounded())) bpm"
+        case "hrv", "response": "\(Int(y.rounded())) ms"
+        case "durability": String(format: "%.1f%%", y)
+        case "volume": String(format: "%.0f km", y)
+        case "consistency": L("%lld sessions", Int(y))
+        default: y.formatted(.number.precision(.fractionLength(0...1)))
         }
     }
 
@@ -95,13 +113,55 @@ enum ProgressText {
         return parts.joined(separator: " · ")
     }
 
-    /// A hard session on a day the body reads off: suggest the easy option, never prescribe.
-    static func todayAdvice(_ card: ProgressCard) -> String? {
-        guard card.noteString("health") == "health.off",
-              let type = card.note["next"]?.objectValue?["type"]?.stringValue,
-              ["Tempo", "Threshold", "Interval", "Intervals", "Hill Intervals", "Hill Repeats", "VO2max", "Race"].contains(type)
-        else { return nil }
-        return L("Your body reads off today. Consider an easy run instead of the hard session.")
+    /// What to do with the next hard session (backend session_adjustment): keep it, cap it, or swap it.
+    /// Returns the line and whether it asks the athlete to change something.
+    static func todayAdvice(_ card: ProgressCard) -> (text: String, change: Bool)? {
+        guard let adjust = card.note["adjust"]?.objectValue, let kind = adjust["kind"]?.stringValue else { return nil }
+        switch kind {
+        case "as_planned":
+            if let pace = card.note["next"]?.objectValue?["target_pace"]?.stringValue, !pace.isEmpty {
+                return (L("Your body reads ready. Run it as planned at %@.", pace), false)
+            }
+            return (L("Your body reads ready. Run it as planned."), false)
+        case "cap":
+            return (L("This dip is expected in a loading week. Run the session as planned, but don't go past its targets."), false)
+        default:
+            let minutes = Int(adjust["minutes"]?.doubleValue ?? 45)
+            return (L("Your body reads off today. Swap it for %lld min easy at AeT.", minutes), true)
+        }
+    }
+
+    /// Tonight's sleep target with its reason: "Tonight: aim for 8h 10m · 1h 40m short this week".
+    static func tonight(_ note: [String: JSONValue]?) -> String? {
+        guard let note, let target = note["target_min"]?.doubleValue else { return nil }
+        var parts = [L("Tonight: aim for %@", duration(Int(target)))]
+        if note["long_run_tomorrow"]?.boolValue == true { parts.append(L("long run tomorrow")) }
+        if let debt = note["debt_min"]?.doubleValue, debt >= 30 { parts.append(L("%@ short this week", duration(Int(debt)))) }
+        return parts.joined(separator: " · ")
+    }
+
+    static func duration(_ minutes: Int) -> String { L("%lldh %02lldm", minutes / 60, minutes % 60) }
+
+    /// Last week's facts (backend week_review), most telling first: the headline, and what to do next.
+    static func reviewHeadline(_ fact: [String: JSONValue]) -> String {
+        let count = Int(fact["count"]?.doubleValue ?? 0), total = Int(fact["total"]?.doubleValue ?? 0)
+        switch fact["kind"]?.stringValue {
+        case "short_sleep_long_run":
+            return total == 1 ? L("Short sleep before your long run") : L("Short sleep before %lld of %lld long runs", count, total)
+        case "hard_on_good_days": return L("Hard sessions on good days: %lld of %lld", count, total)
+        default: return L("%lld of %lld sessions done", count, total)
+        }
+    }
+
+    static func reviewAction(_ fact: [String: JSONValue]) -> String? {
+        let count = Int(fact["count"]?.doubleValue ?? 0), total = Int(fact["total"]?.doubleValue ?? 0)
+        switch fact["kind"]?.stringValue {
+        case "short_sleep_long_run": return L("Bank an extra 30 min the two nights before your next long run.")
+        case "hard_on_good_days":
+            return count == total ? L("You timed your hard sessions well.")
+                : L("When your numbers read low, move the hard session a day rather than pushing through.")
+        default: return count == total ? L("Every session done.") : nil
+        }
     }
 
     static let aGoalNextStep = L("To reach A: keep easy runs at AeT heart rate and complete every long run.")
@@ -127,6 +187,7 @@ enum ProgressText {
         case "consistency": L("Consistency appears after 2 plan weeks")
         case "volume": L("Volume appears after 3 weeks of runs")
         case "aerobic_speed": L("Aerobic speed appears after 3 weeks of easy runs")
+        case "response": L("Training response appears after 14 days of HRV and resting HR")
         default: ""
         }
     }
@@ -141,6 +202,7 @@ enum ProgressText {
         case "volume": L("Kilometres and climb you ran each week, against what the plan asked for.")
         case "consistency": L("Planned sessions you completed in each finished week. Sessions your watch matched count as done.")
         case "aerobic_speed": L("The pace you hold at your aerobic threshold heart rate on easy runs. Getting faster at the same heart rate means your aerobic base is growing.")
+        case "response": L("Your last 7 days of HRV and resting HR against the 4 weeks before, read against your plan's phase. In Base, Build and Peak weeks, HRV a little down and resting HR a little up is the work landing; in Recovery and Taper weeks both should come back to usual or better. Both well outside your usual in any week is the signal to ease off.")
         default: ""
         }
     }
