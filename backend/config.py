@@ -83,6 +83,7 @@ class Config:
     CLAUDE_TEXT_EFFORT: str = os.getenv("CLAUDE_TEXT_EFFORT", "low")
     GEAR_LLM_PROVIDER: str = os.getenv("GEAR_LLM_PROVIDER", "gemini")
     NUTRITION_LLM_PROVIDER: str = os.getenv("NUTRITION_LLM_PROVIDER", "gemini")
+    GOAL_JUDGE_LLM_PROVIDER: str = os.getenv("GOAL_JUDGE_LLM_PROVIDER", "gemini")
     API_PORT: int = int(os.getenv("PORT", "8000"))
     API_HOST: str = os.getenv("HOST", "0.0.0.0")
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")

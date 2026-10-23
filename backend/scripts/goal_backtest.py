@@ -10,7 +10,7 @@ field curve excludes the held-out year. Three estimators are compared on the sam
 
   old   - the pre-LLM engine: one reference (the most relevant prior result), physics A/B/C
   rules - the new rules tier: median of all anchors
-  llm   - the Gemini judge (skipped with --no-llm or without GEMINI_API_KEY)
+  llm   - the model judge on GOAL_JUDGE_LLM_PROVIDER (skipped with --no-llm or without that provider's key)
 
 Metrics: A-C hit rate (actual finish between ambitious and safe) and median |B - actual| %,
 overall and by confidence. Ship when llm >= old on both. Writes tests/golden/report_goal.md.
@@ -114,7 +114,8 @@ def run(limit: int | None = None, use_llm: bool = True) -> dict[str, Any]:
     from config import settings
     from services import goal_anchors, goal_context, goal_judge
 
-    use_llm = use_llm and bool(settings.GEMINI_API_KEY)
+    claude = settings.GOAL_JUDGE_LLM_PROVIDER == "claude"
+    use_llm = use_llm and bool(settings.ANTHROPIC_API_KEY if claude else settings.GEMINI_API_KEY)
     results: dict[str, list[dict[str, Any]]] = {"old": [], "rules": [], "llm": []}
     by_confidence: dict[str, list[dict[str, Any]]] = {}
     for uid, held, prior in cases(limit):

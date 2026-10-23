@@ -76,6 +76,8 @@ _SPAN_NAMES = frozenset(
         "RunnableLambda",
         "_tools_condition",
         "block_narrative",
+        "claude",
+        "claude_retry",
         "week_brief",
         "coach_nudge",
         "chat_summary",

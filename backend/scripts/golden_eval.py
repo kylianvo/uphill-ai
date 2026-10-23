@@ -702,7 +702,12 @@ def gate_failures(service: str, items: list[dict], scores: list[dict]) -> list[s
 
 
 # The per-feature provider flag each service's --provider switches (docs/superpowers/specs/2026-10-23-claude-text-generation-design.md).
-PROVIDER_FLAGS = {"gear": "GEAR_LLM_PROVIDER", "nutrition": "NUTRITION_LLM_PROVIDER"}
+PROVIDER_FLAGS = {
+    "gear": "GEAR_LLM_PROVIDER",
+    "nutrition": "NUTRITION_LLM_PROVIDER",
+    "goal": "GOAL_JUDGE_LLM_PROVIDER",
+    "goal_judge": "GOAL_JUDGE_LLM_PROVIDER",
+}
 
 
 def _eval_model(service: str) -> str:

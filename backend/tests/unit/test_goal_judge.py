@@ -115,3 +115,28 @@ def test_assess_skips_llm_when_disabled_or_keyless(monkeypatch):
 def test_prompt_carries_language_instruction():
     assert "Vietnamese" in goal_judge.build_prompt({}, [], "vi")
     assert "in English." in goal_judge.build_prompt({}, [], "en")
+
+
+def test_assess_on_claude_uses_server_key_and_claude_engines(monkeypatch):
+    from config import settings
+
+    monkeypatch.setattr(settings, "GOAL_JUDGE_LLM_PROVIDER", "claude")
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "anthropic-key")
+    monkeypatch.setattr(goal_judge, "_call_gemini", lambda p, k: pytest.fail("gemini must not run"))
+    answers = iter([json.dumps(_output(a=500.0)), json.dumps(_output())])
+    monkeypatch.setattr(goal_judge, "_call_claude", lambda prompt: next(answers))
+    # The athlete's Gemini key does not enable or pay for the Claude judge.
+    assert goal_judge.assess({"race": RACE}, ANCHORS, api_key=None)["engine"] == "claude_retry"
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "")
+    assert goal_judge.assess({"race": RACE}, ANCHORS, api_key="gemini-key")["engine"] == "rules"
+
+
+def test_call_claude_returns_structured_text(monkeypatch):
+    from unittest.mock import patch
+
+    from tests.unit.test_claude_llm import fake_message
+
+    with patch("services.claude_llm.generate", return_value=fake_message(json.dumps(_output()))) as generate:
+        raw = goal_judge._call_claude("prompt")
+    assert GoalOutput.model_validate_json(raw).goals.b == 490.0
+    assert generate.call_args.kwargs["schema"] is GoalOutput

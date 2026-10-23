@@ -117,7 +117,8 @@ asks, the VI translation prompt) stay in-code.
   `observability.Usage.from_anthropic(message.usage)` (input includes cache read/write tokens; output
   includes thinking).
 - **Allowlist** (`services/observability_policy.py`): `anthropic` provider/system and
-  `claude-haiku-5-5` are already allowed (#172). The coach chat PR adds `claude-sonnet-5-5`. No new
+  `claude-haiku-5-5` are already allowed (#172). The `claude` / `claude_retry` span names were not
+  (plan generation's Claude spans exported as `operation`); the goal judge PR adds them. The coach chat PR adds `claude-sonnet-5-5`. No new
   span names, features or metadata keys: the existing ones carry over, and the `engine` metadata value
   is `claude` instead of `gemini`.
 - **Prices** (`config.DEFAULT_LLM_PRICES_USD_PER_M`): Haiku 5.5 is present; Sonnet 5.5 is added with
