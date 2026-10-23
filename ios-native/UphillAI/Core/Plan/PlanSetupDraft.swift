@@ -462,12 +462,7 @@ struct PlanSetupDraft: Equatable, Sendable {
     }
 
     /// "50 km · 3,200 m D+", or nil before a distance is set.
-    var courseLine: String? {
-        guard let km = distanceKm else { return nil }
-        let kmText = km.formatted(.number.precision(.fractionLength(0...1)).locale(AppLanguage.current.locale))
-        guard let gain = elevationGainM, gain > 0 else { return L("%@ km", kmText) }
-        return L("%@ km · %@ m D+", kmText, Int(gain).formatted(.number.locale(AppLanguage.current.locale)))
-    }
+    var courseLine: String? { PlanSummary.courseLine(km: distanceKm, gainM: elevationGainM) }
 }
 
 /// POST /api/auth/onboarding. Nil fields are omitted from the JSON.

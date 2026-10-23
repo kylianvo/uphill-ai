@@ -266,6 +266,7 @@ Rushing through reps without full range of motion.
             model: model,
             onStartNew: {},
             onSchedule: {},
+            onAdapt: {},
             initialPlans: [
                 model.snapshot!.plan,
                 TestData.plan(["id": 99, "race_name": "UTMB OCC 55K", "race_date": "2026-08-28", "total_weeks": 16, "plan_status": "archived"])

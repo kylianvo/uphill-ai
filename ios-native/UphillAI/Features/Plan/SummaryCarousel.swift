@@ -91,7 +91,9 @@ struct SummaryCarousel: View {
                     weekTrendChart
                 }
 
-                Text(verbatim: L("%lld of %lld sessions done", done, active) + " · "
+                // The % comes from the same counts so the two always agree.
+                Text(verbatim: L("%lld of %lld sessions done", done, active)
+                     + (active > 0 ? " (\(Int((Double(done) / Double(active) * 100).rounded()))%)" : "") + " · "
                      + L("%@ of %@ km", comp.actualKm.formatted(.number.precision(.fractionLength(0...1))),
                          comp.plannedKm.formatted(.number.precision(.fractionLength(0...1)))))
                     .font(UH.TextStyle.caption)
@@ -156,6 +158,7 @@ struct SummaryCarousel: View {
     @ViewBuilder
     private var weekTrendChart: some View {
         let vols = model.weeklyVolumes
+        let labeled = PlanSummary.trendLabelWeeks(total: vols.map(\.week).max() ?? 0, selected: model.selectedWeek)
         Chart {
             ForEach(vols, id: \.week) { week in
                 let val = max(week.km, 1.0)
@@ -190,11 +193,12 @@ struct SummaryCarousel: View {
         .frame(height: 54)
         .chartXAxis {
             AxisMarks(values: .automatic) { value in
-                AxisValueLabel {
-                    if let str = value.as(String.self) {
+                AxisValueLabel(collisionResolution: .disabled) {
+                    if let str = value.as(String.self), let week = Int(str.dropFirst()), labeled.contains(week) {
                         Text(str)
                             .font(UH.TextStyle.eyebrow.monospacedDigit())
-                            .foregroundStyle(UH.Palette.secondary)
+                            .foregroundStyle(str == "W\(model.selectedWeek)" ? UH.Palette.accentInk : UH.Palette.secondary)
+                            .fixedSize()
                     }
                 }
             }
