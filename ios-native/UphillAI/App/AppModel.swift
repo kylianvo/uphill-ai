@@ -155,6 +155,14 @@ final class AppModel {
         }
     }
     var actingAsAthlete: CoachedAthleteRow? = nil
+    /// The action a coach tapped on the Athletes tab, picked up once by the runner's Plan tab.
+    var pendingCoachAction: CoachAction? = nil
+
+    /// Hands the pending Athletes-tab action to the Plan tab exactly once.
+    func takePendingCoachAction() -> CoachAction? {
+        defer { pendingCoachAction = nil }
+        return pendingCoachAction
+    }
     var coachedAthleteProfile: User? = nil
     var pendingInvites: [CoachingInvite] = []
     let generation: GenerationCenter
@@ -171,7 +179,9 @@ final class AppModel {
     /// The setup behind the last generation, so "Try again" re-submits the same answers.
     private(set) var lastSetup: PlanSetupViewModel?
 
-    func makeSetup(mode: PlanSetupViewModel.Mode) -> PlanSetupViewModel {
+    /// With `athlete`, a coach builds a plan for that runner: their profile prefills the setup and the
+    /// request goes to the runner's coaching route (a draft the coach then publishes).
+    func makeSetup(mode: PlanSetupViewModel.Mode, athlete: User? = nil) -> PlanSetupViewModel {
         // Onboarding treats "nothing found" as success; only a failed connect returns a message.
         var connectHealth: (@MainActor () async -> String?)?
         if appleHealthEnabled {
@@ -181,7 +191,8 @@ final class AppModel {
                 return self.appleHealthConnected ? nil : self.appleHealthMessage
             }
         }
-        let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session, raceService: RaceMatchService(client: client),
+        let setup = PlanSetupViewModel(mode: mode, user: athlete ?? session.user,
+                                       service: generationService.scoped(toAthlete: athlete?.id), generation: generation, session: session, raceService: RaceMatchService(client: client),
                                        goalEstimateService: goalEstimateService, raceHistoryService: raceHistoryService,
                                        deviceService: deviceConnectionService,
                                        loadWatchVolume: { [client] in
@@ -333,6 +344,7 @@ final class AppModel {
     }
 
     func enterAthleteView(athlete: CoachedAthleteRow) {
+        pendingCoachAction = nil // an action tapped for an earlier runner must not fire on this one
         actingAsAthlete = athlete
         Task {
             async let p = try? coachingService.fetchAthleteProfile(athleteId: athlete.athleteId)

@@ -38,6 +38,7 @@ from db import (
     delete_plan,
     delete_session,
     delete_source,
+    generated_block,
     get_active_coach_link_for_athlete,
     get_active_plan,
     get_all_knowledge_cards,
@@ -73,13 +74,16 @@ from db import (
     list_sources,
     make_rest_day,
     mark_onboarding_complete,
+    mark_plan_reviewed,
     mark_profile_fields_athlete_set,
     mark_profile_fields_estimated,
+    publish_plan,
     query_nutrition_catalog,
     remove_coach_athlete_link,
     replace_shoe_rotation,
     save_block_review,
     save_workouts,
+    set_coach_athlete_plan_type,
     set_max_continuous_jog_min,
     set_plan_active,
     set_plan_athlete_tier,
@@ -112,8 +116,10 @@ from services import (
     calendar_ops,
     coros_sync,
     fitness_snapshot,
+    goal_service,
     observability,
     plan_adequacy,
+    plan_lint,
     race_history,
     race_readiness,
     race_review,
@@ -1599,6 +1605,18 @@ def remove_from_roster(link_id: int, user: dict[str, Any] = Depends(get_current_
     return updated
 
 
+class PlanTypeRequest(BaseModel):
+    plan_type: Literal["review", "coached"]
+
+
+@app.patch("/api/coaching/roster/{link_id}")
+def set_roster_plan_type(link_id: int, request: PlanTypeRequest, coach: dict[str, Any] = Depends(require_coach)):
+    updated = set_coach_athlete_plan_type(link_id, coach["id"], request.plan_type)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Roster link not found.")
+    return updated
+
+
 @app.get("/api/coaching/roster")
 def get_roster(coach: dict[str, Any] = Depends(require_coach)):
     return get_roster_for_coach(coach["id"])
@@ -1678,6 +1696,71 @@ def get_athlete_draft_plan(athlete_id: int, acting_user: dict[str, Any] = Depend
     if not plan:
         return {"draft": False}
     return {"draft": True, "plan": plan, "workouts": get_plan_workouts(plan["id"])}
+
+
+class PlanReviewRequest(BaseModel):
+    note: str | None = None
+
+
+def _review_state(plan: dict[str, Any]) -> dict[str, Any]:
+    """What a coach needs to review a runner's plan: weeks generated vs reviewed, the plan checker's
+    findings on the stored weeks, and whether the goal fits the runner's week."""
+    workouts = get_plan_workouts(plan["id"])
+    weeks = {w["week_number"] for w in workouts}
+    try:
+        issues = [
+            {"code": i.code, "week": i.week, "message": i.message}
+            for i in plan_lint.lint_weeks(workouts, weeks, get_profile(plan.get("athlete_tier")))
+        ]
+    except Exception:
+        _goal_logger.exception("plan review lint failed", extra={"fields": {"plan_id": plan["id"]}})
+        issues = []
+    feasibility = goal_service.feasibility_for(plan)
+    return {
+        "generated_block": generated_block(plan["id"]),
+        "reviewed_block": plan.get("coach_reviewed_block"),
+        "reviewed_at": plan.get("coach_reviewed_at"),
+        "reviewed_by": plan.get("coach_reviewed_by"),
+        "issues": issues,
+        "feasibility": feasibility["verdict"] if feasibility else None,
+        "levers": feasibility["levers"] if feasibility else [],
+    }
+
+
+def _require_coach_of(athlete_id: int, acting_user: dict[str, Any]) -> None:
+    """Review and publish are the coach's sign-off: the runner can't stamp their own plan."""
+    if acting_user["id"] == athlete_id:
+        raise HTTPException(status_code=403, detail="Only the runner's coach can do this.")
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/review")
+def get_plan_review(athlete_id: int, plan_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    _verify_plan_ownership(plan_id, athlete_id)
+    return _review_state(get_plan_by_id(plan_id))
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/review")
+def post_plan_review(
+    athlete_id: int,
+    plan_id: int,
+    request: PlanReviewRequest,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    _require_coach_of(athlete_id, acting_user)
+    _verify_plan_ownership(plan_id, athlete_id)
+    mark_plan_reviewed(plan_id, athlete_id, acting_user["id"])
+    if request.note and request.note.strip():
+        create_coach_note(acting_user["id"], athlete_id, "plan", plan_id, request.note.strip())
+    return _review_state(get_plan_by_id(plan_id))
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/publish")
+def post_plan_publish(athlete_id: int, plan_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    _require_coach_of(athlete_id, acting_user)
+    result = publish_plan(plan_id, athlete_id, acting_user["id"])
+    if result is None:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    return result
 
 
 @app.put("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{workout_id}")
@@ -2790,6 +2873,8 @@ async def _generate_next_block_for_athlete(
                 block_context=block_context,
             )
             save_workouts(request.plan_id, workouts)
+            if job_owner_user_id != athlete_id:  # the coach built this week, so there's nothing left to review
+                mark_plan_reviewed(request.plan_id, athlete_id, job_owner_user_id)
             set_plan_athlete_tier(request.plan_id, resolved_tier)
             _store_plan_snapshot(request.plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts

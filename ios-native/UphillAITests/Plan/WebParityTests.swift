@@ -11,6 +11,7 @@ struct PlanServiceScopeTests {
             paths.withLock { $0.append(request.url?.path() ?? "") }
             switch request.url?.path() {
             case "/api/coaching/athletes/42/active-plan": return (200, json(["active": false]))
+            case "/api/coaching/athletes/42/plans/draft": return (200, json(["draft": false]))
             case "/api/coaching/athletes/42/block-completion/7":
                 return (200, json(["blocks": [], "max_generated_week": 2]))
             default: return (404, json(["detail": "unexpected"]))
@@ -24,6 +25,7 @@ struct PlanServiceScopeTests {
         _ = try? await scoped.blockEvaluation(planID: 7, block: 1)
         #expect(paths.withLock { $0 } == [
             "/api/coaching/athletes/42/active-plan",
+            "/api/coaching/athletes/42/plans/draft",  // no active plan: a coach also looks for an unpublished draft
             "/api/coaching/athletes/42/block-completion/7",
             "/api/coaching/athletes/42/plans/7/goal",
             "/api/coaching/athletes/42/week-review/7/3",

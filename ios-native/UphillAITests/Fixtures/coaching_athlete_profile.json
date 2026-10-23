@@ -2,6 +2,7 @@
   "aet_hr": 151,
   "age": 34,
   "ant_hr": 172,
+  "coach_profile_changes": [],
   "coros_running_level": null,
   "coros_vo2max": null,
   "current_weekly_km": 42.0,
@@ -9,11 +10,36 @@
   "days_per_week": 4,
   "dob": null,
   "email": "ios-preview@uphill.ai",
+  "field_sources": {
+    "aet_hr": {
+      "method": "unknown",
+      "source": "athlete"
+    },
+    "ant_hr": {
+      "method": "unknown",
+      "source": "athlete"
+    },
+    "max_hr": {
+      "source": "athlete"
+    },
+    "resting_hr": {
+      "source": "athlete"
+    },
+    "threshold_pace": {
+      "source": "default"
+    },
+    "zone2_pace_max": {
+      "source": "athlete"
+    },
+    "zone2_pace_min": {
+      "source": "athlete"
+    }
+  },
   "gender": null,
   "goal_type": null,
   "has_password": true,
   "height_cm": null,
-  "id": 7,
+  "id": 3,
   "injury_history": "Mild Achilles tightness after long technical descents; eccentric calf drops help.",
   "is_coach": false,
   "long_run_day": "Saturday",
@@ -26,6 +52,7 @@
   "resting_hr": 52,
   "role": "user",
   "threshold_pace": null,
+  "threshold_source": "unknown",
   "weight_kg": null,
   "zone2_pace_max": "5:45",
   "zone2_pace_min": "6:30"

@@ -204,6 +204,16 @@ struct PlanView: View {
                         // 1. Race and goal header
                         raceGoalHeader
 
+                        if let app, let athlete = app.actingAsAthlete {
+                            CoachFocusCard(app: app, athleteId: athlete.athleteId, athleteName: athlete.displayName,
+                                           plan: model.snapshot?.plan,
+                                           onAdapt: { showAdapt = true },
+                                           onBuildPlan: onBuildPlan,
+                                           onBuildNextWeek: { showNextWeek = model.nextWeekOffer != nil },
+                                           onChanged: { await model.load() })
+                                .padding(.horizontal, UH.Space.regular)
+                        }
+
                         // 3. Summary carousel
                         SummaryCarousel(model: model,
                                         onGoal: { showGoal = true },
@@ -308,7 +318,8 @@ struct PlanView: View {
                 }
                 .animation(reduceMotion ? nil : UH.Motion.standard, value: readyBanner)
                 .task(id: "\(model.selectedWeek)-\(model.days.count)") {
-                    guard model.selectedWeek == model.currentWeek else { return }
+                    // A coach lands on the coach card at the top, not on today's session.
+                    guard model.selectedWeek == model.currentWeek, app?.actingAsAthlete == nil else { return }
                     // Let the lazy list lay out its rows before scrolling.
                     await Task.yield()
                     try? await Task.sleep(for: .milliseconds(150))

@@ -29,7 +29,7 @@ struct GenerationService: GenerationServicing {
     }
 
     func generatePlan(_ body: PlanBody) async throws -> JobStart {
-        try await client.send(.send(.post, "/api/coach/generate-plan", body: body))
+        try await client.send(.send(.post, "\(prefix)/generate-plan", body: body))
     }
 
     func generateNextBlock(_ body: NextBlockBody) async throws -> JobStart {

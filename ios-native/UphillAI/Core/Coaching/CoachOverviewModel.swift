@@ -19,6 +19,21 @@ struct CoachOverviewAthlete: Codable, Sendable, Identifiable, Equatable {
     let adherencePct: Double?
     let lastCompleted: CoachLastCompletedWorkout?
     let missedStreak: Int
+    // Coach workbench fields; optional so older payloads still decode.
+    var planType: String? = nil
+    var phase: String? = nil
+    var raceDate: String? = nil
+    var daysToRace: Int? = nil
+    var week: CoachWeekStats? = nil
+    var prevWeeks: [CoachWeekStats]? = nil
+    // convertFromSnakeCase turns "load_4w_minutes" into load4WMinutes (and 14d/7d alike).
+    var load4WMinutes: [Double]? = nil
+    var adherence14D: Double? = nil
+    var lastSyncAt: String? = nil
+    var signals: [CoachSignal]? = nil
+    var status: String? = nil
+    var mixMinutes: CoachMix? = nil
+    var recovery: CoachRecovery? = nil
 
     init(
         athleteId: Int,
@@ -39,6 +54,42 @@ struct CoachOverviewAthlete: Codable, Sendable, Identifiable, Equatable {
         self.lastCompleted = lastCompleted
         self.missedStreak = missedStreak
     }
+}
+
+enum CoachSeverity: String, Codable, Sendable, CaseIterable {
+    case actNow = "act_now"
+    case reviewBuild = "review_build"
+    case checkIn = "check_in"
+    case highlight
+}
+
+/// One triage reason for a runner; the device words it from `code` + `params` (EN/VI).
+/// `params` keys stay snake_case: the decoder's key strategy doesn't touch dictionary keys.
+struct CoachSignal: Codable, Sendable, Equatable {
+    let code: String
+    let severity: CoachSeverity
+    let params: [String: JSONValue]
+}
+
+struct CoachWeekStats: Codable, Sendable, Equatable {
+    let sessionsPlanned: Int
+    let sessionsDone: Int
+    let keyPlanned: Int
+    let keyDone: Int
+    let minutesPlanned: Int
+    let minutesDone: Int
+}
+
+struct CoachMix: Codable, Sendable, Equatable {
+    let easy: Double
+    let long: Double
+    let quality: Double
+}
+
+struct CoachRecovery: Codable, Sendable, Equatable {
+    let hrvStatus: String?
+    let restingHr: Int?
+    let sleepAvg7DMin: Int?
 }
 
 struct CoachAthleteActivePlan: Codable, Sendable, Equatable {

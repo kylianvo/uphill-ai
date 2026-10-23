@@ -57,7 +57,7 @@ def milestones(workouts: list[dict[str, Any]], current_week: int) -> list[Milest
         ws = weeks[wk]
         phase = next((w.get("phase") for w in ws if w.get("phase")), "")
         if "long_run_3h" not in found and any(
-            plan_lint._is_long(w) and plan_lint._min(w) >= LONG_RUN_MILESTONE_MIN for w in ws
+            plan_lint.is_long(w) and plan_lint._min(w) >= LONG_RUN_MILESTONE_MIN for w in ws
         ):
             found["long_run_3h"] = wk
         if "first_recovery_week" not in found and phase not in plan_lint.DOWN_PHASES and plan_lint._is_down(weeks, wk):
