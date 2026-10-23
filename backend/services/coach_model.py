@@ -320,6 +320,9 @@ class ClaudeCoachModel:
         params: dict[str, Any] = {"model": self.model, "system": request.system, "messages": messages}
         if self.tools and request.tools_enabled:
             params["tools"] = self._tool_defs()
+        # Haiku 5.5 rejects disabled thinking above effort high.
+        if settings.CLAUDE_COACH_THINKING == "disabled" and settings.CLAUDE_COACH_EFFORT in ("low", "medium", "high"):
+            params["thinking"] = {"type": "disabled"}
         return params
 
     async def count_tokens(self, request: ModelRequest) -> int:

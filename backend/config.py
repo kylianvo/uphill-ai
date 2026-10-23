@@ -96,6 +96,7 @@ class Config:
     COACH_CHAT_LLM_PROVIDER: str = os.getenv("COACH_CHAT_LLM_PROVIDER", "gemini")
     CLAUDE_COACH_MODEL: str = os.getenv("CLAUDE_COACH_MODEL", "claude-haiku-5-5")
     CLAUDE_COACH_EFFORT: str = os.getenv("CLAUDE_COACH_EFFORT", "low")
+    CLAUDE_COACH_THINKING: str = os.getenv("CLAUDE_COACH_THINKING", "adaptive")  # adaptive | disabled
     API_PORT: int = int(os.getenv("PORT", "8000"))
     API_HOST: str = os.getenv("HOST", "0.0.0.0")
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")

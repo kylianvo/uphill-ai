@@ -490,3 +490,30 @@ def test_coach_prompts_use_the_claude_label_on_claude(monkeypatch):
         monkeypatch.setattr(settings, "COACH_CHAT_LLM_PROVIDER", "claude")
         coach_prompts.get_coach_prompt_template(name="chat_summary")
         assert get.call_args.kwargs["label"] == "claude-production"
+
+
+def test_claude_coach_model_disables_thinking_when_configured(monkeypatch):
+    import asyncio
+    from types import SimpleNamespace as NS
+    from uuid import uuid4
+
+    from config import settings
+    from services.coach_model import ChatMessage, ModelRequest
+
+    final = NS(content=[NS(type="text", text="Hi.")], usage=NS(input_tokens=10, output_tokens=2))
+    request = ModelRequest(messages=(ChatMessage("user", "Q"),), system="SYS", max_output_tokens=512, call_id=uuid4())
+
+    def sent(thinking: str, effort: str = "low") -> dict:
+        monkeypatch.setattr(settings, "CLAUDE_COACH_THINKING", thinking, raising=False)
+        monkeypatch.setattr(settings, "CLAUDE_COACH_EFFORT", effort)
+        model, client, _ = _claude_model([NS(type="text", text="Hi.")], final)
+
+        async def collect():
+            return [e async for e in model.stream(request)]
+
+        asyncio.run(collect())
+        return client.messages.stream.call_args.kwargs
+
+    assert sent("disabled")["thinking"] == {"type": "disabled"}
+    assert "thinking" not in sent("adaptive")
+    assert "thinking" not in sent("disabled", effort="max")
