@@ -20,7 +20,7 @@
 - Paid runs and integration tests use the local Docker stack (Postgres on host port 5433, local Qdrant with `scripts/load_kb.py`), never the prod database.
 - `LANGFUSE_EXPORT_CONTENT` stays `false`; the only new exported metadata key is `request_id`.
 - A lever ships for a feature only if, on every check in the spec's "Quality bar per feature" table, the result is at least today's Haiku and at least Gemini where a Gemini baseline exists.
-- Each PR carries the `.claude/skills/llm-change-process/SKILL.md` checklist plus its before/after numbers from `docs/haiku-latency/results.md`.
+- Each PR carries the `.claude/skills/llm-change-process/SKILL.md` checklist plus its before/after numbers from `docs/superpowers/haiku-latency/results.md`.
 - Prod deploys are by hand (staging is stopped); diff the prod `backend/.env` keys after every deploy.
 
 ## Review Focus
@@ -36,10 +36,10 @@
 ### Task 0: Start from current main and record what prod runs
 
 **Files:**
-- Create: `docs/haiku-latency/results.md`
+- Create: `docs/superpowers/haiku-latency/results.md`
 
 **Interfaces:**
-- Produces: `docs/haiku-latency/results.md` with a "Prod settings" section and a "Baseline" table every later task appends to.
+- Produces: `docs/superpowers/haiku-latency/results.md` with a "Prod settings" section and a "Baseline" table every later task appends to.
 
 - [ ] **Step 1: Commit the uncommitted thinking-off change as its own commit**
 
@@ -59,12 +59,12 @@ Expected: all pass.
 - [ ] **Step 3: Read prod's Claude settings (read-only)**
 
 Run: `ssh root@45.119.215.120 "grep -E '_LLM_PROVIDER|_EFFORT|CLAUDE_|PLAN_LLM' /opt/uphill-ai-backend/backend/.env"`
-Write the values into `docs/haiku-latency/results.md` under "Prod settings". Features whose provider is `gemini` in prod are measured but their prod check in Task 9 is skipped.
+Write the values into `docs/superpowers/haiku-latency/results.md` under "Prod settings". Features whose provider is `gemini` in prod are measured but their prod check in Task 9 is skipped.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/haiku-latency/results.md
+git add docs/superpowers/haiku-latency/results.md
 git commit -m "docs: record prod Claude settings for the Haiku latency work"
 ```
 
@@ -138,8 +138,8 @@ Open PR (a). No behaviour change, so it deploys first and gives Task 2 the think
 ### Task 2: Baseline of today's Haiku (paid, approval first)
 
 **Files:**
-- Create: `docs/haiku-latency/baseline/` (copied reports and persona JSONs)
-- Modify: `docs/haiku-latency/results.md` ("Baseline" table)
+- Create: `docs/superpowers/haiku-latency/baseline/` (copied reports and persona JSONs)
+- Modify: `docs/superpowers/haiku-latency/results.md` ("Baseline" table)
 
 **Interfaces:**
 - Consumes: prod settings from Task 0 (Plan effort to reproduce).
@@ -167,7 +167,7 @@ python scripts/plan_live_personas.py --provider claude --effort <prod PLAN_LLM_E
 python scripts/plan_live_personas.py --provider gemini --out <scratch>/personas-gemini --budget-usd 5
 ```
 
-After each `compare`, copy `tests/golden/report_<service>.md` to `docs/haiku-latency/baseline/report_<service>_haiku.md` (the next run overwrites it). Copy the persona JSONs to `docs/haiku-latency/baseline/personas-{haiku,gemini}/`.
+After each `compare`, copy `tests/golden/report_<service>.md` to `docs/superpowers/haiku-latency/baseline/report_<service>_haiku.md` (the next run overwrites it). Copy the persona JSONs to `docs/superpowers/haiku-latency/baseline/personas-{haiku,gemini}/`.
 
 Expected: every command finishes; `[gate]` lines are recorded as they are (a baseline failure is a fact to record, not to fix here).
 
@@ -187,7 +187,7 @@ git commit -m "docs: Haiku baseline (quality and latency) before latency levers"
 
 **Files:**
 - Already changed in Task 0's WIP commit: `backend/services/{gear_planner,nutrition_planner,goal_judge}.py`, `backend/services/claude_llm.py`
-- Modify: `docs/haiku-latency/results.md`
+- Modify: `docs/superpowers/haiku-latency/results.md`
 
 **Interfaces:**
 - Consumes: `claude_llm.generate(..., thinking: bool = True)` (WIP commit); baseline from Task 2.
@@ -201,7 +201,7 @@ python scripts/golden_eval.py compare --service goal_judge --provider claude
 GOAL_JUDGE_LLM_PROVIDER=claude python scripts/goal_backtest.py
 ```
 
-Copy reports to `docs/haiku-latency/thinking-off/`.
+Copy reports to `docs/superpowers/haiku-latency/thinking-off/`.
 
 - [ ] **Step 2: Decide per feature**
 
@@ -222,7 +222,7 @@ Open PR (b) with the llm-change-process checklist and the before/after table.
 ### Task 4: Find what makes Plan's slowest 5% take ~400 s
 
 **Files:**
-- Modify: `docs/haiku-latency/results.md` ("Plan tail" section)
+- Modify: `docs/superpowers/haiku-latency/results.md` ("Plan tail" section)
 
 **Interfaces:**
 - Produces: a finding that decides whether Task 5 is enough or a targeted fix task is added after it.
@@ -242,7 +242,7 @@ One paragraph in `results.md`: which of (a) runaway output hitting the cap, (b) 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/haiku-latency/results.md
+git add docs/superpowers/haiku-latency/results.md
 git commit -m "docs: what drives Plan's slow tail on Haiku"
 ```
 
@@ -286,7 +286,7 @@ Expected: PASS.
 
 - [ ] **Step 5: Ask for approval, then sweep (paid)**
 
-Three configurations, each with personas (`--budget-usd 5`) and `golden_eval.py compare --service scheduler --provider claude` (set the env vars for the scheduler run): `low`+`adaptive`, `low`+`disabled`, and `medium`+`disabled` only if `low` fails the bar. Save outputs under `docs/haiku-latency/plan-<effort>-<thinking>/`.
+Three configurations, each with personas (`--budget-usd 5`) and `golden_eval.py compare --service scheduler --provider claude` (set the env vars for the scheduler run): `low`+`adaptive`, `low`+`disabled`, and `medium`+`disabled` only if `low` fails the bar. Save outputs under `docs/superpowers/haiku-latency/plan-<effort>-<thinking>/`.
 
 - [ ] **Step 6: Pick the setting**
 
@@ -442,7 +442,7 @@ Open PR (f).
 ### Task 9: Deploy each PR and confirm in production
 
 **Files:**
-- Modify: `docs/haiku-latency/results.md` ("Production" section)
+- Modify: `docs/superpowers/haiku-latency/results.md` ("Production" section)
 
 - [ ] **Step 1: After each PR merges, deploy by hand**
 
@@ -455,7 +455,7 @@ Per feature on Haiku since the deploy: latency p50/p95, output and thinking toke
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/haiku-latency/results.md
+git add docs/superpowers/haiku-latency/results.md
 git commit -m "docs: Haiku latency in production after <PR>"
 ```
 
@@ -463,7 +463,7 @@ git commit -m "docs: Haiku latency in production after <PR>"
 
 **Files:**
 - Langfuse prompts only (`plan_generation`, then `gear_finder`), label `claude-staging` → `claude-production`
-- Modify: `docs/haiku-latency/results.md`
+- Modify: `docs/superpowers/haiku-latency/results.md`
 
 Run this task only for a feature that still misses its latency target in Task 9 with every other lever applied.
 
