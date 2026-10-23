@@ -136,7 +136,7 @@ class GearPlannerService:
         import time
 
         from db import get_kb_chunks
-        from services.gear_catalog import filter_catalog
+        from services.gear_catalog import filter_catalog, ground_recommendations
         from services.kb_context import render_catalog_context
         from telemetry import rag_attempts_total, rag_latency_seconds
 
@@ -243,6 +243,7 @@ class GearPlannerService:
                 raise
 
             parsed = json.loads(response_text)
+            parsed["recommendations"] = ground_recommendations(parsed.get("recommendations") or [], sent)
             parsed["matched_race"] = matched_course.to_dict() if matched_course else None
             _GEAR_CACHE[cache_key] = json.dumps(parsed)
             _logger.info(

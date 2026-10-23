@@ -76,7 +76,7 @@ final class APIClient: Sendable {
     private func makeRequest<R>(_ endpoint: Endpoint<R>) -> URLRequest {
         var components = URLComponents(url: baseURL().appending(path: endpoint.path), resolvingAgainstBaseURL: false)!
         if !endpoint.query.isEmpty { components.queryItems = endpoint.query }
-        var request = URLRequest(url: components.url!, timeoutInterval: 30)
+        var request = URLRequest(url: components.url!, timeoutInterval: endpoint.timeout)
         request.httpMethod = endpoint.method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let body = endpoint.body {

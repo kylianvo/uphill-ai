@@ -10,6 +10,8 @@ struct Endpoint<Response: Decodable & Sendable>: Sendable {
     var query: [URLQueryItem] = []
     var body: Data?
     var requiresAuth = true
+    /// Seconds without a byte before URLSession gives up; model-backed endpoints need longer.
+    var timeout: TimeInterval = 30
 
     static func delete(_ path: String, query: [URLQueryItem] = [], requiresAuth: Bool = true) -> Endpoint {
         Endpoint(method: .delete, path: path, query: query, requiresAuth: requiresAuth)

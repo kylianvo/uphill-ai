@@ -64,6 +64,7 @@ GEAR_JSON = json.dumps(
     {
         "recommendations": [
             {
+                "model": "Speedcross 6",
                 "shoe_name": "Speedcross 6",
                 "brand": "Salomon",
                 "price": "$140",
