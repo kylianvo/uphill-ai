@@ -117,6 +117,28 @@ _PRIORITY_DAY_ORDER = {
 }
 
 
+def _claude_generate(prompt: str) -> Any:
+    """One plan-generation call to Claude. Streamed so a long block cannot hit the HTTP timeout; Haiku 5.5 rejects
+    temperature, a thinking budget and prefill, so effort is the only knob."""
+    import anthropic
+
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    with client.messages.stream(
+        model=settings.CLAUDE_PLAN_MODEL,
+        max_tokens=32000,
+        output_config={"effort": settings.PLAN_LLM_EFFORT},
+        messages=[{"role": "user", "content": prompt}],
+    ) as stream:
+        return stream.get_final_message()
+
+
+def _claude_text(message: Any) -> str | None:
+    """The answer text, or None when Claude refused or ran out of tokens (both handled like unparseable JSON)."""
+    if message.stop_reason in ("refusal", "max_tokens"):
+        return None
+    return "".join(block.text for block in message.content if block.type == "text")
+
+
 def rows_after_race(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """The sessions planned after the goal race in its week: the day after a race is rest, never a recovery run.
     Only the last race counts, so a mid-plan tune-up race keeps the rest of its week."""
@@ -2070,6 +2092,28 @@ class PlanGenerator:
                     _make_rest(drop)
                     active.remove(drop)
 
+        def _pair_strength_with_run(wos: list[dict[str, Any]]) -> None:
+            """Claude puts Strength/ME on a training day of its own, so that day carries no run and the volume ramp
+            has nowhere to add the week's minutes. Each such day gets an afternoon easy run, copied from the week."""
+            if settings.PLAN_LLM_PROVIDER != "claude":
+                return
+            by_day: dict[tuple[int, str], list[dict[str, Any]]] = {}
+            for wo in wos:
+                if isinstance(wo.get("week_number"), int):
+                    by_day.setdefault((wo["week_number"], wo.get("day_of_week")), []).append(wo)
+            for (week_no, day), rows in list(by_day.items()):
+                if not all(r.get("type") in ("Strength", "Muscular Endurance") for r in rows):
+                    continue
+                easy = [w for (wk, _), rs in by_day.items() if wk == week_no for w in rs if w.get("type") == "Easy"]
+                if not easy:
+                    continue
+                run = {**min(easy, key=lambda r: float(r.get("duration_minutes") or 0)), "day_of_week": day}
+                run["session_slot"] = "afternoon"
+                for r in rows:
+                    r["session_slot"] = "morning"
+                _resize(run, int(tier_profile.weekday_minutes[0]))
+                wos.append(run)
+
         def _fuel_text(minutes: int) -> str:
             if lang == "vi":
                 if minutes < 60:
@@ -2287,6 +2331,9 @@ class PlanGenerator:
                         wo["fueling_tip"] = _fuel_text(minutes) + keep_note
 
             for wo in wos:
+                # Strides / hill sprints typed "Interval" at an easy zone: the app shows Interval as hard work
+                if wo.get("type") == "Interval" and wo.get("target_zone") in ("Zone 1", "Zone 2"):
+                    wo["type"] = "Easy"
                 _reps_into_text(wo)
                 if wo.get("type") in ("Muscular Endurance", "Strength"):
                     _strength_steps(wo)
@@ -2753,6 +2800,7 @@ class PlanGenerator:
                     wo["phase"] = PlanGenerator.phase_for_week(wo["week_number"], total_weeks)
             _cap_hard_dose(wos)
             _respect_days(wos)
+            _pair_strength_with_run(wos)
             _ramp_volume(wos)
             _cap_start_load(wos)
             _progress_long_runs(wos)
@@ -3256,7 +3304,12 @@ class PlanGenerator:
                 else ""
             )
 
-            _plan_prompt_tpl = observability.load_prompt("plan_generation", PLAN_GENERATION_PROMPT)
+            _plan_prompt_tpl = observability.load_prompt(
+                "plan_generation",
+                PLAN_GENERATION_PROMPT,
+                # The Claude variant lives under its own labels; none yet -> the in-code prompt.
+                label=f"claude-{settings.COACH_CHAT_PROMPT_LABEL}" if settings.PLAN_LLM_PROVIDER == "claude" else None,
+            )
             _ai_prompt = observability.compile_prompt(
                 _plan_prompt_tpl,
                 {
@@ -3289,11 +3342,13 @@ class PlanGenerator:
             exists to recover from — a truncated or unparseable response — is driven by
             output length. Telemetry labels it as a separate engine so the retry's own
             hit rate is visible rather than folded into the first attempt's."""
-            if not (_ai_prompt and api_key):
+            _claude = settings.PLAN_LLM_PROVIDER == "claude"
+            # Claude runs on the server key only; the Gemini key (per-user or server) still feeds KB retrieval.
+            if not (_ai_prompt and (settings.ANTHROPIC_API_KEY if _claude else api_key)):
                 return None
             import asyncio
 
-            _engine = "gemini_retry" if reduced else "gemini"
+            _engine = ("claude" if _claude else "gemini") + ("_retry" if reduced else "")
             _tier = "retry" if reduced else "primary"
             _tier_context = observability.span(_engine, metadata={"engine": _engine, "tier": _tier})
             _tier_observation = _tier_context.__enter__()
@@ -3301,7 +3356,7 @@ class PlanGenerator:
             _kb_context = ""
             # Ground the plan in distilled Uphill Athlete philosophy. Retrieval failure
             # is non-fatal — the prompt already carries the core rules inline.
-            if not reduced:
+            if not reduced and api_key:
                 try:
                     import functools
 
@@ -3354,7 +3409,7 @@ class PlanGenerator:
 
                 from telemetry import rag_attempts_total, rag_latency_seconds
 
-                _client = _genai.Client(api_key=api_key)
+                _client = None if _claude else _genai.Client(api_key=api_key)
                 _logger.info(
                     "gemini prompt sent",
                     extra={
@@ -3367,29 +3422,47 @@ class PlanGenerator:
                     },
                 )
 
+                async def _gemini_text() -> str:
+                    _response = await asyncio.to_thread(
+                        _client.models.generate_content,
+                        model=settings.GEMINI_MODEL,
+                        contents=_gemini_prompt,
+                        config=_genai_types.GenerateContentConfig(
+                            thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                        )
+                        if hasattr(_genai_types, "ThinkingConfig")
+                        else None,
+                    )
+                    generation.set_usage(observability.Usage.from_genai(_response.usage_metadata))
+                    return _response.text
+
                 rag_attempts_total.labels(service="plan_generator", engine=_engine, status="attempt").inc()
                 _start = time.time()
                 try:
                     with observability.generation(
                         "generation",
                         feature="plan_generation",
-                        model=settings.GEMINI_MODEL,
+                        model=settings.CLAUDE_PLAN_MODEL if _claude else settings.GEMINI_MODEL,
                         metadata={"engine": _engine, "tier": _tier},
                         prompt=_plan_prompt_tpl,
                     ) as generation:
-                        _response = await asyncio.to_thread(
-                            _client.models.generate_content,
-                            model=settings.GEMINI_MODEL,
-                            contents=_gemini_prompt,
-                            config=_genai_types.GenerateContentConfig(
-                                thinking_config=_genai_types.ThinkingConfig(
-                                    thinking_level=settings.GEMINI_THINKING_LEVEL
+                        if _claude:
+                            _message = await asyncio.to_thread(_claude_generate, _gemini_prompt)
+                            generation.set_usage(observability.Usage.from_anthropic(_message.usage))
+                            _text = _claude_text(_message)
+                            if _text is None:
+                                _logger.warning(
+                                    "claude response refused or truncated",
+                                    extra={
+                                        "fields": {
+                                            "service": "plan_generator",
+                                            "engine": _engine,
+                                            "event": "refusal" if _message.stop_reason == "refusal" else "truncated",
+                                        }
+                                    },
                                 )
-                            )
-                            if hasattr(_genai_types, "ThinkingConfig")
-                            else None,
-                        )
-                        generation.set_usage(observability.Usage.from_genai(_response.usage_metadata))
+                        else:
+                            _text = await _gemini_text()
                     _latency = time.time() - _start
                     rag_latency_seconds.labels(service="plan_generator", engine=_engine).observe(_latency)
                     rag_attempts_total.labels(service="plan_generator", engine=_engine, status="success").inc()
@@ -3400,7 +3473,7 @@ class PlanGenerator:
                                 "service": "plan_generator",
                                 "engine": _engine,
                                 "event": "response_received",
-                                "chars_received": len(_response.text),
+                                "chars_received": len(_text or ""),
                                 "latency_ms": round(_latency * 1000),
                             }
                         },
@@ -3420,7 +3493,7 @@ class PlanGenerator:
                         exc_info=True,
                     )
                     raise
-                clean_text = _extract_json_array(_response.text)
+                clean_text = _extract_json_array(_text or "")
                 _parse_error = None
                 try:
                     ai_workouts = _json.loads(clean_text)
@@ -3506,7 +3579,9 @@ class PlanGenerator:
             _result = await _try_gemini(reduced=_reduced)
             if _result:
                 if _trace_id:
-                    _engine_used = "gemini_retry" if _reduced else "gemini"
+                    _engine_used = ("claude" if settings.PLAN_LLM_PROVIDER == "claude" else "gemini") + (
+                        "_retry" if _reduced else ""
+                    )
                     observability.score(trace_id=_trace_id, name="plan_engine", value=_engine_used)
                 return _result
 

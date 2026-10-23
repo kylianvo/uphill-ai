@@ -29,7 +29,7 @@ def _session(title: str, typ: str, minutes: int, reps: int, value: int, descript
     }
 
 
-def _generate(session: dict) -> dict:
+def _generate(session: dict, user: dict | None = None, tier: str | None = None) -> dict:
     client = MagicMock()
     client.models.generate_content.return_value = SimpleNamespace(text=json.dumps([session]), usage_metadata=None)
     with (
@@ -39,8 +39,8 @@ def _generate(session: dict) -> dict:
         workouts, _tier = asyncio.run(
             PlanGenerator.generate_plan_workouts(
                 plan_id=999999,
-                user_profile={"age": 34, "max_hr": 188, "resting_hr": 52},
-                race_info={"lang": "en", "terrain": "trail"},
+                user_profile=user or {"age": 34, "max_hr": 188, "resting_hr": 52},
+                race_info={"lang": "en", "terrain": "trail", **({"athlete_tier": tier} if tier else {})},
                 total_weeks=8,
                 api_key="test-key",
                 block_number=1,
@@ -111,3 +111,35 @@ def test_run_plus_strength_keeps_its_exercises():
     assert wo["title"] == "Aerobic Recovery Run & General Strength"
     assert "Bodyweight Squats: 3x10, 90s rest → Plank: 3x45s, 60s rest" in wo["description"]
     assert wo["interval_reps"] is None
+
+
+def test_hill_sprints_typed_interval_at_an_easy_zone_read_as_an_easy_run():
+    # Haiku plans 2026-10-22: "Treadmill Hill Sprint Session", type Interval, Zone 1 - the app showed it as hard work
+    session = _session(
+        "Hill Sprint Session",
+        "Interval",
+        45,
+        6,
+        10,
+        "Warm-up 15 min easy → 30 min steady Zone 2 with 6 x 10 s hill sprints → Cool-down 5 min easy.",
+    )
+    session["target_zone"] = "Zone 1"
+    wo = _generate(session)
+    assert wo["type"] == "Easy"
+    assert "sprint" in wo["description"].lower()
+
+
+def test_a_zone3_interval_keeps_its_type():
+    session = _session(
+        "Uphill Intervals",
+        "Interval",
+        50,
+        4,
+        6,
+        "Warm-up 15 min easy → 4 x 6 min Zone 3 uphill, 2 min jog between → Cool-down 11 min easy.",
+    )
+    session["target_zone"] = "Zone 3"
+    session["interval_rep_unit"] = "min"
+    athlete = {"age": 34, "max_hr": 190, "resting_hr": 45, "aet_hr": 156, "ant_hr": 168, "threshold_source": "lab",
+               "current_weekly_km": 90.0}  # fmt: skip
+    assert _generate(session, athlete, "sub_elite")["type"] == "Interval"

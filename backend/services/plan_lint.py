@@ -480,7 +480,13 @@ def _ultra_issues(
     lo = ultra_rules.weekday_minutes(band, advanced)[0]
     if building:
         for w in ws:
-            if w.get("type") in ("Easy", "Aerobic Capacity") and _day(w) is not None and _day(w) < 5 and _min(w) < lo:
+            if (
+                w.get("type") in ("Easy", "Aerobic Capacity")
+                and _day(w) is not None
+                and _day(w) < 5
+                and _min(w) < lo
+                and not any(k in (w.get("title") or "").lower() for k in NEUROMUSCULAR_KEYWORDS)  # short by design
+            ):
                 out.append(
                     Issue(
                         "WEEKDAY_SHORT",

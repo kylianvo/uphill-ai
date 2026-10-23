@@ -88,6 +88,10 @@ def _scheduler_counters() -> dict:
         "retry_ok": _sample(
             "rag_attempts_total", {"service": "plan_generator", "engine": "gemini_retry", "status": "used"}
         ),
+        "claude_ok": _sample("rag_attempts_total", {"service": "plan_generator", "engine": "claude", "status": "used"}),
+        "claude_retry_ok": _sample(
+            "rag_attempts_total", {"service": "plan_generator", "engine": "claude_retry", "status": "used"}
+        ),
     }
 
 
@@ -97,6 +101,10 @@ def _scheduler_engine_used(before: dict, after: dict) -> str:
         return "gemini"
     if after["retry_ok"] > before["retry_ok"]:
         return "gemini_retry"
+    if after.get("claude_ok", 0) > before.get("claude_ok", 0):
+        return "claude"
+    if after.get("claude_retry_ok", 0) > before.get("claude_retry_ok", 0):
+        return "claude_retry"
     return "rule-based-or-unknown"
 
 
@@ -654,9 +662,15 @@ def gate_failures(service: str, items: list[dict], scores: list[dict]) -> list[s
     for item, s in zip(items, scores):
         # The reduced-prompt retry is a designed LLM tier (reported, not failed); falling
         # through to the rule-based tier means the model could not produce an answer at all.
-        if service in ("scheduler", "goal_judge") and s.get("engine") not in (None, "gemini", "gemini_retry"):
+        if service in ("scheduler", "goal_judge") and s.get("engine") not in (
+            None,
+            "gemini",
+            "gemini_retry",
+            "claude",
+            "claude_retry",
+        ):
             failures.append(f"{item['id']}: fell through to the {s.get('engine')} tier")
-        elif service in ("scheduler", "goal_judge") and s.get("engine") == "gemini_retry":
+        elif service in ("scheduler", "goal_judge") and s.get("engine") in ("gemini_retry", "claude_retry"):
             print(f"[gate] warn {item['id']}: needed the reduced-prompt retry")
         if service == "scheduler" and s.get("tier_match") is False:
             failures.append(f"{item['id']}: tier {s.get('tier')} differs from the expected tier")

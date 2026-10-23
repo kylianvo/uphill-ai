@@ -38,3 +38,10 @@ New strings in EN and VI (`uphill-ai-vietnamese-copy` skill): "Read this week", 
 ## Later
 
 Same cuts on web, as its own spec.
+
+## Decisions (2026-10-23)
+
+- The volume chart (days / every-week trend) moves inside the This week card, behind its existing toggle.
+- The one Adapt action is a text button under the week line.
+- Apple's rules and the current `UH` tokens win over the taste skill's serif, Phosphor and monochrome rules; the taste skill is used for restraint only.
+- Counts checked in code: 187 hard-coded font sizes and 77 SF Symbols across `Features/Plan`; this spec covers the Plan screen and session sheet files only (plan: `docs/superpowers/plans/2026-10-23-plan-view-distill.md`).

@@ -64,6 +64,15 @@ struct DayStatus: Equatable, Sendable {
 
 /// Port of frontend/src/utils/planSummary.ts.
 enum PlanSummary {
+    /// "Week 6 · Build · 7.5 h · 52 km"; parts with no data are left out.
+    static func weekLine(_ v: WeekVolume) -> String {
+        var parts = [L("Week %lld", v.week)]
+        if let phase = v.phase, !phase.isEmpty { parts.append(L(phase)) }
+        if v.hours > 0 { parts.append("\(v.hours.formatted(.number.precision(.fractionLength(0...1)).locale(Locale(identifier: "en_US")))) h") }
+        if v.km >= 0.5 { parts.append("\(Int(v.km.rounded())) km") }
+        return parts.joined(separator: " · ")
+    }
+
     static func volume(week: Int, workouts: [Workout]) -> WeekVolume {
         let items = workouts.filter { $0.weekNumber == week }
         let actualKm = items.filter(\.isDone).reduce(0.0) { $0 + ($1.distanceKm ?? 0) }

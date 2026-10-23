@@ -48,3 +48,17 @@ def test_disabled_mode_is_safe_to_call_everywhere():
     assert obs.current_trace_id() is None
     obs.score(trace_id="0" * 32, name="thumbs", value=1.0)
     obs.flush()
+
+
+def test_usage_from_anthropic_folds_cache_into_input():
+    u = SimpleNamespace(
+        input_tokens=100, output_tokens=40, cache_read_input_tokens=1000, cache_creation_input_tokens=50
+    )
+    assert obs.Usage.from_anthropic(u) == obs.Usage(input_tokens=1150, output_tokens=40, cached_tokens=1000)
+
+
+def test_usage_from_anthropic_handles_missing_cache_fields():
+    assert obs.Usage.from_anthropic(SimpleNamespace(input_tokens=7, output_tokens=3)) == obs.Usage(
+        input_tokens=7, output_tokens=3
+    )
+    assert obs.Usage.from_anthropic(None) == obs.Usage()

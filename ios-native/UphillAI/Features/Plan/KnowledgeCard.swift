@@ -73,9 +73,9 @@ struct KnowledgeCardView: View {
             HStack {
                 HStack(spacing: 5) {
                     Image(systemName: topicIcon)
-                        .font(.system(size: 10, weight: .bold))
+                        .font(UH.TextStyle.eyebrow)
                     Text(L(card.topic).uppercased())
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(UH.TextStyle.eyebrow.monospacedDigit())
                         .tracking(0.5)
                 }
                 .foregroundStyle(topicColor)
@@ -86,7 +86,7 @@ struct KnowledgeCardView: View {
                 Spacer()
 
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(UH.TextStyle.disclosure)
                     .foregroundStyle(UH.Palette.muted)
             }
 
@@ -127,7 +127,7 @@ struct KnowledgeCardView: View {
                 HStack(spacing: 5) {
                     ForEach(card.tags, id: \.self) { tag in
                         Text("#\(tag)")
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .font(UH.TextStyle.caption.monospacedDigit())
                             .foregroundStyle(UH.Palette.muted)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)

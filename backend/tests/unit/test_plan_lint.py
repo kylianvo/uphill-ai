@@ -487,6 +487,13 @@ def test_weekday_short_and_ladder_short():
     assert "WEEKDAY_SHORT" in got and "ULTRA_LADDER" in got
 
 
+def test_short_hill_sprint_run_is_not_a_short_weekday_run():
+    sprints = s(9, "Thursday", "Easy", 35, phase="Build")
+    sprints["title"] = "Hill Sprints"
+    wk = [s(9, "Tuesday", "Easy", 60, phase="Build"), sprints, s(9, "Saturday", "Long Run", 300, phase="Build")]
+    assert "WEEKDAY_SHORT" not in codes(lint_week(wk, 9, REC, ULTRA_PREFS))
+
+
 def test_no_b2b_missing_for_ladder_plans():
     # week 16 of 20 is total - 4 - taper_shift: today's B2B_MISSING ask week
     wk = [s(16, "Tuesday", "Easy", 60, phase="Peak"), s(16, "Saturday", "Long Run", 420, phase="Peak")]

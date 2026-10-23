@@ -15231,6 +15231,136 @@
         }
       }
     },
+    "Adapt this week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điều chỉnh tuần này"
+          }
+        }
+      }
+    },
+    "Volume chart": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biểu đồ khối lượng"
+          }
+        }
+      }
+    },
+    "%lld of %lld sessions done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xong %lld/%lld buổi"
+          }
+        }
+      }
+    },
+    "%@ of %@ km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/%@ km"
+          }
+        }
+      }
+    },
+    "Coach's pick": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach chọn"
+          }
+        }
+      }
+    },
+    "%lld sessions": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld buổi"
+          }
+        }
+      }
+    },
+    "Matched with %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã khớp với %@"
+          }
+        }
+      }
+    },
+    "Read this week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài đọc tuần này"
+          }
+        }
+      }
+    },
+    "Read the full review": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đọc toàn bộ nhận xét"
+          }
+        }
+      }
+    },
+    "Coach's review": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhận xét của Coach"
+          }
+        }
+      }
+    },
+    "About this session": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Về buổi tập này"
+          }
+        }
+      }
+    },
+    "Benefit": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lợi ích"
+          }
+        }
+      }
+    },
+    "Caution": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu ý"
+          }
+        }
+      }
+    },
     "Logged pain on %@": {
       "localizations": {
         "vi": {
@@ -16227,16 +16357,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tuần %lld: các buổi ngày thường quá ngắn"
-          }
-        }
-      }
-    },
-    "Adapt this week": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Điều chỉnh tuần này"
           }
         }
       }

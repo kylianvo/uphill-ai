@@ -74,6 +74,7 @@ def test_100k_mountain_plan_follows_ladder(rule_based_plan):
         w
         for w in wos
         if w["type"] == "Easy"
+        and not any(k in w["title"].lower() for k in plan_lint.NEUROMUSCULAR_KEYWORDS)  # sprints are short by design
         and w["day_of_week"] not in ("Saturday", "Sunday")
         and w["phase"] in ("Base", "Build", "Peak")
         and not ultra_rules.is_deload(w["week_number"], 20)

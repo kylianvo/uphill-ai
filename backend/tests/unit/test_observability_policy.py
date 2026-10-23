@@ -413,3 +413,22 @@ def test_completion_start_time_attribute_exports_only_timestamps():
 
     assert attrs('"2026-10-09T01:02:03Z"') == {"langfuse.observation.completion_start_time": '"2026-10-09T01:02:03Z"'}
     assert attrs('"what is my tempo pace?"') == {}
+
+
+def test_claude_plan_generation_metadata_and_attributes_pass():
+    for meta in ({"engine": "claude"}, {"engine": "claude_retry"}, {"model": "claude-haiku-5-5"}):
+        assert policy.filter_metadata(meta) == meta
+    safe = policy.sanitize_span_envelope(
+        {
+            "name": "GenerateContent",
+            "attributes": {
+                "llm.provider": "anthropic",
+                "gen_ai.system": "anthropic",
+                "llm.model_name": "claude-haiku-5-5",
+            },
+            "status": {"code": "OK"},
+        }
+    )
+    assert safe["attributes"]["llm.provider"] == "anthropic"
+    assert safe["attributes"]["gen_ai.system"] == "anthropic"
+    assert safe["attributes"]["llm.model_name"] == "claude-haiku-5-5"
