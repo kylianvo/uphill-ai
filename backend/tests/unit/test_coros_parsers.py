@@ -435,3 +435,75 @@ Anaerobic TE: 0.0"""
         assert detail["sets"] == 4
         assert detail["training_load"] == 8.0
         assert detail["aerobic_te"] == 0.7
+
+
+# ─── Sleep overview (verbatim shapes from a real account, 2026-10-23) ───────
+
+SLEEP_OVERVIEW = """Sleep Overview
+========================
+Note: each record below is dated by its wake-up day.
+
+2026-10-21
+Sleep Score: -1
+Daily Sleep: 3h 27min (incl. naps)
+Sleep metrics scope: daily
+Naps Total (asleep): 3h 27min
+Naps Period (incl. awake): 3h 38min
+Nap Window: 2026-10-21 00:52 - 2026-10-21 02:55
+Nap Window: 2026-10-21 06:08 - 2026-10-21 07:43
+
+2026-10-22
+Sleep Score: 88
+Daily Sleep: 6h 58min (incl. naps)
+Main Sleep (asleep): 6h 58min
+Main Sleep Period (incl. awake): 7h 3min
+Sleep metrics scope: daily
+Deep Sleep Ratio: 16%
+Awake Time: 5 min
+Main Sleep Window: 2026-10-22 00:48 - 2026-10-22 07:51
+Naps Total: 0 min"""
+
+SLEEP_OVERVIEW_OLD = """Sleep Overview
+========================
+Note: each record below is dated by its wake-up day.
+
+2026-07-03
+Sleep Score: 50
+Main Sleep: 5h 19min
+Deep Sleep Ratio: 18%
+Awake Time: 7 min
+Main Sleep Window: 2026-07-03 01:06 - 2026-07-03 06:25
+Naps Total: 0 min"""
+
+
+def test_sleep_overview_current_format():
+    from datetime import time
+
+    day = p.parse_sleep_overview(SLEEP_OVERVIEW)[date(2026, 10, 22)]
+    assert day == {"sleep_minutes": 418, "sleep_start": time(0, 48), "sleep_end": time(7, 51)}
+
+
+def test_sleep_overview_old_format_without_daily_sleep():
+    assert p.parse_sleep_overview(SLEEP_OVERVIEW_OLD)[date(2026, 7, 3)]["sleep_minutes"] == 319
+
+
+def test_nap_only_day_counts_naps_only():
+    day = p.parse_sleep_overview(SLEEP_OVERVIEW)[date(2026, 10, 21)]
+    assert day["sleep_minutes"] == 207
+    assert day["sleep_start"] is None
+
+
+def test_sleep_overview_missing_header_raises():
+    with pytest.raises(p.CorosParseError):
+        p.parse_sleep_overview("Something else\n2026-10-22\nDaily Sleep: 7h 0min")
+
+
+def test_sleep_hrv_captures_normal_range():
+    text = (
+        "Sleep HRV — 2026-07-03 to 2026-07-03\n========================\n\n"
+        "HRV Assessment — Last 1 days\n========================\n\n"
+        "2026-07-03:\n  HRV Avg: 66 ms — Normal\n  Normal Range: 51 - 75 ms\n  Baseline: 63 ms\n"
+    )
+    day = p.parse_sleep_hrv(text)[date(2026, 7, 3)]
+    assert day["hrv_range_low"] == 51.0
+    assert day["hrv_range_high"] == 75.0

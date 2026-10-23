@@ -159,6 +159,7 @@ final class AppModel {
     var pendingInvites: [CoachingInvite] = []
     let generation: GenerationCenter
     let plan: PlanViewModel
+    let progress: ProgressViewModel
     let chat: ChatService
     let cache: OfflineCache
     var onboardingDeferred = false
@@ -244,6 +245,7 @@ final class AppModel {
         plan = PlanViewModel(service: planService, cache: cache, isSignedIn: { [session] in session.user != nil },
                              generation: generation, generationService: generationService)
         planIdBox.model = plan
+        progress = ProgressViewModel(service: ProgressService(client: client))
         chat = ChatService(client: client)
         signOutHook.run = { [weak self] in
             self?.lastAutoWatchSync = nil
@@ -255,6 +257,7 @@ final class AppModel {
             Task { [weak self] in await self?.appleHealth.stopObservingForSignOut() }
             self?.generation.reset()
             self?.plan.reset()
+            self?.progress.reset()
             self?.onboardingDeferred = false
             self?.lastSetup = nil
             self?.raceHistory = nil

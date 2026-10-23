@@ -1020,6 +1020,12 @@ def init_db():
             "ALTER TABLE chat_proposals ADD COLUMN IF NOT EXISTS draft JSONB",
             # Apple Health recovery metrics: asleep minutes for the night ending on metric_date.
             "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS sleep_minutes INTEGER",
+            "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS sleep_start TIME",
+            "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS sleep_end TIME",
+            "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS hrv_range_low REAL",
+            "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS hrv_range_high REAL",
+            "ALTER TABLE activities ADD COLUMN IF NOT EXISTS hr_drift_pct REAL",
+            "ALTER TABLE activities ADD COLUMN IF NOT EXISTS hr_drift_checked BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE chat_proposals DROP CONSTRAINT IF EXISTS chk_chat_proposals_kind",
             "ALTER TABLE chat_proposals ADD CONSTRAINT chk_chat_proposals_kind CHECK (kind IN ('schedule', 'rebuild'))",
             "ALTER TABLE chat_proposals DROP CONSTRAINT IF EXISTS chk_chat_proposals_status",
@@ -3696,11 +3702,13 @@ def upsert_daily_metric(user_id: int, metric) -> int:
             INSERT INTO daily_metrics (
                 user_id, metric_date, source_provider, resting_hr, hrv_ms,
                 hrv_baseline_ms, hrv_status, training_load_short,
-                training_load_long, load_ratio, recovery_percent, sleep_minutes
+                training_load_long, load_ratio, recovery_percent, sleep_minutes,
+                sleep_start, sleep_end, hrv_range_low, hrv_range_high
             ) VALUES (
                 :user_id, :metric_date, :provider, :resting_hr, :hrv_ms,
                 :hrv_baseline_ms, :hrv_status, :load_short, :load_long,
-                :load_ratio, :recovery_percent, :sleep_minutes
+                :load_ratio, :recovery_percent, :sleep_minutes,
+                :sleep_start, :sleep_end, :hrv_range_low, :hrv_range_high
             )
             ON CONFLICT (user_id, metric_date, source_provider) DO UPDATE SET
                 resting_hr = COALESCE(EXCLUDED.resting_hr, daily_metrics.resting_hr),
@@ -3711,7 +3719,11 @@ def upsert_daily_metric(user_id: int, metric) -> int:
                 training_load_long = COALESCE(EXCLUDED.training_load_long, daily_metrics.training_load_long),
                 load_ratio = COALESCE(EXCLUDED.load_ratio, daily_metrics.load_ratio),
                 recovery_percent = COALESCE(EXCLUDED.recovery_percent, daily_metrics.recovery_percent),
-                sleep_minutes = COALESCE(EXCLUDED.sleep_minutes, daily_metrics.sleep_minutes)
+                sleep_minutes = COALESCE(EXCLUDED.sleep_minutes, daily_metrics.sleep_minutes),
+                sleep_start = COALESCE(EXCLUDED.sleep_start, daily_metrics.sleep_start),
+                sleep_end = COALESCE(EXCLUDED.sleep_end, daily_metrics.sleep_end),
+                hrv_range_low = COALESCE(EXCLUDED.hrv_range_low, daily_metrics.hrv_range_low),
+                hrv_range_high = COALESCE(EXCLUDED.hrv_range_high, daily_metrics.hrv_range_high)
             RETURNING id
             """),
             {
@@ -3727,6 +3739,10 @@ def upsert_daily_metric(user_id: int, metric) -> int:
                 "load_ratio": metric.load_ratio,
                 "recovery_percent": metric.recovery_percent,
                 "sleep_minutes": metric.sleep_minutes,
+                "sleep_start": metric.sleep_start,
+                "sleep_end": metric.sleep_end,
+                "hrv_range_low": metric.hrv_range_low,
+                "hrv_range_high": metric.hrv_range_high,
             },
         ).fetchone()
         conn.commit()
@@ -3976,7 +3992,7 @@ def get_activities_for_pace(user_id: int, since, until) -> list[dict[str, Any]]:
         rows = conn.execute(
             text("""
             SELECT a.start_time, a.duration_seconds, a.distance_km, a.elevation_gain_m, a.avg_hr, a.activity_type,
-                   a.avg_pace_sec_per_km, a.adjusted_pace_sec_per_km, w.type AS workout_type
+                   a.avg_pace_sec_per_km, a.adjusted_pace_sec_per_km, a.hr_drift_pct, w.type AS workout_type
             FROM activities a
             LEFT JOIN workouts w ON w.id = a.matched_workout_id
             WHERE a.user_id = :u AND a.duplicate_of IS NULL AND a.start_time >= :since AND a.start_time < :until
@@ -3985,6 +4001,47 @@ def get_activities_for_pace(user_id: int, since, until) -> list[dict[str, Any]]:
             {"u": user_id, "since": since, "until": until},
         ).fetchall()
     return [_row_to_dict(row) for row in rows]
+
+
+def get_daily_metrics(user_id: int, since) -> list[dict[str, Any]]:
+    """Every provider's daily rows from `since`; callers pick one provider per metric."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT * FROM daily_metrics WHERE user_id = :u AND metric_date >= :since ORDER BY metric_date"),
+            {"u": user_id, "since": since},
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
+
+
+def get_activities_needing_drift(
+    user_id: int, provider: str, since, min_seconds: int = 5400, limit: int = 10
+) -> list[dict[str, Any]]:
+    """Long runs from `provider` whose heart-rate drift was never checked, newest first."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT a.id, a.external_ids ->> a.source_provider AS external_id, a.activity_type,
+                   w.type AS workout_type
+            FROM activities a
+            LEFT JOIN workouts w ON w.id = a.matched_workout_id
+            WHERE a.user_id = :u AND a.source_provider = :p AND a.duplicate_of IS NULL
+              AND NOT a.hr_drift_checked AND a.duration_seconds >= :min_s AND a.start_time >= :since
+            ORDER BY a.start_time DESC
+            LIMIT :limit
+            """),
+            {"u": user_id, "p": provider, "min_s": min_seconds, "since": since, "limit": limit},
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
+
+
+def set_activity_hr_drift(activity_id: int, pct: float | None) -> None:
+    """Store the drift (None = not computable) and mark the activity checked so it is never re-fetched."""
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE activities SET hr_drift_pct = :pct, hr_drift_checked = TRUE WHERE id = :id"),
+            {"pct": pct, "id": activity_id},
+        )
+        conn.commit()
 
 
 def upsert_fitness_checkpoint(plan_id: int, week_number: int, pace_min_km: float, n_runs: int) -> None:
