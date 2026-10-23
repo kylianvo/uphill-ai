@@ -1,0 +1,13 @@
+{
+  "latency_s": 4.8,
+  "engine_used": "gemini",
+  "output": {
+    "id": "chat_en_01_normal_zone2",
+    "category": "normal_explanation",
+    "lang": "en",
+    "question": "Why is Zone 2 aerobic base running so critical for 50K trail ultra athletes?",
+    "reply_text": "For a 50K trail ultra, Zone 2 aerobic base running is critical because roughly 80% or more of your race is sustained directly at or below your Aerobic Threshold (AeT) [1]. Training extensively in Zone 1 and Zone 2 builds the dense mitochondrial network, capillarization, and fat-oxidizing capacity required to produce steady energy for hours without depleting limited glycogen stores or accumulating fatiguing lactate [1, 4]. \n\nA well-developed aerobic base essentially acts as a metabolic vacuum, allowing your slow-twitch muscle fibers to clear lactate efficiently while keeping your effort sustainable [4]. Furthermore, because speed at your aerobic threshold is one of the strongest predictors of ultra performance, nudging that threshold higher through consistent base volume lets you cover rugged terrain significantly faster while keeping your heart rate, muscular stress, and systemic fatigue well in check [1, 4].",
+    "tools_called": [],
+    "status": "success"
+  }
+}

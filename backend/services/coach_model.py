@@ -280,3 +280,92 @@ class GeminiCoachModel:
 
     async def close(self) -> None:
         self._closed = True
+
+
+# Thinking shares max_tokens with the visible reply on Claude, so the reply budget gets this much on top.
+_CLAUDE_THINKING_HEADROOM = 4096
+
+
+class ClaudeCoachModel:
+    """Anthropic Messages adapter implementing CoachModel (behind COACH_CHAT_LLM_PROVIDER=claude).
+
+    Tool results come back from coach_graph as plain user messages, so only tool definitions
+    and tool_use blocks are provider-specific here.
+    """
+
+    def __init__(self, tools: list[Any] | None = None, model: str | None = None) -> None:
+        import anthropic
+
+        self.model = model or settings.CLAUDE_COACH_MODEL
+        self.tools = tools
+        # max_retries=0: SDK retries are disabled per spec, as for Gemini
+        self._client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY, max_retries=0)
+
+    def _tool_defs(self) -> list[dict[str, Any]]:
+        from langchain_core.utils.function_calling import convert_to_openai_tool
+
+        defs = []
+        for tool in self.tools or []:
+            fn = convert_to_openai_tool(tool)["function"]
+            defs.append(
+                {"name": fn["name"], "description": fn.get("description", ""), "input_schema": fn["parameters"]}
+            )
+        return defs
+
+    def _params(self, request: ModelRequest) -> dict[str, Any]:
+        # 'system' turns inside the history are context the graph injected; Claude gets them as user text.
+        messages = [
+            {"role": "assistant" if m.role == "assistant" else "user", "content": m.content} for m in request.messages
+        ]
+        params: dict[str, Any] = {"model": self.model, "system": request.system, "messages": messages}
+        if self.tools and request.tools_enabled:
+            params["tools"] = self._tool_defs()
+        return params
+
+    async def count_tokens(self, request: ModelRequest) -> int:
+        try:
+            result = await self._client.messages.count_tokens(**self._params(request))
+            return int(result.input_tokens)
+        except Exception:
+            total_chars = len(request.system) + sum(len(m.content) for m in request.messages)
+            return max(1, total_chars // 4)
+
+    async def stream(self, request: ModelRequest) -> AsyncIterator[ModelEvent]:
+        with observability.generation(
+            "generation",
+            feature="coach_chat",
+            model=self.model,
+            metadata={"call_id": str(request.call_id)},
+            prompt=request.prompt,
+        ) as gen:
+            try:
+                async with self._client.messages.stream(
+                    max_tokens=request.max_output_tokens + _CLAUDE_THINKING_HEADROOM,
+                    output_config={"effort": settings.CLAUDE_COACH_EFFORT},
+                    **self._params(request),
+                ) as stream:
+                    first_token_seen = False
+                    async for event in stream:
+                        if event.type == "text" and event.text:
+                            if not first_token_seen:
+                                first_token_seen = True
+                                gen.mark_first_token()
+                            yield ModelEvent(kind="text", text=event.text)
+                    final = await stream.get_final_message()
+            except Exception as exc:
+                err_type = type(exc).__name__
+                raise CoachModelUpstreamError(err_type, error_type=err_type) from None
+
+            usage = Usage.from_anthropic(final.usage)
+            gen.set_usage(usage)
+            for block in final.content:
+                if block.type == "tool_use":
+                    if not self.tools:
+                        raise ToolCallsNotSupportedError("Model returned tool calls but no tools were bound.")
+                    yield ModelEvent(
+                        kind="tool_call", tool_call={"id": block.id, "name": block.name, "args": block.input or {}}
+                    )
+            yield ModelEvent(kind="usage", usage=usage)
+
+    async def close(self) -> None:
+        await self._client.close()

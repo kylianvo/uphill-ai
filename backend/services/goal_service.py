@@ -46,6 +46,8 @@ def input_hash(prompt: dict[str, Any], anchors: list[dict[str, Any]], lang: str,
             "cutoff": cutoff_mins,
             "llm": settings.GOAL_LLM_ENABLED,
             "version": goal_judge.PROMPT_VERSION,
+            # Only when not the default, so existing Gemini-era hashes stay valid.
+            **({"provider": settings.GOAL_JUDGE_LLM_PROVIDER} if settings.GOAL_JUDGE_LLM_PROVIDER != "gemini" else {}),
         },
         sort_keys=True,
         default=str,

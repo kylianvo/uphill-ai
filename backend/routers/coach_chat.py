@@ -25,7 +25,7 @@ from db import (
     verify_session,
 )
 from log_utils import get_logger
-from services import coach_chat, fitness_snapshot, observability, schedule_proposals
+from services import claude_llm, coach_chat, fitness_snapshot, observability, schedule_proposals
 from services.coach_graph import AppEvent
 from services.coach_prompts import (
     COACH_SYSTEM_INSTRUCTION,
@@ -478,7 +478,22 @@ async def coach_chat_legacy(
 
     model_api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
 
-    if model_api_key:
+    if settings.COACH_CHAT_LLM_PROVIDER == "claude" and settings.ANTHROPIC_API_KEY:
+        try:
+            message = await asyncio.to_thread(
+                claude_llm.generate,
+                [
+                    {"role": "user" if m.role == "user" else "assistant", "content": m.content}
+                    for m in messages_list[-20:]
+                ],
+                system=full_system_prompt,
+                model=settings.CLAUDE_COACH_MODEL,
+            )
+            reply_text = claude_llm.text(message)
+            return {"role": "assistant", "content": reply_text, "reply": reply_text, "sources": []}
+        except Exception as e:
+            logger.warning(f"[Chat][Claude] FAILED: {type(e).__name__}")
+    elif model_api_key:
         try:
             formatted_contents = []
             for msg in messages_list[-20:]:  # Cap history to 20 items

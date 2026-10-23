@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from config import settings
 from log_utils import get_logger
-from services import observability, quality_signals
+from services import claude_llm, observability, quality_signals
 
 _logger = get_logger(__name__)
 
@@ -119,7 +119,7 @@ class GearPlannerService:
                 extra={
                     "fields": {
                         "service": "gear_finder",
-                        "engine": "gemini",
+                        "engine": "claude" if claude_llm.is_claude(settings.GEAR_LLM_PROVIDER) else "gemini",
                         "event": "engine_failed",
                         "error": str(e),
                     }
@@ -140,9 +140,12 @@ class GearPlannerService:
         from services.kb_context import render_catalog_context
         from telemetry import rag_attempts_total, rag_latency_seconds
 
-        api_key = settings.GEMINI_API_KEY
+        _provider = settings.GEAR_LLM_PROVIDER
+        _claude = claude_llm.is_claude(_provider)
+        _engine = "claude" if _claude else "gemini"
+        api_key = settings.ANTHROPIC_API_KEY if _claude else settings.GEMINI_API_KEY
         if not api_key:
-            raise RuntimeError("GEMINI_API_KEY is missing.")
+            raise RuntimeError("ANTHROPIC_API_KEY is missing." if _claude else "GEMINI_API_KEY is missing.")
         chunks = get_kb_chunks("gear", kind="catalog_item")
         if not chunks:
             # Never answer ungrounded — no KB means this engine refuses.
@@ -156,7 +159,9 @@ class GearPlannerService:
             metadata={"catalog_entries": len(sent), "cache_hit": False},
         ):
             trace_id = observability.current_trace_id()
-            _prompt_tpl = observability.load_prompt("gear_finder", GEAR_FINDER_PROMPT)
+            _prompt_tpl = observability.load_prompt(
+                "gear_finder", GEAR_FINDER_PROMPT, label=claude_llm.prompt_label(_provider)
+            )
             prompt = observability.compile_prompt(
                 _prompt_tpl,
                 {
@@ -171,60 +176,64 @@ class GearPlannerService:
                 extra={
                     "fields": {
                         "service": "gear_finder",
-                        "engine": "gemini",
+                        "engine": _engine,
                         "event": "prompt_sent",
                         "chars_sent": len(prompt),
                         "catalog_entries": len(sent),
                     }
                 },
             )
-            client = genai.Client(api_key=api_key)
-
-            rag_attempts_total.labels(service="gear_finder", engine="gemini", status="attempt").inc()
+            rag_attempts_total.labels(service="gear_finder", engine=_engine, status="attempt").inc()
             _start = time.time()
             try:
                 with observability.generation(
                     "generation",
                     feature="gear_finder",
-                    model=settings.GEMINI_MODEL,
+                    model=settings.CLAUDE_TEXT_MODEL if _claude else settings.GEMINI_MODEL,
                     metadata={"tier": "primary"},
                     prompt=_prompt_tpl,
                 ) as generation:
-                    response = await asyncio.to_thread(
-                        client.models.generate_content,
-                        model=settings.GEMINI_MODEL,
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                            response_mime_type="application/json",
-                            response_schema=GearResponse,
-                            temperature=0.2,
-                            thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
-                        ),
-                    )
-                    generation.set_usage(observability.Usage.from_genai(response.usage_metadata))
+                    if _claude:
+                        message = await asyncio.to_thread(claude_llm.generate, prompt, schema=GearResponse)
+                        generation.set_usage(observability.Usage.from_anthropic(message.usage))
+                        response_text = claude_llm.text(message)
+                    else:
+                        response = await asyncio.to_thread(
+                            genai.Client(api_key=api_key).models.generate_content,
+                            model=settings.GEMINI_MODEL,
+                            contents=prompt,
+                            config=types.GenerateContentConfig(
+                                response_mime_type="application/json",
+                                response_schema=GearResponse,
+                                temperature=0.2,
+                                thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
+                            ),
+                        )
+                        generation.set_usage(observability.Usage.from_genai(response.usage_metadata))
+                        response_text = response.text
                 _latency = time.time() - _start
-                rag_latency_seconds.labels(service="gear_finder", engine="gemini").observe(_latency)
-                rag_attempts_total.labels(service="gear_finder", engine="gemini", status="success").inc()
+                rag_latency_seconds.labels(service="gear_finder", engine=_engine).observe(_latency)
+                rag_attempts_total.labels(service="gear_finder", engine=_engine, status="success").inc()
                 _logger.info(
                     "gemini response received",
                     extra={
                         "fields": {
                             "service": "gear_finder",
-                            "engine": "gemini",
+                            "engine": _engine,
                             "event": "response_received",
-                            "chars_received": len(response.text),
+                            "chars_received": len(response_text),
                             "latency_ms": round(_latency * 1000),
                         }
                     },
                 )
             except Exception as _gemini_ex:
-                rag_attempts_total.labels(service="gear_finder", engine="gemini", status="error").inc()
+                rag_attempts_total.labels(service="gear_finder", engine=_engine, status="error").inc()
                 _logger.error(
                     "gemini request failed",
                     extra={
                         "fields": {
                             "service": "gear_finder",
-                            "engine": "gemini",
+                            "engine": _engine,
                             "event": "error",
                             "error": str(_gemini_ex),
                         }
@@ -233,7 +242,7 @@ class GearPlannerService:
                 )
                 raise
 
-            parsed = json.loads(response.text)
+            parsed = json.loads(response_text)
             parsed["matched_race"] = matched_course.to_dict() if matched_course else None
             _GEAR_CACHE[cache_key] = json.dumps(parsed)
             _logger.info(
@@ -241,7 +250,7 @@ class GearPlannerService:
                 extra={
                     "fields": {
                         "service": "gear_finder",
-                        "engine": "gemini",
+                        "engine": _engine,
                         "event": "parsed",
                         "recommendation_count": len(parsed.get("recommendations", [])),
                     }
