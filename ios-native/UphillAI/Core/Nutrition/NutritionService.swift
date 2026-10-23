@@ -19,7 +19,8 @@ struct NutritionService: NutritionServicing {
     }
 
     func calculateFueling(params: NutritionParams) async throws -> NutritionPlan {
-        let endpoint = try Endpoint<NutritionPlan>.send(.post, "/api/coach/calculate-fueling", body: params, requiresAuth: false)
+        var endpoint = try Endpoint<NutritionPlan>.send(.post, "/api/coach/calculate-fueling", body: params, requiresAuth: false)
+        endpoint.timeout = 120  // model call over the full catalog
         return try await client.send(endpoint)
     }
 

@@ -15331,6 +15331,56 @@
         }
       }
     },
+    "Cold": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lạnh"
+          }
+        }
+      }
+    },
+    "Hot": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nóng"
+          }
+        }
+      }
+    },
+    "Below 15°C": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dưới 15°C"
+          }
+        }
+      }
+    },
+    "15–24°C": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "15–24°C"
+          }
+        }
+      }
+    },
+    "25°C and above": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ 25°C trở lên"
+          }
+        }
+      }
+    },
     "About this session": {
       "localizations": {
         "vi": {

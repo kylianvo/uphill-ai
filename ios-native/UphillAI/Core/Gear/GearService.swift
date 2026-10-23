@@ -20,7 +20,8 @@ struct GearService: GearServicing {
     }
 
     func recommendShoes(params: GearParams) async throws -> GearPlan {
-        let endpoint = try Endpoint<GearPlan>.send(.post, "/api/coach/recommend-shoes", body: params, requiresAuth: false)
+        var endpoint = try Endpoint<GearPlan>.send(.post, "/api/coach/recommend-shoes", body: params, requiresAuth: false)
+        endpoint.timeout = 120  // Claude Haiku over the full catalog takes ~45 s
         return try await client.send(endpoint)
     }
 
