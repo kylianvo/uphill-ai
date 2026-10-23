@@ -126,7 +126,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       return;
     }
     if (!isRaceOrDistVal && !planForm.plan_start_date) {
-      setPlanErrorMsg?.(lang === "en" ? "Please select a Plan Start Date." : "Vui lòng chọn Ngày bắt đầu giáo án.");
+      setPlanErrorMsg?.(lang === "en" ? "Please select a Plan Start Date." : "Vui lòng chọn Ngày bắt đầu plan.");
       return;
     }
     if (!planForm.current_weekly_km) {
@@ -617,7 +617,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       if (selectedWeek === 1) {
         const text = lang === "en"
           ? `Welcome to your ${activePlan.total_weeks}-week plan for ${raceName}. These first weeks build the aerobic foundation everything else sits on. Run easy, run often, and resist the urge to push.`
-          : `Chào mừng bạn đến với giáo án ${activePlan.total_weeks} tuần cho giải ${raceName}. Những tuần đầu tiên này sẽ xây dựng nền tảng hiếu khí (aerobic base) vững chắc. Hãy chạy nhẹ nhàng, duy trì đều đặn và không cần vội vàng ép nhịp tim.`;
+          : `Chào mừng bạn đến với plan ${activePlan.total_weeks} tuần cho giải ${raceName}. Những tuần đầu tiên này sẽ xây dựng nền tảng hiếu khí (aerobic base) vững chắc. Hãy chạy nhẹ nhàng, duy trì đều đặn và không cần vội vàng ép nhịp tim.`;
         return { Icon: Leaf, color: "#10b981", text };
       }
       const msgs = lang === "en" ? [
@@ -1065,21 +1065,21 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           <div className={styles.planSurface} style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "40px 20px" : "60px 32px", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
             <ArrowsClockwise size={28} className="match-spin" color="var(--accent-primary)" aria-hidden="true" />
             <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
-              {lang === "en" ? `Loading ${actingAsAthleteName}'s plan…` : `Đang tải giáo án của ${actingAsAthleteName}…`}
+              {lang === "en" ? `Loading ${actingAsAthleteName}'s plan…` : `Đang tải plan của ${actingAsAthleteName}…`}
             </p>
           </div>
         ) : activePlanLoading ? (
           <div style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "40px 20px" : "60px 32px", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
             <ArrowsClockwise size={28} className="match-spin" color="var(--accent-primary)" aria-hidden="true" />
             <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
-              {lang === "en" ? "Loading your plan…" : "Đang tải giáo án của bạn…"}
+              {lang === "en" ? "Loading your plan…" : "Đang tải plan của bạn…"}
             </p>
           </div>
         ) : !activePlan ? (
           <form onSubmit={onPlanFormSubmit} style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
               <h3 style={{ fontSize: isMobile ? "18px" : "22px", margin: 0, color: "var(--accent-primary)" }}>
-                {lang === "en" ? "Plan Settings" : "Thiết lập Giáo án"}
+                {lang === "en" ? "Plan Settings" : "Thiết lập Plan"}
               </h3>
               {recentPlans && recentPlans.length > 0 && renderRecentPlansDropdown()}
             </div>
@@ -1465,7 +1465,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             {isCoachActingAsAthlete && (
               <div style={{ marginBottom: "16px" }}>
                 <label style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-secondary)", display: "block", marginBottom: "6px" }}>
-                  {lang === "en" ? "Your coaching notes (sent to the plan generator)" : "Ghi chú của HLV (gửi cho công cụ tạo giáo án)"}
+                  {lang === "en" ? "Your coaching notes (sent to the plan generator)" : "Ghi chú của HLV (gửi cho công cụ tạo plan)"}
                 </label>
                 <textarea
                   className="chat-input"
@@ -1969,7 +1969,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                         <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
-                          {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
+                          {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Khối lượng tuần (Tuần ${selectedWeek})`}
                         </span>
                         <div style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
                           <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>
@@ -2693,13 +2693,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         {planToDelete && (
           <ConfirmActionModal
             isOpen={true}
-            title={lang === "en" ? "Delete Training Plan?" : "Xóa Giáo án Tập luyện?"}
+            title={lang === "en" ? "Delete Training Plan?" : "Xóa Plan Tập luyện?"}
             message={
               lang === "en"
                 ? `Are you sure you want to permanently delete "${formatPlanName(planToDelete)}"? All workouts and progress in this plan will be removed. This action cannot be undone.`
-                : `Bạn có chắc chắn muốn xóa vĩnh viễn giáo án "${formatPlanName(planToDelete)}"? Toàn bộ bài tập và tiến độ trong giáo án này sẽ bị xóa. Thao tác này không thể hoàn tác.`
+                : `Bạn có chắc chắn muốn xóa vĩnh viễn plan "${formatPlanName(planToDelete)}"? Toàn bộ bài tập và tiến độ trong plan này sẽ bị xóa. Thao tác này không thể hoàn tác.`
             }
-            confirmLabel={isDeletingPlan ? (lang === "en" ? "Deleting..." : "Đang xóa...") : (lang === "en" ? "Delete Plan" : "Xóa Giáo án")}
+            confirmLabel={isDeletingPlan ? (lang === "en" ? "Deleting..." : "Đang xóa...") : (lang === "en" ? "Delete Plan" : "Xóa Plan")}
             cancelLabel={lang === "en" ? "Keep Plan" : "Giữ lại"}
             isDestructive={true}
             isLoading={isDeletingPlan}
@@ -2713,7 +2713,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         {confirmCreatePlanOpen && (
           <ConfirmActionModal
             isOpen={true}
-            title={lang === "en" ? "Create Training Plan?" : "Xác nhận Tạo Giáo án?"}
+            title={lang === "en" ? "Create Training Plan?" : "Xác nhận Tạo Plan?"}
             message={
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 <p style={{ margin: 0 }}>
@@ -2747,7 +2747,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 </div>
               </div>
             }
-            confirmLabel={lang === "en" ? "Generate Plan" : "Tạo Giáo án"}
+            confirmLabel={lang === "en" ? "Generate Plan" : "Tạo Plan"}
             cancelLabel={lang === "en" ? "Review Settings" : "Xem lại Thiết lập"}
             onConfirm={() => {
               setConfirmCreatePlanOpen(false);
@@ -2770,7 +2770,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 </p>
                 <div style={{ background: "rgba(255, 255, 255, 0.05)", border: "1px solid var(--border-color)", borderRadius: "8px", padding: "10px 12px", fontSize: "13px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                    <span style={{ color: "var(--text-muted)" }}>{lang === "en" ? "Plan:" : "Giáo án:"}</span>
+                    <span style={{ color: "var(--text-muted)" }}>{lang === "en" ? "Plan:" : "Plan:"}</span>
                     <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{activePlan?.race_name || "Plan"}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>

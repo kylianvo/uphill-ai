@@ -1777,7 +1777,7 @@ export default function OnboardingWizard() {
 
                   <button className="btn btn-primary" style={{ width: "100%", height: "44px", fontSize: "14px", fontWeight: "700", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "8px" }} onClick={() => handleCompleteOnboarding(false)}>
                     <RocketLaunch size={18} weight="bold" aria-hidden="true" />
-                    <span>{lang === "en" ? "Generate My Training Plan" : "Tạo Giáo Án Tập Luyện Của Tôi"}</span>
+                    <span>{lang === "en" ? "Generate My Training Plan" : "Tạo Plan Tập Luyện Của Tôi"}</span>
                   </button>
 
                   <button

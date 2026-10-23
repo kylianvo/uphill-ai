@@ -9816,7 +9816,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trên 10% cho thấy có thể bị hội chứng thiếu hụt hiếu khí (ADS). Giáo án giữ bạn chạy ở Zone 1–2 cho đến khi khoảng chênh thu hẹp. Chỉ AeT đã test mới xác nhận được."
+            "value": "Trên 10% cho thấy có thể bị hội chứng thiếu hụt hiếu khí (ADS). Plan giữ bạn chạy ở Zone 1–2 cho đến khi khoảng chênh thu hẹp. Chỉ AeT đã test mới xác nhận được."
           }
         }
       }
@@ -13506,7 +13506,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dùng giải trong giáo án"
+            "value": "Dùng giải trong plan"
           }
         }
       }
@@ -14636,7 +14636,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Từ từ quay lại giáo án bài bản."
+            "value": "Từ từ quay lại plan bài bản."
           }
         }
       }

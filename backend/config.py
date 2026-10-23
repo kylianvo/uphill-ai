@@ -146,6 +146,10 @@ class Config:
     # LLM goal judge (services/goal_judge.py). Off = deterministic A/B/C from the
     # anchors, same API and UI. Enable once golden_eval --service goal passes.
     GOAL_LLM_ENABLED: bool = os.getenv("GOAL_LLM_ENABLED", "false").lower() == "true"
+    # vi-humanizer (llama-server) base URL, e.g. http://127.0.0.1:7870. Empty = Vietnamese text is left as Gemini wrote it.
+    VI_HUMANIZER_URL: str = os.getenv("VI_HUMANIZER_URL", "")
+    VI_HUMANIZER_TIMEOUT: float = float(os.getenv("VI_HUMANIZER_TIMEOUT", "8"))
+    VI_HUMANIZER_TEMPERATURE: float = float(os.getenv("VI_HUMANIZER_TEMPERATURE", "0.7"))
     # Structural lint + race-readiness check on every generated week (services/plan_lint.py,
     # services/race_readiness.py). PLAN_LINT_RETRY adds one corrective regeneration when a week
     # breaks a rule. Off in tests (it reads the plan's earlier weeks from the DB).

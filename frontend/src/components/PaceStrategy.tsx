@@ -773,7 +773,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
             onClick={() => setRaceName(activePlan.race_name)}
             style={{ marginTop: "4px", background: "none", border: "1px dashed var(--border-color)", borderRadius: "10px", padding: "8px 14px", fontSize: "12.5px", color: "var(--text-secondary)", cursor: "pointer" }}
           >
-            {t(`Use my plan's race: ${activePlan.race_name}`, `Dùng giải trong giáo án: ${activePlan.race_name}`)}
+            {t(`Use my plan's race: ${activePlan.race_name}`, `Dùng giải trong plan: ${activePlan.race_name}`)}
           </button>
         )}
       </div>

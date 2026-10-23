@@ -13,7 +13,7 @@ const PROFILE_INPUTS: Record<"en" | "vi", string[]> = {
   vi: [
     "Ngưỡng AeT / AnT",
     "Tiền sử chấn thương",
-    "Giáo án đang hoạt động",
+    "Plan đang hoạt động",
     "Cân nặng",
     "Thời tiết thật ngày thi đấu",
     "Địa hình & độ cao giải mục tiêu",

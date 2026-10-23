@@ -48,11 +48,11 @@ export const GLOSSARY: Record<GlossaryKey, GlossaryDefinition> = {
   },
   rag: {
     en: "Instead of answering purely from memory, the AI first looks up relevant facts from a trusted database, then writes its answer using those facts.",
-    vi: "Kiến trúc RAG (Retrieval-Augmented Generation): Thay vì suy đoán tự do, AI sẽ tra cứu các dữ kiện chuẩn xác từ kho tri thức trước, sau đó tổng hợp câu trả lời dựa trên tài liệu khoa học đó.",
+    vi: "Kiến trúc RAG (Retrieval-Augmented Generation): Thay vì suy đoán tự do, AI sẽ tra cứu các dữ kiện chuẩn xác từ kho kiến thức trước, sau đó tổng hợp câu trả lời dựa trên tài liệu khoa học đó.",
   },
   grounded: {
     en: "A response backed by a specific, retrievable source in the knowledge base, rather than the model's general training data.",
-    vi: "Câu trả lời được đối chiếu và bảo chứng trực tiếp từ tài liệu nguồn trong Knowledge Base, đảm bảo tính chuẩn xác và khoa học.",
+    vi: "Câu trả lời được đối chiếu và truy được về tài liệu nguồn trong Knowledge Base, đảm bảo tính chuẩn xác và khoa học.",
   },
   ab_c_goals: {
     en: "Three finish-time targets for one race — A (ambitious, everything goes right), B (realistic/expected), C (safe, banks margin for a bad day).",

@@ -349,7 +349,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                               cursor: "pointer",
                             }}
                           >
-                            {lang === "en" ? "View plan" : "Xem giáo án"} <ArrowRight size={12} weight="bold" />
+                            {lang === "en" ? "View plan" : "Xem plan"} <ArrowRight size={12} weight="bold" />
                           </button>
                         )}
                         <button
@@ -433,7 +433,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                 <div>
                   <div style={{ fontSize: "22px", fontWeight: "800" }}>{overview.action_items.draft_plans.length}</div>
                   <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                    {lang === "en" ? "draft plans to finish" : "giáo án nháp cần hoàn thiện"}
+                    {lang === "en" ? "draft plans to finish" : "plan nháp cần hoàn thiện"}
                   </div>
                 </div>
                 <div>
@@ -577,7 +577,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                             <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                               {athlete.active_plan
                                 ? `${athlete.active_plan.race_name} - ${lang === "en" ? "Week" : "Tuần"} ${athlete.active_plan.current_week}/${athlete.active_plan.total_weeks}`
-                                : lang === "en" ? "No active plan" : "Chưa có giáo án"}
+                                : lang === "en" ? "No active plan" : "Chưa có plan"}
                             </div>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
@@ -879,7 +879,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                   <TrendUp size={18} weight="duotone" style={{ color: "var(--accent-primary)" }} />
                   <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "800" }}>
-                    {lang === "en" ? "Adherence trend" : "Tỷ lệ tuân thủ giáo án"}
+                    {lang === "en" ? "Adherence trend" : "Tỷ lệ tuân thủ plan"}
                   </h3>
                 </div>
                 <AdherenceTrendChart trend={overview.adherence_trend} lang={lang} />
