@@ -124,12 +124,23 @@ def _claude_generate(prompt: str) -> Any:
     temperature, a thinking budget and prefill, so effort is the only knob."""
     import anthropic
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    # A stalled stream used to hang until the SDK's 10-minute default; 60 s without a byte (the API pings
+    # while it thinks) means stalled, so fail and let the reduced-prompt retry take over.
+    client = anthropic.Anthropic(
+        api_key=settings.ANTHROPIC_API_KEY,
+        timeout=anthropic.Timeout(600.0, connect=10.0, read=60.0),
+        max_retries=1,
+    )
+    kwargs: dict[str, Any] = {}
+    # Haiku 5.5 rejects disabled thinking above effort high.
+    if settings.PLAN_LLM_THINKING == "disabled" and settings.PLAN_LLM_EFFORT in ("low", "medium", "high"):
+        kwargs["thinking"] = {"type": "disabled"}
     with client.messages.stream(
         model=settings.CLAUDE_PLAN_MODEL,
         max_tokens=32000,
         output_config={"effort": settings.PLAN_LLM_EFFORT},
         messages=[{"role": "user", "content": prompt}],
+        **kwargs,
     ) as stream:
         return stream.get_final_message()
 

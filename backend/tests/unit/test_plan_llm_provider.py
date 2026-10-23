@@ -157,3 +157,34 @@ def test_claude_strength_only_day_gets_an_afternoon_run(run, monkeypatch):
     thursday = [w for w in workouts if w["day_of_week"] == "Thursday" and w["week_number"] == 1]
     assert {w["type"] for w in thursday} >= {"Muscular Endurance", "Easy"}
     assert {w.get("session_slot") for w in thursday} == {"morning", "afternoon"}
+
+
+def _plan_call(monkeypatch, thinking="adaptive", effort="low"):
+    monkeypatch.setattr(settings, "PLAN_LLM_THINKING", thinking, raising=False)
+    monkeypatch.setattr(settings, "PLAN_LLM_EFFORT", effort)
+    fake = FakeAnthropic([_message("[]")])
+    ctor = MagicMock(return_value=fake)
+    with patch("anthropic.Anthropic", ctor):
+        plan_generator._claude_generate("prompt")
+    return ctor.call_args.kwargs, fake.calls[0]
+
+
+def test_claude_plan_stream_fails_fast_on_a_stall(monkeypatch):
+    client_kw, _ = _plan_call(monkeypatch)
+    assert client_kw["timeout"].read == 60
+    assert client_kw["max_retries"] == 1
+
+
+def test_claude_plan_call_disables_thinking_when_configured(monkeypatch):
+    _, kw = _plan_call(monkeypatch, thinking="disabled", effort="low")
+    assert kw["thinking"] == {"type": "disabled"}
+
+
+def test_claude_plan_call_keeps_adaptive_by_default(monkeypatch):
+    _, kw = _plan_call(monkeypatch, thinking="adaptive")
+    assert "thinking" not in kw
+
+
+def test_claude_plan_call_never_disables_thinking_above_high(monkeypatch):
+    _, kw = _plan_call(monkeypatch, thinking="disabled", effort="xhigh")
+    assert "thinking" not in kw

@@ -779,7 +779,7 @@ def run_persona(name: str, out: Path, budget_usd: float = float("inf")) -> dict:
         checks = evaluate(name, persona, ws, plan, goal.get("feasibility"))
     from config import settings
 
-    result = {"persona": name, "provider": settings.PLAN_LLM_PROVIDER, "effort": settings.PLAN_LLM_EFFORT,
+    result = {"persona": name, "provider": settings.PLAN_LLM_PROVIDER, "effort": settings.PLAN_LLM_EFFORT, "thinking": settings.PLAN_LLM_THINKING,
               "runs": runs, "stopped": stopped, "plan": {k: plan.get(k) for k in ("id", "total_weeks", "athlete_tier", "race_name", "race_date")},
               "weeks_status": status, "checks": checks, "feasibility": goal.get("feasibility"), "journey": {k: journey.get(k) for k in ("phases", "milestones", "deviations")},
               "workouts": ws}  # fmt: skip
@@ -885,6 +885,7 @@ def main() -> int:
     )
     ap.add_argument("--provider", choices=["gemini", "claude"], default=None)
     ap.add_argument("--effort", choices=["low", "medium", "high"], default=None)
+    ap.add_argument("--thinking", choices=["adaptive", "disabled"], default=None)
     ap.add_argument("--budget-usd", type=float, default=5.0, help="stop before the next block once spent")
     ap.add_argument("--dump-prompts", default="", help="FREE: write each plan prompt to this dir, build on rules")
     args = ap.parse_args()
@@ -894,6 +895,8 @@ def main() -> int:
         settings.PLAN_LLM_PROVIDER = args.provider
     if args.effort:
         settings.PLAN_LLM_EFFORT = args.effort
+    if args.thinking:
+        settings.PLAN_LLM_THINKING = args.thinking
     if args.dump_prompts:
         settings.PLAN_LLM_PROVIDER = "gemini"
         install_prompt_dump(Path(args.dump_prompts))

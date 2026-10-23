@@ -78,6 +78,7 @@ class Config:
     # Plan generation only: gemini | claude. Everything else stays on Gemini.
     PLAN_LLM_PROVIDER: str = os.getenv("PLAN_LLM_PROVIDER", "gemini")
     PLAN_LLM_EFFORT: str = os.getenv("PLAN_LLM_EFFORT", "medium")
+    PLAN_LLM_THINKING: str = os.getenv("PLAN_LLM_THINKING", "adaptive")  # adaptive | disabled
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
     CLAUDE_PLAN_MODEL: str = os.getenv("CLAUDE_PLAN_MODEL", "claude-haiku-5-5")
     # One-shot features moved off Gemini (services/claude_llm.py); each has its own provider flag below.
