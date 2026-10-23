@@ -39,6 +39,10 @@ def test_generate_uses_structured_output_when_given_a_schema(monkeypatch):
     assert parse_kwargs["output_config"] == {"effort": settings.CLAUDE_TEXT_EFFORT}
     assert "temperature" not in parse_kwargs  # Haiku 5.5 rejects sampling params
     assert client.messages.create.call_args.kwargs["system"] == "sys"
+    assert "thinking" not in parse_kwargs
+    with patch("anthropic.Anthropic", return_value=client):
+        claude_llm.generate("hi", schema=Out, thinking=False)
+    assert client.messages.parse.call_args.kwargs["thinking"] == {"type": "disabled"}
 
 
 def test_prompt_label_only_for_claude(monkeypatch):

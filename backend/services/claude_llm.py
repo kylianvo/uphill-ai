@@ -36,6 +36,7 @@ def generate(
     system: str | None = None,
     model: str | None = None,
     max_tokens: int = 16000,
+    thinking: bool = True,
 ) -> Any:
     """One blocking Messages call on the server key. Haiku 5.5 rejects temperature and prefill, so JSON shape comes
     from structured outputs (`schema`) and effort is the only knob."""
@@ -49,6 +50,9 @@ def generate(
         # A list is a whole conversation of {role, content} turns.
         "messages": prompt if isinstance(prompt, list) else [{"role": "user", "content": prompt}],
     }
+    if not thinking:
+        # Haiku 5.5 thinks by default even at low effort, and bills it as output; pick-from-a-list calls don't need it.
+        kwargs["thinking"] = {"type": "disabled"}
     if system:
         kwargs["system"] = system
     if schema is not None:

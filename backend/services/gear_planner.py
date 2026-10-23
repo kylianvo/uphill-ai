@@ -194,7 +194,9 @@ class GearPlannerService:
                     prompt=_prompt_tpl,
                 ) as generation:
                     if _claude:
-                        message = await asyncio.to_thread(claude_llm.generate, prompt, schema=GearResponse)
+                        message = await asyncio.to_thread(
+                            claude_llm.generate, prompt, schema=GearResponse, thinking=False
+                        )
                         generation.set_usage(observability.Usage.from_anthropic(message.usage))
                         response_text = claude_llm.text(message)
                     else:
