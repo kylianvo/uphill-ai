@@ -35,3 +35,15 @@ retry.
 Finding: (c)-type stall, not runaway output or stacked retries. Fix added as Task 4b: give the Plan stream a read
 timeout so a stall fails within a minute and the existing retry tier takes over. Effort/thinking (Task 5) addresses the
 ordinary 44 s.
+
+## Caching decision (Task 8 step 1)
+
+Production, 2026-10-10 → 2026-10-24: Gear had 6 calls, 2 of them within 5 minutes of the one before (pairs 44 s and
+94 s apart); Nutrition had 1 call. Gear's catalog block (`render_catalog_context(filter_catalog(chunks, surface,
+preferred_brands))`) sits right after the opening line, but it changes whenever surface or preferred brands change,
+so even the quick repeats only hit if the athlete kept both. Plan bursts (block after block for one athlete within
+minutes), but its prompt is per-athlete before the first fixed block.
+
+Verdict: not worth it yet. With ~2 cacheable Gear calls in two weeks, the saving is about a second of time to first
+token on a handful of calls, against new code on the request path. Revisit if Gear/Nutrition traffic grows, or after
+Task 3 if Gear is still above its 10 s target.
