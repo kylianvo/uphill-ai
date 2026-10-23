@@ -146,7 +146,8 @@ Each PR leaves its flag at `gemini` and wires its service into `scripts/golden_e
 | Gear | `golden_eval.py compare --service gear --provider claude --push-langfuse --synthetic-only` (no off-catalog picks) |
 | Nutrition | `golden_eval.py compare --service nutrition --provider claude --push-langfuse --synthetic-only` |
 | Goal judge | `scripts/goal_backtest.py` with `GOAL_JUDGE_LLM_PROVIDER=claude` must beat the anchors' median, then `golden_eval.py compare --service goal_judge --provider claude` |
-| Small callers | no golden set exists; a sampled side-by-side of ~10 real-shaped inputs per feature (nudge `grounded()` pass rate, brief/card JSON validity, KB distiller row validity) |
+| Live judge | `LLM_JUDGE_PROVIDER=claude python scripts/judge_calibration.py`: every criterion ≥ 85 % agreement (llm-change-process § C) |
+| Other small callers | no golden set exists; a sampled side-by-side of ~10 synthetic inputs per feature (nudge `grounded()` pass rate, brief/card JSON validity, KB distiller rows passing `validate_domain_rows`) |
 | Coach chat | `golden_eval.py compare --service chat --provider claude` (chat gate incl. LLM judge) |
 
 Prod also needs `anthropic==1.17.0` installed in the container (still missing per #172) and

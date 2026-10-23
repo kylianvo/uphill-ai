@@ -110,6 +110,7 @@ from routers.progress import router as progress_router
 from services import (
     apple_auth,
     calendar_ops,
+    claude_llm,
     coros_sync,
     fitness_snapshot,
     observability,
@@ -1938,7 +1939,19 @@ async def coach_chat_copilot(
         f"{kb_context}"
     )
 
-    if model_api_key:
+    if claude_llm.is_claude(settings.COACH_COPILOT_LLM_PROVIDER) and settings.ANTHROPIC_API_KEY:
+        try:
+            import asyncio
+
+            message = await asyncio.to_thread(
+                claude_llm.generate,
+                [{"role": m.role if m.role == "user" else "assistant", "content": m.content} for m in request.messages],
+                system=full_system_prompt,
+            )
+            return {"role": "assistant", "content": claude_llm.text(message)}
+        except Exception as e:
+            print(f"[CoachCopilot][Claude] FAILED: {e}")
+    elif model_api_key:
         try:
             formatted_contents = []
             for msg in request.messages:

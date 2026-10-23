@@ -33,7 +33,7 @@ except ModuleNotFoundError:
     TavilyClient = None
 
 from config import settings
-from services import observability
+from services import claude_llm, observability
 
 SEED_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "kb_seed")
 DOMAINS = ("gear", "nutrition", "scheduler")
@@ -163,14 +163,18 @@ async def _gemini_structured(
     schema: type[BaseModel],
     *,
     feature: str = "kb_distill",
+    provider: str = "gemini",
 ) -> dict[str, Any]:
-    client = genai.Client(api_key=api_key)
+    """Structured extraction on `provider` (request paths pass their flag; operator scripts stay on Gemini)."""
     with observability.generation(
         "generation",
         feature=feature,
-        model=settings.GEMINI_MODEL,
+        model=claude_llm.model_for(provider),
         metadata={"tier": "primary"},
     ) as generation:
+        if claude_llm.is_claude(provider):
+            return json.loads(await asyncio.to_thread(claude_llm.call, prompt, generation, schema=schema))
+        client = genai.Client(api_key=api_key)
         response = await asyncio.to_thread(
             client.models.generate_content,
             model=settings.GEMINI_MODEL,
@@ -336,7 +340,10 @@ async def discover_gear_web(api_key: str, tavily_api_key: str, status_holder: di
                 continue
             try:
                 structured = await _gemini_structured(
-                    api_key, _GEAR_ARTICLE_ASK.format(brand=brand) + content, ShoeList
+                    api_key,
+                    _GEAR_ARTICLE_ASK.format(brand=brand) + content,
+                    ShoeList,
+                    provider=settings.KB_DISTILL_LLM_PROVIDER,
                 )
             except Exception as e:
                 print(f"[KBDistiller][gear-web] Structuring failed for '{result.get('url')}', continuing: {e}")
@@ -448,7 +455,9 @@ async def discover_nutrition_web(api_key: str, tavily_api_key: str, status_holde
             if not content.strip():
                 continue
             try:
-                structured = await _gemini_structured(api_key, _NUTRITION_PRODUCT_ASK + content, ProductList)
+                structured = await _gemini_structured(
+                    api_key, _NUTRITION_PRODUCT_ASK + content, ProductList, provider=settings.KB_DISTILL_LLM_PROVIDER
+                )
             except Exception as e:
                 print(f"[KBDistiller][nutrition-web] Structuring failed for '{result.get('url')}', continuing: {e}")
                 continue
@@ -587,7 +596,10 @@ async def discover_race_results_web(api_key: str, tavily_api_key: str, status_ho
                 continue
             try:
                 structured = await _gemini_structured(
-                    api_key, _RACE_RESULT_ASK.format(race_name=race_name) + content, RaceResultList
+                    api_key,
+                    _RACE_RESULT_ASK.format(race_name=race_name) + content,
+                    RaceResultList,
+                    provider=settings.KB_DISTILL_LLM_PROVIDER,
                 )
             except Exception as e:
                 print(f"[KBDistiller][race-results-web] Structuring failed for '{result.get('url')}', continuing: {e}")

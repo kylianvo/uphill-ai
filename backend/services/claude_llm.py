@@ -8,10 +8,20 @@ from typing import Any
 from pydantic import BaseModel
 
 from config import settings
+from services import observability
 
 
 def is_claude(provider: str) -> bool:
     return provider == "claude"
+
+
+def key_for(provider: str, gemini_key: str | None) -> str | None:
+    """Claude always bills the server key; per-user Gemini keys only ever pay for Gemini."""
+    return settings.ANTHROPIC_API_KEY if is_claude(provider) else gemini_key
+
+
+def model_for(provider: str) -> str:
+    return settings.CLAUDE_TEXT_MODEL if is_claude(provider) else settings.GEMINI_MODEL
 
 
 def prompt_label(provider: str) -> str | None:
@@ -20,7 +30,7 @@ def prompt_label(provider: str) -> str | None:
 
 
 def generate(
-    prompt: str,
+    prompt: str | list[dict[str, str]],
     *,
     schema: type[BaseModel] | None = None,
     system: str | None = None,
@@ -36,7 +46,8 @@ def generate(
         "model": model or settings.CLAUDE_TEXT_MODEL,
         "max_tokens": max_tokens,
         "output_config": {"effort": settings.CLAUDE_TEXT_EFFORT},
-        "messages": [{"role": "user", "content": prompt}],
+        # A list is a whole conversation of {role, content} turns.
+        "messages": prompt if isinstance(prompt, list) else [{"role": "user", "content": prompt}],
     }
     if system:
         kwargs["system"] = system
@@ -50,3 +61,10 @@ def text(message: Any) -> str:
     if message.stop_reason in ("refusal", "max_tokens"):
         raise RuntimeError(f"claude stop_reason={message.stop_reason}")
     return "".join(block.text for block in message.content if block.type == "text")
+
+
+def call(prompt: str, generation: Any, **kwargs: Any) -> str:
+    """generate + usage on the open generation span + text."""
+    message = generate(prompt, **kwargs)
+    generation.set_usage(observability.Usage.from_anthropic(message.usage))
+    return text(message)
