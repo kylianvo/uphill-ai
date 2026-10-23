@@ -38,6 +38,7 @@ struct PlanView: View {
     @State private var showSchedule = false
     @State private var showNextWeek = false
     @State private var showAdapt = false
+    @State private var adaptAfterManage = false
     @State private var showReview = false
     @State private var showGoal = false
     @State private var showAddWorkout = false
@@ -123,6 +124,7 @@ struct PlanView: View {
                 .sheet(isPresented: $showManage, onDismiss: {
                     if startNewAfterManage { startNewAfterManage = false; onBuildPlan() }
                     if scheduleAfterManage { scheduleAfterManage = false; showSchedule = true }
+                    if adaptAfterManage { adaptAfterManage = false; showAdapt = true }
                     if let tool = toolAfterManage {
                         toolAfterManage = nil
                         onSharpen(tool)
@@ -132,6 +134,7 @@ struct PlanView: View {
                                     deviceService: app?.deviceConnectionService,
                                     onStartNew: { startNewAfterManage = true },
                                     onSchedule: { scheduleAfterManage = true },
+                                    onAdapt: model.canAdaptWeek(model.selectedWeek) ? { adaptAfterManage = true } : nil,
                                     onTool: { dest in toolAfterManage = dest })
                 }
         }
@@ -531,15 +534,6 @@ struct PlanView: View {
                     .foregroundStyle(UH.Palette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("plan.weekLine")
-
-                if model.canAdaptWeek(model.selectedWeek) {
-                    Button(L("Adapt this week")) { showAdapt = true }
-                        .font(UH.TextStyle.disclosure)
-                        .foregroundStyle(UH.Palette.accentInk)
-                        .frame(minHeight: 44)
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("plan.adaptWeek")
-                }
             }
         }
         .padding(.horizontal, UH.Space.regular)

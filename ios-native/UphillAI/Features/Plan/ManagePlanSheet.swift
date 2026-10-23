@@ -5,6 +5,8 @@ struct ManagePlanSheet: View {
     var deviceService: (any DeviceConnectionServicing)? = nil
     let onStartNew: () -> Void
     var onSchedule: () -> Void = {}
+    /// Set only when the selected week can still be adapted.
+    var onAdapt: (() -> Void)? = nil
     var onTool: ((TrainingDestination) -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var plans: [Plan]?
@@ -15,11 +17,12 @@ struct ManagePlanSheet: View {
     @State private var showExportCalendar = false
     @State private var connectionStatus: DeviceConnectionStatus? = nil
 
-    init(model: PlanViewModel, deviceService: (any DeviceConnectionServicing)? = nil, onStartNew: @escaping () -> Void, onSchedule: @escaping () -> Void = {}, onTool: ((TrainingDestination) -> Void)? = nil, initialPlans: [Plan]? = nil, initialConfirmDelete: Bool = false) {
+    init(model: PlanViewModel, deviceService: (any DeviceConnectionServicing)? = nil, onStartNew: @escaping () -> Void, onSchedule: @escaping () -> Void = {}, onAdapt: (() -> Void)? = nil, onTool: ((TrainingDestination) -> Void)? = nil, initialPlans: [Plan]? = nil, initialConfirmDelete: Bool = false) {
         self.model = model
         self.deviceService = deviceService
         self.onStartNew = onStartNew
         self.onSchedule = onSchedule
+        self.onAdapt = onAdapt
         self.onTool = onTool
         _plans = State(initialValue: initialPlans)
         _confirmDelete = State(initialValue: initialConfirmDelete)
@@ -55,11 +58,11 @@ struct ManagePlanSheet: View {
                         .background(UH.Palette.danger.opacity(0.1), in: RoundedRectangle(cornerRadius: UH.Radius.control))
                     }
 
-                    // 1. Recent Plans Section
-                    recentPlansSection
-
-                    // 2. Plan Actions (New Plan, Plan Settings)
+                    // 1. Plan Actions (Adapt this week, New Plan, Plan Settings): the week's action comes first
                     if model.athleteId == nil { planActionsSection }
+
+                    // 2. Recent Plans Section
+                    recentPlansSection
 
                     // Tools & Labs
                     toolsSection
@@ -231,6 +234,29 @@ struct ManagePlanSheet: View {
                 .foregroundStyle(UH.Palette.muted)
 
             VStack(spacing: 0) {
+                if let onAdapt {
+                    Button {
+                        onAdapt()
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Label(L("Adapt this week"), systemImage: "arrow.triangle.2.circlepath")
+                                .font(UH.TextStyle.label)
+                                .foregroundStyle(UH.Palette.accentInk)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(UH.Palette.muted)
+                        }
+                        .padding(UH.Space.regular)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("plan.adaptWeek")
+
+                    Divider().overlay(UH.Palette.line.opacity(0.6))
+                }
+
                 Button {
                     confirmNew = true
                 } label: {
