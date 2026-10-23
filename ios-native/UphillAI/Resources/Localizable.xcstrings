@@ -9231,6 +9231,16 @@
         }
       }
     },
+    "Target %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu %@"
+          }
+        }
+      }
+    },
     "Target Applied": {
       "localizations": {
         "vi": {

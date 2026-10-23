@@ -140,6 +140,14 @@ struct ManagePlanSheet: View {
 
     // MARK: - Recent Plans
 
+    /// "42 km · Target 5h30" — whichever parts the plan has.
+    private func goalLine(_ plan: Plan) -> String? {
+        var parts: [String] = []
+        if let km = plan.courseDistanceKm, km > 0 { parts.append("\(km.formatted(.number.precision(.fractionLength(0...1)))) km") }
+        if let hours = plan.targetTimeHours, hours > 0 { parts.append(L("Target %@", PlanViewModel.formatMinutes(hours * 60))) }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
     private var recentPlansSection: some View {
         VStack(alignment: .leading, spacing: UH.Space.compact) {
             Text("RECENT PLANS")
@@ -184,6 +192,11 @@ struct ManagePlanSheet: View {
                                         Text("\(raceDate(plan)) · \(plan.totalWeeks) weeks")
                                             .font(UH.TextStyle.caption)
                                             .foregroundStyle(UH.Palette.secondary)
+                                        if let goal = goalLine(plan) {
+                                            Text(verbatim: goal)
+                                                .font(UH.TextStyle.caption)
+                                                .foregroundStyle(UH.Palette.secondary)
+                                        }
                                     }
 
                                     Spacer()

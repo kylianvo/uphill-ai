@@ -312,13 +312,19 @@ final class PlanViewModel {
                 week: week,
                 weekday: weekday,
                 date: date,
-                workouts: snapshot.workouts.filter { $0.weekNumber == week && $0.weekday == weekday },
+                workouts: snapshot.workouts.filter { $0.weekNumber == week && $0.weekday == weekday }
+                    .sorted { Self.slotOrder($0.sessionSlot) < Self.slotOrder($1.sessionSlot) },
                 eyebrow: PlanCalendar.eyebrow(for: date, now: today, calendar: calendar)
             )
         }
     }
 
     var days: [PlanDay] { days(for: selectedWeek) }
+
+    /// Morning before afternoon before evening; unslotted sessions keep their place at the end.
+    static func slotOrder(_ slot: String?) -> Int {
+        ["morning", "afternoon", "evening"].firstIndex(of: slot?.lowercased() ?? "") ?? 3
+    }
 
     func calendarMonth(_ month: Date) -> CalendarMonth {
         CalendarMonth.make(month: month, plan: snapshot?.plan, workouts: snapshot?.workouts ?? [], now: now(), calendar: calendar)
