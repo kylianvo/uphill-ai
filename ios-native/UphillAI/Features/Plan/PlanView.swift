@@ -501,6 +501,19 @@ struct PlanView: View {
         return "\(model.selectedWeek):" + ids.joined(separator: ",")
     }
 
+    private func raceFacts(_ plan: Plan) -> Text {
+        let date = PlanCalendar.day(from: plan.raceDate)?.formatted(.dateTime.month(.abbreviated).day().year())
+        let facts = [date, PlanSummary.courseLine(km: plan.courseDistanceKm, gainM: plan.courseElevationGainM)].compactMap { $0 }
+        var text = Text(verbatim: facts.joined(separator: " · ")).foregroundStyle(UH.Palette.secondary)
+        if let days = model.daysToRace {
+            let countdown = days == 0 ? "· " + L("Race day")
+                : days < 7 ? "· " + L("Race week")
+                : L("· %lld weeks to go", Int((Double(days) / 7).rounded(.up)))
+            text = text + Text(verbatim: (facts.isEmpty ? "" : " ") + countdown).foregroundStyle(UH.Palette.accentInk)
+        }
+        return text
+    }
+
     private var raceGoalHeader: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let plan = model.snapshot?.plan {
@@ -511,20 +524,11 @@ struct PlanView: View {
                             .foregroundStyle(UH.Palette.ink)
                             .lineLimit(1)
 
-                        HStack(spacing: 6) {
-                            if let date = PlanCalendar.day(from: plan.raceDate) {
-                                Text(date, format: .dateTime.month(.abbreviated).day().year())
-                                    .font(UH.TextStyle.caption)
-                                    .foregroundStyle(UH.Palette.secondary)
-                            }
-                            if let days = model.daysToRace {
-                                Text(verbatim: days == 0 ? "· " + L("Race day")
-                                        : days < 7 ? "· " + L("Race week")
-                                        : L("· %lld weeks to go", Int((Double(days) / 7).rounded(.up))))
-                                    .font(UH.TextStyle.caption)
-                                    .foregroundStyle(UH.Palette.accentInk)
-                            }
-                        }
+                        // Race date and course, so the week's km below isn't read as the race distance; one Text so it wraps.
+                        raceFacts(plan)
+                            .font(UH.TextStyle.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("plan.raceFacts")
                     }
 
                 }

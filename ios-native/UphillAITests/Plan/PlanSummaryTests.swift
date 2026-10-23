@@ -99,4 +99,17 @@ struct PlanSummaryTests {
         let v = WeekVolume(week: 12, km: 0, minutes: 0, gainM: 0, generated: true, phase: "Taper")
         #expect(PlanSummary.weekLine(v) == "Week 12 · Taper")
     }
+
+    @Test func trendLabelsKeepSelectedAndSpaceTheRest() {
+        #expect(PlanSummary.trendLabelWeeks(total: 13, selected: 1) == [1, 4, 8, 13])
+        #expect(PlanSummary.trendLabelWeeks(total: 13, selected: 7) == [1, 4, 7, 13])
+        #expect(PlanSummary.trendLabelWeeks(total: 24, selected: 10) == [1, 4, 10, 16, 20, 24])
+        #expect(PlanSummary.trendLabelWeeks(total: 0, selected: 1) == [])
+    }
+
+    @Test func courseLineShowsDistanceAndGain() {
+        #expect(PlanSummary.courseLine(km: 100, gainM: 5533) == "100 km · 5,533 m D+")
+        #expect(PlanSummary.courseLine(km: 42.2, gainM: nil) == "42.2 km")
+        #expect(PlanSummary.courseLine(km: nil, gainM: 800) == nil)
+    }
 }
