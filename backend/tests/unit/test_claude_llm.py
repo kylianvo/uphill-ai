@@ -49,3 +49,18 @@ def test_prompt_label_only_for_claude(monkeypatch):
     monkeypatch.setattr(settings, "COACH_CHAT_PROMPT_LABEL", "production")
     assert claude_llm.prompt_label("gemini") is None
     assert claude_llm.prompt_label("claude") == "claude-production"
+
+
+def test_record_sets_split_usage_and_request_id():
+    generation = MagicMock()
+    message = fake_message("x" * 3)
+    message.usage.output_tokens = 50
+    message._request_id = "req_1"
+    claude_llm.record(generation, message)
+    usage = generation.set_usage.call_args.args[0]
+    assert (usage.output_tokens, usage.thinking_tokens) == (1, 49)
+    generation.set.assert_called_once_with(request_id="req_1")
+
+    generation = MagicMock()
+    claude_llm.record(generation, fake_message("x"))
+    generation.set.assert_not_called()

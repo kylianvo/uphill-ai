@@ -438,3 +438,7 @@ def test_claude_engine_span_names_pass_through_allowlist():
     for name in ("claude", "claude_retry"):
         safe = policy.sanitize_span_envelope({"name": name, "attributes": {}, "status": {"code": "OK"}})
         assert safe["name"] == name
+
+
+def test_filter_metadata_keeps_the_anthropic_request_id():
+    assert policy.filter_metadata({"request_id": "req_1"}) == {"request_id": "req_1"}

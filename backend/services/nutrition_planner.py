@@ -198,7 +198,7 @@ Nutrition Goals:
                         message = await asyncio.to_thread(
                             claude_llm.generate, prompt, schema=NutritionResponse, thinking=False
                         )
-                        generation.set_usage(observability.Usage.from_anthropic(message.usage))
+                        claude_llm.record(generation, message)
                         response_text = claude_llm.text(message)
                     else:
                         response = await asyncio.to_thread(

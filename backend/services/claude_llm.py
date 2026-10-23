@@ -67,8 +67,16 @@ def text(message: Any) -> str:
     return "".join(block.text for block in message.content if block.type == "text")
 
 
+def record(generation: Any, message: Any) -> None:
+    """Usage (answer vs thinking) and Anthropic's request id on the open generation span."""
+    generation.set_usage(observability.Usage.from_anthropic(message.usage, message.content))
+    request_id = getattr(message, "_request_id", None)
+    if request_id:
+        generation.set(request_id=request_id)
+
+
 def call(prompt: str, generation: Any, **kwargs: Any) -> str:
     """generate + usage on the open generation span + text."""
     message = generate(prompt, **kwargs)
-    generation.set_usage(observability.Usage.from_anthropic(message.usage))
+    record(generation, message)
     return text(message)

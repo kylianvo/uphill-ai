@@ -12,6 +12,7 @@ from config import settings
 from db import block_number_for_week, get_plan_by_id, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
 from services import (
+    claude_llm,
     goal_demands,
     observability,
     plan_lint,
@@ -3461,7 +3462,7 @@ class PlanGenerator:
                     ) as generation:
                         if _claude:
                             _message = await asyncio.to_thread(_claude_generate, _gemini_prompt)
-                            generation.set_usage(observability.Usage.from_anthropic(_message.usage))
+                            claude_llm.record(generation, _message)
                             _text = _claude_text(_message)
                             if _text is None:
                                 _logger.warning(

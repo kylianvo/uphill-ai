@@ -128,7 +128,7 @@ def _call_claude(prompt: str) -> str:
         ),
     ) as generation:
         message = claude_llm.generate(prompt, schema=GoalOutput, thinking=False)
-        generation.set_usage(observability.Usage.from_anthropic(message.usage))
+        claude_llm.record(generation, message)
     return claude_llm.text(message)
 
 

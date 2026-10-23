@@ -356,8 +356,10 @@ class ClaudeCoachModel:
                 err_type = type(exc).__name__
                 raise CoachModelUpstreamError(err_type, error_type=err_type) from None
 
-            usage = Usage.from_anthropic(final.usage)
+            usage = Usage.from_anthropic(final.usage, final.content)
             gen.set_usage(usage)
+            if request_id := getattr(final, "_request_id", None):
+                gen.set(request_id=request_id)
             for block in final.content:
                 if block.type == "tool_use":
                     if not self.tools:

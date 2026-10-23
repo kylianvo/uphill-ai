@@ -146,16 +146,27 @@ class Usage:
         )
 
     @classmethod
-    def from_anthropic(cls, usage: Any) -> "Usage":
-        """Anthropic input_tokens exclude cache reads/writes and output_tokens already include thinking."""
+    def from_anthropic(cls, usage: Any, content: list[Any] | None = None) -> "Usage":
+        """Anthropic input_tokens exclude cache reads/writes and output_tokens already include thinking.
+
+        With the reply's `content`, a reply that thought is split into the visible answer and thinking;
+        output + thinking stays Anthropic's output_tokens, so cost is unchanged."""
         if usage is None:
             return cls()
         cached = getattr(usage, "cache_read_input_tokens", None) or 0
+        output = getattr(usage, "output_tokens", None) or 0
+        thinking = 0
+        if content and any(getattr(b, "type", None) == "thinking" for b in content):
+            text = "".join(getattr(b, "text", "") for b in content if getattr(b, "type", None) == "text")
+            # shortcut: chars/3 approximates Haiku 5.5's tokenizer; replace with count_tokens if the split needs to be exact
+            answer = min(math.ceil(len(text) / 3), output)
+            thinking, output = output - answer, answer
         return cls(
             input_tokens=(getattr(usage, "input_tokens", None) or 0)
             + cached
             + (getattr(usage, "cache_creation_input_tokens", None) or 0),
-            output_tokens=getattr(usage, "output_tokens", None) or 0,
+            output_tokens=output,
+            thinking_tokens=thinking,
             cached_tokens=cached,
         )
 
