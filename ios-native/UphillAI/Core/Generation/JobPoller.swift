@@ -12,7 +12,7 @@ struct JobPoller: Sendable {
 
     init(service: any GenerationServicing,
          interval: Duration = .seconds(2),
-         timeout: Duration = .seconds(240),
+         timeout: Duration = .seconds(420),  // Claude Haiku plan blocks reach ~3.5 min at p95, plus one retry
          sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.service = service
         self.interval = interval
