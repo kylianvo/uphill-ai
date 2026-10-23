@@ -47,7 +47,9 @@ struct PlanAuditScreenshots {
                     w(43, 4, "Saturday", "Long Run", 100, "Long Run", ["is_completed": 1])]
         let cur = [w(51, 5, "Monday", "Rest", 0, "Rest Day"),
                    w(52, 5, "Tuesday", "Easy Run", 50, "Aerobic Easy Run", ["is_completed": 1, "distance_km": 8.0]),
-                   w(53, 5, "Wednesday", "Hill Intervals", 60, "Hill Repeats 6×3 min", ["target_zone": "Z4", "elevation_gain_m": 240.0, "is_priority": true]),
+                   w(53, 5, "Wednesday", "Hill Intervals", 60, "Hill Repeats 6×3 min", ["target_zone": "Z4", "elevation_gain_m": 240.0, "is_priority": true, "approved_at": "2026-10-01T00:00:00Z"]),
+                   w(58, 5, "Wednesday", "Strength", 30, "Core and Hips", ["session_slot": "pm", "is_completed": 1, "matched_activity_id": 901,
+                                                                           "matched_duration_seconds": 1800, "matched_source_provider": "apple_health"]),
                    w(54, 5, "Thursday", "Strength", 40, "Mountain Legs Strength"),
                    w(55, 5, "Friday", "Rest", 0, "Rest Day"),
                    w(56, 5, "Saturday", "Long Run", 140, "Long Trail Run", ["elevation_gain_m": 900.0, "is_priority": true]),
@@ -91,13 +93,21 @@ struct PlanAuditScreenshots {
             let suffix = lang == .en ? "en" : "vi"
             let view = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}).environment(\.locale, lang.locale)
             save(view, name: "plan-first-screen-\(suffix)", height: 874)
-            save(SummaryCarousel(model: model, onReview: {}, onAdapt: {}, onGoal: {}).goalProgressCard(model.goalProgress!)
+            save(SummaryCarousel(model: model, onGoal: {}).goalProgressCard(model.goalProgress!)
                     .environment(\.locale, lang.locale), name: "goal-progress-card-\(suffix)", height: 260)
-            save(PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, initialCoachExpanded: true)
+            save(PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {})
                     .environment(\.locale, lang.locale), name: "plan-coach-review-\(suffix)", height: 1400)
             save(GoalSheet(model: model).environment(\.locale, lang.locale), name: "goal-ladder-\(suffix)", height: 1100)
             save(ChooseAGoalSheet(minutes: 600, feasibility: model.goal?.aFeasibility, onConfirm: {}).environment(\.locale, lang.locale), name: "goal-choose-a-\(suffix)", height: 874)
             save(AdaptWeekSheet(model: model, week: 5).environment(\.locale, lang.locale), name: "adapt-\(suffix)", height: 1600)
+            save(PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, initialViewMode: .calendar)
+                    .environment(\.locale, lang.locale), name: "plan-calendar-\(suffix)", height: 1400)
+            save(WorkoutDetailSheet(model: model, workoutID: 53).environment(\.locale, lang.locale), name: "session-sheet-\(suffix)", height: 1600)
+            save(DayRow(day: model.days.first { $0.weekday.rawValue == "Wednesday" }!, onSelect: { _ in }).padding()
+                    .environment(\.locale, lang.locale), name: "day-row-double-today-\(suffix)", height: 260)
+            if lang == .vi {
+                save(view.dynamicTypeSize(.accessibility3), name: "plan-first-screen-ax3-vi", height: 1400)
+            }
         }
     }
 
@@ -131,9 +141,9 @@ struct PlanAuditScreenshots {
         for lang in [AppLanguage.en, .vi] {
             UserDefaults.standard.set(lang.rawValue, forKey: AppLanguage.storageKey)
             let suffix = lang == .en ? "en" : "vi"
-            save(SummaryCarousel(model: model, onReview: {}, onAdapt: {}, onGoal: {}).goalProgressCard(model.goalProgress!)
+            save(SummaryCarousel(model: model, onGoal: {}).goalProgressCard(model.goalProgress!)
                     .environment(\.locale, lang.locale), name: "week1-goal-card-\(suffix)", height: 260)
-            save(CoachReviewCard(model: model, onOpenReview: {}, initialExpanded: true)
+            save(CoachReviewCard(model: model, onOpenReview: {})
                     .padding().environment(\.locale, lang.locale), name: "week1-coach-welcome-\(suffix)", height: 420)
         }
     }

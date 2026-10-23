@@ -121,3 +121,8 @@ def test_invalid_price_rates_fall_back_to_verified_defaults(invalid_rate, caplog
 
     assert config._parse_llm_prices(raw) == config.DEFAULT_LLM_PRICES_USD_PER_M
     assert "LLM_PRICES_JSON" in caplog.text
+
+
+def test_haiku_is_priced():
+    usage = obs.Usage(input_tokens=1_000_000, output_tokens=1_000_000)
+    assert obs.cost_usd("claude-haiku-5-5", usage) == pytest.approx(0.60)

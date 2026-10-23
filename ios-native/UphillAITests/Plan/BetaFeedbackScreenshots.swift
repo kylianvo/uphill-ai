@@ -183,7 +183,7 @@ Cool-down: 5 mins light stretching.
         save(goalDeterminer, name: "task1-goal-determiner-pushed")
 
         // 2. Task 2: Forced light appearance when system appearance is dark
-        let planDarkForcedLight = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: true)
+        let planDarkForcedLight = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list)
             .preferredColorScheme(.light)
             .environment(\.colorScheme, .dark)
         save(planDarkForcedLight, name: "task2-forced-light-in-dark-mode")
@@ -209,17 +209,17 @@ Cool-down: 5 mins light stretching.
         save(strengthDetail, name: "task3-workout-detail-strength-no-pace")
 
         // 4. Task 4: Plan screen with Coach Review takeaways ("THIS WEEK FOCUS" / "LAST WEEK REVIEW") & "Adapt Week 1"
-        let planCoachReview = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: true)
+        let planCoachReview = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list)
         save(planCoachReview, name: "task4-plan-coach-review-takeaways")
 
         // 4b. Task 4: Coach's Review on a non-final week (Week 3 of 6 generated weeks)
         model.selectedWeek = 3
-        let planWeek3Review = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: true)
+        let planWeek3Review = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list)
         save(planWeek3Review, name: "task4-coach-review-non-final-week3")
 
         // 4c. Task 4: Week 7 ungenerated week CTA (replacing fake rest days)
         model.selectedWeek = 7
-        let planWeek7CTA = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: false)
+        let planWeek7CTA = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list)
         save(planWeek7CTA, name: "task4-plan-week7-ungenerated-cta")
         model.selectedWeek = 1
 

@@ -79,4 +79,24 @@ struct PlanSummaryTests {
         #expect(PlanSummary.phase(week: 2, workouts: week2) == "Base")
         #expect(PlanSummary.phase(week: 5, workouts: week2) == nil)
     }
+
+    @Test func weekLineFull() {
+        let v = WeekVolume(week: 6, km: 52, minutes: 450, gainM: 0, generated: true, phase: "Build")
+        #expect(PlanSummary.weekLine(v) == "Week 6 · Build · 7.5 h · 52 km")
+    }
+
+    @Test func weekLineNoKm() {
+        let v = WeekVolume(week: 3, km: 0, minutes: 240, gainM: 0, generated: true, phase: "Base")
+        #expect(PlanSummary.weekLine(v) == "Week 3 · Base · 4 h")
+    }
+
+    @Test func weekLineNoPhase() {
+        let v = WeekVolume(week: 1, km: 40, minutes: 330, gainM: 0, generated: true)
+        #expect(PlanSummary.weekLine(v) == "Week 1 · 5.5 h · 40 km")
+    }
+
+    @Test func weekLineEmptyWeekHasNoZeroHours() {
+        let v = WeekVolume(week: 12, km: 0, minutes: 0, gainM: 0, generated: true, phase: "Taper")
+        #expect(PlanSummary.weekLine(v) == "Week 12 · Taper")
+    }
 }

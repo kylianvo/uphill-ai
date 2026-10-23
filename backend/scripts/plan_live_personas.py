@@ -37,6 +37,7 @@ USER_COLUMNS = {
     "threshold_pace",
     "age",
     "gender",
+    "threshold_source",
 }
 VI_BANNED = [
     "kiến tạo",
@@ -133,7 +134,7 @@ PERSONAS: dict[str, dict] = {
             mountain_min_minutes=180,
         ),
         weeks=16,
-        expect=dict(b2b=True, min_longest_session=240),
+        expect=dict(ladder=True, min_longest_session=240),
     ),
     "road_marathon": dict(
         user=dict(aet_hr=150, ant_hr=170, max_hr=188, resting_hr=54, zone2_pace_min="6:00", zone2_pace_max="5:20"),
@@ -200,7 +201,7 @@ PERSONAS: dict[str, dict] = {
             use_treadmill=True,
         ),
         weeks=12,
-        expect=dict(mountain=True, min_mountain_long_run=180),
+        expect=dict(mountain=True, min_mountain_long_run=180, ladder=True),
     ),
     "vn_hcmc_chau_thoi_50k_vi": dict(
         user=dict(aet_hr=150, ant_hr=170, max_hr=188, resting_hr=56, zone2_pace_min="6:20", zone2_pace_max="5:40"),
@@ -221,7 +222,7 @@ PERSONAS: dict[str, dict] = {
             lang="vi",
         ),
         weeks=12,
-        expect=dict(mountain=True, min_mountain_long_run=180, vietnamese=True),
+        expect=dict(mountain=True, min_mountain_long_run=180, vietnamese=True, ladder=True),
     ),
     "vn_hanoi_ham_lon_100k_vi": dict(
         user=dict(aet_hr=148, ant_hr=168, max_hr=186, resting_hr=53, zone2_pace_min="6:00", zone2_pace_max="5:20"),
@@ -243,7 +244,7 @@ PERSONAS: dict[str, dict] = {
             lang="vi",
         ),
         weeks=14,
-        expect=dict(mountain=True, min_mountain_long_run=180, vietnamese=True, b2b=True),
+        expect=dict(mountain=True, min_mountain_long_run=180, vietnamese=True, ladder=True),
     ),
     "vn_flat_city_treadmill_only": dict(
         user=dict(aet_hr=147, ant_hr=167, max_hr=187, resting_hr=55, zone2_pace_min="6:30", zone2_pace_max="5:50"),
@@ -266,7 +267,220 @@ PERSONAS: dict[str, dict] = {
         weeks=12,
         expect=dict(zero_outdoor_vert=True, climbing_me=True, vietnamese=True),
     ),
-}
+    # HCMC review pack for Quang (2026-10-22): recreational vs sub-elite, 50 km vs 100 km, Núi Dinh / Chứa Chan
+    # weekends, and one city runner who reaches the mountain only now and then.
+    "hcm_rec_50k_dinh": dict(
+        user={
+            "aet_hr": 145,
+            "ant_hr": 166,
+            "max_hr": 188,
+            "resting_hr": 56,
+            "zone2_pace_min": "6:40",
+            "zone2_pace_max": "6:00",
+            "threshold_pace": "5:10",
+        },
+        plan=dict(
+            goal_type="time",
+            terrain="trail",
+            course_distance_km=50,
+            course_elevation_gain_m=2500,
+            current_weekly_km=40,
+            days_per_week=5,
+            preferred_days=["Tuesday", "Wednesday", "Thursday", "Saturday", "Sunday"],
+            long_run_day="Sunday",
+            target_time_hours=9,
+            cutoff_time_hours=13,
+            training_environment="flat",
+            training_mountain="nui_dinh",
+            mountain_days=["Sunday"],
+            mountain_min_minutes=180,
+            use_treadmill=True,
+            treadmill_max_incline=15,
+        ),
+        weeks=14,
+        expect=dict(mountain=True, min_mountain_long_run=180, ladder=True),
+    ),
+    "hcm_rec_100k_dinh": dict(
+        user={
+            "aet_hr": 145,
+            "ant_hr": 166,
+            "max_hr": 188,
+            "resting_hr": 56,
+            "zone2_pace_min": "6:40",
+            "zone2_pace_max": "6:00",
+            "threshold_pace": "5:10",
+        },
+        plan=dict(
+            goal_type="finish",
+            terrain="trail",
+            course_distance_km=100,
+            course_elevation_gain_m=5000,
+            current_weekly_km=65,
+            days_per_week=6,
+            preferred_days=ALL_DAYS[1:],
+            long_run_day="Saturday",
+            cutoff_time_hours=28,
+            training_environment="flat",
+            training_mountain="nui_dinh",
+            mountain_days=["Saturday"],
+            mountain_min_minutes=180,
+            use_treadmill=True,
+            treadmill_max_incline=15,
+            has_gym_access=True,
+        ),
+        weeks=16,
+        expect=dict(mountain=True, min_mountain_long_run=180, ladder=True),
+    ),
+    "hcm_subelite_50k_dinh": dict(
+        user={
+            "aet_hr": 156,
+            "ant_hr": 174,
+            "max_hr": 190,
+            "resting_hr": 45,
+            "zone2_pace_min": "5:10",
+            "zone2_pace_max": "4:40",
+            "threshold_pace": "4:00",
+        },
+        plan=dict(
+            goal_type="time",
+            terrain="trail",
+            course_distance_km=50,
+            course_elevation_gain_m=2500,
+            current_weekly_km=90,
+            days_per_week=6,
+            preferred_days=ALL_DAYS[1:],
+            long_run_day="Saturday",
+            target_time_hours=6,
+            cutoff_time_hours=13,
+            training_environment="flat",
+            training_mountain="nui_dinh",
+            mountain_days=["Saturday"],
+            mountain_min_minutes=180,
+            use_treadmill=True,
+            treadmill_max_incline=15,
+            has_gym_access=True,
+        ),
+        weeks=12,
+        expect=dict(mountain=True, min_mountain_long_run=180, ladder=True),
+    ),
+    "hcm_subelite_100k_dinh": dict(
+        user={
+            "aet_hr": 156,
+            "ant_hr": 174,
+            "max_hr": 190,
+            "resting_hr": 45,
+            "zone2_pace_min": "5:10",
+            "zone2_pace_max": "4:40",
+            "threshold_pace": "4:00",
+        },
+        plan=dict(
+            goal_type="time",
+            terrain="trail",
+            course_distance_km=100,
+            course_elevation_gain_m=5000,
+            current_weekly_km=100,
+            days_per_week=6,
+            preferred_days=ALL_DAYS[1:],
+            long_run_day="Saturday",
+            target_time_hours=13,
+            cutoff_time_hours=28,
+            training_environment="flat",
+            training_mountain="nui_dinh",
+            mountain_days=["Saturday"],
+            mountain_min_minutes=180,
+            use_treadmill=True,
+            treadmill_max_incline=15,
+            has_gym_access=True,
+        ),
+        weeks=16,
+        expect=dict(mountain=True, min_mountain_long_run=180, ladder=True),
+    ),
+    "hcm_rec_50k_city_sometimes": dict(
+        user={
+            "aet_hr": 145,
+            "ant_hr": 166,
+            "max_hr": 188,
+            "resting_hr": 56,
+            "zone2_pace_min": "6:40",
+            "zone2_pace_max": "6:00",
+            "threshold_pace": "5:10",
+        },
+        plan=dict(
+            goal_type="finish",
+            terrain="trail",
+            course_distance_km=50,
+            course_elevation_gain_m=2500,
+            current_weekly_km=40,
+            days_per_week=5,
+            preferred_days=["Tuesday", "Wednesday", "Thursday", "Saturday", "Sunday"],
+            long_run_day="Sunday",
+            cutoff_time_hours=13,
+            training_environment="flat",
+            use_treadmill=True,
+            treadmill_max_incline=15,
+            stair_access=True,
+            has_gym_access=True,
+        ),
+        weeks=14,
+        # Trail preferences change when each new week is generated: Núi Dinh on Sunday every other week.
+        week_overrides={
+            wk: (
+                dict(training_mountain="nui_dinh", mountain_days=["Sunday"], mountain_min_minutes=180)
+                if wk % 2 == 0
+                else dict(training_mountain=None, mountain_days=[], mountain_min_minutes=None)
+            )
+            for wk in range(2, 14)
+        },
+        expect=dict(climbing_me=True),
+    ),
+    # Invented personas for the ultra rules (#171) and the Haiku comparison.
+    "vn_masters_100k_gated_vi": dict(
+        user=dict(age=52, aet_hr=132, ant_hr=160, max_hr=178, resting_hr=58, threshold_source="lab",
+                  zone2_pace_min="7:00", zone2_pace_max="6:20"),
+        plan=dict(goal_type="finish", terrain="trail", course_distance_km=100, course_elevation_gain_m=5200,
+                  current_weekly_km=55, days_per_week=6, preferred_days=ALL_DAYS[1:], long_run_day="Saturday",
+                  cutoff_time_hours=30, training_environment="flat", training_mountain="nui_dinh",
+                  mountain_days=["Saturday"], lang="vi"),
+        weeks=20,
+        expect=dict(ladder=True, mountain=True, min_mountain_long_run=180, vietnamese=True),
+    ),
+    "sub_elite_100mi_mountain": dict(
+        user=dict(aet_hr=155, ant_hr=168, max_hr=188, resting_hr=42, threshold_source="lab",
+                  zone2_pace_min="5:10", zone2_pace_max="4:40", threshold_pace="3:50"),
+        plan=dict(goal_type="time", terrain="trail", course_distance_km=165, course_elevation_gain_m=9500,
+                  current_weekly_km=130, days_per_week=6, preferred_days=ALL_DAYS[1:], long_run_day="Saturday",
+                  target_time_hours=26, cutoff_time_hours=46, training_environment="flat",
+                  training_mountain="nui_dinh", mountain_days=["Saturday"]),
+        weeks=20,
+        expect=dict(ladder=True, min_longest_session=420),
+    ),
+    "low_base_50k_mountain_10wk": dict(
+        user=dict(aet_hr=145, ant_hr=165, max_hr=185, resting_hr=60, zone2_pace_min="7:10", zone2_pace_max="6:30"),
+        plan=dict(goal_type="finish", terrain="trail", course_distance_km=55, course_elevation_gain_m=2800,
+                  current_weekly_km=25, days_per_week=5, preferred_days=["Tuesday", "Wednesday", "Thursday", "Saturday", "Sunday"],
+                  long_run_day="Sunday", cutoff_time_hours=14, training_environment="flat",
+                  training_mountain="chau_thoi", mountain_days=["Sunday"]),
+        weeks=10,
+        expect=dict(ladder=True, max_long_run_min=300),
+    ),
+    "short_8wk_100k_mountain": dict(
+        user=dict(aet_hr=150, ant_hr=168, max_hr=186, resting_hr=50, zone2_pace_min="6:00", zone2_pace_max="5:25"),
+        plan=dict(goal_type="finish", terrain="trail", course_distance_km=100, course_elevation_gain_m=4500,
+                  current_weekly_km=75, days_per_week=6, preferred_days=ALL_DAYS[1:], long_run_day="Saturday",
+                  cutoff_time_hours=28, training_environment="flat", training_mountain="ham_lon",
+                  mountain_days=["Saturday"]),
+        weeks=8,
+        expect=dict(ladder=True),
+    ),
+    "vi_beginner_10k_road": dict(
+        user=dict(aet_hr=138, ant_hr=158, max_hr=192, resting_hr=66, zone2_pace_min="8:00", zone2_pace_max="7:20"),
+        plan=dict(goal_type="finish", terrain="road", course_distance_km=10, course_elevation_gain_m=50,
+                  current_weekly_km=12, days_per_week=3, preferred_days=["Tuesday", "Thursday", "Sunday"],
+                  long_run_day="Sunday", lang="vi"),
+        weeks=8,
+        expect=dict(no_intensity=True, zero_vert=True, vietnamese=True, max_long_run_min=75),
+    ),
+}  # fmt: skip
 
 
 def poll(client, headers, job_id, timeout=480):
@@ -386,6 +600,16 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict, feasibility: 
     if exp.get("b2b"):
         b2b = [wk for wk in weeks if plan_lint.is_b2b_week(by[wk])]
         add("back-to-back weekend in the last build weeks", bool(b2b), str(b2b))
+    if exp.get("ladder"):
+        taper_start = min((wk for wk in weeks if phases[wk] == "Taper"), default=plan["total_weeks"])
+        broken = sorted(
+            {
+                (i.week, i.code)
+                for i in issues
+                if i.code in ("ULTRA_LADDER", "WEEKDAY_SHORT", "QUALITY_COUNT") and i.week < taper_start
+            }
+        )
+        add("ultra ladder rules hold (ladder, weekday minimums, quality window)", not broken, str(broken[:6]))
     if exp.get("zero_vert"):
         add("road: no climbing", not any(float(w.get("elevation_gain_m") or 0) > 0 for w in ws), "")
     if exp.get("zero_outdoor_vert"):
@@ -439,7 +663,63 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict, feasibility: 
     return rows
 
 
-def run_persona(name: str, out: Path) -> dict:
+ENGINES = ("gemini", "gemini_retry", "claude", "claude_retry")
+SPENT = {"usd": 0.0}
+
+
+def over_budget(spent: float, cap: float) -> bool:
+    return spent >= cap
+
+
+def engine_for(before: dict, after: dict) -> str:
+    """The engine whose "used" counter moved during one block, else the rule-based tier."""
+    return next((e for e in ENGINES if after.get(e, 0) > before.get(e, 0)), "rules")
+
+
+def _counters() -> dict:
+    from prometheus_client import REGISTRY
+
+    used = {
+        e: REGISTRY.get_sample_value("rag_attempts_total", {"service": "plan_generator", "engine": e, "status": "used"})
+        or 0.0
+        for e in ENGINES
+    }
+    cost = sum(
+        s.value for m in REGISTRY.collect() if m.name == "llm_cost_usd" for s in m.samples if s.name.endswith("_total")
+    )
+    model_s = sum(
+        REGISTRY.get_sample_value("rag_latency_seconds_sum", {"service": "plan_generator", "engine": e}) or 0.0
+        for e in ENGINES
+    )
+    return {**used, "usd": cost, "model_s": model_s, "t": time.time()}
+
+
+def latency_summary(runs: dict) -> dict:
+    """Nearest-rank p50/p95 of block wall-clock seconds and of the model call alone."""
+
+    def pct(values, q):
+        values = sorted(values)
+        return values[max(0, -(-len(values) * q // 100) - 1)] if values else None
+
+    rows = list(runs.values())
+    wall = [r["seconds"] for r in rows]
+    model = [r.get("model_seconds", 0) for r in rows if r.get("model_seconds")]
+    return {"blocks": len(rows), "p50_s": pct(wall, 50), "p95_s": pct(wall, 95),
+            "model_p50_s": pct(model, 50), "model_p95_s": pct(model, 95)}  # fmt: skip
+
+
+def _record(runs: dict, week: int, before: dict) -> None:
+    after = _counters()
+    runs[week] = {
+        "engine": engine_for(before, after),
+        "cost_usd": round(after["usd"] - before["usd"], 5),
+        "seconds": round(after["t"] - before["t"], 1),
+        "model_seconds": round(after["model_s"] - before["model_s"], 1),
+    }
+    SPENT["usd"] += after["usd"] - before["usd"]
+
+
+def run_persona(name: str, out: Path, budget_usd: float = float("inf")) -> dict:
     persona = PERSONAS[name]
     p = dict(persona["plan"])
     weeks = persona["weeks"]
@@ -459,22 +739,36 @@ def run_persona(name: str, out: Path) -> dict:
             "lang": "en",
             **p,
         }
+        runs: dict[int, dict] = {}
+        stopped = None
+        before = _counters()
         first = client.post("/api/coach/generate-plan", headers=headers, json=body).json()
         plan_id, total = first["plan"]["id"], first["plan"]["total_weeks"]
         if first.get("job_id"):
             poll(client, headers, first["job_id"])
+        _record(runs, 1, before)
         status = {}
         for week in range(1, total):  # through the race week
             if week > 1:
+                if over_budget(SPENT["usd"], budget_usd):
+                    stopped = "budget"
+                    break
+                before = _counters()
                 started = client.post(
                     "/api/coach/generate-next-block",
                     headers=headers,
-                    json={"plan_id": plan_id, "block_number": week, "lang": p.get("lang", "en")},
+                    json={
+                        "plan_id": plan_id,
+                        "block_number": week,
+                        "lang": p.get("lang", "en"),
+                        **persona.get("week_overrides", {}).get(week, {}),  # trail settings changed before this week
+                    },
                 )
                 if started.status_code != 200:
                     status[week] = f"HTTP {started.status_code}"
                     break
                 status[week] = poll(client, headers, started.json()["job_id"]).get("status")
+                _record(runs, week, before)
             for w in db.get_plan_workouts(plan_id):
                 if w["week_number"] == week and w["type"] != "Rest":
                     db.update_workout_log(w["id"], is_completed=1)
@@ -483,7 +777,10 @@ def run_persona(name: str, out: Path) -> dict:
         journey = client.get(f"/api/plans/{plan_id}/journey", headers=headers).json()
         goal = client.get(f"/api/plans/{plan_id}/goal?lang=en", headers=headers).json()
         checks = evaluate(name, persona, ws, plan, goal.get("feasibility"))
-    result = {"persona": name, "plan": {k: plan.get(k) for k in ("id", "total_weeks", "athlete_tier", "race_name", "race_date")},
+    from config import settings
+
+    result = {"persona": name, "provider": settings.PLAN_LLM_PROVIDER, "effort": settings.PLAN_LLM_EFFORT,
+              "runs": runs, "stopped": stopped, "plan": {k: plan.get(k) for k in ("id", "total_weeks", "athlete_tier", "race_name", "race_date")},
               "weeks_status": status, "checks": checks, "feasibility": goal.get("feasibility"), "journey": {k: journey.get(k) for k in ("phases", "milestones", "deviations")},
               "workouts": ws}  # fmt: skip
     (out / f"{name}.json").write_text(json.dumps(result, ensure_ascii=False, indent=1, default=str))
@@ -525,6 +822,58 @@ def install_replay(dirs: list[Path]) -> None:
 
     genai.Client = _Client
 
+    import anthropic
+
+    class _Stream:
+        def __init__(self, text):
+            self.text = text
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def get_final_message(self):
+            return SimpleNamespace(
+                stop_reason="end_turn", content=[SimpleNamespace(type="text", text=self.text)], usage=None
+            )
+
+    class _Messages:
+        def stream(self, messages=(), **kw):
+            return _Stream(_Models().generate_content(contents=messages[0]["content"]).text)
+
+    class _Anthropic:
+        def __init__(self, *a, **k):
+            self.messages = _Messages()
+
+    anthropic.Anthropic = _Anthropic
+
+
+def install_prompt_dump(out: Path) -> None:
+    """FREE: write every plan prompt to <out>/<persona>_w<first week>.txt and fail the call, so the block is built
+    by the rules and the run goes on. Feed the files to any model by hand."""
+    from google import genai
+
+    out.mkdir(parents=True, exist_ok=True)
+
+    class _Models:
+        def generate_content(self, model=None, contents="", config=None):
+            m = re.search(r"weeks (\d+) through (\d+)", str(contents))
+            persona = next((n for n in PERSONAS if f"ZZ {n}" in str(contents)), None)
+            if m and persona:
+                (out / f"{persona}_w{m.group(1)}.txt").write_text(str(contents))
+            raise RuntimeError("prompt dumped")
+
+        def embed_content(self, *a, **k):
+            raise RuntimeError("prompt dump: no embeddings")
+
+    class _Client:
+        def __init__(self, *a, **k):
+            self.models = _Models()
+
+    genai.Client = _Client
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -534,7 +883,20 @@ def main() -> int:
     ap.add_argument(
         "--replay", default="", help="comma-separated dirs of saved paid runs: FREE replay of their model rows"
     )
+    ap.add_argument("--provider", choices=["gemini", "claude"], default=None)
+    ap.add_argument("--effort", choices=["low", "medium", "high"], default=None)
+    ap.add_argument("--budget-usd", type=float, default=5.0, help="stop before the next block once spent")
+    ap.add_argument("--dump-prompts", default="", help="FREE: write each plan prompt to this dir, build on rules")
     args = ap.parse_args()
+    from config import settings
+
+    if args.provider:
+        settings.PLAN_LLM_PROVIDER = args.provider
+    if args.effort:
+        settings.PLAN_LLM_EFFORT = args.effort
+    if args.dump_prompts:
+        settings.PLAN_LLM_PROVIDER = "gemini"
+        install_prompt_dump(Path(args.dump_prompts))
     if args.replay:
         install_replay([Path(d) for d in args.replay.split(",")])
     if args.list:
@@ -545,13 +907,18 @@ def main() -> int:
     names = [n for n in PERSONAS if not args.only or any(o in n for o in args.only.split(","))]
     sys.stdout.reconfigure(line_buffering=True)
     for n in names:
-        r = run_persona(n, out)
+        r = run_persona(n, out, args.budget_usd)
         fails = [c for c in r["checks"] if not c["ok"]]
         print(
             f"\n== {n}: tier={r['plan']['athlete_tier']} feasibility={(r['feasibility'] or {}).get('verdict')} fails={len(fails)}"
         )
         for c in r["checks"]:
             print(f"   {'PASS' if c['ok'] else 'FAIL'} {c['check']}: {c['detail']}")
+        engines = [v["engine"] for v in r["runs"].values()]
+        print(f"   engines {engines}  spent ${SPENT['usd']:.3f}  latency {latency_summary(r['runs'])}")
+        if r["stopped"]:
+            print(f"== stopped: {r['stopped']} cap ${args.budget_usd}")
+            break
     return 0
 
 

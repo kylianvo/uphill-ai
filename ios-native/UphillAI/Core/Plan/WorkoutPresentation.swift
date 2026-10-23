@@ -1,6 +1,16 @@
 import SwiftUI
 
+enum RowStatus: Equatable { case done, missed, matched, none }
+
 enum WorkoutTypePresentation {
+    /// The one status a day row shows beside the type chip.
+    static func rowStatus(for workout: Workout) -> RowStatus {
+        if workout.isMatched { return .matched }
+        if workout.isDone { return .done }
+        if workout.isMissedFlag { return .missed }
+        return .none
+    }
+
     static func chipLabel(for workout: Workout) -> String {
         let t = workout.type.lowercased()
         if t.contains("interval") || t.contains("hill") { return "Intervals" }
