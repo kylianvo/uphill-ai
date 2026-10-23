@@ -43,13 +43,18 @@ def render_principles_context(chunks: list[dict[str, Any]], heading: str = "GROU
     return f"=== {heading} ===\n" + "\n\n".join(parts) + f"\n=== END {heading} ===\n"
 
 
+def _norm(text: str) -> str:
+    # Trademark marks are not part of a product's identity; models copy them inconsistently.
+    return text.translate({ord(c): None for c in "™®©"}).strip().lower()
+
+
 def find_uncatalogued(recommended: list[dict[str, Any]], catalog_titles: list[str]) -> list[str]:
     """Names the model recommended that aren't in the distilled catalog (hallucination guard)."""
-    titles = [t.lower().strip() for t in catalog_titles]
+    titles = [_norm(t) for t in catalog_titles]
     missing = []
     for rec in recommended:
-        model = (rec.get("model") or rec.get("name") or "").strip().lower()
-        name = f"{rec.get('brand', '')} {model}".strip().lower()
+        model = _norm(rec.get("model") or rec.get("name") or "")
+        name = _norm(f"{rec.get('brand', '')} {model}")
         # Catalog titles may abbreviate the brand ("PF 30 Energy Gel" for Precision Fuel & Hydration),
         # so the model name alone matching a title also counts as catalogued.
         if name and not any(name in t or t in name or (model and model in t) for t in titles):

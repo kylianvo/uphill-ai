@@ -50,3 +50,12 @@ def test_find_uncatalogued_accepts_catalog_titles_that_abbreviate_the_brand():
 
     recs = [{"brand": "Precision Fuel & Hydration", "name": "PF 30 Energy Gel"}]
     assert find_uncatalogued(recs, ["PF 30 Energy Gel"]) == []
+
+
+def test_find_uncatalogued_ignores_trademark_marks():
+    from services.kb_context import find_uncatalogued
+
+    titles = ["Näak Näak Ultra Energy™ Puree | Sweet Potatoes Butternut Squash"]
+    recs = [{"brand": "Näak", "name": "Näak Ultra Energy Puree | Sweet Potatoes Butternut Squash"}]
+    assert find_uncatalogued(recs, titles) == []
+    assert find_uncatalogued([{"brand": "Näak", "name": "Invented Gel®"}], titles) == ["näak invented gel"]
