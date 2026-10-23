@@ -206,3 +206,52 @@ def test_a_mid_plan_tune_up_race_does_not_rest_the_week():
     tune_up = [_row(6, "Wednesday", "Race", 120), _row(6, "Saturday", "Long Run", 180)]
     goal = [_row(12, "Saturday", "Race", 900), _row(12, "Sunday", "Recovery", 30)]
     assert plan_generator.rows_after_race(tune_up + goal) == [goal[1]]
+
+
+def test_model_double_on_the_long_run_day_is_dropped(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock, patch
+
+    monkeypatch.setattr(settings, "PLAN_LINT_ENABLED", False)
+    monkeypatch.setattr(plan_generator, "get_plan_workouts", lambda plan_id: [])
+    monkeypatch.setattr("services.kb_retrieval._client", lambda: None)
+    days = ["Tuesday", "Thursday", "Saturday", "Saturday", "Sunday"]
+    kinds = ["Easy", "Tempo", "Easy", "Long Run", "Easy"]
+    slots = [None, None, "morning", "afternoon", None]
+    week = [
+        {"week_number": 1, "day_of_week": d, "type": t, "title": t, "description": "Run", "duration_minutes": 45}
+        | ({"session_slot": s} if s else {})
+        for d, t, s in zip(days, kinds, slots)
+    ]
+    client = MagicMock()
+    client.models.generate_content.return_value = SimpleNamespace(text=json.dumps(week))
+    client.models.embed_content.return_value = SimpleNamespace(embeddings=[SimpleNamespace(values=[0.1])])
+    race_info = {
+        "name": "VHT 100K",
+        "date": (START + timedelta(weeks=18, days=5)).isoformat(),
+        "plan_start_date": START.isoformat(),
+        "terrain": "trail",
+        "course_distance_km": 104.2,
+        "course_elevation_gain_m": 5533,
+        "goal_type": "finish",
+        "long_run_day": "Saturday",
+        "days_per_week": 5,
+        "mountain_days": json.dumps(["Saturday"]),
+        "training_mountain": "nui_dinh",
+        "athlete_tier": "recreational",
+    }
+    with patch("google.genai.Client", return_value=client):
+        wos, _ = asyncio.run(
+            PlanGenerator.generate_plan_workouts(
+                plan_id=0,
+                user_profile={"max_hr": 185, "resting_hr": 55, "current_weekly_km": 65.0},
+                race_info=race_info,
+                total_weeks=20,
+                api_key="test-key",
+                cutoff_time_hours=29,
+                block_number=1,
+                weeks_per_block=1,
+            )
+        )
+    saturday = [w for w in wos if w["week_number"] == 1 and w["day_of_week"] == "Saturday"]
+    assert [w["type"] for w in saturday] == ["Long Run"] and saturday[0]["session_slot"] == "main"
