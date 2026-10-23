@@ -22,28 +22,59 @@ struct CoachReviewCard: View {
         model.selectedWeek == model.currentWeek ? model.coachNudge : nil
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: UH.Space.compact) {
-            Text("Coach's review")
-                .font(UH.TextStyle.eyebrow)
-                .foregroundStyle(UH.Palette.accentInk)
+    @State private var expanded = false
 
-            if let text = Self.message(nudge: nudge?.text, why: whyThisWeek, welcome: welcome, pick: priorityWorkout?.title) {
-                Text(verbatim: text)
-                    .font(UH.TextStyle.body)
-                    .foregroundStyle(nudge?.kind == .headsUp ? UH.Palette.warningInk : UH.Palette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier(welcome != nil && nudge == nil && whyThisWeek == nil ? "plan.coachCard.welcome" : "plan.coachCard.message")
+    var body: some View {
+        let text = Self.message(nudge: nudge?.text, why: whyThisWeek, welcome: welcome, pick: priorityWorkout?.title)
+        let headsUp = nudge?.kind == .headsUp
+        VStack(alignment: .leading, spacing: UH.Space.compact) {
+            if let text {
+                // Two lines by default so the week's sessions stay near the top; tap to read the rest in place.
+                Button {
+                    withAnimation(UH.Motion.standard) { expanded.toggle() }
+                } label: {
+                    HStack(alignment: .top, spacing: UH.Space.small) {
+                        Image(systemName: headsUp ? "exclamationmark.bubble.fill" : "quote.bubble.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(headsUp ? UH.Palette.warningInk : UH.Palette.accentInk)
+                            .frame(width: 32, height: 32)
+                            .background(headsUp ? UH.Palette.warningFill : UH.Palette.activeFill, in: Circle())
+                            .accessibilityHidden(true)
+                        Text(verbatim: text)
+                            .font(.subheadline)
+                            .foregroundStyle(headsUp ? UH.Palette.warningInk : UH.Palette.ink)
+                            .lineLimit(expanded ? nil : 2)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Image(systemName: "chevron.down")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(UH.Palette.muted)
+                            .rotationEffect(.degrees(expanded ? 180 : 0))
+                            .frame(height: 32)
+                            .accessibilityHidden(true)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(L("Coach's review")) + Text(verbatim: ": " + text))
+                .accessibilityHint(expanded ? "" : L("Shows the whole message"))
+                .accessibilityIdentifier(welcome != nil && nudge == nil && whyThisWeek == nil ? "plan.coachCard.welcome" : "plan.coachCard.message")
             }
 
-            Button("Read the full review", action: onOpenReview)
-                .font(UH.TextStyle.disclosure)
-                .foregroundStyle(UH.Palette.accentInk)
-                .frame(minHeight: 44)
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("plan.coachCard.reviewLink")
+            if expanded || text == nil {
+                Button("Read the full review", action: onOpenReview)
+                    .font(UH.TextStyle.disclosure)
+                    .foregroundStyle(UH.Palette.accentInk)
+                    .frame(minHeight: 44)
+                    .padding(.leading, text == nil ? 0 : 32 + UH.Space.small)
+                    .buttonStyle(.plain)
+                    .transition(.opacity)
+                    .accessibilityIdentifier("plan.coachCard.reviewLink")
+            }
         }
-        .padding(UH.Space.regular)
+        .padding(.horizontal, UH.Space.regular)
+        .padding(.vertical, UH.Space.small)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.panel))
         .overlay(RoundedRectangle(cornerRadius: UH.Radius.panel).stroke(UH.Palette.line))

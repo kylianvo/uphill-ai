@@ -15331,6 +15331,16 @@
         }
       }
     },
+    "Shows the whole message": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiện toàn bộ lời nhắn"
+          }
+        }
+      }
+    },
     "Cold": {
       "localizations": {
         "vi": {
