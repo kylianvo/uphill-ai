@@ -447,6 +447,7 @@ async def run_turn(
 
             # Background quality grading for a sampled share of turns (scores only leave the process).
             llm_judge.maybe_judge_turn(
+                user_id=user_id,
                 trace_id=trace_id,
                 message_id=assistant_msg_id,
                 question=question,
