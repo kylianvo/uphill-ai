@@ -61,6 +61,7 @@ struct PlanView: View {
                     if let week = route.weekNumber { openWeekInList(week) }
                     if let id = route.workoutId { selectedWorkout = model.snapshot?.workouts.first { $0.id == id } }
                     if route.kind == "review" { showReview = true }
+                    if route.intent == "adapt", route.weekNumber != nil, model.canAdaptWeek(model.selectedWeek) { showAdapt = true }
                     if route.kind == "plan", route.intent == "planning", model.nextWeekOffer != nil { showNextWeek = true }
                     app?.notifications.visibleRoute = route
                     model.notificationRoute = nil

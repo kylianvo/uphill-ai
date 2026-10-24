@@ -17721,106 +17721,6 @@
         }
       }
     },
-    "Workout reminders": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nhắc buổi tập"
-          }
-        }
-      }
-    },
-    "Coaching tips": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gợi ý tập luyện"
-          }
-        }
-      }
-    },
-    "Plan ready updates": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Báo plan mới"
-          }
-        }
-      }
-    },
-    "At most one coaching reminder a day. Requested plan updates are separate.": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tối đa một lời nhắc mỗi ngày. Báo plan mới được tính riêng."
-          }
-        }
-      }
-    },
-    "Timing": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Thời gian"
-          }
-        }
-      }
-    },
-    "Workout reminder": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nhắc buổi tập"
-          }
-        }
-      }
-    },
-    "Coaching reminder": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gợi ý tập luyện"
-          }
-        }
-      }
-    },
-    "Quiet hours start": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bắt đầu giờ yên lặng"
-          }
-        }
-      }
-    },
-    "Quiet hours end": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kết thúc giờ yên lặng"
-          }
-        }
-      }
-    },
-    "Distance units": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Đơn vị khoảng cách"
-          }
-        }
-      }
-    },
     "Resume notifications": {
       "localizations": {
         "vi": {
@@ -17897,6 +17797,106 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nội dung này không còn. Bạn đang xem plan hiện tại."
+          }
+        }
+      }
+    },
+    "Workout reminders, a Monday week brief and the occasional coaching note. At most one a day, never at night.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhắc buổi tập, tóm tắt tuần vào thứ Hai và đôi khi một lời nhắn từ Coach. Tối đa một lần mỗi ngày, không gửi ban đêm."
+          }
+        }
+      }
+    },
+    "Muted": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã tắt"
+          }
+        }
+      }
+    },
+    "Less like this": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bớt loại này"
+          }
+        }
+      }
+    },
+    "Monday briefs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tóm tắt tuần"
+          }
+        }
+      }
+    },
+    "Coaching notes": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lời nhắn từ Coach"
+          }
+        }
+      }
+    },
+    "Session recognition": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi nhận buổi tập"
+          }
+        }
+      }
+    },
+    "Missed sessions": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi bị lỡ"
+          }
+        }
+      }
+    },
+    "Profile tips": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gợi ý hồ sơ"
+          }
+        }
+      }
+    },
+    "Knowledge tips": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiến thức"
+          }
+        }
+      }
+    },
+    "Unmute": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bật lại"
           }
         }
       }

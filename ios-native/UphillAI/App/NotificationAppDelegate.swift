@@ -17,6 +17,11 @@ final class NotificationAppDelegate: NSObject, UIApplicationDelegate {
 extension NotificationAppDelegate: @preconcurrency UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         defer { completionHandler() }
+        if response.actionIdentifier == "LESS" {
+            let id = (response.notification.request.content.userInfo["notification_id"] as? String).flatMap(UUID.init(uuidString:))
+            if let id, let coordinator = NotificationCoordinator.current { Task { await coordinator.lessLikeThis(id: id) } }
+            return
+        }
         guard let data = try? JSONSerialization.data(withJSONObject: response.notification.request.content.userInfo) else { return }
         if let coordinator = NotificationCoordinator.current { coordinator.receive(data: data) }
         else { NotificationCoordinator.pendingLaunchData = data }
