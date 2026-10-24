@@ -4009,6 +4009,23 @@ def is_ai_eval_excluded(user_id: int) -> bool:
         return bool(conn.execute(text("SELECT ai_eval_excluded FROM users WHERE id = :u"), {"u": user_id}).scalar())
 
 
+def get_connection_by_provider_user(provider: str, provider_user_id: str) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM athlete_connections WHERE provider = :p AND provider_user_id = :pu"),
+            {"p": provider, "pu": provider_user_id},
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def set_connection_scopes(user_id: int, provider: str, scopes: str) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            text("UPDATE athlete_connections SET scopes = :s WHERE user_id = :u AND provider = :p"),
+            {"s": scopes, "u": user_id, "p": provider},
+        )
+
+
 def get_connection(user_id: int, provider: str) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(

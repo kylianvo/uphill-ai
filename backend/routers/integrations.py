@@ -14,14 +14,17 @@ Two facts from the COROS API Reference V2.0.6 shape the webhook handler below:
 
 import html
 import json
+import logging
+import re
 import secrets
 import time
+from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 from urllib.parse import urlencode, urlparse
 
 import httpx
-from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field, ValidationError
 
@@ -29,7 +32,7 @@ import db
 from config import settings
 from db import verify_session
 from log_utils import get_logger
-from services import coros_oauth, coros_push, coros_sync, recovery_baseline, token_crypto
+from services import coros_oauth, coros_push, coros_sync, garmin_ingest, garmin_oauth, recovery_baseline, token_crypto
 from services.calendar_rules import resolve_today
 from services.matching import runner as matching_runner
 from services.matching.quality_scorer import score_workout_quality
@@ -38,10 +41,26 @@ from services.plan_generator import PlanGenerator
 from services.providers.base import CanonicalActivity, CanonicalDailyMetric
 from services.providers.coros import PROVIDER, CorosDailyMetricsUnavailableError
 from services.providers.coros_parsers import CorosParseError
+from services.providers.garmin import PROVIDER as GARMIN
 from services.week_context import attach_week_context
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 logger = get_logger(__name__)
+
+
+class _RedactGarminWebhookToken(logging.Filter):
+    """The Garmin webhook URL carries a secret path segment; keep it out of access logs."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # uvicorn.access args: (client_addr, method, full_path, http_version, status_code)
+        if isinstance(record.args, tuple) and len(record.args) > 2 and "/garmin/webhook/" in str(record.args[2]):
+            args = list(record.args)
+            args[2] = re.sub(r"(/garmin/webhook/)[^/?]+", r"\1[redacted]", str(args[2]))
+            record.args = tuple(args)
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(_RedactGarminWebhookToken())
 
 
 @router.get("/coros/webhook")
@@ -124,12 +143,13 @@ _PENDING_AUTH_TTL_SECONDS = 600  # 10 minutes -- generous for a redirect round t
 # a system browser session whose cookie jar is separate from the app's WebView,
 # so the cookie set by /connect never reaches /callback. Instead the callback
 # parks the code here and hands a one-time completion token to the browser that
-# consented, which returns it to the app via NATIVE_CALLBACK_URL; the app then
+# consented, which returns it to the app via uphillai://<provider>/callback; the app then
 # presents it on /coros/complete with its own session. An attacker who started
 # the flow never sees the token, and the victim's app fails the user_id check.
 # state -> (user_id, verifier, code, completion_token, created_at)
-_NATIVE_COMPLETIONS: dict[str, tuple[int, str, str, str, float]] = {}
 NATIVE_CALLBACK_URL = "uphillai://coros/callback"
+PROVIDER_NAMES = {"coros": "COROS", "garmin": "Garmin"}
+_NATIVE_COMPLETIONS: dict[str, tuple[int, str, str, str, float]] = {}
 
 # The cookie that binds an authorization attempt to the browser that started
 # it (see coros_connect / coros_callback below -- RFC 6749 section 10.12
@@ -193,13 +213,21 @@ def _validate_return_url(url: str | None) -> str | None:
     return None
 
 
-def _error_redirect(return_url: str | None = None) -> RedirectResponse:
-    """Every failure path out of /coros/callback ends here, and the one-shot
+def _state_cookie(provider: str) -> str:
+    return f"{provider}_oauth_state"
+
+
+def _callback_path(provider: str) -> str:
+    return f"/api/integrations/{provider}/callback"
+
+
+def _error_redirect(return_url: str | None = None, provider: str = PROVIDER) -> RedirectResponse:
+    """Every failure path out of a provider's /callback ends here, and the one-shot
     CSRF cookie is always cleared on the way out -- success or failure -- so it
     can never be replayed against a later attempt."""
     base = _validate_return_url(return_url) or settings.FRONTEND_URL
-    response = RedirectResponse(url=f"{base.rstrip('/')}/?coros=error")
-    response.delete_cookie(key=COROS_OAUTH_STATE_COOKIE, path=COROS_CALLBACK_PATH)
+    response = RedirectResponse(url=f"{base.rstrip('/')}/?{provider}=error")
+    response.delete_cookie(key=_state_cookie(provider), path=_callback_path(provider))
     return response
 
 
@@ -217,13 +245,25 @@ async def coros_connect(
     # which would otherwise only surface AFTER the athlete has granted consent.
     if not settings.COROS_CLIENT_ID or not settings.TOKEN_ENCRYPTION_KEY:
         raise HTTPException(status_code=503, detail="COROS integration is not configured.")
+    return _start_connect(PROVIDER, coros_oauth.build_authorize_url, request, response, return_url, platform, user)
+
+
+def _start_connect(
+    provider: str,
+    build_authorize_url: Callable[[str, str], str],
+    request: Request,
+    response: Response,
+    return_url: str | None,
+    platform: str | None,
+    user: dict[str, Any],
+) -> dict[str, str]:
     _prune_pending_auth()
     verifier, challenge = coros_oauth.make_pkce_pair()
     state = secrets.token_urlsafe(32)
 
     if platform == "native":
         _PENDING_AUTH[state] = (user["id"], verifier, time.monotonic(), None, True)
-        return {"authorize_url": coros_oauth.build_authorize_url(state, challenge)}
+        return {"authorize_url": build_authorize_url(state, challenge)}
 
     safe_return_url = _validate_return_url(return_url)
     if not safe_return_url and request.headers.get("referer"):
@@ -245,15 +285,15 @@ async def coros_connect(
     # local-dev origin) as a secure context, so an unconditional Secure flag never
     # silently drops the cookie in an environment this app actually runs in.
     response.set_cookie(
-        key=COROS_OAUTH_STATE_COOKIE,
+        key=_state_cookie(provider),
         value=state,
         max_age=_PENDING_AUTH_TTL_SECONDS,
-        path=COROS_CALLBACK_PATH,
+        path=_callback_path(provider),
         httponly=True,
         secure=True,
         samesite="lax",
     )
-    return {"authorize_url": coros_oauth.build_authorize_url(state, challenge)}
+    return {"authorize_url": build_authorize_url(state, challenge)}
 
 
 @router.get("/coros/callback")
@@ -262,15 +302,25 @@ async def coros_callback(
     state: str | None = None,
     state_cookie: str | None = Cookie(default=None, alias=COROS_OAUTH_STATE_COOKIE),
 ):
+    return await _handle_callback(PROVIDER, code, state, state_cookie, _exchange_and_save)
+
+
+async def _handle_callback(
+    provider: str,
+    code: str | None,
+    state: str | None,
+    state_cookie: str | None,
+    exchange_and_save: Callable[[str, str, int], Awaitable[bool]],
+):
     entry = _PENDING_AUTH.get(state) if state else None
     if entry is not None and len(entry) > 4 and entry[4]:
         pending = _pop_pending_auth(state)
         if not code or not pending:
-            return _native_return_page({"result": "error"})
+            return _native_return_page({"result": "error"}, provider)
         user_id, verifier, _ = pending
         token = secrets.token_urlsafe(32)
         _NATIVE_COMPLETIONS[state] = (user_id, verifier, code, token, time.monotonic())
-        return _native_return_page({"state": state, "token": token})
+        return _native_return_page({"state": state, "token": token}, provider)
 
     # Check the CSRF-binding cookie before touching _PENDING_AUTH at all. An
     # attacker who replays or guesses someone else's `state` from a different
@@ -282,41 +332,41 @@ async def coros_callback(
         # A cookie was present but didn't match (or `state` was missing from
         # the query string) -- this is the shape a genuine CSRF attempt takes.
         logger.warning(
-            "coros callback state mismatch",
+            "oauth callback state mismatch",
             extra={
                 "fields": {
                     "service": "integrations",
-                    "provider": "coros",
+                    "provider": provider,
                     "event": "callback_state_mismatch",
                 }
             },
         )
-        return _error_redirect()
+        return _error_redirect(provider=provider)
 
     if not state_cookie:
         logger.warning(
-            "coros callback state cookie absent",
+            "oauth callback state cookie absent",
             extra={
                 "fields": {
                     "service": "integrations",
-                    "provider": "coros",
+                    "provider": provider,
                     "event": "callback_state_cookie_absent",
                 }
             },
         )
         if getattr(settings, "COROS_REQUIRE_STATE_COOKIE", True):
-            return _error_redirect()
+            return _error_redirect(provider=provider)
 
     pending = _pop_pending_auth(state)
     if not code or not pending:
-        return _error_redirect()
+        return _error_redirect(provider=provider)
 
     user_id, verifier, return_url = pending
-    if not await _exchange_and_save(code, verifier, user_id):
-        return _error_redirect(return_url)
+    if not await exchange_and_save(code, verifier, user_id):
+        return _error_redirect(return_url, provider)
     base = _validate_return_url(return_url) or settings.FRONTEND_URL
-    response = RedirectResponse(url=f"{base.rstrip('/')}/?coros=connected")
-    response.delete_cookie(key=COROS_OAUTH_STATE_COOKIE, path=COROS_CALLBACK_PATH)
+    response = RedirectResponse(url=f"{base.rstrip('/')}/?{provider}=connected")
+    response.delete_cookie(key=_state_cookie(provider), path=_callback_path(provider))
     return response
 
 
@@ -330,6 +380,15 @@ async def coros_complete(
     body: CorosCompleteRequest,
     user: dict[str, Any] = Depends(get_current_user),
 ):
+    return await _complete_native(PROVIDER, body, user, _exchange_and_save)
+
+
+async def _complete_native(
+    provider: str,
+    body: CorosCompleteRequest,
+    user: dict[str, Any],
+    exchange_and_save: Callable[[str, str, int], Awaitable[bool]],
+) -> dict[str, bool]:
     # Popped unconditionally: a completion token is single-use even when the
     # attempt fails, so it can't be retried or brute-forced.
     entry = _NATIVE_COMPLETIONS.pop(body.state, None)
@@ -340,27 +399,27 @@ async def coros_complete(
         or entry[0] != user["id"]
     ):
         logger.warning(
-            "coros native completion rejected",
+            "oauth native completion rejected",
             extra={
                 "fields": {
                     "service": "integrations",
-                    "provider": "coros",
+                    "provider": provider,
                     "event": "native_completion_rejected",
                 }
             },
         )
-        raise HTTPException(status_code=400, detail="COROS connection could not be completed.")
+        raise HTTPException(status_code=400, detail=f"{PROVIDER_NAMES[provider]} connection could not be completed.")
     user_id, verifier, code, _, _ = entry
-    if not await _exchange_and_save(code, verifier, user_id):
-        raise HTTPException(status_code=502, detail="COROS connection could not be completed.")
+    if not await exchange_and_save(code, verifier, user_id):
+        raise HTTPException(status_code=502, detail=f"{PROVIDER_NAMES[provider]} connection could not be completed.")
     return {"connected": True}
 
 
-def _native_return_page(params: dict[str, str]) -> HTMLResponse:
+def _native_return_page(params: dict[str, str], provider: str = PROVIDER) -> HTMLResponse:
     """Sends the system browser back to the app. An HTML page rather than a
     302 because Android browsers may refuse to follow a redirect into another
     app; the link is the manual fallback when the script's navigation is blocked."""
-    target = f"{NATIVE_CALLBACK_URL}?{urlencode(params)}"
+    target = f"uphillai://{provider}/callback?{urlencode(params)}"
     page = (
         '<!doctype html><html><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1"><title>Uphill AI</title></head>'
@@ -792,11 +851,163 @@ async def apple_health_disconnect(user: dict[str, Any] = Depends(get_current_use
     return {"status": "disconnected"}
 
 
+def _require_garmin() -> None:
+    if not settings.GARMIN_ENABLED or not settings.GARMIN_CLIENT_ID or not settings.TOKEN_ENCRYPTION_KEY:
+        raise HTTPException(status_code=404, detail="Garmin is not available.")
+
+
+@router.get("/garmin/connect")
+async def garmin_connect(
+    request: Request,
+    response: Response,
+    ai_consent: bool = False,
+    return_url: str | None = None,
+    platform: str | None = None,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    _require_garmin()
+    # Garmin Agreement s15.10: explicit consent before any Garmin data reaches the AI provider.
+    # Every coaching feature is AI, so Garmin is never connected without it.
+    if not ai_consent:
+        raise HTTPException(status_code=400, detail="Connecting Garmin needs your consent to AI coaching on its data.")
+    return _start_connect(GARMIN, garmin_oauth.build_authorize_url, request, response, return_url, platform, user)
+
+
+@router.get("/garmin/callback")
+async def garmin_callback(
+    code: str | None = None,
+    state: str | None = None,
+    state_cookie: str | None = Cookie(default=None, alias="garmin_oauth_state"),
+):
+    return await _handle_callback(GARMIN, code, state, state_cookie, _garmin_exchange_and_save)
+
+
+@router.post("/garmin/complete")
+async def garmin_complete(body: CorosCompleteRequest, user: dict[str, Any] = Depends(get_current_user)):
+    _require_garmin()
+    return await _complete_native(GARMIN, body, user, _garmin_exchange_and_save)
+
+
+async def _garmin_exchange_and_save(code: str, verifier: str, user_id: int) -> bool:
+    try:
+        tokens = await garmin_oauth.exchange_code(code, verifier)
+        garmin_user_id = await garmin_oauth.fetch_user_id(tokens.access_token)
+        permissions = await garmin_oauth.fetch_permissions(tokens.access_token)
+        access_token_enc = token_crypto.encrypt_token(tokens.access_token)
+        refresh_token_enc = token_crypto.encrypt_token(tokens.refresh_token) if tokens.refresh_token else None
+    except (
+        garmin_oauth.GarminAuthError,
+        httpx.HTTPError,
+        ValueError,
+        KeyError,
+        token_crypto.TokenEncryptionUnconfigured,
+    ) as exc:
+        logger.warning(
+            "garmin token exchange failed",
+            extra={
+                "fields": {
+                    "service": "integrations",
+                    "provider": GARMIN,
+                    "event": "exchange_failed",
+                    "user_id": user_id,
+                    "error_type": type(exc).__name__,
+                }
+            },
+        )
+        return False
+    existing = db.get_connection_by_provider_user(GARMIN, garmin_user_id)
+    if existing is not None and existing["user_id"] != user_id:
+        # One Garmin account feeds one Uphill athlete; pushes are keyed by the Garmin user id.
+        logger.warning(
+            "garmin account already linked",
+            extra={
+                "fields": {"service": "integrations", "provider": GARMIN, "event": "already_linked", "user_id": user_id}
+            },
+        )
+        return False
+    db.save_connection(
+        user_id=user_id,
+        provider=GARMIN,
+        access_token_enc=access_token_enc,
+        refresh_token_enc=refresh_token_enc,
+        token_expires_at=tokens.expires_at,
+        scopes=" ".join(sorted(permissions)),
+        provider_user_id=garmin_user_id,
+    )
+    # Garmin Agreement s15.11: this athlete's data, and chats built on it, never feed AI evaluation.
+    db.mark_ai_eval_excluded(user_id)
+    return True
+
+
+@router.delete("/garmin")
+async def garmin_disconnect(user: dict[str, Any] = Depends(get_current_user)):
+    """Disconnect, which is also how AI consent is withdrawn. Garmin requires the registration
+    to be deleted on their side too; our copy of the data goes either way."""
+    connection = db.get_connection(user["id"], GARMIN)
+    if connection is not None:
+        try:
+            await garmin_oauth.delete_registration(await garmin_oauth.access_token(connection))
+        except Exception as exc:
+            logger.warning(
+                "garmin deregistration failed",
+                extra={
+                    "fields": {
+                        "service": "integrations",
+                        "provider": GARMIN,
+                        "event": "deregistration_failed",
+                        "user_id": user["id"],
+                        "error_type": type(exc).__name__,
+                    }
+                },
+            )
+    db.delete_provider_data(user["id"], GARMIN)
+    return {"status": "disconnected"}
+
+
+@router.post("/garmin/webhook/{token}")
+async def garmin_webhook(
+    token: str,
+    request: Request,
+    background: BackgroundTasks,
+    garmin_client_id: str | None = Header(default=None),
+) -> dict[str, str]:
+    """Garmin push endpoint. Answers 200 before processing, as Garmin requires (30 s timeout,
+    retries on anything else). Garmin pushes are unsigned, so the secret path token and the
+    client-id header are what stop anyone else posting data into an athlete's account."""
+    if (
+        not settings.GARMIN_ENABLED
+        or not settings.GARMIN_WEBHOOK_TOKEN
+        or not secrets.compare_digest(token, settings.GARMIN_WEBHOOK_TOKEN)
+        or garmin_client_id != settings.GARMIN_CLIENT_ID
+    ):
+        raise HTTPException(status_code=404, detail="Not found.")
+    try:
+        body = await request.json()
+    except ValueError:
+        body = None
+    if isinstance(body, dict):
+        background.add_task(garmin_ingest.process, body)
+    # Shape only: these bodies carry athlete training and health data.
+    logger.info(
+        "garmin webhook received",
+        extra={
+            "fields": {
+                "service": "integrations",
+                "provider": GARMIN,
+                "event": "webhook_received",
+                "summary_types": sorted(body.keys()) if isinstance(body, dict) else [],
+            }
+        },
+    )
+    return {"status": "ok"}
+
+
 @router.get("/status")
 async def integration_status(user: dict[str, Any] = Depends(get_current_user)):
     connection = db.get_connection(user["id"], PROVIDER)
     profile = db.get_user_by_id(user["id"]) or user
     health = db.get_connection(user["id"], "apple_health")
+    garmin_conn = db.get_connection(user["id"], GARMIN)
     return {
         "coros": {
             "connected": bool(connection and connection.get("status") == "active"),
@@ -811,6 +1022,12 @@ async def integration_status(user: dict[str, Any] = Depends(get_current_user)):
             "recovery_enabled": settings.APPLE_HEALTH_RECOVERY_ENABLED,
             "connected": bool(health and health.get("status") == "active"),
             "last_sync_at": health.get("last_sync_at") if health else None,
+        },
+        "garmin": {
+            "enabled": settings.GARMIN_ENABLED,
+            "connected": bool(garmin_conn and garmin_conn.get("status") == "active"),
+            "last_sync_at": garmin_conn.get("last_sync_at") if garmin_conn else None,
+            "permissions": (garmin_conn.get("scopes") or "").split() if garmin_conn else [],
         },
     }
 

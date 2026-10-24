@@ -5,6 +5,7 @@ import { Watch, CheckCircle, Warning, Lightning } from "@phosphor-icons/react";
 import { useAppContext } from "../contexts/AppContext";
 import { useDeviceConnection } from "../hooks/useDeviceConnection";
 import CorosAttribution from "./CorosAttribution";
+import GarminConnection from "./GarminConnection";
 import { isNativePlatform } from "../utils/native";
 
 // The hook's own fallback error strings (used when the backend response has
@@ -17,6 +18,9 @@ const ERROR_TRANSLATIONS_VI: Record<string, string> = {
   "COROS connection is unavailable.": "Không thể kết nối COROS lúc này. Vui lòng thử lại sau.",
   "COROS connection failed. Please try again.": "Kết nối COROS thất bại. Vui lòng thử lại.",
   "COROS connection could not be completed.": "Không thể hoàn tất kết nối COROS.",
+  "Garmin connection is unavailable.": "Không thể kết nối Garmin lúc này. Vui lòng thử lại sau.",
+  "Connecting Garmin needs your consent to AI coaching on its data.":
+    "Cần bạn đồng ý cho Coach AI dùng dữ liệu Garmin trước khi kết nối.",
   "Sync failed. Please try again.": "Đồng bộ thất bại. Vui lòng thử lại.",
   "Could not disconnect.": "Không thể ngắt kết nối. Vui lòng thử lại.",
 };
@@ -31,6 +35,8 @@ export default function ConnectedAccounts() {
     connectCoros,
     connectCorosNative,
     disconnectCoros,
+    connectGarmin,
+    disconnectGarmin,
     syncNow,
     syncFitness,
   } = useDeviceConnection();
@@ -40,7 +46,13 @@ export default function ConnectedAccounts() {
   // effect body run as an extra, avoidable re-render pass.
   const [notice, setNotice] = useState(() => {
     if (typeof window === "undefined") return "";
-    const result = new URLSearchParams(window.location.search).get("coros");
+    const params = new URLSearchParams(window.location.search);
+    const garmin = params.get("garmin");
+    if (garmin === "connected") return lang === "vi" ? "Đã kết nối Garmin." : "Garmin connected.";
+    if (garmin === "error") {
+      return lang === "vi" ? "Kết nối Garmin thất bại. Vui lòng thử lại." : "Garmin connection failed. Please try again.";
+    }
+    const result = params.get("coros");
     if (result === "connected") {
       return lang === "vi" ? "Đã kết nối COROS." : "COROS connected.";
     }
@@ -122,6 +134,16 @@ export default function ConnectedAccounts() {
   const handleDisconnect = async () => {
     await disconnectCoros();
     setNotice("");
+  };
+
+  const handleConnectGarmin = async () => {
+    const url = await connectGarmin();
+    if (url) window.location.href = url;
+  };
+
+  const handleDisconnectGarmin = async () => {
+    await disconnectGarmin();
+    setNotice(lang === "vi" ? "Đã ngắt kết nối Garmin." : "Garmin disconnected.");
   };
 
   return (
@@ -227,6 +249,17 @@ export default function ConnectedAccounts() {
         )}
       </div>
 
+      {/* Web only for now: the native apps need their own Garmin connect flow. */}
+      {status?.garmin?.enabled && !isNativePlatform() && (
+        <GarminConnection
+          lang={lang === "vi" ? "vi" : "en"}
+          garmin={status.garmin}
+          loading={loading}
+          onConnect={handleConnectGarmin}
+          onDisconnect={handleDisconnectGarmin}
+        />
+      )}
+
       {notice && (
         <p className="device-notice">
           <CheckCircle size={14} weight="fill" />
@@ -242,8 +275,8 @@ export default function ConnectedAccounts() {
 
       <p className="device-help">
         {lang === "vi"
-          ? "Khi ngắt kết nối, dữ liệu chúng tôi nhận được từ COROS sẽ được xóa trong vòng 24 giờ."
-          : "Disconnecting deletes the data we received from COROS within 24 hours."}
+          ? "Khi ngắt kết nối, dữ liệu chúng tôi nhận được từ thiết bị đó sẽ được xóa trong vòng 24 giờ."
+          : "Disconnecting deletes the data we received from that device within 24 hours."}
       </p>
     </div>
   );

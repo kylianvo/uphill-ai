@@ -11,7 +11,11 @@ function getBackendUrl(): string {
 
 export type DeviceStatus = {
   coros: { connected: boolean; last_sync_at?: string | null };
+  garmin?: { enabled: boolean; connected: boolean; last_sync_at?: string | null; permissions?: string[] };
 };
+
+type Provider = "coros" | "garmin";
+const PROVIDER_NAMES: Record<Provider, string> = { coros: "COROS", garmin: "Garmin" };
 
 export type SyncResult = { activities: number; daily_metrics: number };
 
@@ -47,8 +51,9 @@ export function useDeviceConnection() {
     }
   }, []);
 
-  const connectCoros = useCallback(async (): Promise<string> => {
+  const startConnect = useCallback(async (provider: Provider, extraQuery = ""): Promise<string> => {
     const API_BASE_URL = getBackendUrl();
+    const unavailable = `${PROVIDER_NAMES[provider]} connection is unavailable.`;
     setLoading(true);
     setError("");
     try {
@@ -57,22 +62,27 @@ export function useDeviceConnection() {
       // We also pass return_url so the callback redirects the athlete back to
       // the exact origin they initiated connect from (e.g. preview, localhost, or prod).
       const returnUrl = typeof window !== "undefined" ? window.location.origin + window.location.pathname : "";
-      const query = returnUrl ? `?return_url=${encodeURIComponent(returnUrl)}` : "";
-      const res = await fetch(`${API_BASE_URL}/api/integrations/coros/connect${query}`, {
+      const params = [returnUrl ? `return_url=${encodeURIComponent(returnUrl)}` : "", extraQuery].filter(Boolean);
+      const query = params.length ? `?${params.join("&")}` : "";
+      const res = await fetch(`${API_BASE_URL}/api/integrations/${provider}/connect${query}`, {
         method: "GET",
         headers: authHeaders(),
         credentials: "include",
       });
       const body = await res.json();
-      if (!res.ok) throw new Error(body?.detail || "COROS connection is unavailable.");
+      if (!res.ok) throw new Error(body?.detail || unavailable);
       return body.authorize_url as string;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "COROS connection is unavailable.");
+      setError(e instanceof Error ? e.message : unavailable);
       return "";
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const connectCoros = useCallback(() => startConnect("coros"), [startConnect]);
+  // Garmin connects only with the athlete's explicit consent to AI coaching on its data.
+  const connectGarmin = useCallback(() => startConnect("garmin", "ai_consent=true"), [startConnect]);
 
   const syncNow = useCallback(async (days = 30): Promise<SyncResult | null> => {
     const API_BASE_URL = getBackendUrl();
@@ -120,12 +130,12 @@ export function useDeviceConnection() {
     }
   }, []);
 
-  const disconnectCoros = useCallback(async () => {
+  const disconnect = useCallback(async (provider: Provider) => {
     const API_BASE_URL = getBackendUrl();
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API_BASE_URL}/api/integrations/coros`, {
+      const res = await fetch(`${API_BASE_URL}/api/integrations/${provider}`, {
         method: "DELETE",
         headers: authHeaders(),
       });
@@ -138,6 +148,9 @@ export function useDeviceConnection() {
       setLoading(false);
     }
   }, [refreshStatus]);
+
+  const disconnectCoros = useCallback(() => disconnect("coros"), [disconnect]);
+  const disconnectGarmin = useCallback(() => disconnect("garmin"), [disconnect]);
 
   // The app's WebView and the system browser showing COROS consent don't share
   // cookies, so the native flow can't use the web redirect. The backend hands a
@@ -199,6 +212,8 @@ export function useDeviceConnection() {
     connectCoros,
     connectCorosNative,
     disconnectCoros,
+    connectGarmin,
+    disconnectGarmin,
     syncNow,
     syncFitness,
   };

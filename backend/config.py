@@ -212,6 +212,16 @@ class Config:
     )
     COROS_MCP_ENDPOINT: str = os.getenv("COROS_MCP_ENDPOINT", "https://mcp.coros.com/mcp")
     COROS_DAILY_PUSH_LIMIT: int = int(os.getenv("COROS_DAILY_PUSH_LIMIT", "10"))
+    # Garmin Connect Developer Program (Starter tier: push delivery only). Off until Garmin's
+    # production review passes. The webhook URL registered in Garmin's API Tools carries
+    # GARMIN_WEBHOOK_TOKEN as its last path segment.
+    GARMIN_ENABLED: bool = os.getenv("GARMIN_ENABLED", "false").lower() == "true"
+    GARMIN_CLIENT_ID: str = os.getenv("GARMIN_CLIENT_ID", "")
+    GARMIN_CLIENT_SECRET: str = os.getenv("GARMIN_CLIENT_SECRET", "")
+    GARMIN_REDIRECT_URI: str = os.getenv(
+        "GARMIN_REDIRECT_URI", "https://api.uphill-ai.io.vn/api/integrations/garmin/callback"
+    )
+    GARMIN_WEBHOOK_TOKEN: str = os.getenv("GARMIN_WEBHOOK_TOKEN", "")
     # Hides Apple Health in the app (via /api/integrations/status) and 404s its sync
     # endpoint, without an app release.
     APPLE_HEALTH_ENABLED: bool = os.getenv("APPLE_HEALTH_ENABLED", "true").lower() != "false"
