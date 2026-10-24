@@ -21,3 +21,14 @@ def test_registration_and_open_are_owned(client, auth_headers):
         client.post("/api/notifications/" + str(uuid4()) + "/opened", headers=auth_headers["headers"]).status_code
         == 404
     )
+
+
+def test_available_only_when_delivery_on_and_allowlisted(client, auth_headers, monkeypatch):
+    from config import settings
+
+    path, headers = "/api/notifications/preferences", auth_headers["headers"]
+    assert client.get(path, headers=headers).json()["available"] is False
+    monkeypatch.setattr(settings, "NOTIFICATION_WORKER_ENABLED", True)
+    monkeypatch.setattr(settings, "NOTIFICATION_DELIVERY_ENABLED", True)
+    monkeypatch.setattr(settings, "NOTIFICATION_ALLOWLIST", str(auth_headers["user_id"]))
+    assert client.get(path, headers=headers).json()["available"] is True

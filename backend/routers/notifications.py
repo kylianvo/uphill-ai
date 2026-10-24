@@ -12,6 +12,7 @@ from sqlalchemy import text
 from config import settings
 from db import engine, verify_session
 from services import notification_store as store
+from services.notifications import allowlist
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
@@ -66,7 +67,8 @@ class Installation(BaseModel):
 
 
 def public_preferences(value):
-    return {key: value[key] for key in store.PREFERENCE_FIELDS}
+    # The app hides notification settings until this account can actually receive them.
+    return {**{key: value[key] for key in store.PREFERENCE_FIELDS}, "available": value["user_id"] in allowlist()}
 
 
 @router.get("/preferences")

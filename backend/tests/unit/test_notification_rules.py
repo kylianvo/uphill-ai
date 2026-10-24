@@ -78,3 +78,9 @@ def test_quiet_hours_do_not_cross_expiry():
     p = context()["preferences"]
     due = datetime(2026, 10, 16, 11, tzinfo=UTC)
     assert delivery_window(due, p, due + timedelta(hours=1)) is None
+
+
+def test_null_type_and_phase_do_not_crash():
+    c = context()
+    c["workouts"][0].update(type=None, phase=None)
+    assert candidates(c, datetime(2026, 10, 15, 20, 0, tzinfo=UTC))

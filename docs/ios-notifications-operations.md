@@ -2,6 +2,20 @@
 
 Delivery is disabled by default. This implementation has not sent a real APNs notification.
 
+## Ship plan
+
+Each stage can ship alone and stops safely at the end of it.
+
+1. **Merge + deploy backend, delivery off.** Run `alembic upgrade head` (`a6f2c8d9e104`, after `b3c7e9a1d2f4`); `init_db` also creates the tables. Leave `NOTIFICATION_WORKER_ENABLED`/`NOTIFICATION_DELIVERY_ENABLED` unset. No user-visible change: `GET /api/notifications/preferences` reports `available: false`, so the app hides the Notifications row. Diff prod `.env` keys after deploy as usual.
+2. **Apple setup (owner, once).** In the developer portal, enable Push Notifications on App ID `uphill.ai.app` and regenerate the provisioning profiles. Create an APNs Auth Key (.p8) and note its Key ID and the Team ID. This must happen **before the next TestFlight archive**, because the app now carries the `aps-environment` entitlement and signing fails without the capability.
+3. **TestFlight build.** Archive as usual. The settings row stays hidden for everyone until stage 4.
+4. **Internal test, one account.** Copy the .p8 to the server outside Git, then set `APNS_PRIVATE_KEY_PATH`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_ALLOWED_ENVIRONMENTS=production` (TestFlight uses production APNs), `NOTIFICATION_ALLOWLIST=<your user id>`, and both worker flags `true`. Restart the backend. Turn reminders on in the app and run the device acceptance record below. Watch `uphill_notification_outcomes_total`.
+5. **Content.** Review EN/VI cards and set `knowledge_cards.notification_reviewed=true` on the eligible ones. Until then, knowledge, taper and race nudges stay silent; workout, planning, check-in and plan-ready nudges still work.
+6. **Widen.** Add accounts to the allowlist in small batches. The worker evaluates up to 100 accounts per minute; revisit that limit before going past a few hundred opted-in accounts.
+7. **Follow-ups (not blocking 1–4).** These are listed under "Remaining before completion" in the PR: coach-draft and Coach Chat routing, recovery from activity-end time, and source-specific tombstone pruning.
+
+Rollback at any stage: set `NOTIFICATION_DELIVERY_ENABLED=false` and restart. The row disappears from the app and preferences are kept.
+
 ## Before enabling a test account
 
 1. Finish the remaining implementation and acceptance checks recorded in the implementation plan, especially coach draft and Coach Chat rebuild routing.

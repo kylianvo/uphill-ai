@@ -55,7 +55,7 @@ def dated_workouts(context):
 def actionable(workout):
     return (
         bool(workout.get("approved_at"))
-        and workout.get("type", "").lower() != "rest"
+        and (workout.get("type") or "").lower() != "rest"
         and (workout.get("duration_minutes") or 0) > 0
     )
 
@@ -173,7 +173,7 @@ def select_card(context, words=None):
                 tags = json.loads(tags)
             except ValueError:
                 tags = []
-        text = " ".join([card.get("topic", ""), card.get("chapter_title", ""), *tags]).lower()
+        text = " ".join([card.get("topic") or "", card.get("chapter_title") or "", *tags]).lower()
         if words is None or any(word in text for word in words):
             return card
     return None
@@ -205,7 +205,7 @@ def content_candidates(context, now):
         }
         # Topic relevance must exist; arbitrary daily content is intentionally excluded.
         dated = dated_workouts(context)
-        phase = next((w.get("phase", "").lower() for w, d in dated if d >= day), "")
+        phase = next(((w.get("phase") or "").lower() for w, d in dated if d >= day), "")
         words = ["taper"] if "taper" in phase else ["training", "aerobic", "recovery"]
         filtered = {**context, "cards": [c for c in context.get("cards", []) if c["id"] not in used]}
         card = select_card(filtered, words)
@@ -281,7 +281,7 @@ def coaching_candidates(context, now):
         )
     for w, d in dated:
         completed = instant(w.get("first_completed_at"))
-        running = w.get("type", "").lower() not in ("rest", "strength", "me", "hike", "muscular endurance")
+        running = (w.get("type") or "").lower() not in ("rest", "strength", "me", "hike", "muscular endurance")
         if (
             w.get("is_priority")
             and running
@@ -304,7 +304,7 @@ def coaching_candidates(context, now):
                 out.append(event)
     days_with_phase = {}
     for w, d in dated:
-        days_with_phase[d] = days_with_phase.get(d, False) or "taper" in w.get("phase", "").lower()
+        days_with_phase[d] = days_with_phase.get(d, False) or "taper" in (w.get("phase") or "").lower()
     starts = []
     previous_taper = False
     for d, is_taper in sorted(days_with_phase.items()):

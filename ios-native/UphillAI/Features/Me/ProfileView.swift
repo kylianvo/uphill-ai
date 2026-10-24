@@ -62,8 +62,10 @@ struct ProfileView: View {
                         NavigationLink("Race history", value: TrainingDestination.raceHistory)
                     }
 
-                    Section {
-                        NavigationLink("Notifications") { NotificationSettingsView(model: app.notifications) }
+                    if app.notifications.preferences.available == true {
+                        Section {
+                            NavigationLink("Notifications") { NotificationSettingsView(model: app.notifications) }
+                        }
                     }
 
                     Section("Tools & Labs") {

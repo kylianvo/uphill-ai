@@ -13,6 +13,7 @@ struct NotificationPreferences: Codable, Sendable, Equatable {
     var distanceUnit = "km"
     var pausedUntil: String?
     var checklistSnoozedUntil: String?
+    var available: Bool?
 }
 
 struct NotificationRoute: Codable, Sendable, Equatable {

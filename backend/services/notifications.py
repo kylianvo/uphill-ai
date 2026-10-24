@@ -55,10 +55,14 @@ def still_eligible(event, context, now):
     return any(c["event_key"] == event["event_key"] for c in rules.candidates(context, now))
 
 
-def run_once(now):
+def allowlist():
     if not settings.NOTIFICATION_WORKER_ENABLED or not settings.NOTIFICATION_DELIVERY_ENABLED:
-        return 0
-    allowed = {int(v) for v in settings.NOTIFICATION_ALLOWLIST.split(",") if v.strip().isdigit()}
+        return set()
+    return {int(v) for v in settings.NOTIFICATION_ALLOWLIST.split(",") if v.strip().isdigit()}
+
+
+def run_once(now):
+    allowed = allowlist()
     if not allowed:
         return 0
     sent = 0
@@ -84,75 +88,79 @@ def run_once(now):
                     ).scalars()
                 )
             for user_id in users:
-                # Empty allowlist deliberately means no recipients during rollout.
-                if user_id not in allowed:
-                    continue
-                context = load_context(user_id, now)
-                choices = rules.candidates(context, now)
-                with db.engine.begin() as conn:
-                    pending = [
-                        dict(r)
-                        for r in conn.execute(
-                            text(
-                                "SELECT * FROM notification_events WHERE user_id=:id AND status='pending' AND due_at<=:now AND expires_at>:now"
-                            ),
-                            {"id": user_id, "now": now},
-                        ).mappings()
-                    ]
-                    conn.execute(
-                        text("UPDATE notification_preferences SET next_evaluation_at=:next WHERE user_id=:id"),
-                        {"next": now + timedelta(minutes=1), "id": user_id},
-                    )
-                choices.extend(dict(e, priority=-1) for e in pending if still_eligible(e, context, now))
-                for choice in sorted(choices, key=lambda c: (c["priority"], c["event_key"])):
-                    event = store.claim_event(user_id, choice, now)
-                    if not event:
+                try:
+                    # Empty allowlist deliberately means no recipients during rollout.
+                    if user_id not in allowed:
                         continue
-                    fresh = load_context(user_id, datetime.now(UTC))
-                    with db.engine.connect() as conn:
-                        device = (
-                            conn.execute(
-                                text("""SELECT * FROM notification_installations WHERE id=:id AND user_id=:user
-                            AND registration_revision=:revision AND disabled_at IS NULL AND permission IN ('authorized','provisional')"""),
-                                {
-                                    "id": event["installation_id"],
-                                    "user": user_id,
-                                    "revision": event["registration_revision"],
-                                },
-                            )
-                            .mappings()
-                            .first()
-                        )
-                    p = fresh["preferences"]
-                    category = (
-                        "results_enabled"
-                        if event["kind"] == "plan_ready"
-                        else "workouts_enabled"
-                        if event["kind"] == "workout"
-                        else "coaching_enabled"
-                    )
-                    if (
-                        not device
-                        or not p[category]
-                        or (p["paused_until"] and p["paused_until"] > now)
-                        or not still_eligible(event, fresh, now)
-                    ):
-                        with db.engine.begin() as conn:
-                            conn.execute(
+                    context = load_context(user_id, now)
+                    choices = rules.candidates(context, now)
+                    with db.engine.begin() as conn:
+                        pending = [
+                            dict(r)
+                            for r in conn.execute(
                                 text(
-                                    "UPDATE notification_events SET status='suppressed',suppression_reason='state_changed' WHERE id=:id"
+                                    "SELECT * FROM notification_events WHERE user_id=:id AND status='pending' AND due_at<=:now AND expires_at>:now"
                                 ),
-                                {"id": event["id"]},
+                                {"id": user_id, "now": now},
+                            ).mappings()
+                        ]
+                        conn.execute(
+                            text("UPDATE notification_preferences SET next_evaluation_at=:next WHERE user_id=:id"),
+                            {"next": now + timedelta(minutes=1), "id": user_id},
+                        )
+                    choices.extend(dict(e, priority=-1) for e in pending if still_eligible(e, context, now))
+                    for choice in sorted(choices, key=lambda c: (c["priority"], c["event_key"])):
+                        event = store.claim_event(user_id, choice, now)
+                        if not event:
+                            continue
+                        fresh = load_context(user_id, datetime.now(UTC))
+                        with db.engine.connect() as conn:
+                            device = (
+                                conn.execute(
+                                    text("""SELECT * FROM notification_installations WHERE id=:id AND user_id=:user
+                                AND registration_revision=:revision AND disabled_at IS NULL AND permission IN ('authorized','provisional')"""),
+                                    {
+                                        "id": event["installation_id"],
+                                        "user": user_id,
+                                        "revision": event["registration_revision"],
+                                    },
+                                )
+                                .mappings()
+                                .first()
                             )
-                        continue
-                    title, body = render_notification(event, fresh)
-                    result = apns.send_notification(dict(device), event, title, body)
-                    store.record_delivery(str(event["id"]), result, now)
-                    OUTCOMES.labels(outcome=result["outcome"]).inc()
-                    if result["outcome"] == "configuration_error":
-                        logger.error("Notification transport configuration failure")
-                        return sent
-                    sent += int(result["outcome"] == "accepted")
+                        p = fresh["preferences"]
+                        category = (
+                            "results_enabled"
+                            if event["kind"] == "plan_ready"
+                            else "workouts_enabled"
+                            if event["kind"] == "workout"
+                            else "coaching_enabled"
+                        )
+                        if (
+                            not device
+                            or not p[category]
+                            or (p["paused_until"] and p["paused_until"] > now)
+                            or not still_eligible(event, fresh, now)
+                        ):
+                            with db.engine.begin() as conn:
+                                conn.execute(
+                                    text(
+                                        "UPDATE notification_events SET status='suppressed',suppression_reason='state_changed' WHERE id=:id"
+                                    ),
+                                    {"id": event["id"]},
+                                )
+                            continue
+                        title, body = render_notification(event, fresh)
+                        result = apns.send_notification(dict(device), event, title, body)
+                        store.record_delivery(str(event["id"]), result, now)
+                        OUTCOMES.labels(outcome=result["outcome"]).inc()
+                        if result["outcome"] == "configuration_error":
+                            logger.error("Notification transport configuration failure")
+                            return sent
+                        sent += int(result["outcome"] == "accepted")
+                except Exception:
+                    # One account's bad data must not stop delivery for the rest; omit exception text.
+                    logger.error("Notification evaluation failed for one account")
             store.prune_history(now)
             HEARTBEAT.set(now.timestamp())
             with db.engine.connect() as conn:

@@ -136,3 +136,26 @@ def test_worker_delivers_current_workout_once(auth_headers, monkeypatch):
     upsert_installation(user, str(uuid4()), "e" * 64, "sandbox", "authorized", now)
     assert notifications.run_once(now + timedelta(seconds=1)) == 1
     assert notifications.run_once(now + timedelta(minutes=1)) == 0
+
+
+def test_one_failing_account_does_not_stop_the_tick(client, auth_headers, monkeypatch):
+    from config import settings
+    from services import notifications
+    from services.notification_store import update_preferences
+
+    user = auth_headers["user_id"]
+    update_preferences(user, {"timezone": "UTC", "workouts_enabled": True})
+    other = client.post("/api/auth/mock-login", json={"email": "other-notify@uphill.ai"}).json()["user"]["id"]
+    update_preferences(other, {"timezone": "UTC", "workouts_enabled": True})
+    monkeypatch.setattr(settings, "NOTIFICATION_WORKER_ENABLED", True)
+    monkeypatch.setattr(settings, "NOTIFICATION_DELIVERY_ENABLED", True)
+    monkeypatch.setattr(settings, "NOTIFICATION_ALLOWLIST", f"{user},{other}")
+    seen = []
+
+    def load_context(user_id, now):
+        seen.append(user_id)
+        raise RuntimeError("bad account data")
+
+    monkeypatch.setattr(notifications, "load_context", load_context)
+    notifications.run_once(datetime.now(UTC) + timedelta(seconds=1))
+    assert sorted(seen) == sorted([user, other])

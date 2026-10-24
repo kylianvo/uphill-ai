@@ -19,6 +19,7 @@ struct NotificationService: NotificationServicing {
         var object = try JSONSerialization.jsonObject(with: JSONCoding.encoder.encode(value)) as! [String: Any]
         // Optional clears must reach PATCH; synthesized Codable omits nil values.
         for key in ["paused_until", "checklist_snoozed_until", "timezone"] where object[key] == nil { object[key] = NSNull() }
+        object.removeValue(forKey: "available")  // read-only; PATCH rejects unknown fields
         let endpoint = Endpoint<NotificationPreferences>(method: .patch, path: "/api/notifications/preferences", body: try JSONSerialization.data(withJSONObject: object))
         return try await client.send(endpoint)
     }
