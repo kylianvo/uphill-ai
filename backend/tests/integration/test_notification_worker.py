@@ -154,3 +154,49 @@ def test_one_failing_account_does_not_stop_the_tick(client, auth_headers, monkey
     monkeypatch.setattr(notifications, "load_context", load_context)
     notifications.run_once(datetime.now(UTC) + timedelta(seconds=1))
     assert sorted(seen) == sorted([user, other])
+
+
+def _claim_setup(user, now):
+    from services.notification_store import update_preferences, upsert_installation
+
+    update_preferences(
+        user, {"timezone": "UTC", "workouts_enabled": True, "coaching_enabled": True, "results_enabled": True}
+    )
+    upsert_installation(user, str(uuid4()), "f" * 64, "sandbox", "authorized", now)
+
+
+def _past_event(user, kind, at):
+    with engine.begin() as conn:
+        conn.execute(
+            text("""INSERT INTO notification_events(id,user_id,event_key,kind,destination,due_at,expires_at,status,claimed_at)
+            VALUES(:id,:user,:key,:kind,'{}',:at,:at,'accepted',:at)"""),
+            {"id": str(uuid4()), "user": user, "key": f"{kind}:{at.isoformat()}", "kind": kind, "at": at},
+        )
+
+
+def test_fifth_proactive_in_seven_days_is_refused(auth_headers):
+    from services.notification_store import claim_event
+
+    user = auth_headers["user_id"]
+    now = datetime(2026, 10, 20, 12, tzinfo=UTC)
+    _claim_setup(user, now)
+    for days in (6, 5, 3, 2):
+        _past_event(user, "knowledge", now - timedelta(days=days))
+    event = dict(
+        event_key="workout:new", kind="workout", destination={}, due_at=now, expires_at=now + timedelta(hours=1)
+    )
+    assert claim_event(user, event, now) is None
+
+
+def test_plan_ready_ignores_weekly_cap(auth_headers):
+    from services.notification_store import claim_event
+
+    user = auth_headers["user_id"]
+    now = datetime(2026, 10, 20, 12, tzinfo=UTC)
+    _claim_setup(user, now)
+    for days in (6, 5, 3, 2):
+        _past_event(user, "knowledge", now - timedelta(days=days))
+    event = dict(
+        event_key="plan_ready:x", kind="plan_ready", destination={}, due_at=now, expires_at=now + timedelta(hours=1)
+    )
+    assert claim_event(user, event, now) is not None

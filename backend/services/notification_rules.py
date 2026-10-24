@@ -142,13 +142,39 @@ def choose_candidate(values, now):
     return min(eligible, key=lambda c: (c["priority"], c["event_key"]), default=None)
 
 
+def backed_off(history, kind, now):
+    """3 delivered-but-unopened in a row of a coaching kind: skip it for 14 days after the last one."""
+    from services.notification_store import MUTABLE_KINDS
+
+    if kind not in MUTABLE_KINDS:
+        return False
+    last = sorted(
+        (e for e in history if e["kind"] == kind and e.get("status") == "accepted" and e.get("claimed_at")),
+        key=lambda e: instant(e["claimed_at"]),
+    )[-3:]
+    return (
+        len(last) == 3
+        and all(e.get("opened_at") is None for e in last)
+        and now - instant(last[-1]["claimed_at"]) < timedelta(days=14)
+    )
+
+
 def candidates(context, now):
     p = context["preferences"]
     if not p.get("timezone") or (p.get("paused_until") and p["paused_until"] > now):
         return []
     values = [workout_candidate(context, now)]
     values += planning_candidates(context, now) + content_candidates(context, now) + coaching_candidates(context, now)
-    return [c for c in values if c and c["due_at"] <= now < c["expires_at"]]
+    muted = set(p.get("muted_kinds") or [])
+    history = context.get("history") or []
+    return [
+        c
+        for c in values
+        if c
+        and c["due_at"] <= now < c["expires_at"]
+        and c["kind"] not in muted
+        and not backed_off(history, c["kind"], now)
+    ]
 
 
 def instant(value):

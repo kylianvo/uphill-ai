@@ -156,3 +156,41 @@ def test_stored_quiet_hours_are_ignored():
     due = datetime(2026, 10, 16, 11, tzinfo=UTC)  # 22:00 Sydney
     window = delivery_window(due, p, due + timedelta(days=1))
     assert window[0] == datetime(2026, 10, 16, 20, tzinfo=UTC)  # 07:00 next day
+
+
+# --- v2 budget -----------------------------------------------------------------------------------
+from services.notification_rules import backed_off  # noqa: E402
+
+NOW = datetime(2026, 10, 15, 20, 0, tzinfo=UTC)  # Fri 07:00 Sydney, workout day
+
+
+def sent(kind, days_ago, opened=False):
+    at = NOW - timedelta(days=days_ago)
+    return dict(id=f"{kind}{days_ago}", kind=kind, status="accepted", claimed_at=at, opened_at=at if opened else None)
+
+
+def test_muted_kind_is_never_a_candidate():
+    c = context()
+    c["preferences"]["muted_kinds"] = ["workout"]  # not mutable via API, but the filter itself is kind-agnostic
+    assert not candidates(c, NOW)
+
+
+def test_three_unopened_week_briefs_back_off_for_14_days():
+    history = [sent("week_brief", d) for d in (21, 14, 7)]
+    assert backed_off(history, "week_brief", NOW)
+    assert not backed_off(history, "week_brief", NOW + timedelta(days=8))  # 15 days after the last
+
+
+def test_unopened_workout_reminders_never_back_off():
+    assert not backed_off([sent("workout", d) for d in (3, 2, 1)], "workout", NOW)
+
+
+def test_one_opened_in_the_last_three_resets_back_off():
+    history = [sent("knowledge", 9), sent("knowledge", 6, opened=True), sent("knowledge", 3)]
+    assert not backed_off(history, "knowledge", NOW)
+
+
+def test_rules_with_no_activities_and_no_history():
+    c = context()
+    c["activities"], c["history"] = [], []
+    assert [x["kind"] for x in candidates(c, NOW)] == ["workout"]

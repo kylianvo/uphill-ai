@@ -271,6 +271,13 @@ def claim_event(user_id, candidate, now):
                     p["last_proactive_at"] and now - p["last_proactive_at"] < timedelta(hours=20)
                 ):
                     return None
+                week = conn.execute(
+                    text("""SELECT count(*) FROM notification_events WHERE user_id=:id AND kind<>'plan_ready'
+                    AND claimed_at > :since"""),
+                    {"id": user_id, "since": now - timedelta(days=7)},
+                ).scalar()
+                if week >= 4:
+                    return None
                 conn.execute(
                     text(
                         "UPDATE notification_preferences SET last_proactive_at=:now,last_proactive_date=:day WHERE user_id=:id"
