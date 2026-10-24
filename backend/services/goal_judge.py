@@ -122,12 +122,14 @@ def _call_claude(prompt: str) -> str:
     with observability.generation(
         "generation",
         feature="goal_estimate",
-        model=settings.CLAUDE_TEXT_MODEL,
+        model=settings.CLAUDE_GOAL_MODEL,
         prompt=observability.load_prompt(
             "goal_judge", GOAL_JUDGE_PROMPT, label=claude_llm.prompt_label(settings.GOAL_JUDGE_LLM_PROVIDER)
         ),
     ) as generation:
-        message = claude_llm.generate(prompt, schema=GoalOutput, thinking=False)
+        model = settings.CLAUDE_GOAL_MODEL
+        # Sonnet 5.5 rejects thinking disabled; Haiku keeps it off.
+        message = claude_llm.generate(prompt, schema=GoalOutput, model=model, thinking="haiku" not in model)
         claude_llm.record(generation, message)
     return claude_llm.text(message)
 
@@ -176,8 +178,10 @@ def validate(
         errors.append(f"c exceeds the cutoff ({cutoff_mins:.0f} min)")
 
     if anchors:
-        low = min(x["minutes"] for x in anchors) * (1 - ANCHOR_SLACK)
-        high = max(x["minutes"] for x in anchors) * (1 + ANCHOR_SLACK)
+        # Real race results outrank the volume/pace priors: a prior far off must not widen the range B may land in.
+        ranged = [x for x in anchors if x.get("source_result_id") is not None] or anchors
+        low = min(x["minutes"] for x in ranged) * (1 - ANCHOR_SLACK)
+        high = max(x["minutes"] for x in ranged) * (1 + ANCHOR_SLACK)
         if not low <= b <= high:
             errors.append(f"b must be between {low:.0f} and {high:.0f} min (the anchors' range)")
     elif field.get("curve"):

@@ -44,6 +44,9 @@ struct ScheduleEditor: View {
                 .tint(UH.Palette.accentInk)
             }
             .frame(minHeight: 44)
+            if let note = Weekday.trailLongRunNote(longRun: draft.longRunDay, mountainDays: draft.mountainDays) {
+                Text(note).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+            }
 
             Divider()
 
@@ -90,7 +93,9 @@ struct ScheduleEditor: View {
                 mountainMinMinutes: $draft.mountainMinMinutes,
                 stairAccess: $draft.stairAccess,
                 useTreadmill: $draft.useTreadmill,
-                treadmillMaxIncline: draft.useTreadmill ? $draft.treadmillMaxIncline : nil
+                treadmillMaxIncline: draft.useTreadmill ? $draft.treadmillMaxIncline : nil,
+                longRunDay: $draft.longRunDay,
+                runDays: draft.preferredDays
             )
 
             if draft.isGettingStarted && includeBeginnerProgress {

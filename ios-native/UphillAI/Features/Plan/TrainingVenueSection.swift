@@ -10,6 +10,9 @@ struct TrainingVenueSection: View {
     var treadmillMaxIncline: Binding<Int>?
     /// The course's climb in m D+/km, when known: a steep course with no place to train climbing gets a prompt.
     var courseSteepness: Double?
+    /// When set, picking trail days moves the long run onto the nearest one that is also a run day.
+    var longRunDay: Binding<Weekday?>? = nil
+    var runDays: Set<Weekday> = Set(Weekday.allCases)
     @State private var mountains: [TrainingMountain] = []
     @State private var loadError = false
     @State private var loadAttempt = 0
@@ -85,6 +88,9 @@ struct TrainingVenueSection: View {
                                 let isSelected = mountainDays.contains(day)
                                 Button {
                                     if isSelected { mountainDays.remove(day) } else { mountainDays.insert(day) }
+                                    if let longRunDay, let moved = Weekday.nearestTrailDay(to: longRunDay.wrappedValue, among: mountainDays.intersection(runDays)) {
+                                        longRunDay.wrappedValue = moved
+                                    }
                                 } label: {
                                     Text(L(day.short))
                                         .font(UH.TextStyle.label)
@@ -103,6 +109,10 @@ struct TrainingVenueSection: View {
                         }
                         Text("Coach will schedule Trail sessions on these days.")
                             .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                        if let day = longRunDay?.wrappedValue, mountainDays.contains(day) {
+                            Text(L("Your long run is on %@, a trail day.", L(day.rawValue)))
+                                .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                        }
                     }
 
                     Divider()

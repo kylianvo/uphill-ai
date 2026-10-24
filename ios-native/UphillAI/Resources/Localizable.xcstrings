@@ -12111,6 +12111,26 @@
         }
       }
     },
+    "Long runs go on your trail day (%@), where the climbing is.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy dài sẽ xếp vào ngày trail (%@) để có leo dốc."
+          }
+        }
+      }
+    },
+    "Your long run is on %@, a trail day.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy dài vào %@, ngày trail của bạn."
+          }
+        }
+      }
+    },
     "Hill / trail days: %@": {
       "localizations": {
         "vi": {

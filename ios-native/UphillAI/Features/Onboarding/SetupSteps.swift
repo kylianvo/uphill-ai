@@ -446,6 +446,9 @@ struct SetupSteps: View {
                 .tint(UH.Palette.accentInk)
             }
             .frame(minHeight: 44)
+            if let note = Weekday.trailLongRunNote(longRun: model.draft.longRunDay, mountainDays: model.draft.mountainDays) {
+                Text(note).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+            }
         }
         .trainingCard()
 
@@ -524,7 +527,9 @@ struct SetupSteps: View {
                 stairAccess: $model.draft.stairAccess,
                 useTreadmill: $model.draft.useTreadmill,
                 treadmillMaxIncline: model.draft.useTreadmill ? $model.draft.treadmillMaxIncline : nil,
-                courseSteepness: model.draft.courseSteepness
+                courseSteepness: model.draft.courseSteepness,
+                longRunDay: Binding(get: { model.draft.longRunDay }, set: { if let day = $0 { model.draft.longRunDay = day } }),
+                runDays: model.draft.preferredDays
             )
         }
         .trainingCard()

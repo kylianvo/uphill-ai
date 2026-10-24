@@ -1,5 +1,5 @@
 import { translations } from "../app/translations";
-import { TrainingVenueFields } from "./TrainingVenueFields";
+import { TrainingVenueFields, dayLabel } from "./TrainingVenueFields";
 
 export interface ScheduleFieldsValue {
   days_per_week: number;
@@ -64,6 +64,12 @@ export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange }: Sch
               );
             })}
           </select>
+          {value.mountain_days.length > 0 && !value.mountain_days.includes(value.long_run_day) && (
+            // the plan generator moves the long run onto a trail day (training_venues.long_run_day)
+            <div style={{ fontSize: "11px", marginTop: "6px", color: "var(--text-secondary)" }}>
+              {t("plan_long_run_on_trail_day").replace("{days}", value.mountain_days.map(d => dayLabel(d, lang)).join(", "))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -130,6 +136,8 @@ export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange }: Sch
         useTreadmill={value.use_treadmill}
         onTreadmillChange={enabled => onChange({ use_treadmill: enabled })}
         onChange={onChange}
+        longRunDay={value.long_run_day}
+        onLongRunDayChange={day => onChange({ long_run_day: day })}
       />
 
       <div style={{ marginTop: "12px" }}>

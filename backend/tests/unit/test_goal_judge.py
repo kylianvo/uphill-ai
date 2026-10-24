@@ -140,3 +140,23 @@ def test_call_claude_returns_structured_text(monkeypatch):
         raw = goal_judge._call_claude("prompt")
     assert GoalOutput.model_validate_json(raw).goals.b == 490.0
     assert generate.call_args.kwargs["schema"] is GoalOutput
+
+
+def test_a_far_prior_does_not_widen_the_result_range():
+    prior = {"id": "prior_field", "method": "field_prior", "minutes": 1300.0, "source_result_id": None, "notes": []}
+    assert any("anchors' range" in e for e in _errors(anchors=[*ANCHORS, prior], a=1180.0, b=1290.0, c=1380.0))
+
+
+def test_claude_goal_model_keeps_thinking_on_sonnet(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock, patch
+
+    monkeypatch.setattr(goal_judge.settings, "CLAUDE_GOAL_MODEL", "claude-sonnet-5-5")
+    message = SimpleNamespace(stop_reason="end_turn", content=[SimpleNamespace(type="text", text="{}")])
+    with (
+        patch("services.claude_llm.generate", return_value=message) as generate,
+        patch("services.claude_llm.record", MagicMock()),
+    ):
+        goal_judge._call_claude("p")
+    assert generate.call_args.kwargs["model"] == "claude-sonnet-5-5"
+    assert generate.call_args.kwargs["thinking"] is True

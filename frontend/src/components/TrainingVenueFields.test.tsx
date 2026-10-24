@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { translations } from "../app/translations";
-import { parseDayList, TrainingVenueFields, type TrainingVenueValue } from "./TrainingVenueFields";
+import { parseDayList, trailLongRunDay, TrainingVenueFields, type TrainingVenueValue } from "./TrainingVenueFields";
 
 describe("parseDayList", () => {
   it("reads the JSON text stored on plans, in weekday order", () => {
@@ -135,5 +135,14 @@ describe("climb venue prompt", () => {
   it("is silent for a flat course or an unknown one", () => {
     renderSteep({ courseSteepness: 8 });
     expect(screen.queryByTestId("climb-venue-needed")).toBeNull();
+  });
+});
+
+describe("trailLongRunDay", () => {
+  it("moves the long run to the nearest trail day", () => {
+    expect(trailLongRunDay("Saturday", ["Sunday"])).toBe("Sunday");
+    expect(trailLongRunDay("Saturday", ["Saturday", "Sunday"])).toBe("Saturday");
+    expect(trailLongRunDay("Monday", ["Wednesday", "Sunday"])).toBe("Sunday");
+    expect(trailLongRunDay("Saturday", [])).toBe("Saturday");
   });
 });

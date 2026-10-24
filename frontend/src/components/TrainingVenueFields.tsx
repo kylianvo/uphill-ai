@@ -25,6 +25,9 @@ interface TrainingVenueFieldsProps {
   onChange: (patch: Partial<TrainingVenueValue>) => void;
   // The course's climb in m D+/km, when known: a steep course with no place to train climbing gets a prompt.
   courseSteepness?: number;
+  // The long run belongs on a trail day: picking trail days moves it there (mirrors training_venues.long_run_day).
+  longRunDay?: string;
+  onLongRunDayChange?: (day: string) => void;
 }
 
 export const STEEP_COURSE_M_PER_KM = 25;
@@ -43,11 +46,22 @@ export function parseDayList(value: unknown): string[] {
   return FULL_DAYS.filter((d) => days.includes(d));
 }
 
+// The trail day nearest the chosen long-run day, or the chosen day when it already is one.
+export function trailLongRunDay(chosen: string, trailDays: string[]): string {
+  if (!trailDays.length || trailDays.includes(chosen)) return chosen;
+  const i = FULL_DAYS.indexOf(chosen);
+  const gap = (d: string) => { const g = Math.abs(FULL_DAYS.indexOf(d) - i); return Math.min(g, 7 - g); };
+  return i < 0 ? trailDays[trailDays.length - 1] : trailDays.reduce((a, b) => (gap(b) < gap(a) ? b : a));
+}
+
+const VI_DAYS = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
+export const dayLabel = (day: string, lang: string) => (lang === "vi" ? VI_DAYS[FULL_DAYS.indexOf(day)] ?? day : day);
+
 const SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHORT_DAYS_VI = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const INCLINES = [15, 20, 25];
 
-export function TrainingVenueFields({ lang, t, value, useTreadmill, onTreadmillChange, onChange, courseSteepness }: TrainingVenueFieldsProps) {
+export function TrainingVenueFields({ lang, t, value, useTreadmill, onTreadmillChange, onChange, courseSteepness, longRunDay, onLongRunDayChange }: TrainingVenueFieldsProps) {
   const id = useId();
   const [mountains, setMountains] = useState<TrainingMountain[]>([]);
   const [loadError, setLoadError] = useState(false);
@@ -121,11 +135,19 @@ export function TrainingVenueFields({ lang, t, value, useTreadmill, onTreadmillC
                 return <button key={full} type="button" className={styles.choice} aria-pressed={selected}
                   onClick={() => {
                     const next = selected ? value.mountain_days.filter(d => d !== full) : [...value.mountain_days, full];
-                    onChange({ mountain_days: FULL_DAYS.filter(d => next.includes(d)) });
+                    const days = FULL_DAYS.filter(d => next.includes(d));
+                    onChange({ mountain_days: days });
+                    if (longRunDay && onLongRunDayChange) {
+                      const moved = trailLongRunDay(longRunDay, days);
+                      if (moved !== longRunDay) onLongRunDayChange(moved);
+                    }
                   }}>{lang === "vi" ? SHORT_DAYS_VI[i] : short}</button>;
               })}
             </div>
             <p className={styles.help}>{t("plan_mountain_days_help")}</p>
+            {longRunDay && value.mountain_days.includes(longRunDay) && (
+              <p className={styles.help}>{t("plan_long_run_on_this_trail_day").replace("{day}", dayLabel(longRunDay, lang))}</p>
+            )}
           </div>
         </li>}
       </ol>

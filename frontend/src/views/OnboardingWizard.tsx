@@ -1577,6 +1577,8 @@ export default function OnboardingWizard() {
                     (parseFloat(onboardingAnswers.course_distance_km) || Infinity)
                   }
                   onChange={(patch) => Object.entries(patch).forEach(([k, v]) => setAns(k, v))}
+                  longRunDay={onboardingAnswers.long_run_day || "Saturday"}
+                  onLongRunDayChange={day => setAns("long_run_day", day)}
                 />
 
               </div>
