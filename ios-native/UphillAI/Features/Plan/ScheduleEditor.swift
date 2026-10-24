@@ -44,6 +44,9 @@ struct ScheduleEditor: View {
                 .tint(UH.Palette.accentInk)
             }
             .frame(minHeight: 44)
+            if let note = Weekday.trailLongRunNote(longRun: draft.longRunDay, mountainDays: draft.mountainDays) {
+                Text(note).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+            }
 
             Divider()
 

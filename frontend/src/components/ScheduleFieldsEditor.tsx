@@ -64,6 +64,12 @@ export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange }: Sch
               );
             })}
           </select>
+          {value.mountain_days.length > 0 && !value.mountain_days.includes(value.long_run_day) && (
+            // the plan generator moves the long run onto a trail day (training_venues.long_run_day)
+            <div style={{ fontSize: "11px", marginTop: "6px", color: "var(--text-secondary)" }}>
+              {t("plan_long_run_on_trail_day").replace("{days}", value.mountain_days.join(", "))}
+            </div>
+          )}
         </div>
       </div>
 

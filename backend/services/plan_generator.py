@@ -18,6 +18,7 @@ from services import (
     plan_lint,
     race_readiness,
     recovery_baseline,
+    training_venues,
     ultra_rules,
     week_layout,
 )
@@ -1174,7 +1175,7 @@ class PlanGenerator:
         except (TypeError, ValueError):
             days_per_week = None
         prefs = plan_lint.Prefs(
-            long_run_day=race_info.get("long_run_day"),
+            long_run_day=training_venues.long_run_day(race_info.get("long_run_day"), race_info.get("mountain_days")),
             days_per_week=days_per_week,
             # an adapted week is the athlete's own call: never ask it to build toward the peak long run
             demands=None if target_week is not None else PlanGenerator.goal_demands_for(race_info, cutoff_time_hours),
@@ -1337,7 +1338,9 @@ class PlanGenerator:
         double_session_days = _parse_days(
             race_info.get("double_session_days") or user_profile.get("double_session_days")
         )
-        long_run_day = race_info.get("long_run_day") or user_profile.get("long_run_day")
+        long_run_day = training_venues.long_run_day(
+            race_info.get("long_run_day") or user_profile.get("long_run_day"), race_info.get("mountain_days")
+        )
         days_per_week = race_info.get("days_per_week") or user_profile.get("days_per_week") or 4
         injury_history = user_profile.get("injury_history")
 

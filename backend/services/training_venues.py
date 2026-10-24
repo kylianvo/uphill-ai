@@ -45,6 +45,17 @@ def parse_days(value: Any) -> tuple[str, ...]:
     return tuple(d for d in WEEKDAYS if d in value)
 
 
+def long_run_day(chosen: str | None, mountain_days: Any) -> str | None:
+    """The long run belongs on a mountain day: a chosen day without trail access yields to the nearest one."""
+    days = parse_days(mountain_days)
+    if not days or chosen in days:
+        return chosen
+    if chosen not in WEEKDAYS:
+        return days[-1]
+    i = WEEKDAYS.index(chosen)
+    return min(days, key=lambda d: min(abs(WEEKDAYS.index(d) - i), 7 - abs(WEEKDAYS.index(d) - i)))
+
+
 def _clamp_incline(value: Any) -> int:
     try:
         incline = int(value)

@@ -446,6 +446,9 @@ struct SetupSteps: View {
                 .tint(UH.Palette.accentInk)
             }
             .frame(minHeight: 44)
+            if let note = Weekday.trailLongRunNote(longRun: model.draft.longRunDay, mountainDays: model.draft.mountainDays) {
+                Text(note).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+            }
         }
         .trainingCard()
 

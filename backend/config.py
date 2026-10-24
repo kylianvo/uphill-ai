@@ -88,6 +88,8 @@ class Config:
     GEAR_LLM_PROVIDER: str = os.getenv("GEAR_LLM_PROVIDER", "gemini")
     NUTRITION_LLM_PROVIDER: str = os.getenv("NUTRITION_LLM_PROVIDER", "gemini")
     GOAL_JUDGE_LLM_PROVIDER: str = os.getenv("GOAL_JUDGE_LLM_PROVIDER", "gemini")
+    # Haiku without thinking wrote reasoning that its A/B/C numbers contradicted; one call per assessment, so Sonnet.
+    CLAUDE_GOAL_MODEL: str = os.getenv("CLAUDE_GOAL_MODEL", "claude-sonnet-5-5")
     WEEK_BRIEF_LLM_PROVIDER: str = os.getenv("WEEK_BRIEF_LLM_PROVIDER", "gemini")
     COACH_NUDGE_LLM_PROVIDER: str = os.getenv("COACH_NUDGE_LLM_PROVIDER", "gemini")
     LLM_JUDGE_PROVIDER: str = os.getenv("LLM_JUDGE_PROVIDER", "gemini")
