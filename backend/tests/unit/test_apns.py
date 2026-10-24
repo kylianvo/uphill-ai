@@ -16,3 +16,14 @@ def test_unicode_payload_preserves_route_and_limit():
     payload = build_payload(event, "Buổi tập", "Chạy nhẹ 🏃" * 2000)
     assert len(json.dumps(payload, ensure_ascii=False).encode()) <= 4096
     assert payload["destination"]["workout_id"] == 42
+
+
+def test_category_marks_mutable_kinds():
+    from services.apns import build_payload
+
+    def payload(kind):
+        return build_payload(dict(id="x", kind=kind, destination={}), "t", "b")["aps"]["category"]
+
+    assert payload("week_brief") == "coaching"
+    assert payload("workout") == "plain"
+    assert payload("plan_ready") == "plain"
