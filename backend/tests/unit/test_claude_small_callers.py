@@ -40,6 +40,7 @@ def test_week_brief_on_claude_needs_no_user_gemini_key(claude):
         )
     assert out["why"] == "Because."
     assert "87% complete" in generate.call_args.args[0]
+    assert generate.call_args.kwargs["thinking"] is False
 
 
 def test_coach_nudge_on_claude_is_worded_by_the_model(claude):
@@ -51,11 +52,12 @@ def test_coach_nudge_on_claude_is_worded_by_the_model(claude):
         patch.object(coach_nudge, "tone_for", return_value="encourage"),
         patch.object(coach_nudge, "grounded", return_value=True),
         patch.object(coach_nudge, "_parse", side_effect=lambda t: t),
-        patch("services.claude_llm.generate", return_value=fake_message("Great week.")),
+        patch("services.claude_llm.generate", return_value=fake_message("Great week.")) as generate,
     ):
         out = asyncio.run(coach_nudge.nudge(f, "en", api_key=None))
     assert out["source"] == "model"
     assert out["text"] == "Great week."
+    assert "thinking" not in generate.call_args.kwargs  # thinking off lost a grounded nudge (8/8 -> 7/8)
 
 
 def test_llm_judge_on_claude_uses_structured_scores(claude):
@@ -67,6 +69,7 @@ def test_llm_judge_on_claude_uses_structured_scores(claude):
         out = asyncio.run(llm_judge.judge_reply(question="q", reply="r", evidence=None, lang="en", api_key=""))
     assert out == scores
     assert generate.call_args.kwargs["schema"] is llm_judge.JudgeScores
+    assert generate.call_args.kwargs["thinking"] is False
 
 
 def test_kb_distill_structured_follows_the_provider_it_is_given(claude):

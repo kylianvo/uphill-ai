@@ -12,6 +12,7 @@ from config import settings
 from db import block_number_for_week, get_plan_by_id, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
 from services import (
+    claude_llm,
     goal_demands,
     observability,
     plan_lint,
@@ -123,12 +124,23 @@ def _claude_generate(prompt: str) -> Any:
     temperature, a thinking budget and prefill, so effort is the only knob."""
     import anthropic
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    # A stalled stream used to hang until the SDK's 10-minute default; 60 s without a byte (the API pings
+    # while it thinks) means stalled, so fail and let the reduced-prompt retry take over.
+    client = anthropic.Anthropic(
+        api_key=settings.ANTHROPIC_API_KEY,
+        timeout=anthropic.Timeout(600.0, connect=10.0, read=60.0),
+        max_retries=1,
+    )
+    kwargs: dict[str, Any] = {}
+    # Haiku 5.5 rejects disabled thinking above effort high.
+    if settings.PLAN_LLM_THINKING == "disabled" and settings.PLAN_LLM_EFFORT in ("low", "medium", "high"):
+        kwargs["thinking"] = {"type": "disabled"}
     with client.messages.stream(
         model=settings.CLAUDE_PLAN_MODEL,
         max_tokens=32000,
         output_config={"effort": settings.PLAN_LLM_EFFORT},
         messages=[{"role": "user", "content": prompt}],
+        **kwargs,
     ) as stream:
         return stream.get_final_message()
 
@@ -3461,7 +3473,7 @@ class PlanGenerator:
                     ) as generation:
                         if _claude:
                             _message = await asyncio.to_thread(_claude_generate, _gemini_prompt)
-                            generation.set_usage(observability.Usage.from_anthropic(_message.usage))
+                            claude_llm.record(generation, _message)
                             _text = _claude_text(_message)
                             if _text is None:
                                 _logger.warning(

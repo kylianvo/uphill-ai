@@ -49,6 +49,7 @@ METADATA_KEYS = frozenset(
         "prompt_name",
         "prompt_version",
         "prompt_source",
+        "request_id",
     }
 )
 
@@ -194,6 +195,7 @@ _GENERATION_STATUSES = frozenset({"ok", "error", "attempt", "success", "used", "
 _LANGUAGES = frozenset({"en", "vi"})
 _COLLECTIONS = frozenset({"uphill_kb_scheduler", "uphill_kb_nutrition_principles"})
 _CHUNK_REF_RE = re.compile(r"^[0-9a-f]{12}$")
+_REQUEST_ID_RE = re.compile(r"req_[A-Za-z0-9]{1,64}")
 _PROMPT_NAMES = frozenset(
     {
         "coach_chat",
@@ -286,6 +288,8 @@ def _sanitize_metadata_value(key: str, value: Any) -> Any | None:
         if isinstance(value, list | tuple) and len(value) <= _MAX_LIST_ITEMS and all(v in _COLLECTIONS for v in value):
             return list(value)
         return None
+    if key == "request_id":
+        return value if isinstance(value, str) and _REQUEST_ID_RE.fullmatch(value) else None
     if key == "chunk_refs":
         if (
             isinstance(value, list | tuple)

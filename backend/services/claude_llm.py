@@ -36,6 +36,7 @@ def generate(
     system: str | None = None,
     model: str | None = None,
     max_tokens: int = 16000,
+    thinking: bool = True,
 ) -> Any:
     """One blocking Messages call on the server key. Haiku 5.5 rejects temperature and prefill, so JSON shape comes
     from structured outputs (`schema`) and effort is the only knob."""
@@ -49,6 +50,9 @@ def generate(
         # A list is a whole conversation of {role, content} turns.
         "messages": prompt if isinstance(prompt, list) else [{"role": "user", "content": prompt}],
     }
+    if not thinking:
+        # Haiku 5.5 thinks by default even at low effort, and bills it as output; pick-from-a-list calls don't need it.
+        kwargs["thinking"] = {"type": "disabled"}
     if system:
         kwargs["system"] = system
     if schema is not None:
@@ -63,8 +67,16 @@ def text(message: Any) -> str:
     return "".join(block.text for block in message.content if block.type == "text")
 
 
+def record(generation: Any, message: Any) -> None:
+    """Usage (answer vs thinking) and Anthropic's request id on the open generation span."""
+    generation.set_usage(observability.Usage.from_anthropic(message.usage, message.content))
+    request_id = getattr(message, "_request_id", None)
+    if request_id:
+        generation.set(request_id=request_id)
+
+
 def call(prompt: str, generation: Any, **kwargs: Any) -> str:
     """generate + usage on the open generation span + text."""
     message = generate(prompt, **kwargs)
-    generation.set_usage(observability.Usage.from_anthropic(message.usage))
+    record(generation, message)
     return text(message)

@@ -39,9 +39,28 @@ def test_generate_uses_structured_output_when_given_a_schema(monkeypatch):
     assert parse_kwargs["output_config"] == {"effort": settings.CLAUDE_TEXT_EFFORT}
     assert "temperature" not in parse_kwargs  # Haiku 5.5 rejects sampling params
     assert client.messages.create.call_args.kwargs["system"] == "sys"
+    assert "thinking" not in parse_kwargs
+    with patch("anthropic.Anthropic", return_value=client):
+        claude_llm.generate("hi", schema=Out, thinking=False)
+    assert client.messages.parse.call_args.kwargs["thinking"] == {"type": "disabled"}
 
 
 def test_prompt_label_only_for_claude(monkeypatch):
     monkeypatch.setattr(settings, "COACH_CHAT_PROMPT_LABEL", "production")
     assert claude_llm.prompt_label("gemini") is None
     assert claude_llm.prompt_label("claude") == "claude-production"
+
+
+def test_record_sets_split_usage_and_request_id():
+    generation = MagicMock()
+    message = fake_message("x" * 3)
+    message.usage.output_tokens = 50
+    message._request_id = "req_1"
+    claude_llm.record(generation, message)
+    usage = generation.set_usage.call_args.args[0]
+    assert (usage.output_tokens, usage.thinking_tokens) == (1, 49)
+    generation.set.assert_called_once_with(request_id="req_1")
+
+    generation = MagicMock()
+    claude_llm.record(generation, fake_message("x"))
+    generation.set.assert_not_called()

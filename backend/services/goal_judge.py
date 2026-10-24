@@ -127,8 +127,8 @@ def _call_claude(prompt: str) -> str:
             "goal_judge", GOAL_JUDGE_PROMPT, label=claude_llm.prompt_label(settings.GOAL_JUDGE_LLM_PROVIDER)
         ),
     ) as generation:
-        message = claude_llm.generate(prompt, schema=GoalOutput)
-        generation.set_usage(observability.Usage.from_anthropic(message.usage))
+        message = claude_llm.generate(prompt, schema=GoalOutput, thinking=False)
+        claude_llm.record(generation, message)
     return claude_llm.text(message)
 
 

@@ -320,6 +320,9 @@ class ClaudeCoachModel:
         params: dict[str, Any] = {"model": self.model, "system": request.system, "messages": messages}
         if self.tools and request.tools_enabled:
             params["tools"] = self._tool_defs()
+        # Haiku 5.5 rejects disabled thinking above effort high.
+        if settings.CLAUDE_COACH_THINKING == "disabled" and settings.CLAUDE_COACH_EFFORT in ("low", "medium", "high"):
+            params["thinking"] = {"type": "disabled"}
         return params
 
     async def count_tokens(self, request: ModelRequest) -> int:
@@ -356,8 +359,10 @@ class ClaudeCoachModel:
                 err_type = type(exc).__name__
                 raise CoachModelUpstreamError(err_type, error_type=err_type) from None
 
-            usage = Usage.from_anthropic(final.usage)
+            usage = Usage.from_anthropic(final.usage, final.content)
             gen.set_usage(usage)
+            if request_id := getattr(final, "_request_id", None):
+                gen.set(request_id=request_id)
             for block in final.content:
                 if block.type == "tool_use":
                     if not self.tools:
