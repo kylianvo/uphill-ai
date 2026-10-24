@@ -86,7 +86,6 @@ final class PlanViewModel {
     private(set) var coachNudge: CoachNudge?
     private(set) var isSyncingWatch = false
     private(set) var watchSyncNotice: String?
-    private(set) var contextKnowledgeCard: KnowledgeCardModel?
     /// The coach's brief for `weekBriefWeek`; cleared while another week's is loading.
     private(set) var weekBrief: WeekBrief?
     private var weekBriefWeek: Int?
@@ -142,7 +141,6 @@ final class PlanViewModel {
                 if isSignedIn() && usesCache { cache.save(fresh, as: .plan) }
                 await loadBlockCompletion()
                 await loadGoal()
-                await loadKnowledgeCard()
             } else {
                 snapshot = nil
                 cachedAt = nil
@@ -256,7 +254,7 @@ final class PlanViewModel {
         cachedAt = nil
         actionError = nil
         if isSignedIn() && usesCache { cache.save(snapshot, as: .plan) }
-        Task { await loadBlockCompletion(); await loadGoal(); await loadJourney(); await loadKnowledgeCard() }
+        Task { await loadBlockCompletion(); await loadGoal(); await loadJourney() }
     }
 
     /// Switches between the signed-in user's plan and a coached athlete's, then reloads.
@@ -732,27 +730,6 @@ final class PlanViewModel {
     }
 
 
-    func loadKnowledgeCard() async {
-        guard snapshot?.plan != nil, cachedAt == nil else { return }
-        let phase = (self.phase ?? "").lowercased()
-        let days = daysToRace
-
-        let topic: String
-        if let days, days <= 21 {
-            topic = "Pacing"
-        } else if phase.contains("taper") || phase.contains("peak") {
-            topic = "Pacing"
-        } else if phase.contains("recovery") {
-            topic = "Recovery"
-        } else if phase.contains("strength") || phase.contains("me") {
-            topic = "Training"
-        } else {
-            topic = "Training"
-        }
-
-        contextKnowledgeCard = await service.knowledgeCard(topic: topic, lang: AppLanguage.code)
-    }
-
     /// Best effort: the Today card works without them, so a failure just leaves the strip and message out.
     func loadJourney() async {
         let revision = scopeRevision
@@ -887,7 +864,6 @@ final class PlanViewModel {
                 if isSignedIn() && usesCache { cache.save(snapshot, as: .plan) }
                 await loadBlockCompletion()
                 await loadGoal()
-                await loadKnowledgeCard()
             }
         } catch let error as APIError {
             actionError = error.userMessage

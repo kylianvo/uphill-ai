@@ -24,7 +24,6 @@ protocol PlanServicing: Sendable {
     func reassessGoal(planID: Int) async throws -> PlanGoal
     func applyGoal(planID: Int, targetMinutes: Double) async throws -> PlanGoal
     func syncWatch(planID: Int) async throws -> String
-    func knowledgeCard(topic: String, lang: String) async -> KnowledgeCardModel?
     func blockEvaluation(planID: Int, block: Int) async throws -> BlockEvaluation
     /// Watch activities in the plan's window with their current match, for fixing a wrong match.
     func watchActivities(planID: Int) async throws -> [WatchActivity]
@@ -283,16 +282,5 @@ struct PlanService: PlanServicing {
         ]))
         let count = resp.activities ?? 0
         return count > 0 ? L("Synced %lld activities from watch", count) : L("Watch synced · Up to date")
-    }
-    func knowledgeCard(topic: String, lang: String = AppLanguage.code) async -> KnowledgeCardModel? {
-        do {
-            let resp: KnowledgeCardsResponse = try await client.send(.get("/api/knowledge/cards", query: [
-                URLQueryItem(name: "topic", value: topic),
-                URLQueryItem(name: "lang", value: lang)
-            ]))
-            return resp.cards.first
-        } catch {
-            return nil
-        }
     }
 }
