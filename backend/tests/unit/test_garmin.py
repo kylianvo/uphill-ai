@@ -277,20 +277,37 @@ def test_a_deregistration_is_not_acted_on_when_garmin_cannot_be_reached(monkeypa
     assert calls["delete"] == []
 
 
-def test_a_refresh_lost_to_a_concurrent_rotation_is_retried_with_the_stored_token(monkeypatch):
-    calls = _ingest_stubs(monkeypatch)
-    tokens = iter(["stale", "fresh"])
+def test_concurrent_token_refreshes_for_one_athlete_refresh_once(monkeypatch):
+    from datetime import timedelta
 
-    async def token(connection):
-        return next(tokens)
+    stored = {
+        "user_id": 42,
+        "access_token_enc": "old",
+        "refresh_token_enc": "r1",
+        "token_expires_at": datetime.now(UTC) - timedelta(minutes=1),
+    }
+    refreshes = []
 
-    async def user_id(token):
-        if token == "stale":
-            raise garmin_oauth.GarminAuthError("400", 400)
-        return "g-1"
+    async def refresh(token, transport=None):
+        refreshes.append(token)
+        await asyncio.sleep(0)
+        return TokenSet("new", "r2", datetime.now(UTC) + timedelta(days=1))
 
-    monkeypatch.setattr(garmin_oauth, "access_token", token)
-    monkeypatch.setattr(garmin_oauth, "fetch_user_id", user_id)
-    monkeypatch.setattr(garmin_ingest.db, "get_connection", lambda u, p: {"user_id": u})
-    asyncio.run(garmin_ingest.process({"deregistrations": [{"userId": "g-1"}]}))
-    assert calls["delete"] == []
+    def save_connection(**kw):
+        stored.update(
+            access_token_enc=kw["access_token_enc"],
+            refresh_token_enc=kw["refresh_token_enc"],
+            token_expires_at=kw["token_expires_at"],
+        )
+
+    monkeypatch.setattr(garmin_oauth, "refresh", refresh)
+    monkeypatch.setattr(garmin_oauth.db, "get_connection", lambda u, p: dict(stored))
+    monkeypatch.setattr(garmin_oauth.db, "save_connection", save_connection)
+    monkeypatch.setattr(garmin_oauth.token_crypto, "encrypt_token", lambda t: t)
+    monkeypatch.setattr(garmin_oauth.token_crypto, "decrypt_token", lambda t: t)
+
+    async def both():
+        return await asyncio.gather(garmin_oauth.access_token(dict(stored)), garmin_oauth.access_token(dict(stored)))
+
+    assert asyncio.run(both()) == ["new", "new"]
+    assert refreshes == ["r1"]

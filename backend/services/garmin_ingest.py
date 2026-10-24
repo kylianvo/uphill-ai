@@ -71,22 +71,15 @@ _REJECTED = frozenset({400, 401, 403})
 
 async def _registration_gone(connection: dict[str, Any]) -> bool | None:
     """True when Garmin rejects the athlete's credentials (deregistered), False when it still
-    answers for them, None when we could not tell (5xx, 429, timeout)."""
-    for attempt in range(2):
-        try:
-            await garmin_oauth.fetch_user_id(await garmin_oauth.access_token(connection))
-            return False
-        except garmin_oauth.GarminAuthError as exc:
-            if exc.status not in _REJECTED:
-                return None
-            if attempt == 0:
-                # Another push may have rotated the refresh token a moment ago: re-read it once.
-                connection = db.get_connection(connection["user_id"], garmin.PROVIDER) or connection
-                continue
-            return True
-        except Exception:
-            return None
-    return None
+    answers for them, None when we could not tell (5xx, 429, timeout). Token refreshes are
+    serialised per athlete (garmin_oauth.access_token), so a rejection is not a rotation race."""
+    try:
+        await garmin_oauth.fetch_user_id(await garmin_oauth.access_token(connection))
+        return False
+    except garmin_oauth.GarminAuthError as exc:
+        return True if exc.status in _REJECTED else None
+    except Exception:
+        return None
 
 
 async def _deregistrations(items: list[dict[str, Any]]) -> None:
