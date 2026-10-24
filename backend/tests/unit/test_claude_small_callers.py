@@ -57,7 +57,7 @@ def test_coach_nudge_on_claude_is_worded_by_the_model(claude):
         out = asyncio.run(coach_nudge.nudge(f, "en", api_key=None))
     assert out["source"] == "model"
     assert out["text"] == "Great week."
-    assert generate.call_args.kwargs["thinking"] is False
+    assert "thinking" not in generate.call_args.kwargs  # thinking off lost a grounded nudge (8/8 -> 7/8)
 
 
 def test_llm_judge_on_claude_uses_structured_scores(claude):

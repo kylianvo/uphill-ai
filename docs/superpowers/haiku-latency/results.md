@@ -19,9 +19,27 @@ So Goal, Plan, Gear and Nutrition run on Haiku in prod; chat runs on Haiku only 
 `PLAN_LLM_EFFORT` is unknown; the baseline uses the code default `medium`, which matches the ~9.6k output tokens per
 plan call seen in Langfuse. Confirm both on the server before flipping any `.env` switch.
 
-## Baseline
+## Baseline (Task 2) and thinking off (Tasks 3, 6)
 
-(Task 2)
+Golden sets run locally against the scratch DB with the KB seeds loaded (2026-10-24). "Gemini" is the stored
+`.ref.json` latency of each fixture. Latency is the per-fixture wall clock; p50 over the fixtures.
+
+| Feature | Gemini p50 | Haiku today p50 | Haiku thinking off p50 (p95) | Quality: today → thinking off | Verdict |
+|---|---|---|---|---|---|
+| Gear (12) | 6.5 s | 15.2 s | 8.8 s (9.9 s) | gate PASS, 12/12 in catalog → PASS, 12/12 | keep off |
+| Nutrition (12) | 5.9 s | 13.8 s | 8.5 s (11.5 s) | gate PASS, 12/12 in catalog → PASS, 12/12 | keep off |
+| Goal judge (12) | 3.1 s | 10.5 s | 6.6 s (8.0 s) | gate PASS, 1 reduced-prompt retry → PASS, 0 retries | keep off |
+| Week brief (10 synthetic) | — | 4.8 s | 2.0 s | 10/10 usable → 10/10 | keep off |
+| Coach nudge (10 synthetic, 8 with a tone) | — | 2.4 s | 1.4 s | 8/8 grounded → 7/8 | **revert** (keeps thinking) |
+| LLM judge (calibration) | — | — | — | 100% on all 4 criteria → 100% | keep off |
+| Chat (4 + benchmark) | 4.8 s | 9.7 s | (Task 7) | gate FAIL: `chat_vi_recovery_short_sleep` safety violation already on today's Haiku | — |
+
+Not measurable here: `goal_backtest.py` found 0 cases (the scratch DB has no race history), so Goal's bar is the
+goal_judge golden gate only. Gemini week brief/nudge baselines were not run (Gemini paid runs declined to save the
+key's time window; these two features run on Gemini in prod anyway).
+
+Gear and Nutrition are now under the 10 s target at p50; Goal judge is 6.6 s against Gemini's 4.5 s prod p50 — faster
+than today but still above target. Reports: `docs/superpowers/haiku-latency/reports/`.
 
 ## Plan tail (Task 4)
 
