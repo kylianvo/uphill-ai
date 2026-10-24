@@ -2329,7 +2329,7 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
             UPDATE users SET
                 age = :age, max_hr = :max_hr,
                 resting_hr = :rhr, aet_hr = :aet, ant_hr = :ant,
-                gemini_api_key = :gak,
+                gemini_api_key = COALESCE(:gak, gemini_api_key),
                 zone2_pace_min = COALESCE(:z2min, zone2_pace_min),
                 zone2_pace_max = COALESCE(:z2max, zone2_pace_max),
                 gender = :gender, height_cm = :height_cm, weight_kg = :weight_kg,

@@ -1,0 +1,352 @@
+package ai.uphill.app
+
+import ai.uphill.app.app.RootNav
+import ai.uphill.app.app.UphillApplication
+import ai.uphill.app.core.auth.AuthResponse
+import ai.uphill.app.core.auth.User
+import ai.uphill.app.core.localization.localizedText
+import ai.uphill.app.core.networking.JSONCoding
+import android.content.res.Configuration
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
+import java.util.Locale
+import kotlinx.coroutines.runBlocking
+import okhttp3.mockwebserver.*
+import org.junit.*
+
+/** Opt-in real emulator screenshots, using recorded responses in the production app shell. */
+class VisualEvidenceTest {
+    @get:Rule val ui = createComposeRule()
+
+    @Test
+    fun captureMajorScreensInBothLanguages() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        Assume.assumeTrue(
+            InstrumentationRegistry.getArguments().getString("captureEvidence") == "true"
+        )
+        val variant = InstrumentationRegistry.getArguments().getString("captureVariant") ?: "normal"
+        val context = instrumentation.targetContext
+        val container = (context.applicationContext as UphillApplication).container
+        fun fixture(name: String) =
+            instrumentation.context.assets.open(name).bufferedReader().use { it.readText() }
+        val server = MockWebServer()
+        server.dispatcher =
+            object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val body =
+                        when (request.requestUrl!!.encodedPath) {
+                            "/api/auth/me" -> fixture("auth_me.json")
+                            "/api/coach/active-plan" -> fixture("active_plan.json")
+                            "/api/coach/block-completion/93" -> fixture("block_completion.json")
+                            "/api/coach/week-review/93/2" -> fixture("week_review.json")
+                            "/api/plans/93/goal" -> fixture("plan_goal.json")
+                            "/api/coach/recent-plans" -> fixture("recent_plans.json")
+                            "/api/coach/chat/thread" -> fixture("chat_thread.json")
+                            "/api/auth/pace-zones" -> fixture("pace_zones.json")
+                            "/api/auth/fitness-snapshot" -> "{}"
+                            "/api/race-history" -> """{"results":[],"claims":[],"road_pbs":{}}"""
+                            "/api/shoe-rotation" ->
+                                """{"shoes":[{"slot":"daily","brand":"Nike","model":"Pegasus 41","distance_km":630,"max_distance_km":700}]}"""
+                            "/api/integrations/matching" -> """{"activities":[]}"""
+                            "/api/integrations/status" -> """{"coros":{"connected":false}}"""
+                            "/api/knowledge/cards" -> """{"cards":[]}"""
+                            "/api/knowledge/topics" -> "[]"
+                            "/api/coach/nutrition-catalog" -> "[]"
+                            "/api/coach/pace-strategy/benchmarks" -> """{"matched":false}"""
+                            "/api/coaching/my-invites" -> "[]"
+                            "/api/coaching/overview" -> fixture("coaching_overview.json")
+                            "/api/coaching/roster" -> fixture("coaching_roster.json")
+                            "/api/coaching/athletes/7/profile" ->
+                                fixture("coaching_athlete_profile.json")
+                            "/api/coaching/athletes/7/notes" -> "{\"notes\":[]}"
+                            else -> "{}"
+                        }
+                    return MockResponse()
+                        .setHeader("Content-Type", "application/json")
+                        .setBody(body)
+                }
+            }
+        server.start()
+        val previousEnvironment = container.api.baseURL()
+        val previousLanguage = container.language.value
+        val activityConfigurations = mutableMapOf<android.app.Activity, Configuration>()
+        // Dialogs use the host activity's resources rather than the configured LocalContext.
+        @Suppress("DEPRECATION")
+        fun configureActivityLanguage(lang: String) {
+            ui.runOnIdle {
+                ActivityLifecycleMonitorRegistry.getInstance()
+                    .getActivitiesInStage(Stage.RESUMED)
+                    .forEach { activity ->
+                        activityConfigurations.putIfAbsent(
+                            activity,
+                            Configuration(activity.resources.configuration),
+                        )
+                        val configuration =
+                            Configuration(activity.resources.configuration).apply {
+                                setLocale(Locale.forLanguageTag(lang))
+                            }
+                        activity.resources.updateConfiguration(
+                            configuration,
+                            activity.resources.displayMetrics,
+                        )
+                    }
+            }
+        }
+        fun localized(key: String, lang: String, vararg args: Any): String {
+            val configuration =
+                Configuration(context.resources.configuration).apply {
+                    setLocale(Locale.forLanguageTag(lang))
+                }
+            return localizedText(context.createConfigurationContext(configuration), key, *args)
+        }
+        fun planLabel(key: String, lang: String): String {
+            val configuration =
+                Configuration(context.resources.configuration).apply {
+                    setLocale(Locale.forLanguageTag(lang))
+                }
+            val resources = context.createConfigurationContext(configuration).resources
+            val id =
+                resources.getIdentifier("planui_${key.lowercase()}", "string", context.packageName)
+            return if (id != 0) resources.getString(id) else localized(key, lang)
+        }
+        fun waitText(text: String) {
+            ui.waitUntil(15000) {
+                ui.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        fun tab(key: String, lang: String) {
+            ui.onNode(hasText(localized(key, lang)) and hasClickAction()).performClick()
+        }
+        fun capture(name: String, lang: String) {
+            ui.waitForIdle()
+            ui.mainClock.advanceTimeBy(500)
+            ui.waitForIdle()
+            val path = "/sdcard/Download/uphill-evidence/$variant/$name-$lang.png"
+            instrumentation.uiAutomation
+                .executeShellCommand("mkdir -p /sdcard/Download/uphill-evidence/$variant")
+                .use { java.io.FileInputStream(it.fileDescriptor).readBytes() }
+            instrumentation.uiAutomation.executeShellCommand("screencap -p $path").use {
+                java.io.FileInputStream(it.fileDescriptor).readBytes()
+            }
+        }
+        try {
+            runBlocking {
+                container.settings.environment(server.url("/").toString())
+                container.settings.language("en")
+            }
+            ui.waitUntil(10000) { container.api.baseURL() == server.url("/").toString() }
+            container.session.signOut()
+            ui.setContent {
+                val lang by container.language.collectAsState()
+                val registryOwner = LocalActivityResultRegistryOwner.current
+                val configuration =
+                    Configuration(context.resources.configuration).apply {
+                        setLocale(Locale.forLanguageTag(lang))
+                    }
+                CompositionLocalProvider(
+                    LocalActivityResultRegistryOwner provides requireNotNull(registryOwner),
+                    LocalContext provides context.createConfigurationContext(configuration),
+                    LocalConfiguration provides configuration,
+                ) {
+                    AppFixture { RootNav(container) }
+                }
+            }
+            if (variant != "coaching") capture("sign-in", "en")
+            val user =
+                JSONCoding.json
+                    .decodeFromString<User>(fixture("auth_me.json"))
+                    .copy(onboardingComplete = true)
+            ui.runOnIdle { container.session.signIn(AuthResponse("fixture-evidence-only", user)) }
+            for (lang in listOf("en", "vi")) {
+                runBlocking { container.settings.language(lang) }
+                ui.waitUntil(10000) { container.language.value == lang }
+                configureActivityLanguage(lang)
+                if (variant != "coaching") {
+                    ui.runOnIdle {
+                        container.session.signIn(
+                            AuthResponse(
+                                "fixture-onboarding-evidence-only",
+                                user.copy(
+                                    id = if (lang == "en") 7007 else 7008,
+                                    onboardingComplete = false,
+                                ),
+                            )
+                        )
+                    }
+                    waitText(localized("Get started", lang))
+                    capture("onboarding-welcome", lang)
+                    ui.onNodeWithText(localized("Get started", lang))
+                        .performScrollTo()
+                        .performClick()
+                    waitText(localized("A road race", lang))
+                    capture("onboarding-goal", lang)
+                    ui.onNodeWithText(localized("A road race", lang))
+                        .performScrollTo()
+                        .performClick()
+                    waitText(planLabel("Race name", lang))
+                    capture("onboarding-road", lang)
+                    ui.onNode(hasText(planLabel("Race name", lang)) and hasSetTextAction())
+                        .performTextReplacement("Local Road 10K")
+                    ui.onNode(hasText(planLabel("Distance (km)", lang)) and hasSetTextAction())
+                        .performTextReplacement("10")
+                    ui.onNodeWithText(planLabel("Next", lang)).performClick()
+                    waitText(localized("When is it?", lang))
+                    capture("onboarding-date", lang)
+                    ui.onNodeWithContentDescription(localized("Close", lang)).performClick()
+                    waitText(localized("Get started", lang))
+                    ui.runOnIdle {
+                        container.session.signIn(AuthResponse("fixture-evidence-only", user))
+                    }
+                    tab("Plan", lang)
+                    ui.waitUntil(15000) {
+                        ui.onAllNodesWithTag("plan.list").fetchSemanticsNodes().isNotEmpty()
+                    }
+                    ui.onNodeWithTag("plan.list").performScrollToIndex(0)
+                    waitText("Vietnam Mountain Marathon 42K")
+                    ui.onNodeWithTag("plan.list")
+                        .performScrollToNode(hasContentDescription(planLabel("List", lang)))
+                    ui.onNodeWithContentDescription(planLabel("List", lang)).performClick()
+                    ui.onNodeWithTag("plan.list").performScrollToIndex(0)
+                    capture("plan", lang)
+                    ui.onNodeWithTag("plan.list").performScrollToNode(hasText("Hill Repeats"))
+                    ui.onNodeWithText("Hill Repeats").performClick()
+                    waitText(localized("Done", lang))
+                    capture("workout", lang)
+                    instrumentation.uiAutomation.executeShellCommand("input keyevent 4").use {
+                        java.io.FileInputStream(it.fileDescriptor).readBytes()
+                    }
+                    ui.onNodeWithTag("plan.list")
+                        .performScrollToNode(hasContentDescription(planLabel("Calendar", lang)))
+                    ui.onNodeWithContentDescription(planLabel("Calendar", lang)).performClick()
+                    ui.onNodeWithTag("plan.list").performScrollToNode(hasTestTag("calendar.card"))
+                    ui.onNodeWithTag("calendar.card").performScrollTo()
+                    capture("calendar", lang)
+                    ui.onNodeWithTag("calendar.day.2026-10-06").performClick()
+                    waitText(localized("Open week %lld in list", lang, 3))
+                    capture("calendar-day", lang)
+                    instrumentation.uiAutomation.executeShellCommand("input keyevent 4").use {
+                        java.io.FileInputStream(it.fileDescriptor).readBytes()
+                    }
+                    tab("Coach", lang)
+                    waitText("Can we move tomorrow's tempo run")
+                    capture("chat", lang)
+                    tab("Me", lang)
+                    waitText(user.name)
+                    ui.onNode(hasText(localized("Me", lang)) and !hasClickAction())
+                        .performScrollTo()
+                    capture("me", lang)
+                    ui.onNodeWithTag("profile.rotation").performScrollTo()
+                    capture("shoe-rotation", lang)
+                    if (variant == "normal" || variant == "accessible") {
+                        for ((name, label) in
+                            listOf(
+                                "pace" to "Pace Strategy",
+                                "goal" to "Goal Determiner",
+                                "nutrition" to "Nutrition Lab",
+                                "gear" to "Gear Vault",
+                                "knowledge" to "Knowledge Hub",
+                                "race-history" to "Race history",
+                            ).filter { variant == "normal" || it.first == "knowledge" }) {
+                            tab("Me", lang)
+                            waitText(localized(label, lang))
+                            ui.onNodeWithText(localized(label, lang))
+                                .performScrollTo()
+                                .performClick()
+                            val configuration =
+                                Configuration(context.resources.configuration).apply {
+                                    setLocale(Locale.forLanguageTag(lang))
+                                }
+                            val resources =
+                                context.createConfigurationContext(configuration).resources
+                            val resourceName =
+                                if (name == "race-history") "p6_race_history"
+                                else
+                                    "tools_" +
+                                        label
+                                            .lowercase()
+                                            .replace(Regex("[^a-z0-9]+"), "_")
+                                            .trim('_')
+                            val headingId =
+                                resources.getIdentifier(resourceName, "string", context.packageName)
+                            waitText(
+                                if (headingId != 0) resources.getString(headingId)
+                                else localized(label, lang)
+                            )
+                            capture(name, lang)
+                            val backId =
+                                resources.getIdentifier("tools_back", "string", context.packageName)
+                            val backLabel =
+                                if (name != "race-history" && backId != 0)
+                                    resources.getString(backId)
+                                else localized("Back", lang)
+                            ui.onNodeWithText(backLabel).performClick()
+                            waitText(localized("Tools & Labs", lang))
+                        }
+                    }
+                }
+                val coach =
+                    JSONCoding.json
+                        .decodeFromString<User>(fixture("coaching_coach_me.json"))
+                        .copy(onboardingComplete = true)
+                ui.runOnIdle {
+                    container.session.signIn(AuthResponse("fixture-coach-evidence-only", coach))
+                }
+                tab("Athletes", lang)
+                ui.onNodeWithTag("coach.section.overview").performScrollTo().performClick()
+                ui.waitUntil(15000) {
+                    ui.onAllNodesWithTag("coach.charts").fetchSemanticsNodes().isNotEmpty()
+                }
+                capture("coach-overview", lang)
+                ui.onNodeWithTag("coach.charts").performScrollTo()
+                capture("coach-charts", lang)
+                ui.onNodeWithTag("coach.race.0").performScrollTo()
+                capture("coach-races", lang)
+                ui.onNodeWithTag("coach.section.roster").performScrollTo().performClick()
+                capture("coach-invite", lang)
+                ui.onNodeWithTag("coach.roster.search").performScrollTo()
+                capture("coach-roster", lang)
+                ui.onNodeWithTag("coach.profile.7").performScrollTo().performClick()
+                ui.waitUntil(15000) {
+                    ui.onAllNodesWithTag("coach.profile.edit").fetchSemanticsNodes().any {
+                        it.config
+                            .contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled)
+                            .not()
+                    }
+                }
+                ui.onNodeWithTag("coach.profile.physiology").performScrollTo()
+                capture("coach-profile", lang)
+                ui.onNodeWithTag("coach.profile.preferences").performScrollTo()
+                capture("coach-preferences", lang)
+                ui.onNodeWithText(localized("Done", lang)).assertIsDisplayed().performClick()
+                ui.runOnIdle {
+                    container.session.signIn(AuthResponse("fixture-evidence-only", user))
+                }
+            }
+        } finally {
+            container.session.signOut()
+            runBlocking {
+                container.settings.environment(previousEnvironment)
+                container.settings.language(previousLanguage)
+            }
+            @Suppress("DEPRECATION")
+            ui.runOnIdle {
+                activityConfigurations.forEach { (activity, configuration) ->
+                    activity.resources.updateConfiguration(
+                        configuration,
+                        activity.resources.displayMetrics,
+                    )
+                }
+            }
+            server.shutdown()
+        }
+    }
+}
