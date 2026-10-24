@@ -276,29 +276,13 @@ struct PlanView: View {
                             .padding(.horizontal, UH.Space.regular)
                         }
 
-                        // 6. Read this week (contextual knowledge card)
-                        if let card = model.contextKnowledgeCard {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Read this week")
-                                    .font(UH.TextStyle.eyebrow)
-                                    .foregroundStyle(UH.Palette.secondary)
-                                    .padding(.horizontal, 2)
-
-                                KnowledgeCardView(card: card) {
-                                    if card.isServerCard { Task { try? await app?.knowledgeService.markOpened(id: card.id, lang: AppLanguage.code) } }
-                                }
-                            }
-                            .padding(.horizontal, UH.Space.regular)
-                            .padding(.top, 4)
-                        }
-
                         // 7. Next week card
                         nextWeekCard
                     }
                     .padding(.vertical, UH.Space.regular)
                 }
                 .refreshable { await model.load() }
-                .onChange(of: model.selectedWeek) { Task { await model.refreshNextWeekOffer(); await model.loadKnowledgeCard() } }
+                .onChange(of: model.selectedWeek) { Task { await model.refreshNextWeekOffer() } }
                 .onChange(of: generation.lastOutcome) { _, outcome in
                     guard let outcome, outcome.kind == .nextWeek || outcome.kind == .adaptWeek else { return }
                     generation.clearOutcome()
