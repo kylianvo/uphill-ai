@@ -211,6 +211,7 @@ def test_ingest_stores_known_users_activities_then_matches(monkeypatch):
 
 def test_ingest_deregistration_deletes_and_permission_change_updates_scopes(monkeypatch):
     calls = _ingest_stubs(monkeypatch)
+    _registration(monkeypatch, live=False)
     asyncio.run(
         garmin_ingest.process(
             {
@@ -222,3 +223,39 @@ def test_ingest_deregistration_deletes_and_permission_change_updates_scopes(monk
     )
     assert calls["delete"] == [(42, "garmin")]
     assert calls["scopes"] == [(42, "ACTIVITY_EXPORT HEALTH_EXPORT")]
+
+
+def _registration(monkeypatch, live: bool):
+    async def token(connection):
+        return "a"
+
+    async def user_id(token):
+        if not live:
+            raise garmin_oauth.GarminAuthError("403")
+        return "g-1"
+
+    monkeypatch.setattr(garmin_oauth, "access_token", token)
+    monkeypatch.setattr(garmin_oauth, "fetch_user_id", user_id)
+
+
+def test_a_deregistration_garmin_still_answers_for_is_ignored(monkeypatch):
+    calls = _ingest_stubs(monkeypatch)
+    _registration(monkeypatch, live=True)
+    asyncio.run(garmin_ingest.process({"deregistrations": [{"userId": "g-1"}]}))
+    assert calls["delete"] == []
+
+
+def test_webhook_token_is_redacted_from_access_logs():
+    import logging
+
+    record = logging.LogRecord(
+        "uvicorn.access",
+        logging.INFO,
+        "",
+        0,
+        '%s - "%s %s HTTP/%s" %d',
+        ("1.2.3.4:5", "POST", "/api/integrations/garmin/webhook/hook-token", "1.1", 200),
+        None,
+    )
+    integrations._RedactGarminWebhookToken().filter(record)
+    assert "hook-token" not in record.getMessage() and "/garmin/webhook/[redacted]" in record.getMessage()

@@ -14,6 +14,8 @@ Two facts from the COROS API Reference V2.0.6 shape the webhook handler below:
 
 import html
 import json
+import logging
+import re
 import secrets
 import time
 from collections.abc import Awaitable, Callable
@@ -44,6 +46,21 @@ from services.week_context import attach_week_context
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 logger = get_logger(__name__)
+
+
+class _RedactGarminWebhookToken(logging.Filter):
+    """The Garmin webhook URL carries a secret path segment; keep it out of access logs."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # uvicorn.access args: (client_addr, method, full_path, http_version, status_code)
+        if isinstance(record.args, tuple) and len(record.args) > 2 and "/garmin/webhook/" in str(record.args[2]):
+            args = list(record.args)
+            args[2] = re.sub(r"(/garmin/webhook/)[^/?]+", r"\1[redacted]", str(args[2]))
+            record.args = tuple(args)
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(_RedactGarminWebhookToken())
 
 
 @router.get("/coros/webhook")

@@ -11,6 +11,7 @@ from typing import Any
 
 import db
 from log_utils import get_logger
+from services import garmin_oauth
 from services.matching import runner as matching_runner
 from services.providers import garmin
 
@@ -28,7 +29,7 @@ async def process(body: dict[str, Any]) -> None:
         if key in garmin.ACTIVITY_KEYS:
             await _activities(items)
         elif key == "deregistrations":
-            _deregistrations(items)
+            await _deregistrations(items)
         elif key == "userPermissionsChange":
             _permissions(items)
         else:
@@ -64,13 +65,28 @@ async def _activities(items: list[dict[str, Any]]) -> None:
         _log("activities_stored", user_id=user_id, count=len(days))
 
 
-def _deregistrations(items: list[dict[str, Any]]) -> None:
+async def _registration_still_live(connection: dict[str, Any]) -> bool:
+    """True only when Garmin still answers for this athlete's token, i.e. the deregistration
+    push did not come from Garmin. Any failure counts as gone: deleting is the safe side."""
+    try:
+        await garmin_oauth.fetch_user_id(await garmin_oauth.access_token(connection))
+        return True
+    except Exception:
+        return False
+
+
+async def _deregistrations(items: list[dict[str, Any]]) -> None:
     """The athlete removed Uphill AI in Garmin Connect: delete everything Garmin sent us."""
     for item in items:
         connection = _connection(item)
-        if connection is not None:
-            db.delete_provider_data(connection["user_id"], garmin.PROVIDER)
-            _log("deregistered", user_id=connection["user_id"])
+        if connection is None:
+            continue
+        if await _registration_still_live(connection):
+            # A forged push (leaked webhook token) must not be able to wipe an athlete's data.
+            _log("deregistration_unconfirmed", user_id=connection["user_id"])
+            continue
+        db.delete_provider_data(connection["user_id"], garmin.PROVIDER)
+        _log("deregistered", user_id=connection["user_id"])
 
 
 def _permissions(items: list[dict[str, Any]]) -> None:
