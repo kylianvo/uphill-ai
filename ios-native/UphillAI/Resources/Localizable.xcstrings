@@ -12121,6 +12121,16 @@
         }
       }
     },
+    "Your long run is on %@, a trail day.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy dài vào %@, ngày trail của bạn."
+          }
+        }
+      }
+    },
     "Hill / trail days: %@": {
       "localizations": {
         "vi": {

@@ -93,7 +93,9 @@ struct ScheduleEditor: View {
                 mountainMinMinutes: $draft.mountainMinMinutes,
                 stairAccess: $draft.stairAccess,
                 useTreadmill: $draft.useTreadmill,
-                treadmillMaxIncline: draft.useTreadmill ? $draft.treadmillMaxIncline : nil
+                treadmillMaxIncline: draft.useTreadmill ? $draft.treadmillMaxIncline : nil,
+                longRunDay: $draft.longRunDay,
+                runDays: draft.preferredDays
             )
 
             if draft.isGettingStarted && includeBeginnerProgress {
