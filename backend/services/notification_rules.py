@@ -132,7 +132,7 @@ def workout_candidate(context, now):
         "workout",
         f"{w['id']}:{today}",
         dict(kind="workout", plan_id=context["plan"]["id"], workout_id=w["id"]),
-        4,
+        6,
         {"workout_id": w["id"]},
     )
 
@@ -163,10 +163,14 @@ def candidates(context, now):
     p = context["preferences"]
     if not p.get("timezone") or (p.get("paused_until") and p["paused_until"] > now):
         return []
-    values = [workout_candidate(context, now)]
-    values += planning_candidates(context, now) + content_candidates(context, now) + coaching_candidates(context, now)
     muted = set(p.get("muted_kinds") or [])
     history = context.get("history") or []
+    brief = week_brief_candidate(context, now)
+    if brief and ("week_brief" in muted or backed_off(history, "week_brief", now)):
+        brief = None
+    # On Mondays the brief carries today's session, so it replaces the workout reminder.
+    values = [brief] if brief else [workout_candidate(context, now)]
+    values += planning_candidates(context, now) + content_candidates(context, now) + coaching_candidates(context, now)
     return [
         c
         for c in values
@@ -247,12 +251,12 @@ def content_candidates(context, now):
     day = now.astimezone(ZoneInfo(p["timezone"])).date()
     out = []
     snooze = instant(p.get("checklist_snoozed_until"))
-    if not recent(context, "checklist", now, 14) and not (snooze and snooze > now):
+    if not recent(context, "checklist", now, 30) and not (snooze and snooze > now):
         item = next((key for key, done in checklist_items(context) if not done), None)
         if item:
             out.append(
                 candidate(
-                    context, now, "checklist", str(day), dict(kind="checklist", item_id=item), 6, {"item_id": item}
+                    context, now, "checklist", str(day), dict(kind="checklist", item_id=item), 7, {"item_id": item}
                 )
             )
     history = [e for e in context["history"] if e["kind"] == "knowledge" and e.get("claimed_at")]
@@ -269,7 +273,7 @@ def content_candidates(context, now):
         if card:
             out.append(
                 candidate(
-                    context, now, "knowledge", f"{card['id']}:{day}", card_destination(card), 7, {"card_id": card["id"]}
+                    context, now, "knowledge", f"{card['id']}:{day}", card_destination(card), 8, {"card_id": card["id"]}
                 )
             )
     return out
@@ -303,6 +307,55 @@ def planning_candidates(context, now):
     ]
 
 
+def recognition_candidates(context, now, dated):
+    """Praise a key session only when a synced activity backs it: due 30 min after it ends, gone after 24 h."""
+    p = context["preferences"]
+    matched = {a["matched_workout_id"]: a for a in context.get("activities") or [] if a.get("matched_workout_id")}
+    out = []
+    for w, _ in dated:
+        a = matched.get(w["id"])
+        if not a or not is_done(w) or not (w.get("is_priority") or (w.get("type") or "").lower() == "long run"):
+            continue
+        end = instant(a["start_time"]) + timedelta(seconds=a.get("duration_seconds") or 0)
+        window = delivery_window(end + timedelta(minutes=30), p, end + timedelta(hours=24))
+        if window and window[0] <= now < window[1]:
+            out.append(
+                dict(
+                    event_key=f"recognition:{w['id']}",
+                    kind="recognition",
+                    destination=dict(kind="workout", plan_id=context["plan"]["id"], workout_id=w["id"]),
+                    priority=4,
+                    source={"workout_id": w["id"], "activity_id": a["id"]},
+                    due_at=window[0],
+                    expires_at=window[1],
+                )
+            )
+    return out
+
+
+def week_brief_candidate(context, now):
+    plan = context.get("plan")
+    p = context["preferences"]
+    if not plan or not p.get("coaching_enabled"):
+        return None
+    today = now.astimezone(ZoneInfo(p["timezone"])).date()
+    if today.weekday() != 0:
+        return None
+    week = [w for w, d in dated_workouts(context) if today <= d < today + timedelta(days=7) and actionable(w)]
+    if not week:
+        return None
+    n = week[0]["week_number"]
+    return candidate(
+        context,
+        now,
+        "week_brief",
+        f"{plan['id']}:{n}",
+        dict(kind="plan", plan_id=plan["id"], week_number=n, intent="week"),
+        5,
+        {"week_number": n},
+    )
+
+
 def coaching_candidates(context, now):
     plan = context.get("plan")
     p = context["preferences"]
@@ -326,39 +379,19 @@ def coaching_candidates(context, now):
         and not sync_failed
         and not recent(context, "unlogged", now, 7)
     ):
+        key = max(missing, key=lambda m: (bool(m[0].get("is_priority")), m[0].get("duration_minutes") or 0))[0]
         out.append(
             candidate(
                 context,
                 now,
                 "unlogged",
                 f"{plan['id']}:{today}",
-                dict(kind="review", plan_id=plan["id"], week_number=missing[-1][0]["week_number"]),
+                dict(kind="plan", plan_id=plan["id"], week_number=key["week_number"], intent="adapt"),
                 2,
+                {"workout_id": key["id"]},
             )
         )
-    for w, d in dated:
-        completed = instant(w.get("first_completed_at"))
-        running = (w.get("type") or "").lower() not in ("rest", "strength", "me", "hike", "muscular endurance")
-        if (
-            w.get("is_priority")
-            and running
-            and is_done(w)
-            and completed
-            and now - timedelta(hours=24) <= completed <= now
-            and today - timedelta(days=1) <= d <= today
-        ):
-            event = candidate(
-                context,
-                now,
-                "recovery",
-                str(w["id"]),
-                dict(kind="workout", plan_id=plan["id"], workout_id=w["id"]),
-                5,
-                {"workout_id": w["id"]},
-            )
-            if event:
-                event["expires_at"] = min(event["expires_at"], completed + timedelta(hours=24))
-                out.append(event)
+    out += recognition_candidates(context, now, dated)
     days_with_phase = {}
     for w, d in dated:
         days_with_phase[d] = days_with_phase.get(d, False) or "taper" in (w.get("phase") or "").lower()
