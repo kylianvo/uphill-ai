@@ -3,6 +3,8 @@ import Foundation
 protocol KnowledgeServicing: Sendable {
     func fetchCards(topic: String?, lang: String) async throws -> [KnowledgeCardModel]
     func fetchRandomCards(count: Int, lang: String) async throws -> [KnowledgeCardModel]
+    func fetchCard(id: Int, lang: String) async throws -> KnowledgeCardModel
+    func markOpened(id: Int, lang: String) async throws
     func fetchTopics() async throws -> [String]
     func fetchSources() async throws -> [KnowledgeSource]
     func addLink(url: String) async throws
@@ -54,6 +56,14 @@ struct KnowledgeService: KnowledgeServicing {
         }
 
         return Array(Self.curatedCards.shuffled().prefix(count))
+    }
+
+    func fetchCard(id: Int, lang: String) async throws -> KnowledgeCardModel {
+        try await client.send(.get("/api/knowledge/cards/\(id)", query: [URLQueryItem(name: "lang", value: lang)]))
+    }
+
+    func markOpened(id: Int, lang: String) async throws {
+        let _: EmptyResponse = try await client.send(.post("/api/knowledge/cards/\(id)/opened", query: [URLQueryItem(name: "lang", value: lang)]))
     }
 
     func fetchTopics() async throws -> [String] {

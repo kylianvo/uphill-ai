@@ -40,7 +40,13 @@ def _generate(session: dict, user: dict | None = None, tier: str | None = None) 
             PlanGenerator.generate_plan_workouts(
                 plan_id=999999,
                 user_profile=user or {"age": 34, "max_hr": 188, "resting_hr": 52},
-                race_info={"lang": "en", "terrain": "trail", **({"athlete_tier": tier} if tier else {})},
+                # A Monday start: week 1 drops days before the start, so "today" would drop Friday on weekends.
+                race_info={
+                    "lang": "en",
+                    "terrain": "trail",
+                    "plan_start_date": "2026-10-19",
+                    **({"athlete_tier": tier} if tier else {}),
+                },
                 total_weeks=8,
                 api_key="test-key",
                 block_number=1,

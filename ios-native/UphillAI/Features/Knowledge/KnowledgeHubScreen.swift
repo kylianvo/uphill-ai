@@ -80,7 +80,9 @@ struct KnowledgeHubScreen: View {
                 } else {
                     LazyVStack(spacing: 12) {
                         ForEach(filteredCards) { card in
-                            KnowledgeCardView(card: card)
+                            KnowledgeCardView(card: card) {
+                                if card.isServerCard { Task { try? await service.markOpened(id: card.id, lang: AppLanguage.code) } }
+                            }
                         }
                     }
                 }
@@ -179,7 +181,9 @@ struct KnowledgeHubScreen: View {
             }
 
             if let featured = dailyCards.first {
-                KnowledgeCardView(card: featured)
+                KnowledgeCardView(card: featured) {
+                    if featured.isServerCard { Task { try? await service.markOpened(id: featured.id, lang: AppLanguage.code) } }
+                }
             }
         }
         .padding(12)

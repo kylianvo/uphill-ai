@@ -4,6 +4,7 @@ import Observation
 @Observable
 @MainActor
 final class AppModel {
+    let notifications: NotificationCoordinator
     let session: SessionStore
     let client: APIClient
     let auth: any AuthServicing
@@ -231,6 +232,7 @@ final class AppModel {
             session: urlSession,
             onUnauthorized: { await session.signOut() }
         )
+        notifications = NotificationCoordinator(service: NotificationService(client: client))
         auth = makeAuth(client)
         planService = PlanService(client: client)
         generationService = GenerationService(client: client)
@@ -259,6 +261,7 @@ final class AppModel {
         progress = ProgressViewModel(service: ProgressService(client: client))
         chat = ChatService(client: client)
         signOutHook.run = { [weak self] in
+            self?.notifications.reset()
             self?.lastAutoWatchSync = nil
             self?.lastAppleHealthSync = nil
             self?.appleHealthConnected = false
@@ -355,10 +358,10 @@ final class AppModel {
         }
     }
 
-    func exitAthleteView() {
+    func exitAthleteView() async {
         actingAsAthlete = nil
         coachedAthleteProfile = nil
-        Task { await plan.setAthleteScope(nil) }
+        await plan.setAthleteScope(nil)
     }
 
     func acknowledgeCoachProfileChanges() async {
@@ -414,6 +417,7 @@ final class AppModel {
     }
 
     func signOut() async {
+        await notifications.unregister()
         lastAutoWatchSync = nil
         actingAsAthlete = nil
         coachedAthleteProfile = nil

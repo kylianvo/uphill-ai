@@ -3,6 +3,7 @@ import SwiftUI
 
 @main
 struct UphillAIApp: App {
+    @UIApplicationDelegateAdaptor(NotificationAppDelegate.self) private var notificationDelegate
     @State private var app = AppModel(tokenStore: Self.makeTokenStore())
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.en
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
