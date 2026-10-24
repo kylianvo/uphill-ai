@@ -7,6 +7,8 @@ import UserNotifications
 final class NotificationCoordinator {
     static weak var current: NotificationCoordinator?
     static var pendingLaunchData: Data?
+    /// "Less like this" taps that arrived before a coordinator existed; sent once one does.
+    static var pendingFeedback: [UUID] = []
     let service: any NotificationServicing
     let installationID: UUID
     var preferences = NotificationPreferences()
@@ -28,7 +30,15 @@ final class NotificationCoordinator {
         installationID = id
         defaults.set(id.uuidString, forKey: key)
         Self.current = self
+        // "coaching" pushes offer "Less like this"; the server picks the category per notification kind.
+        UNUserNotificationCenter.current().setNotificationCategories([
+            UNNotificationCategory(identifier: "coaching", actions: [UNNotificationAction(identifier: "LESS", title: L("Less like this"), options: [])], intentIdentifiers: [], options: []),
+            UNNotificationCategory(identifier: "plain", actions: [], intentIdentifiers: [], options: []),
+        ])
         if let data = Self.pendingLaunchData { receive(data: data); Self.pendingLaunchData = nil }
+        let feedback = Self.pendingFeedback
+        Self.pendingFeedback = []
+        if !feedback.isEmpty { Task { for id in feedback { await lessLikeThis(id: id) } } }
     }
 
     func refresh(userID: Int?) async {
@@ -99,6 +109,29 @@ final class NotificationCoordinator {
             try await registerIfPossible()
             cachePreferences()
             error = nil
+        } catch { self.error = L("Couldn't update notifications. Try again.") }
+    }
+
+    /// The single switch: every category follows it.
+    func setEnabled(_ on: Bool, requestPermission: Bool = true) async {
+        var next = preferences
+        next.workoutsEnabled = on
+        next.coachingEnabled = on
+        next.resultsEnabled = on
+        await save(next, requestPermission: requestPermission && on)
+    }
+
+    func unmute(_ kind: String) async {
+        var next = preferences
+        next.mutedKinds = (next.mutedKinds ?? []).filter { $0 != kind }
+        await save(next)
+    }
+
+    func lessLikeThis(id: UUID) async {
+        do {
+            try await service.feedback(id: id)
+            preferences = try await service.preferences()
+            cachePreferences()
         } catch { self.error = L("Couldn't update notifications. Try again.") }
     }
 

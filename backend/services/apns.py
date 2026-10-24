@@ -9,6 +9,7 @@ import httpx
 import jwt
 
 from config import settings
+from services.notification_store import MUTABLE_KINDS
 
 _cached_token = None
 _token_time = 0
@@ -28,7 +29,12 @@ def classify_response(status, reason):
 
 def build_payload(event, title, body):
     payload = {
-        "aps": {"alert": {"title": title[:100], "body": body}, "sound": "default"},
+        # "coaching" shows the app's "Less like this" action; workout and plan_ready don't get it.
+        "aps": {
+            "alert": {"title": title[:100], "body": body},
+            "sound": "default",
+            "category": "coaching" if event.get("kind") in MUTABLE_KINDS else "plain",
+        },
         "v": 1,
         "notification_id": str(event["id"]),
         "destination": event["destination"],

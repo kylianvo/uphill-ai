@@ -14,6 +14,7 @@ struct NotificationPreferences: Codable, Sendable, Equatable {
     var pausedUntil: String?
     var checklistSnoozedUntil: String?
     var available: Bool?
+    var mutedKinds: [String]?
 }
 
 struct NotificationRoute: Codable, Sendable, Equatable {

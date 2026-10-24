@@ -6,6 +6,7 @@ protocol NotificationServicing: Sendable {
     func registerInstallation(id: UUID, token: String, permission: String) async throws
     func removeInstallation(id: UUID) async throws
     func opened(id: UUID) async throws
+    func feedback(id: UUID) async throws
 }
 
 struct NotificationService: NotificationServicing {
@@ -37,6 +38,12 @@ struct NotificationService: NotificationServicing {
 
     func removeInstallation(id: UUID) async throws {
         let _: EmptyResponse = try await client.send(.delete("/api/notifications/installations/\(id.uuidString)"))
+    }
+
+    func feedback(id: UUID) async throws {
+        struct Body: Encodable { let less = true }
+        let endpoint = try Endpoint<EmptyResponse>.send(.post, "/api/notifications/\(id.uuidString)/feedback", body: Body())
+        _ = try await client.send(endpoint)
     }
 
     func opened(id: UUID) async throws {

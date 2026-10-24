@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS notification_generation_requests (
 ALTER TABLE workouts ADD COLUMN IF NOT EXISTS missed_origin TEXT;
 ALTER TABLE workouts ADD COLUMN IF NOT EXISTS first_completed_at TIMESTAMPTZ;
 ALTER TABLE knowledge_cards ADD COLUMN IF NOT EXISTS notification_reviewed BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE notification_preferences ADD COLUMN IF NOT EXISTS muted_kinds TEXT[] NOT NULL DEFAULT '{}';
 """
 
 
@@ -84,7 +85,12 @@ PREFERENCE_FIELDS = frozenset(
         "distance_unit",
         "paused_until",
         "checklist_snoozed_until",
+        "muted_kinds",
     )
+)
+# Coaching kinds the athlete can switch off one by one ("Less like this"); workout and plan_ready only via the main switch.
+MUTABLE_KINDS = frozenset(
+    ("week_brief", "recognition", "unlogged", "checklist", "knowledge", "taper", "race", "planning")
 )
 
 
@@ -100,6 +106,18 @@ def update_preferences(user_id, values):
                 {**values, "id": user_id},
             )
     return get_preferences(user_id)
+
+
+def mute_kind(user_id, kind):
+    if kind not in MUTABLE_KINDS:
+        return
+    get_preferences(user_id)
+    with engine.begin() as conn:
+        conn.execute(
+            text("""UPDATE notification_preferences SET muted_kinds=array_append(muted_kinds, :kind)
+            WHERE user_id=:id AND NOT (:kind = ANY(muted_kinds))"""),
+            {"kind": kind, "id": user_id},
+        )
 
 
 def insert_event(conn, user_id, candidate):
@@ -249,9 +267,18 @@ def claim_event(user_id, candidate, now):
                     {"day": today, "id": user_id},
                 )
             else:
-                if p["last_proactive_date"] == today or (
+                # The 20 h spacing must not let an evening note cancel the next morning's reminder or brief.
+                spaced = candidate["kind"] in ("workout", "week_brief") or not (
                     p["last_proactive_at"] and now - p["last_proactive_at"] < timedelta(hours=20)
-                ):
+                )
+                if p["last_proactive_date"] == today or not spaced:
+                    return None
+                week = conn.execute(
+                    text("""SELECT count(*) FROM notification_events WHERE user_id=:id AND kind<>'plan_ready'
+                    AND claimed_at > :since"""),
+                    {"id": user_id, "since": now - timedelta(days=7)},
+                ).scalar()
+                if week >= 4:
                     return None
                 conn.execute(
                     text(

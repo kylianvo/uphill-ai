@@ -40,6 +40,7 @@ class PreferencesPatch(BaseModel):
     distance_unit: Literal["km", "mi"] | None = None
     paused_until: datetime | None = None
     checklist_snoozed_until: datetime | None = None
+    muted_kinds: list[str] | None = None
 
     @field_validator("timezone")
     @classmethod
@@ -82,7 +83,11 @@ def patch_preferences(body: PreferencesPatch, user=Depends(current_user)):
     nullable = {"timezone", "paused_until", "checklist_snoozed_until"}
     if any(value is None and key not in nullable for key, value in values.items()):
         raise HTTPException(422, "Preference cannot be null")
-    combined = {**store.get_preferences(user["id"]), **values}
+    current = store.get_preferences(user["id"])
+    # Un-mute only: the list may shrink, never grow (muting goes through /feedback).
+    if "muted_kinds" in values and not set(values["muted_kinds"]) <= set(current["muted_kinds"]):
+        raise HTTPException(422, "muted_kinds can only be shortened")
+    combined = {**current, **values}
     if combined["quiet_start"] == combined["quiet_end"]:
         raise HTTPException(422, "Quiet hours must have different start and end times")
     return public_preferences(store.update_preferences(user["id"], values))
@@ -100,6 +105,24 @@ def register(installation_id: UUID, body: Installation, user=Depends(current_use
 @router.delete("/installations/{installation_id}")
 def unregister(installation_id: UUID, user=Depends(current_user)):
     store.remove_installation(user["id"], str(installation_id))
+    return {}
+
+
+class Feedback(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    less: Literal[True]
+
+
+@router.post("/{notification_id}/feedback")
+def feedback(notification_id: UUID, body: Feedback, user=Depends(current_user)):
+    with engine.connect() as conn:
+        kind = conn.execute(
+            text("SELECT kind FROM notification_events WHERE id=:id AND user_id=:user"),
+            {"id": str(notification_id), "user": user["id"]},
+        ).scalar()
+    if kind is None:
+        raise HTTPException(404, "Notification unavailable")
+    store.mute_kind(user["id"], kind)
     return {}
 
 
