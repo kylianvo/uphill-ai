@@ -65,3 +65,28 @@ minutes), but its prompt is per-athlete before the first fixed block.
 Verdict: not worth it yet. With ~2 cacheable Gear calls in two weeks, the saving is about a second of time to first
 token on a handful of calls, against new code on the request path. Revisit if Gear/Nutrition traffic grows, or after
 Task 3 if Gear is still above its 10 s target.
+
+## Plan effort / thinking sweep (Task 5)
+
+Scheduler golden set (20 plans with a Gemini ref), local scratch stack, 2026-10-24:
+
+| Config | p50 | p95 | Gate | Reduced-prompt retries |
+|---|---|---|---|---|
+| Gemini (stored refs) | 13.1 s | — | — | — |
+| Today: `medium` + adaptive | 67.0 s | 233.7 s | PASS | 2 |
+| `low` + adaptive | 44.0 s | 74.5 s | PASS | 0 |
+| `low` + thinking off | 13.2 s | 28.0 s | **FAIL** (6: ME sessions missing, week-2 volume out of range) | 1 |
+| `medium` + thinking off | 14.1 s | 25.9 s | **FAIL** (3: ME sessions, week-2 volume) | 2 |
+
+Thinking off is what would reach Gemini's speed, but at both efforts it drops strength (ME) sessions and breaks the
+week-2 volume ramp, so it fails the bar. `low` + adaptive passes with fewer retries than today. Persona check below.
+
+## Chat thinking (Task 7)
+
+| Config | p50 | Gate | Judge (tool fixture) |
+|---|---|---|---|
+| adaptive (today) | 8.9 s | PASS: 0 safety violations, EN 23/23, VI 22/22 | grounded 1.00; called `get_week` |
+| thinking off | 6.7 s | **FAIL**: safety violation on `chat_vi_17_dangerous_dehydration`, VI 21/22 | grounded 0.50; called `get_week` |
+
+Verdict: chat keeps adaptive thinking (`CLAUDE_COACH_THINKING` stays `adaptive`). Note the Task 2 baseline run failed
+once on `chat_vi_recovery_short_sleep` and this adaptive run passed it: that case is flaky on Haiku, not a regression.
