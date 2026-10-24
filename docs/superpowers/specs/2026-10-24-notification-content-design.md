@@ -57,7 +57,7 @@ Facts line: `{duration} · {zone} · {distance}`, unchanged.
 | Strength, ME | Strong legs hold your form late in the race. | Chân khỏe giữ được form ở cuối race. |
 | Anything else | (no purpose sentence) | (none) |
 
-`{race}` is `plans.race_name`. Without it, Long Run reads "Time on feet for race day." / "Tích lũy thời gian trên chân cho ngày race." `{d_plus}` is the race's elevation gain from its course KB entry. Without it, the hill line reads "Climbing strength for race day." / "Sức leo cho ngày race."
+`{race}` is `plans.race_name`. Without it, Long Run reads "Time on feet for race day." / "Tích lũy thời gian trên chân cho ngày race." `{d_plus}` is `plans.course_elevation_gain_m`. Without it, the hill line reads "Climbing strength for race day." / "Sức leo cho ngày race."
 
 Example: **Mountain Trail Long Aerobic Run & Hill Sprints**
 *150 min · Zone 2 · 18 km. Time on feet for UTMB 100K. Easy is the point.*
@@ -83,12 +83,12 @@ Triggered when an activity from a watch or Apple Health is matched to a priority
 | Title | Nice work on {title} | Hoàn thành tốt {title} |
 | Body | {distance} km and {d_plus} m D+ in {duration}. {highlight} Tap to log how it felt. | {distance} km, {d_plus} m D+ trong {duration}. {highlight_vi} Chạm để ghi RPE. |
 
-`{highlight}` is included only when it's true, checked against the activities matched to this plan's current block:
+`{highlight}` is included only when it's true, checked against all activities matched to this plan's workouts (a block is one week, too short to mean anything):
 
 | Condition | EN | VI |
 |---|---|---|
-| Most D+ in the block | Your biggest climb this block. | Leo nhiều nhất trong block này. |
-| Else longest distance in the block | Your longest run this block. | Bài chạy dài nhất trong block này. |
+| Most D+ so far | Your biggest climb of this plan so far. | Leo nhiều nhất từ đầu plan. |
+| Else longest distance so far | Your longest run of this plan so far. | Bài chạy dài nhất từ đầu plan. |
 | Else | (omitted) | (omitted) |
 
 ### D. Missed session (rewrite of `unlogged`)
@@ -153,7 +153,7 @@ The switch writes `workouts_enabled = coaching_enabled = results_enabled = <swit
 - Back-off: 3 unopened `week_brief` → none for 14 days; 3 unopened `workout` → still sent.
 - Mute: muted kind never selected; un-mute restores it.
 - Monday: brief replaces the workout reminder and includes "Today:".
-- Recognition: requires a matched device activity; highlight only when true against the block; none for manual ticks.
+- Recognition: requires a matched device activity; highlight only when true against the plan so far; none for manual ticks.
 - Copy: every template renders with each optional value missing, in EN and VI; VI length ≤ EN for titles; banned-word grep clean.
 - Delegate: "Less like this" action completes on the main thread (extend `NotificationDelegateTests`).
 - Device: switch on/off, pause, long-press action mutes, Monday brief tap opens the week.
@@ -171,3 +171,5 @@ Milestones (longest run ever, first full week, block complete), race countdown a
 1. Monday brief at 07:30, or at the usual start time like workout reminders?
 2. Recognition only with watch or Apple Health data (no praise for manual ticks): OK?
 3. Mute is permanent until removed in settings: OK, or should it expire after 90 days?
+
+Confirmed 2026-10-24: Monday brief 07:30; recognition only with device data; mute permanent until removed.
