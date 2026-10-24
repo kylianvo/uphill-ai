@@ -1,6 +1,146 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Disconnect Garmin?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngắt kết nối Garmin?"
+          }
+        }
+      }
+    },
+    "Disconnect Garmin": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngắt kết nối Garmin"
+          }
+        }
+      }
+    },
+    "This also withdraws your AI consent. Your Garmin data is deleted within 24 hours.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Việc này cũng rút lại sự đồng ý về AI. Dữ liệu Garmin của bạn sẽ được xóa trong vòng 24 giờ."
+          }
+        }
+      }
+    },
+    "Last data received %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhận dữ liệu lần cuối %@"
+          }
+        }
+      }
+    },
+    "Data arrives after your next watch sync.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dữ liệu sẽ về sau lần đồng bộ đồng hồ tiếp theo."
+          }
+        }
+      }
+    },
+    "I agree that Uphill AI's AI coach uses my Garmin data to build and adapt my plan. Withdrawing consent disconnects Garmin and deletes its data within 24 hours.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi đồng ý để Coach AI của Uphill AI dùng dữ liệu Garmin của tôi để lên plan và điều chỉnh lịch tập. Rút lại sự đồng ý sẽ ngắt kết nối Garmin và xóa dữ liệu Garmin trong vòng 24 giờ."
+          }
+        }
+      }
+    },
+    "Privacy notice": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chính sách quyền riêng tư"
+          }
+        }
+      }
+    },
+    "Connect Garmin Account": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối tài khoản Garmin"
+          }
+        }
+      }
+    },
+    "Connected to Garmin. Data arrives after your next watch sync.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối Garmin. Dữ liệu sẽ về sau lần đồng bộ đồng hồ tiếp theo."
+          }
+        }
+      }
+    },
+    "Disconnected from Garmin.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã ngắt kết nối Garmin."
+          }
+        }
+      }
+    },
+    "Invalid callback response from %@.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ trả về phản hồi không hợp lệ."
+          }
+        }
+      }
+    },
+    "%@ authorization was declined or cancelled.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Việc cấp quyền %@ bị từ chối hoặc hủy."
+          }
+        }
+      }
+    },
+    "Missing authorization tokens from %@.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thiếu mã cấp quyền từ %@."
+          }
+        }
+      }
+    },
+    "Could not complete %@ connection.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không hoàn tất kết nối %@ được."
+          }
+        }
+      }
+    },
     "YOUR PLAN ON COROS": {
       "localizations": {
         "vi": {
