@@ -19,7 +19,7 @@ def test_checkin_distinguishes_athlete_skip():
 
 def test_taper_and_race_need_reviewed_content():
     c = context()
-    now = datetime(2026, 10, 15, 20, tzinfo=UTC)
+    now = datetime(2026, 10, 16, 7, tzinfo=UTC)  # 18:00 Sydney, the coaching slot
     c["plan"]["race_date"] = "2026-10-23"
     c["cards"] = [dict(id=4, topic="Race", tags='["race"]', lang="en", notification_reviewed=True)]
     assert any(x["kind"] == "race" for x in candidates(c, now))
@@ -48,7 +48,7 @@ def test_estimated_profile_fields_stay_incomplete():
 
 def test_new_taper_segment_after_build_phase():
     c = context()
-    now = datetime(2026, 10, 15, 20, tzinfo=UTC)
+    now = datetime(2026, 10, 16, 7, tzinfo=UTC)  # 18:00 Sydney, the coaching slot
     first = c["workouts"][0]
     c["workouts"] = [
         dict(first, id=1, day_of_week="Monday", phase="Taper"),

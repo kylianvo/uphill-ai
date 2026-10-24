@@ -27,10 +27,45 @@ def local_due(day, wall_time, timezone):
     raise ValueError("Local calendar date is unavailable")
 
 
+# Fixed for everyone (spec v2); the stored quiet_start/quiet_end columns are no longer read.
+QUIET = (time(21), time(7))
+
+
+def usual_start(activities, timezone, weekend, now):
+    """Median local start of the last 28 days' activities on weekend (Sat/Sun) or weekdays; None below 4."""
+    zone = ZoneInfo(timezone)
+    minutes = sorted(
+        local.hour * 60 + local.minute
+        for a in activities
+        if now - timedelta(days=28) <= instant(a["start_time"]) <= now
+        for local in [instant(a["start_time"]).astimezone(zone)]
+        if (local.weekday() >= 5) == weekend
+    )
+    if len(minutes) < 4:
+        return None
+    mid = len(minutes) // 2
+    median = minutes[mid] if len(minutes) % 2 else (minutes[mid - 1] + minutes[mid]) // 2
+    return time(median // 60, median % 60)
+
+
+def slot_time(context, kind, day):
+    if kind == "week_brief":
+        return time(7, 30)
+    if kind != "workout":
+        return time(18, 0)
+    zone = context["preferences"]["timezone"]
+    now = local_due(day + timedelta(days=1), time.min, zone)
+    usual = usual_start(context.get("activities") or [], zone, day.weekday() >= 5, now)
+    if usual is None:
+        return time(7, 0)
+    minutes = min(max(usual.hour * 60 + usual.minute - 75, 6 * 60), 20 * 60)
+    return time(minutes // 60, minutes % 60)
+
+
 def delivery_window(due, prefs, expires_at):
     zone = ZoneInfo(prefs["timezone"])
     local = due.astimezone(zone)
-    start, end = (time.fromisoformat(prefs[k]) for k in ("quiet_start", "quiet_end"))
+    start, end = QUIET
     wall = local.time().replace(tzinfo=None)
     quiet = start <= wall < end if start < end else wall >= start or wall < end
     if quiet:
@@ -63,11 +98,7 @@ def actionable(workout):
 def candidate(context, now, kind, key, destination, priority, source=None):
     p = context["preferences"]
     today = now.astimezone(ZoneInfo(p["timezone"])).date()
-    workouts_today = any(
-        day == today and actionable(w) and not is_done(w) and not w.get("is_missed")
-        for w, day in dated_workouts(context)
-    )
-    due = local_due(today, time.fromisoformat(p["workout_time" if workouts_today else "coaching_time"]), p["timezone"])
+    due = local_due(today, slot_time(context, kind, today), p["timezone"])
     tomorrow = local_due(today + timedelta(days=1), time.min, p["timezone"])
     window = delivery_window(due, p, tomorrow)
     if not window:

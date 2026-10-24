@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 from uuid import uuid4
 
 from sqlalchemy import text
@@ -100,7 +100,8 @@ def test_worker_delivers_current_workout_once(auth_headers, monkeypatch):
     from services.notification_store import update_preferences, upsert_installation
 
     user = auth_headers["user_id"]
-    now = datetime.now(UTC)
+    # No activity history, so the reminder falls back to 07:00 in the athlete's zone (UTC here).
+    now = datetime.combine(datetime.now(UTC).date(), time(7), UTC)
     monkeypatch.setattr(settings, "NOTIFICATION_WORKER_ENABLED", True)
     monkeypatch.setattr(settings, "NOTIFICATION_DELIVERY_ENABLED", True)
     monkeypatch.setattr(settings, "NOTIFICATION_ALLOWLIST", str(user))
@@ -125,13 +126,7 @@ def test_worker_delivers_current_workout_once(auth_headers, monkeypatch):
     )
     update_preferences(
         user,
-        {
-            "timezone": "UTC",
-            "workouts_enabled": True,
-            "workout_time": now.strftime("%H:%M"),
-            "quiet_start": (now + timedelta(hours=2)).strftime("%H:%M"),
-            "quiet_end": (now + timedelta(hours=3)).strftime("%H:%M"),
-        },
+        {"timezone": "UTC", "workouts_enabled": True},
     )
     upsert_installation(user, str(uuid4()), "e" * 64, "sandbox", "authorized", now)
     assert notifications.run_once(now + timedelta(seconds=1)) == 1

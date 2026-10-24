@@ -42,6 +42,13 @@ def load_context(user_id, now):
             requests=rows("SELECT * FROM notification_generation_requests WHERE user_id=:id"),
             connections=rows("SELECT * FROM athlete_connections WHERE user_id=:id"),
             race_claims=rows("SELECT * FROM race_profile_claims WHERE user_id=:id"),
+            # Last 28 days (usual start time) plus everything matched to this plan (recognition highlights).
+            activities=rows(
+                """SELECT id, start_time, duration_seconds, distance_km, elevation_gain_m, matched_workout_id
+                FROM activities WHERE user_id=:id AND duplicate_of IS NULL AND (start_time >= :since
+                OR matched_workout_id IN (SELECT id FROM workouts WHERE plan_id=:plan))""",
+                {"id": user_id, "since": now - timedelta(days=28), "plan": plan["id"] if plan else -1},
+            ),
             checklist=[],
         )
 
