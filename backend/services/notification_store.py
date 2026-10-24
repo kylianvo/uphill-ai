@@ -267,9 +267,11 @@ def claim_event(user_id, candidate, now):
                     {"day": today, "id": user_id},
                 )
             else:
-                if p["last_proactive_date"] == today or (
+                # The 20 h spacing must not let an evening note cancel the next morning's reminder or brief.
+                spaced = candidate["kind"] in ("workout", "week_brief") or not (
                     p["last_proactive_at"] and now - p["last_proactive_at"] < timedelta(hours=20)
-                ):
+                )
+                if p["last_proactive_date"] == today or not spaced:
                     return None
                 week = conn.execute(
                     text("""SELECT count(*) FROM notification_events WHERE user_id=:id AND kind<>'plan_ready'

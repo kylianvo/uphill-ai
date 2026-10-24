@@ -38,20 +38,32 @@ struct NotificationDelegateTests {
         #expect(onMain == true)
     }
 
-    @Test func lessLikeThisPostsFeedbackAndCompletesOnMain() async throws {
+    @Test func lessLikeThisFinishesFeedbackBeforeCompletingOnMain() async throws {
         let recorder = FeedbackRecorder()
         NotificationCoordinator.pendingLaunchData = nil  // an earlier tap with no coordinator stashes its payload here
         let coordinator = NotificationCoordinator(service: RecordingNotificationService(recorder: recorder), defaults: UserDefaults(suiteName: "less-\(UUID())")!)
         let delegate: UNUserNotificationCenterDelegate = NotificationAppDelegate()
-        var onMain: Bool?
         let less = try response(notification(), action: "LESS")
         // Suites run in parallel and each coordinator claims `current`; reclaim it with no suspension before the call.
         NotificationCoordinator.current = coordinator
-        delegate.userNotificationCenter?(.current(), didReceive: less) { onMain = Thread.isMainThread }
-        #expect(onMain == true)
-        for _ in 0..<50 where recorder.ids.isEmpty { try await Task.sleep(for: .milliseconds(20)) }
-        #expect(recorder.ids.count == 1)
+        var completion: (onMain: Bool, sent: Int)?
+        delegate.userNotificationCenter?(.current(), didReceive: less) { completion = (Thread.isMainThread, recorder.ids.count) }
+        for _ in 0..<50 where completion == nil { try await Task.sleep(for: .milliseconds(20)) }
+        // iOS may suspend the app as soon as the handler runs, so the POST must already be done.
+        #expect(completion?.onMain == true && completion?.sent == 1)
         #expect(coordinator.pendingRoute == nil)  // the action mutes; it does not navigate
+    }
+
+    @Test func lessLikeThisWithoutCoordinatorIsKeptForLater() throws {
+        let saved = NotificationCoordinator.current
+        defer { NotificationCoordinator.current = saved }
+        NotificationCoordinator.current = nil
+        NotificationCoordinator.pendingFeedback = []
+        var done = false
+        let delegate: UNUserNotificationCenterDelegate = NotificationAppDelegate()
+        delegate.userNotificationCenter?(.current(), didReceive: try response(notification(), action: "LESS")) { done = true }
+        #expect(done && NotificationCoordinator.pendingFeedback.count == 1)
+        NotificationCoordinator.pendingFeedback = []
     }
 }
 

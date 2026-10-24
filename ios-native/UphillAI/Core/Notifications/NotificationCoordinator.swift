@@ -7,6 +7,8 @@ import UserNotifications
 final class NotificationCoordinator {
     static weak var current: NotificationCoordinator?
     static var pendingLaunchData: Data?
+    /// "Less like this" taps that arrived before a coordinator existed; sent once one does.
+    static var pendingFeedback: [UUID] = []
     let service: any NotificationServicing
     let installationID: UUID
     var preferences = NotificationPreferences()
@@ -34,6 +36,9 @@ final class NotificationCoordinator {
             UNNotificationCategory(identifier: "plain", actions: [], intentIdentifiers: [], options: []),
         ])
         if let data = Self.pendingLaunchData { receive(data: data); Self.pendingLaunchData = nil }
+        let feedback = Self.pendingFeedback
+        Self.pendingFeedback = []
+        if !feedback.isEmpty { Task { for id in feedback { await lessLikeThis(id: id) } } }
     }
 
     func refresh(userID: Int?) async {

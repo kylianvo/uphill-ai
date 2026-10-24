@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from services.notification_rules import candidates
 from tests.unit.test_notification_rules import context
@@ -171,3 +171,39 @@ def test_muted_brief_does_not_swallow_monday_workout_reminder():
     c["workouts"].append(dict(c["workouts"][0], id=9, day_of_week="Monday"))
     c["preferences"]["muted_kinds"] = ["week_brief"]
     assert kinds(c, datetime(2026, 10, 11, 20, 1, tzinfo=UTC)) == ["workout"]  # Mon 07:01
+
+
+# --- final review fixes ---------------------------------------------------------------------------
+def test_recognition_survives_a_late_sync():  # review #2: window is end+30min .. end+24h, not 1 h
+    c = context()
+    end = priority_run(c)
+    assert "recognition" in kinds(c, end + timedelta(hours=2))
+
+
+def evening_monday(c):
+    from tests.unit.test_notification_rules import runs
+
+    c["workouts"].append(dict(c["workouts"][0], id=9, day_of_week="Monday"))
+    c["activities"] = runs("19:15", "19:15", "19:15", "19:15", day=date(2026, 10, 6))  # Tue-Fri the week before
+    return datetime(2026, 10, 12, 7, 1, tzinfo=UTC)  # Mon 18:01 Sydney: the 18:00 reminder slot
+
+
+def test_unsent_monday_brief_does_not_swallow_evening_reminder():  # review #3
+    c = context()
+    assert "workout" in kinds(c, evening_monday(c))
+
+
+def test_sent_monday_brief_still_replaces_the_reminder():
+    c = context()
+    now = evening_monday(c)
+    c["history"] = [
+        dict(
+            id="b",
+            kind="week_brief",
+            event_key="week_brief:5:1",
+            status="accepted",
+            claimed_at=datetime(2026, 10, 11, 20, 30, tzinfo=UTC),
+            opened_at=None,
+        )
+    ]
+    assert "workout" not in kinds(c, now)

@@ -200,3 +200,22 @@ def test_plan_ready_ignores_weekly_cap(auth_headers):
         event_key="plan_ready:x", kind="plan_ready", destination={}, due_at=now, expires_at=now + timedelta(hours=1)
     )
     assert claim_event(user, event, now) is not None
+
+
+def test_evening_coaching_does_not_block_next_mornings_reminder(auth_headers):  # review #4
+    from services.notification_store import claim_event
+
+    user = auth_headers["user_id"]
+    morning = datetime(2026, 10, 21, 7, tzinfo=UTC)
+    _claim_setup(user, morning)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE notification_preferences SET last_proactive_at=:at, last_proactive_date=:day WHERE user_id=:id"
+            ),
+            {"at": morning - timedelta(hours=11, minutes=30), "day": (morning - timedelta(days=1)).date(), "id": user},
+        )
+    event = dict(
+        event_key="workout:m", kind="workout", destination={}, due_at=morning, expires_at=morning + timedelta(hours=1)
+    )
+    assert claim_event(user, event, morning) is not None

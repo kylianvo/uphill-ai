@@ -62,7 +62,7 @@ def slot_time(context, kind, day):
     return time(minutes // 60, minutes % 60)
 
 
-def delivery_window(due, prefs, expires_at):
+def delivery_window(due, prefs, expires_at, cap=timedelta(hours=1)):
     zone = ZoneInfo(prefs["timezone"])
     local = due.astimezone(zone)
     start, end = QUIET
@@ -71,7 +71,7 @@ def delivery_window(due, prefs, expires_at):
     if quiet:
         day = local.date() + timedelta(days=int(start > end and wall >= start))
         due = local_due(day, end, prefs["timezone"])
-    expiry = min(due + timedelta(hours=1), expires_at)
+    expiry = min(due + cap, expires_at)
     return (due, expiry) if due < expiry else None
 
 
@@ -167,6 +167,13 @@ def candidates(context, now):
     history = context.get("history") or []
     brief = week_brief_candidate(context, now)
     if brief and ("week_brief" in muted or backed_off(history, "week_brief", now)):
+        brief = None
+    # Once its window has passed, the brief stands in for the reminder only if it was actually sent.
+    if (
+        brief
+        and now >= brief["expires_at"]
+        and not any(e.get("event_key") == brief["event_key"] and e.get("claimed_at") for e in history)
+    ):
         brief = None
     # On Mondays the brief carries today's session, so it replaces the workout reminder.
     values = [brief] if brief else [workout_candidate(context, now)]
@@ -317,7 +324,7 @@ def recognition_candidates(context, now, dated):
         if not a or not is_done(w) or not (w.get("is_priority") or (w.get("type") or "").lower() == "long run"):
             continue
         end = instant(a["start_time"]) + timedelta(seconds=a.get("duration_seconds") or 0)
-        window = delivery_window(end + timedelta(minutes=30), p, end + timedelta(hours=24))
+        window = delivery_window(end + timedelta(minutes=30), p, end + timedelta(hours=24), cap=timedelta(hours=24))
         if window and window[0] <= now < window[1]:
             out.append(
                 dict(
