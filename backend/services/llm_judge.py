@@ -13,6 +13,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+import db
 from config import settings
 from log_utils import get_logger
 from services import claude_llm, observability
@@ -138,6 +139,7 @@ async def _judge_and_score(trace_id: str, message_id: int, **kwargs: Any) -> Non
 
 def maybe_judge_turn(
     *,
+    user_id: int,
     trace_id: str | None,
     message_id: int,
     question: str,
@@ -154,6 +156,8 @@ def maybe_judge_turn(
         or not reply.strip()
         or not observability.enabled()
         or random.random() >= settings.LLM_JUDGE_SAMPLE_RATE
+        # Garmin Agreement §15.11: a turn built on Garmin data may not evaluate any AI.
+        or db.is_ai_eval_excluded(user_id)
     ):
         return
     try:

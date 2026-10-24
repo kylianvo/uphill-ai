@@ -93,6 +93,8 @@ def cases(limit: int | None) -> list[tuple[int, dict[str, Any], list[dict[str, A
                 text("""
                 SELECT user_id FROM race_results
                 WHERE discipline = 'trail' AND NOT is_dnf AND finish_time_sec IS NOT NULL AND selected
+                  -- Garmin Agreement section 15.11: no AI benchmarking on Garmin-connected users.
+                  AND user_id NOT IN (SELECT id FROM users WHERE ai_eval_excluded)
                 GROUP BY user_id HAVING COUNT(*) >= 2 ORDER BY user_id
             """)
             )
