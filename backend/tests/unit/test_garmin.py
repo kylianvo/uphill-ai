@@ -193,6 +193,7 @@ def _ingest_stubs(monkeypatch):
         calls["match"].append((user_id, tz_offset_minutes))
 
     monkeypatch.setattr(garmin_ingest.db, "get_connection_by_provider_user", lambda p, pu: connections.get(pu))
+    monkeypatch.setattr(garmin_ingest.db, "get_connection", lambda u, p: {"user_id": u})
     monkeypatch.setattr(garmin_ingest.db, "upsert_activity", lambda u, a: calls["upsert"].append((u, a.external_id)))
     monkeypatch.setattr(garmin_ingest.db, "mark_connection_synced", lambda u, p: None)
     monkeypatch.setattr(garmin_ingest.db, "delete_provider_data", lambda u, p: calls["delete"].append((u, p)))
@@ -231,7 +232,7 @@ def _registration(monkeypatch, live: bool):
 
     async def user_id(token):
         if not live:
-            raise garmin_oauth.GarminAuthError("403")
+            raise garmin_oauth.GarminAuthError("403", 403)
         return "g-1"
 
     monkeypatch.setattr(garmin_oauth, "access_token", token)
@@ -259,3 +260,37 @@ def test_webhook_token_is_redacted_from_access_logs():
     )
     integrations._RedactGarminWebhookToken().filter(record)
     assert "hook-token" not in record.getMessage() and "/garmin/webhook/[redacted]" in record.getMessage()
+
+
+def test_a_deregistration_is_not_acted_on_when_garmin_cannot_be_reached(monkeypatch):
+    calls = _ingest_stubs(monkeypatch)
+
+    async def token(connection):
+        return "a"
+
+    async def user_id(token):
+        raise garmin_oauth.GarminAuthError("503", 503)
+
+    monkeypatch.setattr(garmin_oauth, "access_token", token)
+    monkeypatch.setattr(garmin_oauth, "fetch_user_id", user_id)
+    asyncio.run(garmin_ingest.process({"deregistrations": [{"userId": "g-1"}]}))
+    assert calls["delete"] == []
+
+
+def test_a_refresh_lost_to_a_concurrent_rotation_is_retried_with_the_stored_token(monkeypatch):
+    calls = _ingest_stubs(monkeypatch)
+    tokens = iter(["stale", "fresh"])
+
+    async def token(connection):
+        return next(tokens)
+
+    async def user_id(token):
+        if token == "stale":
+            raise garmin_oauth.GarminAuthError("400", 400)
+        return "g-1"
+
+    monkeypatch.setattr(garmin_oauth, "access_token", token)
+    monkeypatch.setattr(garmin_oauth, "fetch_user_id", user_id)
+    monkeypatch.setattr(garmin_ingest.db, "get_connection", lambda u, p: {"user_id": u})
+    asyncio.run(garmin_ingest.process({"deregistrations": [{"userId": "g-1"}]}))
+    assert calls["delete"] == []

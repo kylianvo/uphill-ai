@@ -24,7 +24,12 @@ REFRESH_MARGIN = timedelta(minutes=10)
 
 
 class GarminAuthError(RuntimeError):
-    """Garmin rejected an authorization, token or gateway request."""
+    """Garmin rejected an authorization, token or gateway request. `status` is the HTTP
+    status when Garmin answered, None when it never did."""
+
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 def build_authorize_url(state: str, code_challenge: str) -> str:
@@ -52,7 +57,7 @@ async def _post_token(data: dict[str, str], transport: httpx.BaseTransport | Non
             auth=(settings.GARMIN_CLIENT_ID, settings.GARMIN_CLIENT_SECRET),
         )
     if response.status_code >= 400:
-        raise GarminAuthError(f"Garmin token endpoint returned HTTP {response.status_code}")
+        raise GarminAuthError(f"Garmin token endpoint returned HTTP {response.status_code}", response.status_code)
     try:
         payload = response.json()
     except ValueError as exc:
@@ -91,7 +96,7 @@ async def _gateway(
             method, f"{GATEWAY}/{path}", headers={"Authorization": f"Bearer {access_token}"}
         )
     if response.status_code >= 400:
-        raise GarminAuthError(f"Garmin {path} returned HTTP {response.status_code}")
+        raise GarminAuthError(f"Garmin {path} returned HTTP {response.status_code}", response.status_code)
     return response
 
 

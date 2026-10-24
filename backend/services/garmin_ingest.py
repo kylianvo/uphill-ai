@@ -65,28 +65,53 @@ async def _activities(items: list[dict[str, Any]]) -> None:
         _log("activities_stored", user_id=user_id, count=len(days))
 
 
-async def _registration_still_live(connection: dict[str, Any]) -> bool:
-    """True only when Garmin still answers for this athlete's token, i.e. the deregistration
-    push did not come from Garmin. Any failure counts as gone: deleting is the safe side."""
-    try:
-        await garmin_oauth.fetch_user_id(await garmin_oauth.access_token(connection))
-        return True
-    except Exception:
-        return False
+# Garmin's answer when it no longer accepts the athlete's credentials.
+_REJECTED = frozenset({400, 401, 403})
+
+
+async def _registration_gone(connection: dict[str, Any]) -> bool | None:
+    """True when Garmin rejects the athlete's credentials (deregistered), False when it still
+    answers for them, None when we could not tell (5xx, 429, timeout)."""
+    for attempt in range(2):
+        try:
+            await garmin_oauth.fetch_user_id(await garmin_oauth.access_token(connection))
+            return False
+        except garmin_oauth.GarminAuthError as exc:
+            if exc.status not in _REJECTED:
+                return None
+            if attempt == 0:
+                # Another push may have rotated the refresh token a moment ago: re-read it once.
+                connection = db.get_connection(connection["user_id"], garmin.PROVIDER) or connection
+                continue
+            return True
+        except Exception:
+            return None
+    return None
 
 
 async def _deregistrations(items: list[dict[str, Any]]) -> None:
-    """The athlete removed Uphill AI in Garmin Connect: delete everything Garmin sent us."""
-    for item in items:
-        connection = _connection(item)
+    """The athlete removed Uphill AI in Garmin Connect: delete everything Garmin sent us, once
+    Garmin confirms the credentials are dead. A forged push (leaked webhook token) or a Garmin
+    outage must not be able to wipe an athlete's data."""
+    for garmin_user_id in {str(i.get("userId")) for i in items if i.get("userId")}:
+        connection = db.get_connection_by_provider_user(garmin.PROVIDER, garmin_user_id)
         if connection is None:
             continue
-        if await _registration_still_live(connection):
-            # A forged push (leaked webhook token) must not be able to wipe an athlete's data.
-            _log("deregistration_unconfirmed", user_id=connection["user_id"])
-            continue
-        db.delete_provider_data(connection["user_id"], garmin.PROVIDER)
-        _log("deregistered", user_id=connection["user_id"])
+        gone = await _registration_gone(connection)
+        if gone:
+            db.delete_provider_data(connection["user_id"], garmin.PROVIDER)
+            _log("deregistered", user_id=connection["user_id"])
+        else:
+            logger.warning(
+                "garmin deregistration not confirmed",
+                extra={
+                    "fields": {
+                        "service": "garmin_ingest",
+                        "event": "deregistration_unconfirmed" if gone is False else "deregistration_unverified",
+                        "user_id": connection["user_id"],
+                    }
+                },
+            )
 
 
 def _permissions(items: list[dict[str, Any]]) -> None:
