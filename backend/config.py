@@ -77,7 +77,8 @@ class Config:
     GEMINI_THINKING_LEVEL: str = os.getenv("GEMINI_THINKING_LEVEL", "low")
     # Plan generation only: gemini | claude. Everything else stays on Gemini.
     PLAN_LLM_PROVIDER: str = os.getenv("PLAN_LLM_PROVIDER", "gemini")
-    PLAN_LLM_EFFORT: str = os.getenv("PLAN_LLM_EFFORT", "medium")
+    # low beat medium on quality and halved latency (docs/superpowers/haiku-latency/results.md)
+    PLAN_LLM_EFFORT: str = os.getenv("PLAN_LLM_EFFORT", "low")
     PLAN_LLM_THINKING: str = os.getenv("PLAN_LLM_THINKING", "adaptive")  # adaptive | disabled
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
     CLAUDE_PLAN_MODEL: str = os.getenv("CLAUDE_PLAN_MODEL", "claude-haiku-5-5")

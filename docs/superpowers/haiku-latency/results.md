@@ -90,3 +90,18 @@ week-2 volume ramp, so it fails the bar. `low` + adaptive passes with fewer retr
 
 Verdict: chat keeps adaptive thinking (`CLAUDE_COACH_THINKING` stays `adaptive`). Note the Task 2 baseline run failed
 once on `chat_vi_recovery_short_sleep` and this adaptive run passed it: that case is flaky on Haiku, not a regression.
+
+### Personas (2 of 21, chosen to fit the key's time window; Gemini personas declined)
+
+| Persona | `medium` + adaptive (today) | `low` + adaptive |
+|---|---|---|
+| recreational_50k (11 blocks) | 0 fails; block p50 124.9 s, p95 314.2 s; $0.21 | 0 fails; block p50 72.9 s, p95 136.8 s; $0.12 |
+| hcm_rec_100k_dinh (15 blocks) | 1 fail (week 4 `WEEKDAY_SHORT`); 177.6 s / 338.6 s; $0.50 | 1 fail (week 9 `QUALITY_COUNT`); 96.6 s / 153.1 s; $0.30 |
+
+Same number of failed checks on both personas (the ultra-ladder check fails once in each, on a different week), same
+engine mix (two rules-tier blocks in both, in the same weeks). Verdict: Plan moves to `PLAN_LLM_EFFORT=low` with
+adaptive thinking; `config.py` default changed from `medium` to `low` so prod picks it up even without a `.env` entry.
+
+For scale against the app: production `plan_generation` spans (mostly Gemini) are p50 23.9 s, p95 48.3 s per job;
+Haiku `low` is about 1.5–1.8× that, down from about 3×. Closing the rest needs shorter output (Task 10, Claude-only
+prompt wording), since thinking off fails the quality bar.
