@@ -408,10 +408,11 @@ final class AppModel {
             return false
         }
         do {
-            let success = try await deviceConnectionService.completeCoros(state: state, token: token)
-            return success
+            return params.provider == .coros
+                ? try await deviceConnectionService.completeCoros(state: state, token: token)
+                : try await deviceConnectionService.completeGarmin(state: state, token: token)
         } catch {
-            print("Failed to complete COROS connection via deep link: \(error)")
+            print("Failed to complete \(params.provider.name) connection via deep link: \(error)")
             return false
         }
     }

@@ -11,6 +11,16 @@ public protocol DeviceConnectionServicing: Sendable {
     func disconnectCoros() async throws
     func fetchPushStatus(clientToday: String) async throws -> CorosPushStatus
     func pushToCoros(clientToday: String, lang: String) async throws -> CorosPushOutcome
+    func connectGarminURL() async throws -> URL
+    func completeGarmin(state: String, token: String) async throws -> Bool
+    func disconnectGarmin() async throws
+}
+
+/// Stubs (previews, tests) that predate Garmin get a Garmin that can't connect.
+public extension DeviceConnectionServicing {
+    func connectGarminURL() async throws -> URL { throw URLError(.unsupportedURL) }
+    func completeGarmin(state: String, token: String) async throws -> Bool { false }
+    func disconnectGarmin() async throws {}
 }
 
 final class DeviceConnectionService: DeviceConnectionServicing {
@@ -66,6 +76,33 @@ final class DeviceConnectionService: DeviceConnectionServicing {
             .send(.post, "/api/integrations/coros/complete", body: CompleteBody(state: state, token: token))
         )
         return resp.connected
+    }
+
+    /// `ai_consent` is required: Garmin connects only after the athlete agrees to AI
+    /// coaching on its data (Garmin Agreement s15.10). The view asks before calling this.
+    func connectGarminURL() async throws -> URL {
+        let resp: ConnectResponse = try await client.send(
+            .get("/api/integrations/garmin/connect", query: [
+                URLQueryItem(name: "platform", value: "native"),
+                URLQueryItem(name: "ai_consent", value: "true"),
+            ])
+        )
+        guard let url = URL(string: resp.authorizeUrl) else {
+            throw APIError.decoding("Invalid authorization URL from Garmin")
+        }
+        return url
+    }
+
+    func completeGarmin(state: String, token: String) async throws -> Bool {
+        let resp: CompleteResponse = try await client.send(
+            .send(.post, "/api/integrations/garmin/complete", body: CompleteBody(state: state, token: token))
+        )
+        return resp.connected
+    }
+
+    /// Also how AI consent is withdrawn: the backend deletes the Garmin data.
+    func disconnectGarmin() async throws {
+        let _: EmptyResponse = try await client.send(.delete("/api/integrations/garmin"))
     }
 
     func syncNow(days: Int = 30) async throws -> DeviceSyncResult {
@@ -150,6 +187,12 @@ public final class CorosOAuthCoordinator: NSObject, ASWebAuthenticationPresentat
         return ASPresentationAnchor()
     }
 
+    public enum Provider: String, Sendable {
+        case coros, garmin
+
+        var name: String { self == .coros ? "COROS" : "Garmin" }
+    }
+
     public enum AuthResult: Equatable, Sendable {
         case success
         case cancelled
@@ -162,9 +205,9 @@ public final class CorosOAuthCoordinator: NSObject, ASWebAuthenticationPresentat
     /// 3. Intercepts uphillai://coros/callback?state=...&token=...
     /// 4. Validates state matches the request state
     /// 5. Posts state and token to /api/integrations/coros/complete
-    public func connect(via service: any DeviceConnectionServicing) async -> AuthResult {
+    public func connect(via service: any DeviceConnectionServicing, provider: Provider = .coros) async -> AuthResult {
         do {
-            let authURL = try await service.connectCorosURL()
+            let authURL = provider == .coros ? try await service.connectCorosURL() : try await service.connectGarminURL()
             let expectedState = URLComponents(url: authURL, resolvingAgainstBaseURL: false)?
                 .queryItems?.first(where: { $0.name == "state" })?.value
 
@@ -177,24 +220,26 @@ public final class CorosOAuthCoordinator: NSObject, ASWebAuthenticationPresentat
                 return .failed(error.localizedDescription)
             }
 
-            guard let params = Self.parseCallbackURL(callbackURL) else {
-                return .failed(L("Invalid callback response from COROS."))
+            guard let params = Self.parseCallbackURL(callbackURL), params.provider == provider else {
+                return .failed(L("Invalid callback response from %@.", provider.name))
             }
 
             if params.isError {
-                return .failed(L("COROS authorization was declined or cancelled."))
+                return .failed(L("%@ authorization was declined or cancelled.", provider.name))
             }
 
             guard let state = params.state, let token = params.token else {
-                return .failed(L("Missing authorization tokens from COROS."))
+                return .failed(L("Missing authorization tokens from %@.", provider.name))
             }
 
             if let expected = expectedState, state != expected {
                 return .failed(L("Authorization security check failed (state mismatch)."))
             }
 
-            let completed = try await service.completeCoros(state: state, token: token)
-            return completed ? .success : .failed(L("Could not complete COROS connection."))
+            let completed = provider == .coros
+                ? try await service.completeCoros(state: state, token: token)
+                : try await service.completeGarmin(state: state, token: token)
+            return completed ? .success : .failed(L("Could not complete %@ connection.", provider.name))
         } catch {
             return .failed(error.localizedDescription)
         }
@@ -221,6 +266,7 @@ public final class CorosOAuthCoordinator: NSObject, ASWebAuthenticationPresentat
     }
 
     public struct CallbackParams: Equatable, Sendable {
+        public var provider: Provider = .coros
         public let state: String?
         public let token: String?
         public let isError: Bool
@@ -228,8 +274,15 @@ public final class CorosOAuthCoordinator: NSObject, ASWebAuthenticationPresentat
 
     public nonisolated static func parseCallbackURL(_ url: URL) -> CallbackParams? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              components.scheme == "uphillai",
-              components.host == "coros" || url.absoluteString.contains("coros/callback") else {
+              components.scheme == "uphillai" else {
+            return nil
+        }
+        let provider: Provider
+        if components.host == "coros" || url.absoluteString.contains("coros/callback") {
+            provider = .coros
+        } else if components.host == "garmin" || url.absoluteString.contains("garmin/callback") {
+            provider = .garmin
+        } else {
             return nil
         }
         let items = components.queryItems ?? []
@@ -237,6 +290,6 @@ public final class CorosOAuthCoordinator: NSObject, ASWebAuthenticationPresentat
         let token = items.first(where: { $0.name == "token" })?.value
         let result = items.first(where: { $0.name == "result" })?.value
         let isError = result == "error" || (state == nil && token == nil)
-        return CallbackParams(state: state, token: token, isError: isError)
+        return CallbackParams(provider: provider, state: state, token: token, isError: isError)
     }
 }

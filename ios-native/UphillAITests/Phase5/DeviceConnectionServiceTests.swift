@@ -86,4 +86,25 @@ struct DeviceConnectionServiceTests {
         await #expect(throws: APIError.self) { _ = try await service.completeCoros(state: "s", token: "t") }
         #expect(posts.withLock { $0 } == 1)
     }
+
+    @Test func connectGarminAlwaysSendsAIConsentAndNativePlatform() async throws {
+        let service = DeviceConnectionService(client: makeStubClient { request in
+            #expect(request.url?.path() == "/api/integrations/garmin/connect")
+            let query = request.url?.query() ?? ""
+            #expect(query.contains("ai_consent=true") && query.contains("platform=native"))
+            return (200, json(["authorize_url": "https://connect.garmin.com/oauth2Confirm?state=abc"]))
+        })
+        let url = try await service.connectGarminURL()
+        #expect(url.host() == "connect.garmin.com")
+    }
+
+    @Test func disconnectGarminDeletesTheGarminConnection() async throws {
+        let seen = Mutex<(String, String)>(("", ""))
+        let service = DeviceConnectionService(client: makeStubClient { request in
+            seen.withLock { $0 = (request.httpMethod ?? "", request.url?.path() ?? "") }
+            return (200, json(["status": "disconnected"]))
+        })
+        try await service.disconnectGarmin()
+        #expect(seen.withLock { $0 } == ("DELETE", "/api/integrations/garmin"))
+    }
 }
