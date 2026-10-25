@@ -337,3 +337,24 @@ async def test_long_sync_asks_for_90_days_of_metrics(monkeypatch):
 
     await coros_sync.persist(user_id=7, adapter=Recording(), days=365)
     assert asked["days"] == 90
+
+
+@pytest.mark.asyncio
+async def test_access_token_requires_reconnect_when_coros_rejects_the_refresh(monkeypatch):
+    """COROS answering invalid_grant (revoked/expired refresh token) must ask for a reconnect, not 500."""
+    connection = {
+        "user_id": 7,
+        "token_expires_at": datetime.now(UTC) - timedelta(minutes=1),
+        "refresh_token_enc": "ciphertext",
+        "access_token_enc": "irrelevant",
+        "scopes": "openid mcp.tools offline_access",
+        "provider_user_id": None,
+    }
+    monkeypatch.setattr(coros_sync.token_crypto, "decrypt_token", lambda c, key=None: "refresh")
+
+    async def rejected(_token):
+        raise coros_sync.coros_oauth.CorosAuthError("COROS token endpoint returned HTTP 400: invalid_grant")
+
+    monkeypatch.setattr(coros_sync.coros_oauth, "refresh", rejected)
+    with pytest.raises(coros_sync.CorosReconnectRequired):
+        await coros_sync._access_token(connection)

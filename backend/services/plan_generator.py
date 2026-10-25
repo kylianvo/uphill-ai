@@ -2472,19 +2472,53 @@ class PlanGenerator:
         def _make_uphill_intervals(wo: dict[str, Any]) -> None:
             reps, rep = (4, 12) if ultra_advanced and not ultra_gated else (3, 10)
             total = 15 + reps * rep + (reps - 1) * 3 + 10
+            # Only the venues this athlete has; with none, the same Zone 3 work runs flat (an overpass if handy).
+            hills = venues.hills_on(wo.get("day_of_week", ""))
+            where_en = [
+                v
+                for v, have in (
+                    ("a hill", hills),
+                    ("8-12% treadmill", venues.use_treadmill),
+                    ("stairs", venues.stair_access),
+                )
+                if have
+            ]
+            where_vi = [
+                v
+                for v, have in (
+                    ("dốc", hills),
+                    ("máy chạy 8-12%", venues.use_treadmill),
+                    ("cầu thang", venues.stair_access),
+                )
+                if have
+            ]
+            climbing = bool(where_en)
             wo.update(
                 type="Interval",
                 target_zone="Zone 3",
                 target_hr_range=z3_range,
                 duration_minutes=float(total),
-                title="Uphill Intervals (Zone 3)" if lang != "vi" else "Interval leo dốc (Zone 3)",
-                description=(
-                    f"Warm-up 15 min easy → {reps} x {rep} min Zone 3 uphill or rolling (8-12% treadmill, stairs or "
-                    f"an overpass), breathing-limited, 3 min easy jog or walk between → Cool-down 10 min easy."
+                title=(
+                    ("Uphill Intervals (Zone 3)" if climbing else "Zone 3 Intervals")
                     if lang != "vi"
-                    else f"Warm-up 15 phút nhẹ → {reps} x {rep} phút Zone 3 leo dốc hoặc địa hình lên xuống "
-                    f"(máy chạy 8-12%, cầu thang hoặc cầu vượt), giới hạn bởi hơi thở, nghỉ 3 phút chạy nhẹ hoặc đi bộ "
-                    f"→ Cool-down 10 phút nhẹ."
+                    else ("Interval leo dốc (Zone 3)" if climbing else "Interval Zone 3")
+                ),
+                description=(
+                    (
+                        f"Warm-up 15 min easy → {reps} x {rep} min Zone 3 uphill ({' or '.join(where_en)}), "
+                        if climbing
+                        else f"Warm-up 15 min easy → {reps} x {rep} min Zone 3 on flat or rolling road "
+                        "(use an overpass or bridge if one is on your route), "
+                    )
+                    + "breathing-limited, 3 min easy jog or walk between → Cool-down 10 min easy."
+                    if lang != "vi"
+                    else (
+                        f"Warm-up 15 phút nhẹ → {reps} x {rep} phút Zone 3 leo dốc ({' hoặc '.join(where_vi)}), "
+                        if climbing
+                        else f"Warm-up 15 phút nhẹ → {reps} x {rep} phút Zone 3 trên đường bằng hoặc lên xuống nhẹ "
+                        "(tận dụng cầu vượt nếu có trên đường chạy), "
+                    )
+                    + "giới hạn bởi hơi thở, nghỉ 3 phút chạy nhẹ hoặc đi bộ → Cool-down 10 phút nhẹ."
                 ),
                 fueling_tip=_fuel_text(total),
             )

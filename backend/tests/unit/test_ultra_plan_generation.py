@@ -255,3 +255,11 @@ def test_model_double_on_the_long_run_day_is_dropped(monkeypatch):
         )
     saturday = [w for w in wos if w["week_number"] == 1 and w["day_of_week"] == "Saturday"]
     assert [w["type"] for w in saturday] == ["Long Run"] and saturday[0]["session_slot"] == "main"
+
+
+def test_flat_athlete_without_city_vertical_gets_flat_zone3_on_weekdays(rule_based_plan):
+    wos = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="sub_elite", weekly_km=100,
+                          aet_hr=150, ant_hr=160, threshold_source="lab")  # fmt: skip
+    weekday = [w for w in _quality(wos) if w["day_of_week"] != "Saturday"]
+    assert weekday and all("treadmill" not in w["description"] and "stairs" not in w["description"] for w in weekday)
+    assert not any("uphill" in w["title"].lower() for w in weekday)

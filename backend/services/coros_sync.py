@@ -191,7 +191,11 @@ async def _access_token(connection: dict) -> str:
                 f"Stored COROS refresh token for user {connection.get('user_id')} could not be decrypted; "
                 "the athlete must reconnect their COROS account."
             ) from exc
-        refreshed = await coros_oauth.refresh(refresh_token)
+        try:
+            refreshed = await coros_oauth.refresh(refresh_token)
+        except coros_oauth.CorosAuthError as exc:
+            # invalid_grant: COROS revoked or expired the refresh token; only a fresh login fixes it.
+            raise CorosReconnectRequired("Your COROS login has expired. Reconnect COROS in your profile.") from exc
         db.save_connection(
             user_id=connection["user_id"],
             provider=PROVIDER,
