@@ -302,6 +302,7 @@ def test_short_plan_opens_with_me_weeks_then_zone3(rule_based_plan):
         assert not any(w.get("target_zone") == "Zone 3" for w in rows)
     z3_weeks = {w["week_number"] for w in _quality(wos) if w["phase"] != "Taper"}
     assert z3_weeks and z3_weeks <= {5, 6, 7, 9}
+    assert not any(w["type"] == "Muscular Endurance" for w in wos if w["week_number"] in z3_weeks)  # Z3 replaces ME
 
 
 def test_me_first_weeks_rules():

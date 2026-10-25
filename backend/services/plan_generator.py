@@ -2424,6 +2424,17 @@ class PlanGenerator:
                             _make_uphill_intervals(q, reps, rep)
                     for _ in range(want - len(quality)):
                         _add_uphill_intervals(rows, days, reps, rep)
+                    for r in rows:
+                        if _is_me(r):  # Zone 3 replaces ME in these weeks (KB); the day stays an easy run
+                            minutes = float(r.get("duration_minutes") or 45)
+                            _to_easy(
+                                r,
+                                "Easy Aerobic Run",
+                                "Easy Run nhẹ",
+                                "Easy aerobic run, Zone 2, conversational pace.",
+                                "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được.",
+                            )
+                            _resize(r, int(minutes))
                     continue
                 if (
                     rows[0].get("phase") not in ("Build", "Peak")
