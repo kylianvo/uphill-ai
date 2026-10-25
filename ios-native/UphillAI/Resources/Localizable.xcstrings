@@ -1,6 +1,46 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Runs from your Garmin watch, after each sync from now on.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các buổi chạy từ đồng hồ Garmin, sau mỗi lần đồng bộ kể từ bây giờ."
+          }
+        }
+      }
+    },
+    "Garmin connected": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối Garmin"
+          }
+        }
+      }
+    },
+    "Connected. Garmin doesn't share past runs, so enter your current mileage on the next screen.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối. Garmin không chia sẻ các buổi chạy cũ, nên hãy nhập khối lượng tuần hiện tại ở màn hình tiếp theo."
+          }
+        }
+      }
+    },
+    "Connect Garmin": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối Garmin"
+          }
+        }
+      }
+    },
     "Disconnect Garmin?": {
       "localizations": {
         "vi": {

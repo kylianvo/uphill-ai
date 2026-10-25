@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The watch sources Uphill reads from: COROS today, the rest listed so athletes
-/// on other watches know where they stand. Used by onboarding's watch step.
+/// The watch sources Uphill reads from: COROS, Apple Health and (once the backend turns
+/// it on) Garmin, the rest listed so athletes on other watches know where they stand.
+/// Used by onboarding's watch step.
 struct WatchChannelsList: View {
     let connected: Bool
     /// False when no device service is wired (previews, tests): the connect button hides.
@@ -13,11 +14,19 @@ struct WatchChannelsList: View {
     let connect: () async -> String?
     /// Runs the Apple Health connection; returns an error message to show, or nil.
     let connectHealth: () async -> String?
+    var garminConnected = false
+    /// True when the backend reports Garmin enabled; until then Garmin stays under "Coming soon".
+    var garminAvailable = false
+    /// Runs the Garmin connection (only ever after the consent box is ticked); returns an error or nil.
+    var connectGarmin: () async -> String? = { nil }
 
     @State private var isConnecting = false
     @State private var error: String?
     @State private var isConnectingHealth = false
     @State private var healthError: String?
+    @State private var garminConsent = false
+    @State private var isConnectingGarmin = false
+    @State private var garminError: String?
 
     static let upcoming: [(name: String, symbol: String)] = [
         ("Garmin", "watch.analog"),
@@ -74,10 +83,12 @@ struct WatchChannelsList: View {
 
             if healthAvailable { appleHealthCard }
 
+            if garminAvailable { garminCard }
+
             VStack(alignment: .leading, spacing: UH.Space.small) {
                 Text("Coming soon").font(UH.TextStyle.label).foregroundStyle(UH.Palette.secondary)
                 VStack(spacing: 0) {
-                    ForEach(Array(Self.upcoming.enumerated()), id: \.offset) { index, channel in
+                    ForEach(Array(upcoming.enumerated()), id: \.offset) { index, channel in
                         if index > 0 { Divider() }
                         HStack(spacing: UH.Space.regular) {
                             channelBadge(symbol: channel.symbol, live: false)
@@ -102,6 +113,82 @@ struct WatchChannelsList: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    private var upcoming: [(name: String, symbol: String)] {
+        garminAvailable ? Self.upcoming.filter { $0.name != "Garmin" } : Self.upcoming
+    }
+
+    /// Garmin Agreement s15.10: the athlete consents to AI coaching on Garmin data before
+    /// connecting. Starter access has no history, so Garmin can't fill in past mileage.
+    private var garminCard: some View {
+        VStack(alignment: .leading, spacing: UH.Space.regular) {
+            HStack(spacing: UH.Space.regular) {
+                channelBadge(symbol: "watch.analog", live: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: "Garmin").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                    Text("Runs from your Garmin watch, after each sync from now on.")
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                if garminConnected {
+                    Label("Connected", systemImage: "checkmark.circle.fill")
+                        .labelStyle(.iconOnly)
+                        .font(.title2)
+                        .foregroundStyle(UH.Palette.accentInk)
+                        .accessibilityLabel(L("Garmin connected"))
+                }
+            }
+
+            if garminConnected {
+                Text("Connected. Garmin doesn't share past runs, so enter your current mileage on the next screen.")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.accentInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Button {
+                    garminConsent.toggle()
+                } label: {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: garminConsent ? "checkmark.square.fill" : "square")
+                            .font(.system(size: 16))
+                            .foregroundStyle(garminConsent ? UH.Palette.accentInk : UH.Palette.muted)
+                        Text("I agree that Uphill AI's AI coach uses my Garmin data to build and adapt my plan. Withdrawing consent disconnects Garmin and deletes its data within 24 hours.")
+                            .font(UH.TextStyle.caption)
+                            .foregroundStyle(UH.Palette.secondary)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(garminConsent ? [.isSelected] : [])
+                .accessibilityIdentifier("setup.garminConsent")
+
+                Button {
+                    Task {
+                        isConnectingGarmin = true
+                        garminError = await connectGarmin()
+                        isConnectingGarmin = false
+                    }
+                } label: {
+                    if isConnectingGarmin { ProgressView() } else { Text("Connect Garmin") }
+                }
+                .buttonStyle(.uhPrimary)
+                .disabled(isConnectingGarmin || !garminConsent)
+                .opacity(garminConsent ? 1 : 0.45)
+                .accessibilityIdentifier("setup.connectGarmin")
+            }
+
+            if let garminError {
+                Text(garminError)
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .trainingCard()
     }
 
     private var appleHealthCard: some View {

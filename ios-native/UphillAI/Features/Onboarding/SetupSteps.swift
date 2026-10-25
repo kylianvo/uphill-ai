@@ -110,7 +110,9 @@ struct SetupSteps: View {
                 WatchChannelsList(connected: model.corosConnected, available: model.deviceService != nil,
                                   healthConnected: model.appleHealthConnected, healthAvailable: model.canConnectAppleHealth,
                                   connect: { await model.connectCoros() },
-                                  connectHealth: { await model.connectAppleHealth() })
+                                  connectHealth: { await model.connectAppleHealth() },
+                                  garminConnected: model.garminConnected, garminAvailable: model.garminAvailable,
+                                  connectGarmin: { await model.connectGarmin() })
             case .raceHistory:
                 raceHistory
             case .startDate:
