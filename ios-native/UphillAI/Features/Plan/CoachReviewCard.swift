@@ -22,9 +22,103 @@ struct CoachReviewCard: View {
         model.selectedWeek == model.currentWeek ? model.coachNudge : nil
     }
 
-    @State private var expanded = false
+    @State private var expanded: Bool
+
+    /// Always closed when the screen opens; `expanded` exists for previews and screenshot tests.
+    init(model: PlanViewModel, onOpenReview: @escaping () -> Void, expanded: Bool = false) {
+        self.model = model
+        self.onOpenReview = onOpenReview
+        _expanded = State(initialValue: expanded)
+    }
 
     var body: some View {
+        if let nudge, let messages = nudge.messages, !messages.isEmpty {
+            reviewCard(messages: messages, nail: nudge.nail, headsUp: nudge.kind == .headsUp)
+        } else {
+            messageCard
+        }
+    }
+
+    /// The weekly review: one closed row (always closed when the screen opens), tap for the messages and the nail.
+    private func reviewCard(messages: [String], nail: String?, headsUp: Bool) -> some View {
+        VStack(alignment: .leading, spacing: UH.Space.compact) {
+            Button {
+                withAnimation(UH.Motion.standard) { expanded.toggle() }
+            } label: {
+                HStack(alignment: .center, spacing: UH.Space.small) {
+                    Image(systemName: headsUp ? "exclamationmark.bubble.fill" : "quote.bubble.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(headsUp ? UH.Palette.warningInk : UH.Palette.accentInk)
+                        .frame(width: 32, height: 32)
+                        .background(headsUp ? UH.Palette.warningFill : UH.Palette.activeFill, in: Circle())
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L("Coach Uphill · Week %lld", model.selectedWeek))
+                            .font(UH.TextStyle.caption)
+                            .foregroundStyle(UH.Palette.secondary)
+                        if !expanded {
+                            Text(verbatim: messages[0])
+                                .font(.subheadline)
+                                .foregroundStyle(UH.Palette.ink)
+                                .lineLimit(1)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "chevron.down")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(UH.Palette.muted)
+                        .rotationEffect(.degrees(expanded ? 180 : 0))
+                        .accessibilityHidden(true)
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(L("Coach's review")) + Text(verbatim: ": " + messages[0]))
+            .accessibilityHint(expanded ? L("Hides the messages") : L("Shows the whole message"))
+            .accessibilityIdentifier("plan.coachCard.review")
+
+            if expanded {
+                VStack(alignment: .leading, spacing: UH.Space.small) {
+                    ForEach(Array(messages.enumerated()), id: \.offset) { _, message in
+                        Text(verbatim: message)
+                            .font(.subheadline)
+                            .foregroundStyle(UH.Palette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, UH.Space.compact)
+                            .padding(.vertical, UH.Space.small)
+                            .background(UH.Palette.activeFill, in: UnevenRoundedRectangle(
+                                topLeadingRadius: 16, bottomLeadingRadius: 4, bottomTrailingRadius: 16, topTrailingRadius: 16))
+                    }
+                    if let nail {
+                        Text(verbatim: nail)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(UH.Palette.warningInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, UH.Space.compact)
+                            .padding(.vertical, UH.Space.small)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(UH.Palette.warningFill, in: RoundedRectangle(cornerRadius: 12))
+                            .accessibilityIdentifier("plan.coachCard.nail")
+                    }
+                    Button("Read the full review", action: onOpenReview)
+                        .font(UH.TextStyle.disclosure)
+                        .foregroundStyle(UH.Palette.accentInk)
+                        .frame(minHeight: 44)
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("plan.coachCard.reviewLink")
+                }
+                .transition(.opacity)
+            }
+        }
+        .padding(.horizontal, UH.Space.regular)
+        .padding(.vertical, UH.Space.small)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.panel))
+        .overlay(RoundedRectangle(cornerRadius: UH.Radius.panel).stroke(UH.Palette.line))
+    }
+
+    @ViewBuilder private var messageCard: some View {
         let text = Self.message(nudge: nudge?.text, why: whyThisWeek, welcome: welcome, pick: priorityWorkout?.title)
         let headsUp = nudge?.kind == .headsUp
         VStack(alignment: .leading, spacing: UH.Space.compact) {

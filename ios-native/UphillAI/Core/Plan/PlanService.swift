@@ -249,7 +249,11 @@ struct PlanService: PlanServicing {
     func coachNudge(planID: Int) async throws -> CoachNudge? {
         guard coachPrefix == nil else { return nil }
         let response: CoachNudgeResponse = try await client.send(
-            .get("/api/plans/\(planID)/coach-nudge", query: [URLQueryItem(name: "lang", value: AppLanguage.code)]))
+            .get("/api/plans/\(planID)/coach-nudge", query: [
+                URLQueryItem(name: "lang", value: AppLanguage.code),
+                // the athlete's local date: the server runs on UTC, so a Vietnamese Monday morning is still Sunday there
+                URLQueryItem(name: "client_today", value: Date().formatted(Date.ISO8601FormatStyle(timeZone: .current).year().month().day())),
+            ]))
         return response.nudge
     }
 

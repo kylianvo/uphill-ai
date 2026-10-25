@@ -16,6 +16,13 @@ QUALITY_MAX_MIN = 90
 QUALITY_WINDOW_WEEKS = 8
 ME_FREE_LONG_RUN_MIN = 360
 ME_MAX_SHARE = 0.10
+ELITE_DOSE_WEEK_MIN = 900  # the 2 x 40-60 min Zone 3 dose needs an elite engine AND 15-20+ h weeks (KB 2026-10-25)
+ZONE3_SHARE = 0.09  # 100 km runners keep Zone 3 at 7-9% of weekly time (KB)
+ME_FIRST_MAX_WEEKS = 3  # a short plan opens the protected weeks with ME, then Zone 3 (KB: ME is the precursor)
+ME_FIRST_PER_WEEK = 2  # 6 sessions in 3 weeks: about the least that builds local leg durability (KB)
+# shortcut: weekly climbing from the watch stands in for "long runs already hammer the legs"; upgrade when the
+# block review asks whether the legs were still sore two days after the long run.
+ME_SKIP_WEEKLY_VERT_M = 1500
 
 # (start steps, filler, end steps ending at the peak, recovery-week long run), in minutes
 _LADDERS: dict[tuple[Band, bool], tuple[list[int], int, list[int], int]] = {
@@ -49,6 +56,16 @@ def weekday_minutes(band: Band, advanced: bool) -> tuple[int, int]:
     if band == "50k":
         return (45, 90)
     return (60, 150) if band == "100mi" and advanced else (60, 90)
+
+
+def quality_dose(advanced: bool, gated: bool, week_minutes: float) -> tuple[int, int, int]:
+    """(sessions, reps, minutes per rep) of Zone 3 for a week in the window. The double dose needs an ungated elite
+    and a 15 h+ week; reps then drop (to 2 at least, the 20 min minimum) until Zone 3 is <= 9% of the week."""
+    elite = advanced and not gated and week_minutes >= ELITE_DOSE_WEEK_MIN
+    n, reps, rep = (2, 4, 12) if elite else (1, 3, 10)
+    while reps > 2 and n * reps * rep > ZONE3_SHARE * week_minutes:
+        reps -= 1
+    return n, reps, rep
 
 
 def quality_per_week(advanced: bool, gated: bool) -> int:
@@ -104,8 +121,27 @@ def quality_weeks(total_weeks: int) -> frozenset[int]:
     )
 
 
+def me_first_weeks(total_weeks: int, legs_loaded: bool) -> frozenset[int]:
+    """Short plans (under 16 weeks) open with up to 3 ME weeks before the Zone 3 weeks: never more than half the
+    Zone 3 window. None when the athlete's climbing already loads the legs (the KB's "omit ME" case)."""
+    if legs_loaded or total_weeks >= 16:
+        return frozenset()
+    k = min(ME_FIRST_MAX_WEEKS, len(quality_weeks(total_weeks)) // 2)
+    return frozenset([w for w in range(1, total_weeks + 1) if not is_deload(w, total_weeks)][:k])
+
+
+def legs_loaded(weekly_vert_m: float | None) -> bool:
+    return bool(weekly_vert_m) and weekly_vert_m >= ME_SKIP_WEEKLY_VERT_M
+
+
 def prompt_block(
-    band: Band, advanced: bool, weeks: dict[int, int], total_weeks: int, aet_gated: bool, lang: str
+    band: Band,
+    advanced: bool,
+    weeks: dict[int, int],
+    total_weeks: int,
+    aet_gated: bool,
+    lang: str,
+    me_weeks: frozenset[int] = frozenset(),
 ) -> str:
     """Rule lines for the generator: this block's ladder long runs and quality sessions. Technical terms stay in
     English in Vietnamese, like goal_demands.prompt_block."""
@@ -121,7 +157,13 @@ def prompt_block(
     ]
     for week, minutes in sorted(weeks.items()):
         other = other_day_minutes(minutes)
-        if week in window:
+        if week in me_weeks:
+            quality = (
+                f"{ME_FIRST_PER_WEEK} ME sessions, 48 h apart and 48 h from the long run; no Zone 3+ sessions this week"
+                if not vi
+                else f"{ME_FIRST_PER_WEEK} buổi ME, cách nhau 48 h và cách Long Run 48 h; tuần này không có buổi Zone 3+"
+            )
+        elif week in window:
             quality = (
                 f"{n} session{'s' if n > 1 else ''} a week of uphill or rolling intervals in Zone 3 ({work_lo}-{work_hi} min "
                 f"of work, 8-12% treadmill, stairs or an overpass where there are no hills; breathing-limited, never "

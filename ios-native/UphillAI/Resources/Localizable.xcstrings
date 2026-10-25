@@ -12131,6 +12131,26 @@
         }
       }
     },
+    "Coach Uphill · Week %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill · Tuần %lld"
+          }
+        }
+      }
+    },
+    "Hides the messages": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ẩn tin nhắn"
+          }
+        }
+      }
+    },
     "Hill / trail days: %@": {
       "localizations": {
         "vi": {
