@@ -222,6 +222,11 @@ class Config:
         "GARMIN_REDIRECT_URI", "https://api.uphill-ai.io.vn/api/integrations/garmin/callback"
     )
     GARMIN_WEBHOOK_TOKEN: str = os.getenv("GARMIN_WEBHOOK_TOKEN", "")
+    # Comma-separated emails. When set, GARMIN_ENABLED shows Garmin to these accounts only
+    # (testing on prod before launch); empty means everyone.
+    GARMIN_ALLOWED_EMAILS: list = [
+        e.strip().lower() for e in os.getenv("GARMIN_ALLOWED_EMAILS", "").split(",") if e.strip()
+    ]
     # Hides Apple Health in the app (via /api/integrations/status) and 404s its sync
     # endpoint, without an app release.
     APPLE_HEALTH_ENABLED: bool = os.getenv("APPLE_HEALTH_ENABLED", "true").lower() != "false"

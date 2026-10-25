@@ -851,8 +851,13 @@ async def apple_health_disconnect(user: dict[str, Any] = Depends(get_current_use
     return {"status": "disconnected"}
 
 
-def _require_garmin() -> None:
-    if not settings.GARMIN_ENABLED or not settings.GARMIN_CLIENT_ID or not settings.TOKEN_ENCRYPTION_KEY:
+def _garmin_on_for(user: dict[str, Any]) -> bool:
+    allowed = settings.GARMIN_ALLOWED_EMAILS
+    return settings.GARMIN_ENABLED and (not allowed or (user.get("email") or "").lower() in allowed)
+
+
+def _require_garmin(user: dict[str, Any]) -> None:
+    if not _garmin_on_for(user) or not settings.GARMIN_CLIENT_ID or not settings.TOKEN_ENCRYPTION_KEY:
         raise HTTPException(status_code=404, detail="Garmin is not available.")
 
 
@@ -865,7 +870,7 @@ async def garmin_connect(
     platform: str | None = None,
     user: dict[str, Any] = Depends(get_current_user),
 ):
-    _require_garmin()
+    _require_garmin(user)
     # Garmin Agreement s15.10: explicit consent before any Garmin data reaches the AI provider.
     # Every coaching feature is AI, so Garmin is never connected without it.
     if not ai_consent:
@@ -884,7 +889,7 @@ async def garmin_callback(
 
 @router.post("/garmin/complete")
 async def garmin_complete(body: CorosCompleteRequest, user: dict[str, Any] = Depends(get_current_user)):
-    _require_garmin()
+    _require_garmin(user)
     return await _complete_native(GARMIN, body, user, _garmin_exchange_and_save)
 
 
@@ -1024,7 +1029,7 @@ async def integration_status(user: dict[str, Any] = Depends(get_current_user)):
             "last_sync_at": health.get("last_sync_at") if health else None,
         },
         "garmin": {
-            "enabled": settings.GARMIN_ENABLED,
+            "enabled": _garmin_on_for(user),
             "connected": bool(garmin_conn and garmin_conn.get("status") == "active"),
             "last_sync_at": garmin_conn.get("last_sync_at") if garmin_conn else None,
             "permissions": (garmin_conn.get("scopes") or "").split() if garmin_conn else [],
