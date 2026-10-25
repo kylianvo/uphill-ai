@@ -32,7 +32,7 @@ struct ProgressDetailView: View {
                     ProgressChart(card: current, detailed: true)
                     Text(ProgressText.note(current)).foregroundStyle(UH.Palette.secondary)
                     if let source = current.source {
-                        Text(L("Source: %@", source == "apple_health" ? "Apple Health" : "COROS"))
+                        Text(L("Source: %@", deviceSourceName(source)))
                             .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.muted)
                     }
                 }

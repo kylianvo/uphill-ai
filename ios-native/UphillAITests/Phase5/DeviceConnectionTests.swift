@@ -151,3 +151,11 @@ struct DeviceConnectionTests {
         #expect(old.garmin == nil)
     }
 }
+
+struct DeviceSourceNameTests {
+    @Test func everyProviderIsNamedForItsOwnBrand() {
+        #expect(deviceSourceName("garmin") == "Garmin")
+        #expect(deviceSourceName("apple_health") == "Apple Health")
+        #expect(deviceSourceName("coros") == "COROS")
+    }
+}

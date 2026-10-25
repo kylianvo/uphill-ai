@@ -1,6 +1,16 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "From Garmin: %lld km a week over the last 4 full weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ Garmin: %lld km/tuần, trung bình 4 tuần đầy đủ gần nhất"
+          }
+        }
+      }
+    },
     "Runs from your Garmin watch, after each sync from now on.": {
       "localizations": {
         "vi": {

@@ -198,7 +198,7 @@ final class AppModel {
                                        deviceService: deviceConnectionService,
                                        loadWatchVolume: { [client] in
                                            guard let snapshot = try? await client.send(Endpoint<WatchVolume>.get("/api/auth/fitness-snapshot")),
-                                                 ["coros", "apple_health"].contains(snapshot.weeklyKmSource) else { return nil }
+                                                 ["coros", "apple_health", "garmin"].contains(snapshot.weeklyKmSource) else { return nil }
                                            return snapshot
                                        },
                                        connectAppleHealth: connectHealth,

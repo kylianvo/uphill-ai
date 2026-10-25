@@ -469,6 +469,8 @@ struct SetupSteps: View {
             if model.draft.weeklyKmFromWatch, let km = model.watchWeeklyKm {
                 Label(model.watchVolumeSource == "apple_health"
                       ? L("From Apple Health: %lld km a week over the last 4 full weeks", Int(km))
+                      : model.watchVolumeSource == "garmin"
+                      ? L("From Garmin: %lld km a week over the last 4 full weeks", Int(km))
                       : L("From your COROS: %lld km a week over the last 4 full weeks", Int(km)),
                       systemImage: "applewatch.radiowaves.left.and.right")
                     .font(UH.TextStyle.caption)

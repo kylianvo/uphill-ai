@@ -12,6 +12,16 @@ public struct CorosConnectionStatus: Codable, Sendable, Equatable {
     }
 }
 
+/// Display name of a backend `source_provider`, for "Source:" lines. Brand names, never translated.
+public func deviceSourceName(_ provider: String) -> String {
+    switch provider {
+    case "apple_health": "Apple Health"
+    case "garmin": "Garmin"
+    case "coros": "COROS"
+    default: provider
+    }
+}
+
 /// Garmin delivers data by push after the athlete's next watch sync, so there is no
 /// "Sync now"; `lastSyncAt` is when data last arrived.
 public struct GarminConnectionStatus: Codable, Sendable, Equatable {
