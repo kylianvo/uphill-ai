@@ -4579,15 +4579,13 @@ def coach_get_plan_journey(
     return _plan_journey(plan_id, athlete_id)
 
 
-async def _plan_nudge(plan_id: int, owner_id: int, lang: str) -> dict[str, Any]:
-    from datetime import date
-
+async def _plan_nudge(plan_id: int, owner_id: int, lang: str, client_today: str | None = None) -> dict[str, Any]:
     import db
     from services import coach_nudge, goal_service
 
     lang = "vi" if lang == "vi" else "en"
     plan = _goal_plan(plan_id, owner_id)
-    today = date.today()
+    today = resolve_today(client_today, calendar_ops.server_today())  # the athlete's Monday, not the server's
     workouts = get_plan_workouts(plan_id)
     latest = db.get_latest_goal_assessment(plan_id)
     shown = goal_service.with_plan_support(goal_service._present(latest), plan) if latest else None
@@ -4617,8 +4615,10 @@ async def _plan_nudge(plan_id: int, owner_id: int, lang: str) -> dict[str, Any]:
 
 
 @app.get("/api/plans/{plan_id}/coach-nudge")
-async def get_plan_coach_nudge(plan_id: int, lang: str = "en", user: dict[str, Any] = Depends(get_current_user)):
-    return await _plan_nudge(plan_id, user["id"], lang)
+async def get_plan_coach_nudge(
+    plan_id: int, lang: str = "en", client_today: str | None = None, user: dict[str, Any] = Depends(get_current_user)
+):
+    return await _plan_nudge(plan_id, user["id"], lang, client_today)
 
 
 @app.post("/api/plans/{plan_id}/goal/reassess")
