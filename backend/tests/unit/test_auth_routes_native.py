@@ -135,3 +135,37 @@ def test_apple_subject_links_existing_email_account(monkeypatch):
 
     assert user["id"] == 11
     assert db.get_user_by_provider("apple", "a1")["id"] == 11
+
+
+def test_user_response_preserves_saved_athlete_notes(monkeypatch):
+    monkeypatch.setattr(main, "_profile_field_sources", lambda user: {})
+    monkeypatch.setattr(main, "_unseen_coach_changes", lambda user: [])
+    user = {**_USER, "athlete_notes": "Prefer morning runs; keep descents gentle."}
+    assert main.format_user_response(user)["athlete_notes"] == user["athlete_notes"]
+
+
+def test_profile_update_preserves_omitted_key_and_allows_explicit_clear(monkeypatch):
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY, age INTEGER, max_hr INTEGER, resting_hr INTEGER,
+                aet_hr INTEGER, ant_hr INTEGER, gemini_api_key TEXT, zone2_pace_min TEXT,
+                zone2_pace_max TEXT, gender TEXT, height_cm REAL, weight_kg REAL,
+                threshold_pace TEXT, coros_vo2max REAL, coros_running_level REAL,
+                pace_zone_model TEXT, custom_pace_zones TEXT, athlete_notes TEXT,
+                threshold_source TEXT
+            )
+        """)
+        )
+        conn.execute(text("INSERT INTO users (id, gemini_api_key) VALUES (11, 'fake-key-to-preserve')"))
+    monkeypatch.setattr(db, "engine", engine)
+    assert db.update_user_profile(11, {"age": 31})
+    with engine.connect() as conn:
+        assert (
+            conn.execute(text("SELECT gemini_api_key FROM users WHERE id = 11")).scalar_one() == "fake-key-to-preserve"
+        )
+    assert db.update_user_profile(11, {"age": 31, "gemini_api_key": ""})
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT gemini_api_key FROM users WHERE id = 11")).scalar_one() == ""

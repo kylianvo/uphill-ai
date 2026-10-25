@@ -774,6 +774,7 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "preferred_run_days": user.get("preferred_run_days") or "[]",
         "long_run_day": user.get("long_run_day") or "",
         "injury_history": user.get("injury_history") or "",
+        "athlete_notes": user.get("athlete_notes"),
         "gemini_api_key": user.get("gemini_api_key") or "",
         "zone2_pace_min": _z2_min_for(user),
         "zone2_pace_max": _z2_max_for(user),

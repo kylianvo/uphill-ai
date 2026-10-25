@@ -1,0 +1,110 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="planui_10k" formatted="false">10k</string>
+    <string name="planui_5k" formatted="false">5k</string>
+    <string name="planui_actual" formatted="false">Actual</string>
+    <string name="planui_adapt_week" formatted="false">Adapt week</string>
+    <string name="planui_aet" formatted="false">AeT</string>
+    <string name="planui_all_day" formatted="false">All day</string>
+    <string name="planui_ant" formatted="false">AnT</string>
+    <string name="planui_build_a_new_plan" formatted="false">Build a new plan</string>
+    <string name="planui_build_next_week" formatted="false">Build next week</string>
+    <string name="planui_calendar" formatted="false">Calendar</string>
+    <string name="planui_change_watch_match" formatted="false">Change watch match</string>
+    <string name="planui_check_my_goal" formatted="false">Check my goal</string>
+    <string name="planui_coach_uphill" formatted="false">Coach Uphill</string>
+    <string name="planui_coach_guidance" formatted="false">Coach guidance</string>
+    <string name="planui_coach_review" formatted="false">Coach review</string>
+    <string name="planui_confidence" formatted="false">Confidence</string>
+    <string name="planui_confirm" formatted="false">Confirm</string>
+    <string name="planui_continue" formatted="false">Continue</string>
+    <string name="planui_continuous_jogging_min" formatted="false">Continuous jogging (min)</string>
+    <string name="planui_current_weekly_volume_km" formatted="false">Current weekly volume (km)</string>
+    <string name="planui_date_of_birth_yyyy_mm_dd" formatted="false">Date of birth (YYYY-MM-DD)</string>
+    <string name="planui_days_since_your_race" formatted="false">Days since your race</string>
+    <string name="planui_days_to_race" formatted="false">Days to race</string>
+    <string name="planui_delete" formatted="false">Delete</string>
+    <string name="planui_delete_plan" formatted="false">Delete plan?</string>
+    <string name="planui_double_sessions" formatted="false">Double sessions</string>
+    <string name="planui_edit_schedule_and_training_venues" formatted="false">Edit schedule and training venues</string>
+    <string name="planui_effort_rpe" formatted="false">Effort (RPE)</string>
+    <string name="planui_estimate_my_goal" formatted="false">Estimate my goal</string>
+    <string name="planui_estimated_training_zones" formatted="false">Estimated training zones</string>
+    <string name="planui_export_calendar" formatted="false">Export calendar</string>
+    <string name="planui_fatigue" formatted="false">Fatigue</string>
+    <string name="planui_fueling" formatted="false">Fueling</string>
+    <string name="planui_gear_vault" formatted="false">Gear Vault</string>
+    <string name="planui_goal_determiner" formatted="false">Goal Determiner</string>
+    <string name="planui_half_marathon" formatted="false">Half Marathon</string>
+    <string name="planui_hill_trail_days" formatted="false">Hill / trail days</string>
+    <string name="planui_how_is_recovery_going" formatted="false">How is recovery going?</string>
+    <string name="planui_injury_history" formatted="false">Injury history</string>
+    <string name="planui_knowledge_hub" formatted="false">Knowledge Hub</string>
+    <string name="planui_link_watch_activity" formatted="false">Link watch activity</string>
+    <string name="planui_make_your_plan_fit_you_better" formatted="false">Make your plan fit you better</string>
+    <string name="planui_manage_plan" formatted="false">Manage plan</string>
+    <string name="planui_marathon" formatted="false">Marathon</string>
+    <string name="planui_mark_done" formatted="false">Mark done</string>
+    <string name="planui_mark_missed" formatted="false">Mark missed</string>
+    <string name="planui_maximum_incline" formatted="false">Maximum incline (%)</string>
+    <string name="planui_missing" formatted="false">Missing</string>
+    <string name="planui_missing_training_zones_will_be_estimated_you_can_update_them_later_in_profile" formatted="false">Missing training zones will be estimated. You can update them later in Profile.</string>
+    <string name="planui_mixed" formatted="false">Mixed</string>
+    <string name="planui_move_swap" formatted="false">Move / swap</string>
+    <string name="planui_move_this_session_to_this_week_or_next_week" formatted="false">Move this session to this week or next week.</string>
+    <string name="planui_move_workout" formatted="false">Move workout</string>
+    <string name="planui_next_block" formatted="false">Next block</string>
+    <string name="planui_no_target" formatted="false">No target</string>
+    <string name="planui_no_watch_activities_in_this_plan_yet" formatted="false">No watch activities in this plan yet.</string>
+    <string name="planui_notes_for_coach_uphill" formatted="false">Notes for Coach Uphill</string>
+    <string name="planui_nutrition_lab" formatted="false">Nutrition Lab</string>
+    <string name="planui_offline_read_only" formatted="false">Offline · Read only</string>
+    <string name="planui_overall_effort_rpe" formatted="false">Overall effort (RPE)</string>
+    <string name="planui_pace_strategy" formatted="false">Pace Strategy</string>
+    <string name="planui_past_race_results_make_goal_estimates_more_useful" formatted="false">Past race results make goal estimates more useful.</string>
+    <string name="planui_pick_your_run_days" formatted="false">Pick your run days.</string>
+    <string name="planui_plan" formatted="false">Plan</string>
+    <string name="planui_priority_session" formatted="false">Priority session</string>
+    <string name="planui_race" formatted="false">Race</string>
+    <string name="planui_race_date_yyyy_mm_dd" formatted="false">Race date (YYYY-MM-DD)</string>
+    <string name="planui_race_distance_completed" formatted="false">Race distance completed</string>
+    <string name="planui_race_goal" formatted="false">Race goal</string>
+    <string name="planui_recorded_training" formatted="false">Recorded training</string>
+    <string name="planui_refresh" formatted="false">Refresh</string>
+    <string name="planui_review_your_plan" formatted="false">Review your plan</string>
+    <string name="planui_road" formatted="false">Road</string>
+    <string name="planui_save_notes" formatted="false">Save notes</string>
+    <string name="planui_save_profile_only" formatted="false">Save profile only</string>
+    <string name="planui_sessions_completed" formatted="false">Sessions completed</string>
+    <string name="planui_sessions_marked_done" formatted="false">Sessions marked done</string>
+    <string name="planui_share_ics_file" formatted="false">Share .ics file</string>
+    <string name="planui_share_a_calendar_file_with_google_calendar_outlook_or_another_calendar_app" formatted="false">Share a calendar file with Google Calendar, Outlook, or another calendar app.</string>
+    <string name="planui_start_date_yyyy_mm_dd" formatted="false">Start date (YYYY-MM-DD)</string>
+    <string name="planui_subscribe_in_calendar" formatted="false">Subscribe in calendar</string>
+    <string name="planui_swap_all_sessions_between_two_days_in_the_same_week" formatted="false">Swap all sessions between two days in the same week.</string>
+    <string name="planui_swap_days" formatted="false">Swap days</string>
+    <string name="planui_sync_watch" formatted="false">Sync watch</string>
+    <string name="planui_target_time_h_mm" formatted="false">Target time (h:mm)</string>
+    <string name="planui_the_previous_block_is_not_complete_enough_yet" formatted="false">The previous block is not complete enough yet.</string>
+    <string name="planui_this_changes_your_plan_target_your_workouts_stay_in_place" formatted="false">This changes your plan target. Your workouts stay in place.</string>
+    <string name="planui_trail" formatted="false">Trail</string>
+    <string name="planui_training_phase" formatted="false">Training phase</string>
+    <string name="planui_treadmill" formatted="false">Treadmill</string>
+    <string name="planui_ultra_60k_plus" formatted="false">Ultra (60k+)</string>
+    <string name="planui_ultra_under_60k" formatted="false">Ultra (&lt; 60k)</string>
+    <string name="planui_undo_missed" formatted="false">Undo missed</string>
+    <string name="planui_unlink_watch_activity" formatted="false">Unlink watch activity</string>
+    <string name="planui_update_time_target" formatted="false">Update Time Target?</string>
+    <string name="planui_use_suggested_time" formatted="false">Use suggested time</string>
+    <string name="planui_volume" formatted="false">Volume</string>
+    <string name="planui_watch_activities_can_fill_your_weekly_volume" formatted="false">Watch activities can fill your weekly volume.</string>
+    <string name="planui_watch_activity" formatted="false">Watch activity</string>
+    <string name="planui_week_review" formatted="false">Week review</string>
+    <string name="planui_where_you_train" formatted="false">Where you train</string>
+    <string name="planui_workout_notes" formatted="false">Workout notes</string>
+    <string name="planui_you_can_leave_this_screen_your_plan_will_keep_building" formatted="false">You can leave this screen. Your plan will keep building.</string>
+    <string name="planui_your_goal" formatted="false">Your goal</string>
+    <string name="planui_your_next_chapter_starts_here" formatted="false">Your next chapter starts here.</string>
+    <string name="planui_your_training_week" formatted="false">Your training week</string>
+    <string name="planui_weeks" formatted="false">weeks</string>
+</resources>
