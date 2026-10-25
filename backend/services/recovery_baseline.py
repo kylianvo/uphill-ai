@@ -41,20 +41,21 @@ def statuses(values: dict[date, float], days: Iterable[date]) -> list[tuple[date
     return out
 
 
-def refresh(user_id: int, dates: Iterable[date]) -> None:
+def refresh(user_id: int, dates: Iterable[date], provider: str = APPLE_HEALTH) -> None:
     """Recomputes baseline/status for each synced date and the 3 days after it (their
-    trailing mean and history include the synced date). Only apple_health rows with HRV."""
+    trailing mean and history include the synced date). Only `provider`'s rows with HRV:
+    Apple Health and Garmin report HRV without a status of their own."""
     dates = list(dates)
     if not dates:
         return
     affected = {d + timedelta(days=k) for d in dates for k in range(TRAILING_DAYS + 1)}
     start = min(dates) - timedelta(days=BASELINE_DAYS + TRAILING_DAYS)
     end = max(affected)
-    values = dict(db.get_daily_hrv(user_id, start, end, APPLE_HEALTH))
-    db.set_daily_hrv_status(user_id, APPLE_HEALTH, statuses(values, affected))
+    values = dict(db.get_daily_hrv(user_id, start, end, provider))
+    db.set_daily_hrv_status(user_id, provider, statuses(values, affected))
 
 
-SOURCE_NAMES = {"apple_health": "Apple Health", "coros": "COROS"}
+SOURCE_NAMES = {"apple_health": "Apple Health", "coros": "COROS", "garmin": "Garmin"}
 
 
 def source_name(provider: str | None) -> str:

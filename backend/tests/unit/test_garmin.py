@@ -311,3 +311,61 @@ def test_concurrent_token_refreshes_for_one_athlete_refresh_once(monkeypatch):
 
     assert asyncio.run(both()) == ["new", "new"]
     assert refreshes == ["r1"]
+
+
+# --- recovery (Phase 2) --------------------------------------------------
+
+
+def test_recovery_summaries_map_to_their_own_fields():
+    from datetime import date, time
+
+    rhr = garmin.to_daily_metric("dailies", {"calendarDate": "2026-10-24", "restingHeartRateInBeatsPerMinute": 48})
+    hrv = garmin.to_daily_metric("hrv", {"calendarDate": "2026-10-24", "lastNightAvg": 62})
+    sleep = garmin.to_daily_metric(
+        "sleeps",
+        {
+            "calendarDate": "2026-10-24",
+            "startTimeInSeconds": 1_761_235_200,  # 2026-10-23 16:00 UTC
+            "startTimeOffsetInSeconds": 25_200,  # UTC+7: 23:00 local
+            "durationInSeconds": 7 * 3600,
+            "awakeDurationInSeconds": 1800,
+            "validation": "AUTO_FINAL",
+        },
+    )
+    assert (rhr.metric_date, rhr.resting_hr, rhr.hrv_ms) == (date(2026, 10, 24), 48, None)
+    assert hrv.hrv_ms == 62.0 and hrv.resting_hr is None
+    assert sleep.sleep_minutes == 420 and sleep.sleep_start == time(23, 0) and sleep.sleep_end == time(6, 30)
+
+
+def test_unmeasured_or_implausible_recovery_is_skipped():
+    day = {"calendarDate": "2026-10-24"}
+    assert garmin.to_daily_metric("dailies", {**day, "restingHeartRateInBeatsPerMinute": 0}) is None
+    assert garmin.to_daily_metric("hrv", {**day, "lastNightAvg": 900}) is None
+    off_wrist = {**day, "startTimeInSeconds": 1, "durationInSeconds": 25_000, "validation": "OFF_WRIST"}
+    assert garmin.to_daily_metric("sleeps", off_wrist) is None
+    assert garmin.to_daily_metric("sleeps", {**off_wrist, "validation": "MANUAL"}) is None
+    assert garmin.to_daily_metric("dailies", {"calendarDate": "n/a", "restingHeartRateInBeatsPerMinute": 50}) is None
+
+
+def test_ingest_stores_recovery_and_derives_hrv_status_from_the_baseline(monkeypatch):
+    _ingest_stubs(monkeypatch)
+    stored, refreshed = [], []
+    monkeypatch.setattr(
+        garmin_ingest.db, "upsert_daily_metric", lambda u, m: stored.append((u, m.resting_hr, m.hrv_ms))
+    )
+    monkeypatch.setattr(garmin_ingest.recovery_baseline, "refresh", lambda u, d, p: refreshed.append((u, sorted(d), p)))
+    asyncio.run(
+        garmin_ingest.process(
+            {
+                "dailies": [{"userId": "g-1", "calendarDate": "2026-10-24", "restingHeartRateInBeatsPerMinute": 48}],
+                "hrv": [
+                    {"userId": "g-1", "calendarDate": "2026-10-24", "lastNightAvg": 62},
+                    {"userId": "stranger", "calendarDate": "2026-10-24", "lastNightAvg": 70},
+                ],
+            }
+        )
+    )
+    assert stored == [(42, 48, None), (42, None, 62.0)]
+    from datetime import date
+
+    assert refreshed == [(42, [date(2026, 10, 24)], "garmin")]

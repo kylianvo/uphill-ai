@@ -11,7 +11,7 @@ from typing import Any
 
 import db
 from log_utils import get_logger
-from services import garmin_oauth
+from services import garmin_oauth, recovery_baseline
 from services.matching import runner as matching_runner
 from services.providers import garmin
 
@@ -28,6 +28,8 @@ async def process(body: dict[str, Any]) -> None:
             continue
         if key in garmin.ACTIVITY_KEYS:
             await _activities(items)
+        elif key in garmin.RECOVERY_KEYS:
+            _recovery(key, items)
         elif key == "deregistrations":
             await _deregistrations(items)
         elif key == "userPermissionsChange":
@@ -67,6 +69,27 @@ async def _activities(items: list[dict[str, Any]]) -> None:
 
 # Garmin's answer when it no longer accepts the athlete's credentials.
 _REJECTED = frozenset({400, 401, 403})
+
+
+def _recovery(key: str, items: list[dict[str, Any]]) -> None:
+    """Resting HR, sleep and overnight HRV into daily_metrics. Garmin re-sends a summary
+    when more data arrives (a night synced while still asleep), and the newest value wins."""
+    days: dict[int, set[date]] = defaultdict(set)
+    for item in items:
+        connection = _connection(item)
+        if connection is None:
+            continue
+        metric = garmin.to_daily_metric(key, item)
+        if metric is None:
+            continue
+        db.upsert_daily_metric(connection["user_id"], metric)
+        days[connection["user_id"]].add(metric.metric_date)
+    for user_id, dates in days.items():
+        db.mark_connection_synced(user_id, garmin.PROVIDER)
+        if key == "hrv":
+            # Garmin sends no HRV status; derive it from the athlete's own 28-day baseline.
+            recovery_baseline.refresh(user_id, dates, garmin.PROVIDER)
+        _log("recovery_stored", user_id=user_id, summary_type=key, days=len(dates))
 
 
 async def _registration_gone(connection: dict[str, Any]) -> bool | None:
