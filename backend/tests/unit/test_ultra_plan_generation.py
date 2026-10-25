@@ -289,3 +289,23 @@ def test_first_taper_week_keeps_a_small_zone3_dose(rule_based_plan):
     first = min(w["week_number"] for w in taper)
     z3 = [w for w in taper if w.get("target_zone") == "Zone 3"]
     assert all(w["week_number"] == first for w in z3) and all(w["duration_minutes"] <= 45 for w in z3)
+
+
+def test_short_plan_opens_with_me_weeks_then_zone3(rule_based_plan):
+    wos = rule_based_plan(km=104.2, weeks=13, mountain_days=["Saturday"], tier="recreational", weekly_km=50,
+                          aet_hr=159, ant_hr=174, threshold_source="field")  # fmt: skip
+    me_weeks = ultra_rules.me_first_weeks(13, legs_loaded=False)
+    assert me_weeks == {1, 2, 3}
+    for wk in me_weeks:
+        rows = [w for w in wos if w["week_number"] == wk]
+        assert sum(w["type"] == "Muscular Endurance" for w in rows) == 2
+        assert not any(w.get("target_zone") == "Zone 3" for w in rows)
+    z3_weeks = {w["week_number"] for w in _quality(wos) if w["phase"] != "Taper"}
+    assert z3_weeks and z3_weeks <= {5, 6, 7, 9}
+
+
+def test_me_first_weeks_rules():
+    assert ultra_rules.me_first_weeks(8, legs_loaded=False) == {1, 2}  # never more than half the Zone 3 window
+    assert ultra_rules.me_first_weeks(16, legs_loaded=False) == frozenset()  # long plans: ME block in Base
+    assert ultra_rules.me_first_weeks(13, legs_loaded=True) == frozenset()  # climbing already loads the legs
+    assert ultra_rules.legs_loaded(1600) and not ultra_rules.legs_loaded(None)

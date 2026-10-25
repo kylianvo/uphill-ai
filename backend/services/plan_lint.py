@@ -52,6 +52,7 @@ class Prefs:
     flat_only: bool = False  # no training mountain or local hills: climbing cannot be judged on gain
     total_weeks: int | None = None  # lets the specificity checks find the last pre-taper week
     mountain_day: bool = False  # a weekly mountain day: an ultra follows Quang's ladder (services/ultra_rules.py)
+    me_first_weeks: frozenset[int] = frozenset()  # short ultra plans: ME weeks before the Zone 3 weeks
     quality_gated: bool = False  # AeT gate on (gap > 10% or estimated thresholds): one quality session at most
 
 
@@ -445,7 +446,7 @@ def lint_week(
 
     if ultra:
         issues += _ultra_issues(weeks, ws, week, ultra, recent_long, prefs)
-        issues += _me_load(ws, week, profile, total)  # only ladder plans' prompt states the ME limit
+        issues += _me_load(ws, week, profile, total, week in prefs.me_first_weeks)  # only ladder plans state it
 
     if not _is_down(weeks, week):
         builds, wk = 1, week - 1
@@ -518,7 +519,7 @@ def _ultra_issues(
             )
         )
     elif phase in ("Base", "Build", "Peak"):
-        in_window = week in ultra_rules.quality_weeks(prefs.total_weeks)
+        in_window = week in ultra_rules.quality_weeks(prefs.total_weeks) and week not in prefs.me_first_weeks
         want, reps, rep = ultra_rules.quality_dose(advanced, prefs.quality_gated, week_minutes(ws))
         want = want if in_window else 0
         if not _is_down(weeks, week) and len(quality) != want:
@@ -539,16 +540,20 @@ def _ultra_issues(
     return out
 
 
-def _me_load(ws: list[dict[str, Any]], week: int, profile: TierProfile, run_minutes: float) -> list[Issue]:
+def _me_load(
+    ws: list[dict[str, Any]], week: int, profile: TierProfile, run_minutes: float, me_first: bool = False
+) -> list[Issue]:
     """Book: ME once a week (advanced athletes up to twice in Base and Build), at most 10% of training time."""
     me = [w for w in ws if _is_me(w)]
     if not me:
         return []
     phase = next((w.get("phase") for w in ws if w.get("phase")), "")
-    allowed = 2 if ultra_rules.is_advanced(profile.key) and phase in ("Base", "Build") else 1
+    allowed = 2 if me_first or (ultra_rules.is_advanced(profile.key) and phase in ("Base", "Build")) else 1
     me_min = sum(_min(w) for w in me)
     # one standard session (45-60 min) is always allowed; the 10% share caps what is added beyond it
-    if len(me) <= allowed and (len(me) == 1 or me_min <= ultra_rules.ME_MAX_SHARE * (run_minutes + me_min) + 1):
+    if len(me) <= allowed and (
+        len(me) == 1 or me_first or me_min <= ultra_rules.ME_MAX_SHARE * (run_minutes + me_min) + 1
+    ):
         return []
     return [
         Issue(
