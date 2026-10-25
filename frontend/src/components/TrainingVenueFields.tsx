@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, type CSSProperties } from "react";
 import { getApiBaseUrl } from "../lib/apiUrlOverride";
 import type { TrainingMountain } from "../types";
 import { translations } from "../app/translations";
@@ -56,6 +56,29 @@ export function trailLongRunDay(chosen: string, trailDays: string[]): string {
 
 const VI_DAYS = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
 export const dayLabel = (day: string, lang: string) => (lang === "vi" ? VI_DAYS[FULL_DAYS.indexOf(day)] ?? day : day);
+
+// Long-run day picker that matches training_venues.long_run_day: with trail days it only offers
+// those (one trail day: a fixed row), and shows the trail day the plan will actually use.
+export function LongRunDaySelect({ lang, t, value, trailDays, onChange, className, style }: {
+  lang: string;
+  t: (key: keyof typeof translations.en) => string;
+  value: string;
+  trailDays: string[];
+  onChange: (day: string) => void;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  const choices = trailDays.length ? FULL_DAYS.filter(d => trailDays.includes(d)) : FULL_DAYS;
+  const shown = trailLongRunDay(value, trailDays);
+  return <>
+    {choices.length === 1
+      ? <div data-testid="long-run-fixed" style={{ fontWeight: 600, fontSize: "13px", padding: "8px 0" }}>{dayLabel(shown, lang)}</div>
+      : <select className={className} style={style} value={shown} onChange={e => onChange(e.target.value)}>
+        {choices.map(d => <option key={d} value={d}>{dayLabel(d, lang)}</option>)}
+      </select>}
+    {trailDays.length > 0 && <div style={{ fontSize: "11px", marginTop: "6px", color: "var(--text-secondary)" }}>{t("plan_long_run_on_trail_day")}</div>}
+  </>;
+}
 
 const SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHORT_DAYS_VI = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];

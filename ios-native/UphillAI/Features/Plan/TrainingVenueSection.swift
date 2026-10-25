@@ -231,3 +231,39 @@ struct TrainingMountain: Decodable, Sendable, Identifiable {
     let defaultMinMinutes: Int?
     var id: String { key }
 }
+
+/// The long run goes on a trail day when there is one, so with trail days this only offers those
+/// (one trail day: a fixed row), and shows the day the plan will actually use.
+struct LongRunDayRow: View {
+    let title: LocalizedStringKey
+    @Binding var day: Weekday?
+    let runDays: [Weekday]
+    let trailDays: Set<Weekday>
+
+    var body: some View {
+        let choices = Weekday.longRunChoices(runDays: runDays, trailDays: trailDays)
+        let onTrail = choices.contains(where: trailDays.contains)
+        let shown = onTrail ? Weekday.nearestTrailDay(to: day, among: Set(choices)) : day
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(title).font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                Spacer()
+                if onTrail, choices.count == 1 {
+                    Text(L(choices[0].rawValue)).font(UH.TextStyle.label).foregroundStyle(UH.Palette.accentInk)
+                } else {
+                    Picker(title, selection: Binding(get: { shown }, set: { day = $0 })) {
+                        if shown == nil { Text("Not set").tag(Weekday?.none) }
+                        ForEach(choices) { Text(L($0.rawValue)).tag(Weekday?($0)) }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(UH.Palette.accentInk)
+                }
+            }
+            .frame(minHeight: 44)
+            if onTrail {
+                Text("On your trail day, where the climbing is.")
+                    .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+            }
+        }
+    }
+}
