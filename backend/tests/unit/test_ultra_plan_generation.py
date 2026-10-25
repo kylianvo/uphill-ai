@@ -129,11 +129,11 @@ def test_ultra_quality_only_in_the_window(rule_based_plan):
     wos = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="elite", weekly_km=100,
                           aet_hr=150, ant_hr=160, threshold_source="lab")  # fmt: skip
     window = ultra_rules.quality_weeks(20)
-    hard = _quality(wos)
+    hard = [w for w in _quality(wos) if w["phase"] != "Taper"]  # the first taper week keeps a small dose
     assert hard and all(w["week_number"] in window for w in hard)
     assert all(w["target_zone"] == "Zone 3" for w in hard)
     per_week = {wk: sum(1 for w in hard if w["week_number"] == wk) for wk in window}
-    assert max(per_week.values()) == 2 and all(n <= 2 for n in per_week.values())
+    assert max(per_week.values()) == 1  # elite tier, but ~100 km weeks: under 15 h, so the single dose
 
 
 def test_gated_runner_gets_one_zone3_in_the_window(rule_based_plan):
@@ -272,3 +272,20 @@ def test_sub_elite_gets_one_zone3_and_the_window_is_labelled_build(rule_based_pl
     hard = _quality(wos)
     assert hard and max(sum(1 for w in hard if w["week_number"] == wk) for wk in window) == 1
     assert all(w["phase"] != "Base" for w in wos if w["week_number"] in window)
+
+
+def test_quality_dose_needs_elite_volume_and_keeps_zone3_under_9_percent():
+    assert ultra_rules.quality_dose(True, False, 1200) == (2, 4, 12)  # 96 min of 1200 = 8%
+    assert ultra_rules.quality_dose(True, False, 960) == (2, 3, 12)  # 4 reps would be 10%
+    assert ultra_rules.quality_dose(True, False, 600) == (1, 3, 10)  # elite tier, 10 h week
+    assert ultra_rules.quality_dose(False, False, 420) == (1, 3, 10)  # 30 min of 420 = 7%
+    assert ultra_rules.quality_dose(False, True, 240) == (1, 2, 10)  # never below 20 min of work
+
+
+def test_first_taper_week_keeps_a_small_zone3_dose(rule_based_plan):
+    wos = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="recreational", weekly_km=60,
+                          aet_hr=159, ant_hr=174, threshold_source="field")  # fmt: skip
+    taper = [w for w in wos if w["phase"] == "Taper"]
+    first = min(w["week_number"] for w in taper)
+    z3 = [w for w in taper if w.get("target_zone") == "Zone 3"]
+    assert all(w["week_number"] == first for w in z3) and all(w["duration_minutes"] <= 45 for w in z3)

@@ -519,16 +519,16 @@ def _ultra_issues(
         )
     elif phase in ("Base", "Build", "Peak"):
         in_window = week in ultra_rules.quality_weeks(prefs.total_weeks)
-        want = ultra_rules.quality_per_week(advanced, prefs.quality_gated) if in_window else 0
+        want, reps, rep = ultra_rules.quality_dose(advanced, prefs.quality_gated, week_minutes(ws))
+        want = want if in_window else 0
         if not _is_down(weeks, week) and len(quality) != want:
-            work = ultra_rules.quality_work_minutes(advanced, prefs.quality_gated)
             out.append(
                 Issue(
                     "QUALITY_COUNT",
                     week,
                     f"Week {week} has {len(quality)} Zone 3+ sessions; it needs {want}. "
                     + (
-                        f"Make {want} of them uphill or rolling intervals in Zone 3 ({work[0]}-{work[1]} min of work, "
+                        f"Make {want} of them uphill or rolling intervals in Zone 3 ({reps} x {rep} min of work, "
                         f"at most {ultra_rules.QUALITY_MAX_MIN} min in all), 48 h from the long run and ME."
                         if want
                         else "Before the last 8 build weeks an ultra has no Zone 3+ sessions: hill sprints, strides "

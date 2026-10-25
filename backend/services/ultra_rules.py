@@ -16,6 +16,8 @@ QUALITY_MAX_MIN = 90
 QUALITY_WINDOW_WEEKS = 8
 ME_FREE_LONG_RUN_MIN = 360
 ME_MAX_SHARE = 0.10
+ELITE_DOSE_WEEK_MIN = 900  # the 2 x 40-60 min Zone 3 dose needs an elite engine AND 15-20+ h weeks (KB 2026-10-25)
+ZONE3_SHARE = 0.09  # 100 km runners keep Zone 3 at 7-9% of weekly time (KB)
 
 # (start steps, filler, end steps ending at the peak, recovery-week long run), in minutes
 _LADDERS: dict[tuple[Band, bool], tuple[list[int], int, list[int], int]] = {
@@ -49,6 +51,16 @@ def weekday_minutes(band: Band, advanced: bool) -> tuple[int, int]:
     if band == "50k":
         return (45, 90)
     return (60, 150) if band == "100mi" and advanced else (60, 90)
+
+
+def quality_dose(advanced: bool, gated: bool, week_minutes: float) -> tuple[int, int, int]:
+    """(sessions, reps, minutes per rep) of Zone 3 for a week in the window. The double dose needs an ungated elite
+    and a 15 h+ week; reps then drop (to 2 at least, the 20 min minimum) until Zone 3 is <= 9% of the week."""
+    elite = advanced and not gated and week_minutes >= ELITE_DOSE_WEEK_MIN
+    n, reps, rep = (2, 4, 12) if elite else (1, 3, 10)
+    while reps > 2 and n * reps * rep > ZONE3_SHARE * week_minutes:
+        reps -= 1
+    return n, reps, rep
 
 
 def quality_per_week(advanced: bool, gated: bool) -> int:
