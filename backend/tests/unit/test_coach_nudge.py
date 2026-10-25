@@ -117,3 +117,39 @@ def test_zone_labels_are_not_invented_numbers():
 def test_next_session_never_points_to_a_day_already_past():
     ws = _week(1, 5) + _week(2, 5) + [w(3, "Monday", 60, title="Past run"), w(3, "Thursday", 60, title="Next run")]
     assert facts(ws)["next_session"]["title"] == "Next run"
+
+
+def _legs_week():
+    return [
+        w(3, "Tuesday", 50, type="Muscular Endurance", title="Muscular Endurance (ME)"),
+        w(3, "Wednesday", 60),
+        w(3, "Thursday", 50, type="Muscular Endurance", title="Muscular Endurance (ME)"),
+        w(3, "Saturday", 180, type="Long Run", title="Mountain Long Run"),
+    ]
+
+
+def test_this_week_names_the_focus_and_the_session_to_nail():
+    f = facts(_week(1, 5) + _week(2, 5) + _legs_week())
+    week = f["this_week"]
+    assert week["focus"] == "leg_strength"
+    assert [s["day"] for s in week["key_sessions"]] == ["Tuesday", "Thursday", "Saturday"]
+    assert week["nail"] == {"day": "Saturday", "title": "Mountain Long Run", "minutes": 180}
+
+
+def test_a_quiet_week_still_gets_a_steady_review():
+    f = facts(_week(1, 3) + _week(2, 3) + _legs_week())  # 60% last week: neither slip nor solid
+    assert coach_nudge.tone_for(f) == "steady"
+
+
+def test_fallback_review_has_three_grounded_messages_and_a_nail():
+    f = facts(_week(1, 5) + _week(2, 5) + _legs_week())
+    for lang in ("en", "vi"):
+        review = coach_nudge.fallback_review(f, coach_nudge.tone_for(f), lang)
+        assert len(review["messages"]) == 3 and review["nail"].startswith("Saturday: Mountain Long Run, 180")
+        assert coach_nudge.acceptable(review, f)
+
+
+def test_a_model_review_with_an_invented_number_is_rejected():
+    f = facts(_week(1, 5) + _week(2, 5) + _legs_week())
+    review = {"messages": ["5 for 5.", "Legs week.", "You will climb 4321 m this week."], "nail": "Saturday, 180 min."}
+    assert not coach_nudge.acceptable(review, f)

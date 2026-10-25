@@ -69,6 +69,9 @@ struct CoachNudge: Decodable, Sendable, Equatable {
 
     let tone: String
     let text: String
+    /// The weekly review: three short messages and the session to nail (absent on older servers).
+    var messages: [String]? = nil
+    var nail: String? = nil
     var kind: Tone { Tone(rawValue: tone) ?? .encourage }
 }
 

@@ -48,15 +48,16 @@ def test_coach_nudge_on_claude_is_worded_by_the_model(claude):
 
     claude("COACH_NUDGE_LLM_PROVIDER")
     f = {"week": 2, "done_pct": 100}
+    answer = json.dumps({"messages": ["Great week.", "Legs week.", "Keep Friday easy."], "nail": "Sat: Long Run."})
     with (
         patch.object(coach_nudge, "tone_for", return_value="encourage"),
         patch.object(coach_nudge, "grounded", return_value=True),
-        patch.object(coach_nudge, "_parse", side_effect=lambda t: t),
-        patch("services.claude_llm.generate", return_value=fake_message("Great week.")) as generate,
+        patch("services.claude_llm.generate", return_value=fake_message(answer)) as generate,
     ):
         out = asyncio.run(coach_nudge.nudge(f, "en", api_key=None))
     assert out["source"] == "model"
-    assert out["text"] == "Great week."
+    assert out["messages"] == ["Great week.", "Legs week.", "Keep Friday easy."] and out["nail"] == "Sat: Long Run."
+    assert out["text"] == "Great week. Legs week. Keep Friday easy."
     assert "thinking" not in generate.call_args.kwargs  # thinking off lost a grounded nudge (8/8 -> 7/8)
 
 

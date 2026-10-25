@@ -111,6 +111,40 @@ struct PlanAuditScreenshots {
         }
     }
 
+    /// The weekly review card: closed (one line) and open (three messages and the session to nail).
+    @Test func renderCoachWeeklyReview() async throws {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh")!
+        let now = cal.date(from: DateComponents(year: 2026, month: 10, day: 26, hour: 7))!  // Monday of week 2
+        let plan = TestData.plan(["id": 131, "race_name": "Vietnam Highlands Trail by UTMB", "race_date": "2027-01-09",
+                                  "goal_type": "time", "target_time_hours": 15.75, "course_distance_km": 104.2, "course_elevation_gain_m": 5533,
+                                  "total_weeks": 13, "current_week": 2, "start_date": "2026-10-19", "plan_status": "active"])
+        func w(_ id: Int, _ day: String, _ type: String, _ min: Double, _ title: String) -> Workout {
+            TestData.workout(["id": id, "week_number": 2, "day_of_week": day, "type": type, "duration_minutes": min, "title": title, "target_zone": "Z1"])
+        }
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(PlanSnapshot(plan: plan, workouts: [
+            w(1, "Tuesday", "Muscular Endurance", 50, "Muscular Endurance (ME)"), w(2, "Thursday", "Muscular Endurance", 50, "Muscular Endurance (ME)"),
+            w(3, "Saturday", "Long Run", 180, "Mountain Long Run")])) }
+        service.journeyResult.withLock { $0 = try? decode(PlanJourney.self, ["current_week": 2, "total_weeks": 13, "days_to_race": 75, "phases": [],
+                                                                            "milestones": [], "preferences": [:], "deviations": []]) }
+        service.nudgeResult.withLock { $0 = try? decode(CoachNudge.self, [
+            "tone": "encourage", "text": "x",
+            "messages": ["5 of 5 sessions last week, and the long run stayed easy. Exactly right.",
+                         "This week is legs: ME on Tuesday and Thursday, mountain on Saturday. Strong legs keep you climbing on VHT when others walk.",
+                         "Keep Friday easy. Heavy legs on Saturday mean Thursday's ME was too hard."],
+            "nail": "Saturday: Mountain Long Run, 180 min. Power-hike anything steeper than 10%."]) }
+        let model = PlanViewModel(service: service, cache: .inMemory(), now: { now }, calendar: cal)
+        await model.load()
+        model.selectedWeek = 2
+        await model.loadJourney()
+        #expect(model.coachNudge?.messages?.count == 3)
+        for open in [false, true] {
+            save(CoachReviewCard(model: model, onOpenReview: {}, expanded: open).padding(), name: "coach-review-\(open ? "open" : "closed")",
+                 height: open ? 520 : 120)
+        }
+    }
+
     /// Week 1 of a fresh plan: nothing reviewed yet, so the coach card welcomes; the goal card shows target, A/B/C and status.
     @Test func renderWeekOne() async throws {
         var cal = Calendar(identifier: .gregorian)

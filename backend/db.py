@@ -1031,6 +1031,9 @@ def init_db():
             "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS hrv_range_high REAL",
             "ALTER TABLE activities ADD COLUMN IF NOT EXISTS hr_drift_pct REAL",
             "ALTER TABLE activities ADD COLUMN IF NOT EXISTS hr_drift_checked BOOLEAN NOT NULL DEFAULT FALSE",
+            # the coach's weekly review: three short messages and the session to nail (coach_nudge.review)
+            "ALTER TABLE coach_nudges ADD COLUMN IF NOT EXISTS messages JSONB",
+            "ALTER TABLE coach_nudges ADD COLUMN IF NOT EXISTS nail TEXT",
             "ALTER TABLE chat_proposals DROP CONSTRAINT IF EXISTS chk_chat_proposals_kind",
             "ALTER TABLE chat_proposals ADD CONSTRAINT chk_chat_proposals_kind CHECK (kind IN ('schedule', 'rebuild'))",
             "ALTER TABLE chat_proposals DROP CONSTRAINT IF EXISTS chk_chat_proposals_status",
@@ -1930,7 +1933,9 @@ def update_workout_log(
             )
             if is_completed == 1:
                 conn.execute(
-                    text("UPDATE workouts SET is_missed = 0, missed_reason = NULL, missed_origin = NULL WHERE id = :id"),
+                    text(
+                        "UPDATE workouts SET is_missed = 0, missed_reason = NULL, missed_origin = NULL WHERE id = :id"
+                    ),
                     {"id": workout_id},
                 )
         if is_missed is not None:
@@ -4637,16 +4642,19 @@ def upsert_coach_nudge(plan_id: int, day: Any, lang: str, nudge: dict[str, Any])
     with engine.connect() as conn:
         conn.execute(
             text("""
-                INSERT INTO coach_nudges (plan_id, day, lang, facts_hash, tone, text, source)
-                VALUES (:plan_id, :day, :lang, :facts_hash, :tone, :text, :source)
+                INSERT INTO coach_nudges (plan_id, day, lang, facts_hash, tone, text, source, messages, nail)
+                VALUES (:plan_id, :day, :lang, :facts_hash, :tone, :text, :source, CAST(:messages AS JSONB), :nail)
                 ON CONFLICT (plan_id, day, lang) DO UPDATE SET facts_hash = EXCLUDED.facts_hash,
-                    tone = EXCLUDED.tone, text = EXCLUDED.text, source = EXCLUDED.source, created_at = NOW()
+                    tone = EXCLUDED.tone, text = EXCLUDED.text, source = EXCLUDED.source,
+                    messages = EXCLUDED.messages, nail = EXCLUDED.nail, created_at = NOW()
             """),
             {
                 "plan_id": plan_id,
                 "day": day,
                 "lang": lang,
                 **{k: nudge[k] for k in ("facts_hash", "tone", "text", "source")},
+                "messages": json.dumps(nudge["messages"]) if nudge.get("messages") else None,
+                "nail": nudge.get("nail"),
             },
         )
         conn.commit()
@@ -4656,7 +4664,8 @@ def get_coach_nudge(plan_id: int, day: Any, lang: str) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(
             text(
-                "SELECT facts_hash, tone, text, source FROM coach_nudges WHERE plan_id = :p AND day = :d AND lang = :l"
+                "SELECT facts_hash, tone, text, source, messages, nail FROM coach_nudges "
+                "WHERE plan_id = :p AND day = :d AND lang = :l"
             ),
             {"p": plan_id, "d": day, "l": lang},
         ).fetchone()
