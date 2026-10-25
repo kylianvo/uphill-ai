@@ -126,7 +126,7 @@ def _quality(wos):
 
 
 def test_ultra_quality_only_in_the_window(rule_based_plan):
-    wos = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="sub_elite", weekly_km=100,
+    wos = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="elite", weekly_km=100,
                           aet_hr=150, ant_hr=160, threshold_source="lab")  # fmt: skip
     window = ultra_rules.quality_weeks(20)
     hard = _quality(wos)
@@ -263,3 +263,12 @@ def test_flat_athlete_without_city_vertical_gets_flat_zone3_on_weekdays(rule_bas
     weekday = [w for w in _quality(wos) if w["day_of_week"] != "Saturday"]
     assert weekday and all("treadmill" not in w["description"] and "stairs" not in w["description"] for w in weekday)
     assert not any("uphill" in w["title"].lower() for w in weekday)
+
+
+def test_sub_elite_gets_one_zone3_and_the_window_is_labelled_build(rule_based_plan):
+    wos = rule_based_plan(km=104.2, weeks=13, mountain_days=["Saturday"], tier="sub_elite", weekly_km=50,
+                          aet_hr=159, ant_hr=174, threshold_source="field")  # the 13-week plan from the bug  # fmt: skip
+    window = ultra_rules.quality_weeks(13)
+    hard = _quality(wos)
+    assert hard and max(sum(1 for w in hard if w["week_number"] == wk) for wk in window) == 1
+    assert all(w["phase"] != "Base" for w in wos if w["week_number"] in window)

@@ -1182,6 +1182,8 @@ class PlanGenerator:
             flat_only=not venues.local_hills and not venues.training_mountain and not venues.mountain_days,
             total_weeks=total_weeks,
             mountain_day=bool(venues.mountain_days),
+            # same dose rule as the generator's ultra_gated: two Zone 3 sessions a week are for elites only
+            quality_gated=get_profile(tier).key != "elite",
         )
         issues = plan_lint.lint_weeks(combined, weeks, profile, prefs)
         first = min(weeks) if weeks else 1
@@ -1451,7 +1453,9 @@ class PlanGenerator:
         ultra = ultra_rules.applies(course_distance_km, venues.mountain_days)
         ultra_advanced = ultra_rules.is_advanced(tier_profile.key)
         ultra_quality_weeks = ultra_rules.quality_weeks(total_weeks) if ultra else frozenset()
-        ultra_gated = bool(hard_banned)  # AeT gate on: one minimum-dose Zone 3 session in the window (book)
+        # One 20-30 min Zone 3 session a week in the window unless elite: the 2 x 40-60 min dose needs an elite
+        # engine and 15-20+ h weeks, not just a cured AeT gap (book, confirmed with the KB 2026-10-25).
+        ultra_gated = bool(hard_banned) or tier_profile.key != "elite"
 
         # Extract Zone 2 bounds and calculate personalized pacing zone ranges.
         # goal_type comes from the PLAN, not the user: the same athlete can hold a
@@ -2848,6 +2852,9 @@ class PlanGenerator:
             for wo in wos:
                 if isinstance(wo.get("week_number"), int):
                     wo["phase"] = PlanGenerator.phase_for_week(wo["week_number"], total_weeks)
+                    # A short ultra plan protects the final 8 weeks before the taper as the Specific block (book).
+                    if wo["phase"] == "Base" and wo["week_number"] in ultra_quality_weeks:
+                        wo["phase"] = "Build"
             _cap_hard_dose(wos)
             _respect_days(wos)
             _pair_strength_with_run(wos)
