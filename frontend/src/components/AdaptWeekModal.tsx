@@ -4,7 +4,7 @@ import { Sparkle, X, Lightning, CheckCircle } from "@phosphor-icons/react";
 import { translations } from "../app/translations";
 import { describeGuard, localToday, tr } from "../lib/scheduleProposals";
 import ConfirmActionModal from "./ConfirmActionModal";
-import { TrainingVenueFields } from "./TrainingVenueFields";
+import { LongRunDaySelect, TrainingVenueFields } from "./TrainingVenueFields";
 import MissedReasonChips from "./MissedReasonChips";
 import { dayLabel } from "../utils/dayLabels";
 
@@ -519,19 +519,10 @@ export function AdaptWeekModal({
                 <label style={{ display: "block", fontSize: "11.5px", fontWeight: "600", marginBottom: "4px", color: "var(--text-secondary)" }}>
                   {t("plan_long_run_day")}
                 </label>
-                <select
-                  className="chat-input"
+                <LongRunDaySelect lang={lang} t={t} className="chat-input"
                   style={{ borderRadius: "8px", width: "100%", height: "36px", padding: "0 8px", fontSize: "12.5px" }}
-                  value={schedule.long_run_day}
-                  onChange={(e) => setSchedule({ ...schedule, long_run_day: e.target.value })}
-                >
-                  {FULL_DAYS.map((d) => {
-                    const label = lang === "vi"
-                      ? d.replace("Monday", "Thứ Hai").replace("Tuesday", "Thứ Ba").replace("Wednesday", "Thứ Tư").replace("Thursday", "Thứ Năm").replace("Friday", "Thứ Sáu").replace("Saturday", "Thứ Bảy").replace("Sunday", "Chủ Nhật")
-                      : d;
-                    return <option key={d} value={d}>{label}</option>;
-                  })}
-                </select>
+                  value={schedule.long_run_day} trailDays={schedule.mountain_days}
+                  onChange={(day) => setSchedule({ ...schedule, long_run_day: day })} />
               </div>
 
               <div>

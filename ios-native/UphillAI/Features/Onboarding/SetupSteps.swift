@@ -436,19 +436,9 @@ struct SetupSteps: View {
                 SetupError(model: model, field: .preferredDays)
             }
 
-            HStack {
-                Text("Long run").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
-                Spacer()
-                Picker("Long run", selection: $model.draft.longRunDay) {
-                    ForEach(model.draft.orderedDays) { Text(L($0.rawValue)).tag($0) }
-                }
-                .pickerStyle(.menu)
-                .tint(UH.Palette.accentInk)
-            }
-            .frame(minHeight: 44)
-            if let note = Weekday.trailLongRunNote(longRun: model.draft.longRunDay, mountainDays: model.draft.mountainDays) {
-                Text(note).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
-            }
+            LongRunDayRow(title: "Long run",
+                          day: Binding(get: { model.draft.longRunDay }, set: { if let day = $0 { model.draft.longRunDay = day } }),
+                          runDays: model.draft.orderedDays, trailDays: model.draft.mountainDays)
         }
         .trainingCard()
 

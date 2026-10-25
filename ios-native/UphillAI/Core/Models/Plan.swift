@@ -17,11 +17,10 @@ enum Weekday: String, CaseIterable, Codable, Sendable, Identifiable {
         return Weekday.allCases.filter(trailDays.contains).min { gap($0) < gap($1) }
     }
 
-    /// The plan generator moves the long run onto a trail day (training_venues.long_run_day); say so before it does.
-    static func trailLongRunNote(longRun: Weekday?, mountainDays: Set<Weekday>) -> String? {
-        guard !mountainDays.isEmpty, longRun.map({ !mountainDays.contains($0) }) ?? true else { return nil }
-        let days = Weekday.allCases.filter(mountainDays.contains).map { L($0.rawValue) }.joined(separator: ", ")
-        return L("Long runs go on your trail day (%@), where the climbing is.", days)
+    /// Days the long run can go on: the trail days among the run days, else every run day (training_venues.long_run_day).
+    static func longRunChoices(runDays: [Weekday], trailDays: Set<Weekday>) -> [Weekday] {
+        let trail = runDays.filter(trailDays.contains)
+        return trail.isEmpty ? runDays : trail
     }
 }
 

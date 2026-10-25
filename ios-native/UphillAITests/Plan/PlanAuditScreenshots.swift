@@ -145,6 +145,15 @@ struct PlanAuditScreenshots {
         }
     }
 
+    /// Long-run row with no trail day, one trail day (fixed) and two trail days (picker of those only).
+    @Test func renderLongRunDayRow() {
+        let all = Weekday.allCases
+        for (name, trail) in [("none", Set<Weekday>()), ("one", [.saturday]), ("two", [.saturday, .sunday])] as [(String, Set<Weekday>)] {
+            save(LongRunDayRow(title: "Long-run day", day: .constant(.sunday), runDays: all, trailDays: trail).padding(),
+                 name: "long-run-\(name)", height: 140)
+        }
+    }
+
     /// Week 1 of a fresh plan: nothing reviewed yet, so the coach card welcomes; the goal card shows target, A/B/C and status.
     @Test func renderWeekOne() async throws {
         var cal = Calendar(identifier: .gregorian)

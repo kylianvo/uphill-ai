@@ -12111,12 +12111,12 @@
         }
       }
     },
-    "Long runs go on your trail day (%@), where the climbing is.": {
+    "On your trail day, where the climbing is.": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buổi chạy dài sẽ xếp vào ngày trail (%@) để có leo dốc."
+            "value": "Vào ngày trail của bạn, nơi có leo dốc."
           }
         }
       }
