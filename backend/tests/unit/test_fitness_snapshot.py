@@ -281,6 +281,15 @@ class TestDeviceProviders:
         assert snap.weekly_km == pytest.approx(137.4, abs=0.1)
         assert "Apple Health" in snap.prompt_block("en")
 
+    def test_garmin_alone_is_measured_and_named(self, stub_db, monkeypatch):
+        self._connections(
+            monkeypatch,
+            {"garmin": {"status": "active", "last_sync_at": datetime(2026, 8, 28, 6, 17, tzinfo=UTC)}},
+        )
+        snap = fs.build(30, today=TODAY)
+        assert snap.weekly_km_source == "garmin"
+        assert "Garmin" in snap.prompt_block("en")
+
     def test_fresher_provider_wins(self, stub_db, monkeypatch):
         self._connections(
             monkeypatch,
