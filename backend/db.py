@@ -1017,6 +1017,9 @@ def init_db():
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS generation_traced_at TIMESTAMPTZ",
             "ALTER TABLE goal_assessments ADD COLUMN IF NOT EXISTS trace_id TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
+            # Garmin Agreement §15.11: once set (first Garmin connect), never cleared -- chats built on that
+            # data stay Garmin data even after disconnect, so the user never feeds AI evaluation.
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_eval_excluded BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_last_week_review TEXT",
             "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_this_week_description TEXT",
             # Coach Chat 4b (week rebuild) -- see the chat_proposals / chat_daily_usage CREATE TABLEs.
@@ -3997,6 +4000,16 @@ def upsert_daily_metric(user_id: int, metric) -> int:
         ).fetchone()
         conn.commit()
         return row[0]
+
+
+def mark_ai_eval_excluded(user_id: int) -> None:
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE users SET ai_eval_excluded = TRUE WHERE id = :u"), {"u": user_id})
+
+
+def is_ai_eval_excluded(user_id: int) -> bool:
+    with engine.connect() as conn:
+        return bool(conn.execute(text("SELECT ai_eval_excluded FROM users WHERE id = :u"), {"u": user_id}).scalar())
 
 
 def get_connection(user_id: int, provider: str) -> dict[str, Any] | None:

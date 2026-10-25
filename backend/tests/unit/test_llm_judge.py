@@ -29,12 +29,16 @@ def test_maybe_judge_turn_skips_when_unsampled_or_disabled(monkeypatch):
     started = []
     monkeypatch.setattr(llm_judge, "_judge_and_score", lambda *a, **k: started.append(1))
     monkeypatch.setattr(observability, "enabled", lambda: True)
-    kwargs = dict(trace_id="a" * 32, message_id=1, question="q", reply="r", evidence=None, lang="en", api_key="k")
+    monkeypatch.setattr(llm_judge.db, "is_ai_eval_excluded", lambda uid: uid == 99)
+    kwargs = dict(
+        user_id=1, trace_id="a" * 32, message_id=1, question="q", reply="r", evidence=None, lang="en", api_key="k"
+    )
 
     monkeypatch.setattr(settings, "LLM_JUDGE_SAMPLE_RATE", 0.0)
     llm_judge.maybe_judge_turn(**kwargs)
     monkeypatch.setattr(settings, "LLM_JUDGE_SAMPLE_RATE", 1.0)
     llm_judge.maybe_judge_turn(**{**kwargs, "trace_id": None})
+    llm_judge.maybe_judge_turn(**{**kwargs, "user_id": 99})  # Garmin-connected: never judged
 
     assert started == []
 
@@ -49,10 +53,11 @@ def test_maybe_judge_turn_scores_in_the_background(monkeypatch):
     monkeypatch.setattr(llm_judge, "record_scores", lambda *a, **k: recorded.append(a))
     monkeypatch.setattr(observability, "enabled", lambda: True)
     monkeypatch.setattr(settings, "LLM_JUDGE_SAMPLE_RATE", 1.0)
+    monkeypatch.setattr(llm_judge.db, "is_ai_eval_excluded", lambda uid: False)
 
     async def run():
         llm_judge.maybe_judge_turn(
-            trace_id="a" * 32, message_id=7, question="q", reply="r", evidence=None, lang="en", api_key="k"
+            user_id=1, trace_id="a" * 32, message_id=7, question="q", reply="r", evidence=None, lang="en", api_key="k"
         )
         await asyncio.gather(*llm_judge._background_tasks)
 
