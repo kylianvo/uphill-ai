@@ -15,8 +15,8 @@ from typing import Any
 import db
 from services.athlete_tier import resolve_tier_explained
 
-DEVICE_PROVIDERS = ("coros", "apple_health")
-SOURCE_LABELS = {"coros": "COROS", "apple_health": "Apple Health", "self_reported": "self-reported"}
+DEVICE_PROVIDERS = ("coros", "apple_health", "garmin")
+SOURCE_LABELS = {"coros": "COROS", "apple_health": "Apple Health", "garmin": "Garmin", "self_reported": "self-reported"}
 VOLUME_WEEKS = 4
 MIN_COUNTED_WEEKS = 3
 ASSESSMENT_MAX_AGE = timedelta(days=60)
