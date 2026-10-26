@@ -635,3 +635,22 @@ def safe_races_for_plan(plan_id: int | None) -> list[dict[str, Any]]:
     except Exception:
         logger.warning("b-race load failed", exc_info=True, extra={"fields": {"plan_id": plan_id}})
         return []
+
+
+def lint_view(races: list[dict[str, Any]], plan_monday: date) -> list[dict[str, Any]]:
+    """What plan_lint needs to check B-race weeks, as (week, day) pairs (plan_lint knows no dates)."""
+    out = []
+    for race in races:
+        rdate = _date(race["race_date"])
+        taper, rec = _race_shape(race)
+        week, day = week_and_day(plan_monday, rdate)
+        out.append(
+            {
+                "week": week,
+                "day": day,
+                "plan_race_id": race["id"],
+                "taper": [week_and_day(plan_monday, rdate - timedelta(days=d)) for d in range(taper, 0, -1)],
+                "recovery": [week_and_day(plan_monday, rdate + timedelta(days=d)) for d in range(1, rec + 1)],
+            }
+        )
+    return out

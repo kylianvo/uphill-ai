@@ -672,8 +672,53 @@ def _specificity(
     return issues
 
 
+# Rules a B-race week can't meet by design: the race replaces the long run and the quality, and the week
+# after the recovery window climbs back. Asking the model to fix these would only fight the B-race guard.
+_B_RACE_EXEMPT = {
+    "LONG_RUN_DAY", "QUALITY_COUNT", "LONG_SHARE", "WEEKDAY_SHORT", "DAYS_SHORT", "B2B_MISSING", "ULTRA_LADDER",
+    "ME_LOAD", "ME_SPACING", "TIME_ON_FEET", "SESSION_TOO_LONG",
+}  # fmt: skip
+_B_RACE_JUMPS = {"VOLUME_JUMP", "LONG_RUN_JUMP", "VERT_JUMP"}
+
+
+def _b_race_issues(workouts: list[dict[str, Any]], weeks: set[int], races: list[dict[str, Any]]) -> list[Issue]:
+    """`races` is services.b_race.lint_view(): each race's (week, day), taper days and recovery days."""
+    found: list[Issue] = []
+    rows: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
+    for w in _active(workouts):
+        rows.setdefault((w.get("week_number"), w.get("day_of_week")), []).append(w)
+    for race in races:
+        if race["week"] in weeks and not any(
+            w.get("type") == "Race" for w in rows.get((race["week"], race["day"]), [])
+        ):
+            found.append(Issue("B_RACE_MISSING", race["week"], f"The B-race on {race['day']} must be a Race session."))
+        for key in race["taper"]:
+            if key[0] in weeks and any(is_hard(w) for w in rows.get(key, [])):
+                found.append(Issue("B_RACE_TAPER_HARD", key[0], f"{key[1]} is a mini-taper day: easy and short only."))
+        for key in race["recovery"]:
+            if key[0] in weeks and any(is_hard(w) or is_long(w) for w in rows.get(key, [])):
+                found.append(
+                    Issue("B_RACE_RECOVERY_HARD", key[0], f"{key[1]} is B-race recovery: Zone 1, no long run.")
+                )
+    return found
+
+
 def lint_weeks(
-    workouts: list[dict[str, Any]], weeks: set[int], profile: TierProfile, prefs: Prefs | None = None
+    workouts: list[dict[str, Any]],
+    weeks: set[int],
+    profile: TierProfile,
+    prefs: Prefs | None = None,
+    races: list[dict[str, Any]] | None = None,
 ) -> list[Issue]:
     found = [i for wk in sorted(weeks) for i in lint_week(workouts, wk, profile, prefs)]
-    return found + _specificity(workouts, weeks, profile, prefs)
+    found += _specificity(workouts, weeks, profile, prefs)
+    if not races:
+        return found
+    race_weeks = {r["week"] for r in races} | {wk for r in races for wk, _ in r["recovery"]}
+    found = [
+        i
+        for i in found
+        if not (i.week in race_weeks and i.code in _B_RACE_EXEMPT)
+        and not (i.code in _B_RACE_JUMPS and (i.week in race_weeks or i.week - 1 in race_weeks))
+    ]
+    return found + _b_race_issues(workouts, weeks, races)

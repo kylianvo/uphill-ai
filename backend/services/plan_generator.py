@@ -1195,7 +1195,13 @@ class PlanGenerator:
                 else frozenset()
             ),
         )
-        issues = plan_lint.lint_weeks(combined, weeks, profile, prefs)
+        b_view = None
+        if b_rows := b_race.safe_races_for_plan(plan_id):
+            from services.calendar_rules import start_monday
+
+            if monday := start_monday((get_plan_by_id(plan_id) or {}).get("start_date")):
+                b_view = b_race.lint_view(b_rows, monday)
+        issues = plan_lint.lint_weeks(combined, weeks, profile, prefs, races=b_view)
         first = min(weeks) if weeks else 1
         if cutoff := race_readiness.target_vs_cutoff_issue(
             race_info.get("target_time_hours"), cutoff_time_hours, first
