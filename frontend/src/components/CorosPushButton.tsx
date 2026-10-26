@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchPushStatus, pushCopy, pushToCoros, type PushOutcome, type PushStatus } from "../lib/corosPush";
+import {
+  fetchPushStatus,
+  pushCopy as copy,
+  pushToCoros,
+  type PushOutcome,
+  type PushProvider,
+  type PushStatus,
+} from "../lib/corosPush";
 import { localToday } from "../lib/scheduleProposals";
 
 const MARK_SRC = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/brand/coros-mark.webp`;
@@ -27,11 +34,15 @@ export default function CorosPushButton({
   lang,
   refreshKey,
   onReconnect,
+  provider = "coros",
 }: {
   lang: string;
   refreshKey: unknown;
   onReconnect?: () => void;
+  /** "garmin" sends the same runs to the Garmin calendar; the button hides unless Garmin is connected. */
+  provider?: PushProvider;
 }) {
+  const pushCopy = (l: string, key: string, params: Record<string, unknown> = {}) => copy(l, key, params, provider);
   const [status, setStatus] = useState<PushStatus | null>(null);
   const [sending, setSending] = useState(false);
   const [outcome, setOutcome] = useState<PushOutcome | null>(null);
@@ -42,7 +53,7 @@ export default function CorosPushButton({
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const attempt = (n: number) => {
-      fetchPushStatus().then((s) => {
+      fetchPushStatus(provider).then((s) => {
         if (cancelled) return;
         if (s) setStatus(s);
         else if (n < STATUS_RETRY_MS.length) timer = setTimeout(() => attempt(n + 1), STATUS_RETRY_MS[n]);
@@ -53,17 +64,17 @@ export default function CorosPushButton({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [refreshKey]);
+  }, [refreshKey, provider]);
 
   if (!status?.connected) return null;
 
   const handleSend = async () => {
     setSending(true);
     setOutcome(null);
-    const result = await pushToCoros(lang);
+    const result = await pushToCoros(lang, provider);
     setOutcome(result);
     setSending(false);
-    const s = await fetchPushStatus();
+    const s = await fetchPushStatus(provider);
     if (s) setStatus(s);
   };
 
@@ -99,7 +110,9 @@ export default function CorosPushButton({
           opacity: sending ? 0.7 : 1,
         }}
       >
-        <img src={MARK_SRC} alt="COROS" width={14} height={14} style={{ objectFit: "contain" }} />
+        {provider === "coros" && (
+          <img src={MARK_SRC} alt="COROS" width={14} height={14} style={{ objectFit: "contain" }} />
+        )}
         <span>{pushCopy(lang, sending ? "sending" : "button")}</span>
       </button>
       {status.partial ? (
@@ -126,7 +139,7 @@ export default function CorosPushButton({
       {outcome?.kind === "error" && (
         <span role="alert" style={{ fontSize: "11px", color: "var(--accent-alert)" }}>
           {pushCopy(lang, outcome.code, { ...outcome.params, date: shortDate(outcome.params.opens_on, lang) })}
-          {outcome.code === "COROS_not_connected" && (
+          {outcome.code === `${provider.toUpperCase()}_not_connected` && (
             <>
               {" "}
               {onReconnect ? (

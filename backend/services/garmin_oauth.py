@@ -90,16 +90,27 @@ async def refresh(refresh_token: str, transport: httpx.BaseTransport | None = No
     return await _post_token({"grant_type": "refresh_token", "refresh_token": refresh_token}, transport)
 
 
+async def api(
+    method: str,
+    url: str,
+    access_token: str,
+    body: dict | None = None,
+    transport: httpx.BaseTransport | None = None,
+) -> httpx.Response:
+    """One authenticated call to Garmin; any 4xx/5xx raises GarminAuthError carrying the status."""
+    async with httpx.AsyncClient(transport=transport, timeout=30.0) as client:
+        response = await client.request(method, url, headers={"Authorization": f"Bearer {access_token}"}, json=body)
+    if response.status_code >= 400:
+        raise GarminAuthError(
+            f"Garmin {url.split('/', 3)[-1]} returned HTTP {response.status_code}", response.status_code
+        )
+    return response
+
+
 async def _gateway(
     method: str, path: str, access_token: str, transport: httpx.BaseTransport | None = None
 ) -> httpx.Response:
-    async with httpx.AsyncClient(transport=transport, timeout=30.0) as client:
-        response = await client.request(
-            method, f"{GATEWAY}/{path}", headers={"Authorization": f"Bearer {access_token}"}
-        )
-    if response.status_code >= 400:
-        raise GarminAuthError(f"Garmin {path} returned HTTP {response.status_code}", response.status_code)
-    return response
+    return await api(method, f"{GATEWAY}/{path}", access_token, transport=transport)
 
 
 async def fetch_user_id(access_token: str, transport: httpx.BaseTransport | None = None) -> str:

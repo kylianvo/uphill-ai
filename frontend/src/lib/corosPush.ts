@@ -18,6 +18,9 @@ export interface PushStatus {
   partial?: boolean;
   last_summary?: PushSummary | null;
 }
+/** The watch a push goes to; both backends share one response shape. */
+export type PushProvider = "coros" | "garmin";
+
 export type PushOutcome =
   | { kind: "ok"; status: "sent" | "partial"; summary: PushSummary; last_pushed_at: string | null }
   | { kind: "error"; code: string; params: Record<string, unknown> };
@@ -34,9 +37,9 @@ function authHeaders(): Record<string, string> {
   return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
-export async function fetchPushStatus(): Promise<PushStatus | null> {
+export async function fetchPushStatus(provider: PushProvider = "coros"): Promise<PushStatus | null> {
   try {
-    const res = await fetch(`${apiBase()}/api/integrations/coros/push-status?client_today=${localToday()}`, {
+    const res = await fetch(`${apiBase()}/api/integrations/${provider}/push-status?client_today=${localToday()}`, {
       headers: authHeaders(),
     });
     if (!res.ok) return null;
@@ -46,9 +49,10 @@ export async function fetchPushStatus(): Promise<PushStatus | null> {
   }
 }
 
-export async function pushToCoros(lang: string): Promise<PushOutcome> {
+export async function pushToCoros(lang: string, provider: PushProvider = "coros"): Promise<PushOutcome> {
+  const unavailable = `${provider.toUpperCase()}_unavailable`;
   try {
-    const res = await fetch(`${apiBase()}/api/integrations/coros/push`, {
+    const res = await fetch(`${apiBase()}/api/integrations/${provider}/push`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ client_today: localToday(), lang: lang === "vi" ? "vi" : "en" }),
@@ -61,9 +65,9 @@ export async function pushToCoros(lang: string): Promise<PushOutcome> {
     if (detail && typeof detail === "object" && typeof detail.code === "string") {
       return { kind: "error", code: detail.code, params: detail.params || {} };
     }
-    return { kind: "error", code: "COROS_unavailable", params: {} };
+    return { kind: "error", code: unavailable, params: {} };
   } catch {
-    return { kind: "error", code: "COROS_unavailable", params: {} };
+    return { kind: "error", code: unavailable, params: {} };
   }
 }
 
@@ -112,8 +116,40 @@ const COPY: Record<string, Record<string, string>> = {
   },
 };
 
-export function pushCopy(lang: string, key: string, params: Record<string, unknown> = {}): string {
-  const table = COPY[lang] || COPY.en;
-  const template = table[key] ?? COPY.en[key] ?? COPY.en.COROS_unavailable;
+// Garmin wording where it differs: the brand, and Garmin's own refusals.
+const GARMIN_COPY: Record<string, Record<string, string>> = {
+  en: {
+    button: "Send to Garmin",
+    sent_at: "Sent to Garmin · {when}",
+    result: "Sent {n} workouts to Garmin, through {end}.",
+    reconnect: "Reconnect Garmin",
+    GARMIN_not_connected: "Garmin isn't connected. Reconnect it in your profile.",
+    GARMIN_no_workout_permission:
+      "Garmin isn't accepting workouts from Uphill AI. Allow workout import for Uphill AI in Garmin Connect, then send again.",
+    PUSH_limit: "You've sent to Garmin {limit} times today. Try again tomorrow.",
+    GARMIN_unavailable: "Couldn't reach Garmin. Nothing changed. Try again shortly.",
+  },
+  vi: {
+    button: "Gửi sang Garmin",
+    sent_at: "Đã gửi sang Garmin · {when}",
+    result: "Đã gửi {n} buổi tập sang Garmin, đến hết {end}.",
+    reconnect: "Kết nối lại Garmin",
+    GARMIN_not_connected: "Chưa kết nối Garmin. Hãy kết nối lại trong hồ sơ.",
+    GARMIN_no_workout_permission:
+      "Garmin chưa cho Uphill AI gửi buổi tập. Hãy bật quyền nhập buổi tập cho Uphill AI trong Garmin Connect rồi gửi lại.",
+    PUSH_limit: "Hôm nay bạn đã gửi sang Garmin {limit} lần. Hãy thử lại vào ngày mai.",
+    GARMIN_unavailable: "Không kết nối được Garmin. Chưa có gì thay đổi. Hãy thử lại sau.",
+  },
+};
+
+export function pushCopy(
+  lang: string,
+  key: string,
+  params: Record<string, unknown> = {},
+  provider: PushProvider = "coros"
+): string {
+  const table = { ...(COPY[lang] || COPY.en), ...(provider === "garmin" ? GARMIN_COPY[lang] || GARMIN_COPY.en : {}) };
+  const fallback = provider === "garmin" ? GARMIN_COPY.en.GARMIN_unavailable : COPY.en.COROS_unavailable;
+  const template = table[key] ?? COPY.en[key] ?? fallback;
   return template.replace(/\{(\w+)\}/g, (_, k) => (params[k] == null ? "" : String(params[k])));
 }

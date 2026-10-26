@@ -222,6 +222,9 @@ class Config:
         "GARMIN_REDIRECT_URI", "https://api.uphill-ai.io.vn/api/integrations/garmin/callback"
     )
     GARMIN_WEBHOOK_TOKEN: str = os.getenv("GARMIN_WEBHOOK_TOKEN", "")
+    # Sends to the Garmin calendar per athlete per day: Garmin allows 200 calls a day, and
+    # a first send of four weeks is about 40.
+    GARMIN_DAILY_PUSH_LIMIT: int = int(os.getenv("GARMIN_DAILY_PUSH_LIMIT", "4"))
     # Comma-separated emails. When set, GARMIN_ENABLED shows Garmin to these accounts only
     # (testing on prod before launch); empty means everyone.
     GARMIN_ALLOWED_EMAILS: list = [
