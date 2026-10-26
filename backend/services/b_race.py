@@ -309,8 +309,13 @@ def validate(plan: dict[str, Any], race_date: date, today: date | None = None) -
         raise ValueError("date_out_of_range")
 
 
-def serialize(user_id: int, plan: dict[str, Any], rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Planned races with a verdict recomputed now (the A-race or the athlete's fitness may have moved)."""
+def serialize(
+    user_id: int, plan: dict[str, Any], rows: list[dict[str, Any]], lang: str | None = None
+) -> list[dict[str, Any]]:
+    """Planned races with a verdict recomputed now (the A-race or the athlete's fitness may have moved) and the
+    coach's opinion: the stored words while they still fit the verdict, else the rule-written ones."""
+    from services import b_race_words
+
     out = []
     for row in rows:
         facts = facts_for_plan(user_id, plan, exclude_race_id=row["id"])
@@ -318,7 +323,19 @@ def serialize(user_id: int, plan: dict[str, Any], rows: list[dict[str, Any]]) ->
         verdict = asdict(assess(race, facts))
         verdict["cost"] = None
         week, day = week_and_day(facts.plan_monday, race.race_date)
-        out.append({**row, "race_date": race.race_date.isoformat(), "verdict": verdict, "week": week, "day": day})
+        stored = row.get("verdict_text") or None
+        text_lang = lang or (stored or {}).get("lang") or "en"
+        opinion = b_race_words.current_text(stored, verdict, row, text_lang)
+        out.append(
+            {
+                **row,
+                "race_date": race.race_date.isoformat(),
+                "verdict": verdict,
+                "week": week,
+                "day": day,
+                "opinion": opinion,
+            }  # fmt: skip
+        )
     return out
 
 

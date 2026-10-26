@@ -2708,7 +2708,7 @@ def _owned_race_plan(plan_id: int, user_id: int) -> dict[str, Any]:
 @app.get("/api/plans/{plan_id}/races")
 def list_b_races(plan_id: int, user: dict[str, Any] = Depends(get_current_user)):
     plan = _owned_race_plan(plan_id, user["id"])
-    return {"races": b_race.serialize(user["id"], plan, db.get_plan_races(plan_id))}
+    return {"races": b_race.serialize(user["id"], plan, db.get_plan_races(plan_id), lang=user.get("lang"))}
 
 
 @app.post("/api/plans/{plan_id}/races/assess")
@@ -2736,6 +2736,17 @@ async def _b_race_rebuild(user: dict[str, Any], plan: dict[str, Any], weeks: set
     return job_ids
 
 
+async def _b_race_words(user: dict[str, Any], plan: dict[str, Any], race: dict[str, Any]) -> dict[str, Any]:
+    """Words the coach's opinion once per verdict, stores it, and returns the race as the app shows it."""
+    from services import b_race_words
+
+    lang = "vi" if user.get("lang") == "vi" else "en"
+    stored = race.get("verdict_text") if (race.get("verdict_text") or {}).get("lang") == lang else None
+    text = await b_race_words.opinion_text(race["verdict"], race, lang, user.get("gemini_api_key"), previous=stored)
+    db.update_plan_race(race["id"], {"verdict_text": {**text, "lang": lang}})
+    return {**race, "verdict_text": {**text, "lang": lang}, "opinion": text["text"]}
+
+
 def _b_race_weeks(plan: dict[str, Any], race: dict[str, Any]) -> set[int]:
     from services.calendar_rules import start_monday
 
@@ -2746,7 +2757,7 @@ def _b_race_weeks(plan: dict[str, Any], race: dict[str, Any]) -> set[int]:
 @app.post("/api/plans/{plan_id}/races")
 async def add_b_race(plan_id: int, request: BRaceInput, user: dict[str, Any] = Depends(get_current_user)):
     plan = _owned_race_plan(plan_id, user["id"])
-    race = _b_race_call(b_race.create, user, plan, request.model_dump())
+    race = await _b_race_words(user, plan, _b_race_call(b_race.create, user, plan, request.model_dump()))
     jobs = await _b_race_rebuild(user, plan, _b_race_weeks(plan, race), f"B-race added: {race['race_name']}.")
     return {"race": race, "rebuild_job_ids": jobs}
 
@@ -2757,7 +2768,9 @@ async def change_b_race(
 ):
     plan = _owned_race_plan(plan_id, user["id"])
     before = db.get_plan_race(plan_id, race_id)
-    race = _b_race_call(b_race.update, user, plan, race_id, request.model_dump(exclude_unset=True))
+    race = await _b_race_words(
+        user, plan, _b_race_call(b_race.update, user, plan, race_id, request.model_dump(exclude_unset=True))
+    )
     db.delete_race_workouts(race_id)  # the guard re-adds it on its (possibly new) day
     weeks = _b_race_weeks(plan, race) | (_b_race_weeks(plan, before) if before else set())
     jobs = await _b_race_rebuild(user, plan, weeks, f"B-race changed: {race['race_name']}.")
