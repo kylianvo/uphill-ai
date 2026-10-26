@@ -3071,11 +3071,11 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
             draft = await week_rebuild.generate_week_draft(inputs, rng)
             week_rebuild.write_draft(plan, request.week_number, today, draft, notification_request_id=job_id)
             plan_jobs[job_id]["workouts"] = draft.workouts
-            plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="adapt_week", status="done").observe(time.monotonic() - _t0)
             print(f"[AdaptWeek][{job_id}] Week {request.week_number} complete — {len(draft.workouts)} workouts saved.")
             # The block's "This week" text was written for the pre-adapt sessions; rewrite it
-            # for the new ones. Best-effort -- the week is already saved and marked done.
+            # for the new ones. Best-effort -- the week is already saved; the job reads "done" only
+            # after the brief, so the app doesn't fetch the old week's brief.
             try:
                 _, this_week_description = await PlanGenerator.generate_week_narrative(
                     race_info=inputs.race_info,
@@ -3104,6 +3104,7 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
                     upsert_week_brief(request.plan_id, request.week_number, brief)
             except Exception as ex:
                 print(f"[AdaptWeek][{job_id}] Week brief FAILED (non-fatal): {ex}")
+            plan_jobs[job_id]["status"] = "done"
         except Exception as ex:
             notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"

@@ -141,6 +141,7 @@ final class PlanViewModel {
                 if isSignedIn() && usesCache { cache.save(fresh, as: .plan) }
                 await loadBlockCompletion()
                 await loadGoal()
+                await loadJourney()
             } else {
                 snapshot = nil
                 cachedAt = nil
@@ -864,6 +865,7 @@ final class PlanViewModel {
                 if isSignedIn() && usesCache { cache.save(snapshot, as: .plan) }
                 await loadBlockCompletion()
                 await loadGoal()
+                await loadJourney()
             }
         } catch let error as APIError {
             actionError = error.userMessage
