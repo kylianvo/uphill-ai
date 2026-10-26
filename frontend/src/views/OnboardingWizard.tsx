@@ -11,6 +11,7 @@ import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 import WatchZonesGuideModal from "../components/WatchZonesGuideModal";
 import RaceHistoryPanel from "../components/RaceHistoryPanel";
 import { LongRunDaySelect, TrainingVenueFields } from "../components/TrainingVenueFields";
+import BRaceSetupFields, { completeRaces } from "../components/BRaceSetupFields";
 
 export default function OnboardingWizard() {
   const ctx = useAppContext();
@@ -192,6 +193,7 @@ export default function OnboardingWizard() {
         payload.event_name = onboardingAnswers.event_name || null;
         payload.event_date = onboardingAnswers.event_date || null;
       }
+      if (onboardingAnswers.goal_type === "race" && completeRaces(onboardingAnswers.b_races).length) payload.b_races = completeRaces(onboardingAnswers.b_races);
       if (onboardingAnswers.athlete_notes) payload.athlete_notes = onboardingAnswers.athlete_notes;
 
 
@@ -873,6 +875,10 @@ export default function OnboardingWizard() {
                   <label style={labelS}>{lang === "en" ? "Race Date" : "Ngày chạy"}</label>
 
                   <input type="date" className="chat-input" style={inputS} value={onboardingAnswers.race_date} onChange={e => setAns("race_date", e.target.value)} />
+
+                  <div style={{ marginTop: "12px" }}>
+                    <BRaceSetupFields lang={lang} value={onboardingAnswers.b_races ?? []} onChange={(v) => setAns("b_races", v)} />
+                  </div>
 
                 </div>
 

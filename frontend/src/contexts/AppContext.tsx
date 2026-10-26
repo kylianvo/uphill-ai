@@ -325,6 +325,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     plan_start_date: new Date().toISOString().split("T")[0],
     plan_duration_weeks: 12,
     milestone_target: "5k" as "5k" | "10k",
+    b_races: [] as import("../components/BRaceSetupFields").SetupRace[],
     current_jog_min: 0,
     event_name: "",
     event_date: "",
