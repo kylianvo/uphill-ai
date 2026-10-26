@@ -1,6 +1,26 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Reconnect": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối lại"
+          }
+        }
+      }
+    },
+    "This deletes your COROS workouts and health data from Uphill. If sync just stopped working, use Reconnect instead: it keeps your data.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngắt kết nối sẽ xóa các buổi tập và dữ liệu sức khỏe từ COROS khỏi Uphill. Nếu chỉ không đồng bộ được, hãy dùng Kết nối lại để giữ dữ liệu."
+          }
+        }
+      }
+    },
     "YOUR PLAN ON COROS": {
       "localizations": {
         "vi": {

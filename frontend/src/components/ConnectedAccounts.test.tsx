@@ -164,4 +164,25 @@ describe("ConnectedAccounts", () => {
       expect(screen.getByText(/EvoLab synced successfully: threshold pace 4:34/)).toBeInTheDocument();
     });
   });
+
+  it("reconnects through the COROS login without disconnecting", async () => {
+    const hook = baseHook({ status: { coros: { connected: true } }, connectCoros: vi.fn(async () => "https://coros.example/authorize") });
+    mockUseDeviceConnection.mockReturnValue(hook);
+    render(<ConnectedAccounts />);
+    await userEvent.click(screen.getByRole("button", { name: "Reconnect" }));
+    expect(hook.connectCoros).toHaveBeenCalled();
+    expect(hook.disconnectCoros).not.toHaveBeenCalled();
+    expect(window.location.href).toBe("https://coros.example/authorize");
+  });
+
+  it("asks before Disconnect deletes the COROS data, and keeps it when cancelled", async () => {
+    const hook = baseHook({ status: { coros: { connected: true } } });
+    mockUseDeviceConnection.mockReturnValue(hook);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<ConnectedAccounts />);
+    await userEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+    expect(confirm).toHaveBeenCalled();
+    expect(hook.disconnectCoros).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
 });
