@@ -63,9 +63,15 @@ class KbSearchInput(BaseModel):
     query: str = Field(
         description="Search query or question regarding uphill training, heart rate zones, or race specifics."
     )
-    domain: Literal["all", "scheduler", "nutrition", "race_courses"] = Field(
+    domain: Literal["all", "scheduler", "nutrition", "race_courses", "gear"] = Field(
         default="all",
-        description="Domain filter for retrieval.",
+        description=(
+            "race_courses: a race by name, in the athlete's words (distances, D+, cutoffs, terrain, climate). "
+            "gear: shoes by brand/model, or a shortlist for a surface (terrain, lug depth, drop, stack, weight). "
+            "exact_match=false means the named model is not in the catalog: say so, never invent its specs. "
+            "For a shoe-for-this-race question, search the race first, then gear. "
+            "scheduler/nutrition/all: training and fueling doctrine."
+        ),
     )
 
 
@@ -147,7 +153,9 @@ def build_tools(user_id: int, *, kb_api_key: str, proposals: ProposalContext | N
     def _week_review(weeks_ago: int = 0) -> dict:
         return plan_tools.week_review_impl(user_id=user_id, weeks_ago=weeks_ago).__dict__
 
-    def _kb_search(query: str, domain: Literal["all", "scheduler", "nutrition", "race_courses"] = "all") -> dict:
+    def _kb_search(
+        query: str, domain: Literal["all", "scheduler", "nutrition", "race_courses", "gear"] = "all"
+    ) -> dict:
         return knowledge_tools.kb_search_impl(user_id=user_id, query=query, domain=domain, api_key=kb_api_key).__dict__
 
     tools = [
@@ -172,7 +180,7 @@ def build_tools(user_id: int, *, kb_api_key: str, proposals: ProposalContext | N
         StructuredTool.from_function(
             func=_kb_search,
             name="kb_search",
-            description="Search the Scott Johnston 'Training for the Uphill Athlete' knowledge base for physiology rules, strength protocols, aerobic threshold guidelines, and curated race course profiles.",
+            description="Search the Scott Johnston 'Training for the Uphill Athlete' knowledge base for physiology rules, strength protocols and aerobic threshold guidelines, the curated race course library, and the curated shoe catalog. Call it before saying the app has no data on a race or a shoe.",
             args_schema=KbSearchInput,
         ),
     ]
