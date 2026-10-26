@@ -12,6 +12,7 @@ from config import settings
 from db import block_number_for_week, get_plan_by_id, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
 from services import (
+    b_race,
     beginner_milestones,
     claude_llm,
     goal_demands,
@@ -1317,6 +1318,14 @@ class PlanGenerator:
 
         # 1. Base Variables Extract
         lang = (race_info.get("lang") or user_profile.get("lang") or "en").lower()
+        # B-races (services/b_race.py): the prompt is told the fixed days and the guard pins them after generation.
+        b_races = b_race.safe_races_for_plan(plan_id)
+        b_monday = None
+        if b_races:
+            from services.calendar_rules import start_monday
+
+            b_monday = start_monday((get_plan_by_id(plan_id) or {}).get("start_date"))
+            b_races = b_races if b_monday else []
         all_notes = (
             str(race_info.get("athlete_notes") or "")
             + str(race_info.get("coach_notes") or "")
@@ -3007,6 +3016,8 @@ class PlanGenerator:
                     wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
                         "Zone 1", minutes, est_zones
                     )
+            if b_races:
+                wos = b_race.enforce(wos, b_races, b_monday, lang)
             _normalise_sessions(wos)
             _fit_taper_long_share(wos)
             for wo in rows_after_race(wos):
@@ -3388,6 +3399,8 @@ class PlanGenerator:
                     f"  • OPTIMAL / FRESH (ACWR 0.8-1.3): Athlete is adapting well; proceed with planned progressive overload.\n"
                 )
 
+            if b_races:
+                feedback_instruction += "\n" + b_race.prompt_block(b_races, b_monday)
             if block_context:
                 feedback_instruction += (
                     f"\nATHLETE FEEDBACK FROM PREVIOUS BLOCKS & COACH EVALUATION:\n{block_context}\n"

@@ -1380,12 +1380,14 @@ _WORKOUT_INSERT_SQL = """
         duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
         treadmill_incline, treadmill_speed, elevation_gain_m, grade_percent,
         interval_reps, interval_rep_value, interval_rep_unit, walk_interval_value,
-        description, fueling_tip, session_slot, approved_at, is_priority, mountain_mode, mountain_climb_rate)
+        description, fueling_tip, session_slot, approved_at, is_priority, mountain_mode, mountain_climb_rate,
+        plan_race_id)
     VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
         :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
         :treadmill_incline, :treadmill_speed, :elevation_gain_m, :grade_percent,
         :interval_reps, :interval_rep_value, :interval_rep_unit, :walk_interval_value,
-        :description, :fueling_tip, :session_slot, :approved_at, :is_priority, :mountain_mode, :mountain_climb_rate)
+        :description, :fueling_tip, :session_slot, :approved_at, :is_priority, :mountain_mode, :mountain_climb_rate,
+        :plan_race_id)
 """
 
 
@@ -1420,6 +1422,7 @@ def _workout_insert_params(plan_id: int, wo: dict[str, Any], auto_approve: bool)
         "is_priority": wo.get("is_priority") is True,
         "mountain_mode": wo.get("mountain_mode"),
         "mountain_climb_rate": wo.get("mountain_climb_rate"),
+        "plan_race_id": wo.get("plan_race_id"),  # a B-race row (services/b_race.py)
     }
 
 

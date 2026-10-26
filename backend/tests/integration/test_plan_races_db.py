@@ -38,3 +38,23 @@ def test_plan_delete_cascades_races(plan_id):
         conn.execute(text("DELETE FROM plans WHERE id = :p"), {"p": plan_id})
         conn.commit()
     assert db.get_plan_races(plan_id, include_cancelled=True) == []
+
+
+def test_saved_race_row_keeps_plan_race_id(plan_id):
+    rid = db.insert_plan_race(plan_id, {"race_name": "Ta Xua 25K", "race_date": "2026-11-01", "distance_km": 25})
+    db.save_workouts(
+        plan_id,
+        [
+            {
+                "week_number": 5,
+                "day_of_week": "Sunday",
+                "phase": "Build",
+                "title": "Ta Xua 25K",
+                "type": "Race",
+                "duration_minutes": 195,
+                "target_zone": "",
+                "plan_race_id": rid,
+            }
+        ],  # fmt: skip
+    )
+    assert [w["plan_race_id"] for w in db.get_plan_workouts(plan_id) if w["type"] == "Race"] == [rid]

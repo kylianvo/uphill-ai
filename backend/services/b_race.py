@@ -284,6 +284,13 @@ def evaluate(
     verdict = assess(_row_race(race), facts)
     out = asdict(verdict)
     out["cost"] = None
+    if verdict.level != "good":
+        try:
+            import db
+
+            out["cost"] = cost({**race, "id": race_id or -1}, db.get_plan_workouts(plan["id"]), facts.plan_monday)
+        except Exception:
+            logger.warning("b-race cost failed", exc_info=True)
     return {"race": race, "verdict": out, "predicted": predict_band(user, race) if predict else None}
 
 
@@ -394,3 +401,237 @@ def save_setup_races(user: dict[str, Any], plan_id: int, races: list[dict[str, A
         except Exception:
             logger.warning("setup b-race skipped", exc_info=True, extra={"fields": {"plan_id": plan_id}})
     return saved
+
+
+# ─── The guard: race day, mini-taper and recovery window, whatever the model wrote ────
+
+_A_RACE_PHASES = {"Taper", "Race Week", "Race"}
+_EASY_TYPES = {"Easy", "Recovery", "Walk/Run"}
+_TAPER_CAP_SHARE = 0.5
+_TAPER_CAP_FALLBACK_MIN = 30
+_RECOVERY_CAP_MIN = 60
+_RECOVERY_CONVERTED_MIN = 45
+_STRIDES = " + 3 × 20 s relaxed strides"
+
+
+def _row_date(plan_monday: date, row: dict[str, Any]) -> date | None:
+    if row.get("day_of_week") not in DAYS or not row.get("week_number"):
+        return None
+    return plan_monday + timedelta(days=(int(row["week_number"]) - 1) * 7 + DAYS.index(row["day_of_week"]))
+
+
+def _rest(row: dict[str, Any], lang: str) -> None:
+    vi = lang == "vi"
+    row.update(
+        type="Rest",
+        title="Nghỉ ngơi và phục hồi" if vi else "Rest & Regeneration",
+        description="Ngày nghỉ quanh B-race." if vi else "Rest day around your B-race.",
+        duration_minutes=0.0,
+        target_zone="",
+        target_pace="",
+        distance_km=0.0,
+        elevation_gain_m=0.0,
+        is_priority=False,
+    )
+
+
+def _easy(row: dict[str, Any], minutes: float, zone: str, lang: str, title_en: str, title_vi: str) -> None:
+    if row.get("type") not in _EASY_TYPES:
+        row.update(type="Easy", title=title_vi if lang == "vi" else title_en, elevation_gain_m=0.0, is_priority=False)
+    row["duration_minutes"] = float(min(float(row.get("duration_minutes") or minutes), minutes))
+    row["target_zone"] = zone
+
+
+def _race_shape(race: dict[str, Any]) -> tuple[int, int]:
+    """(taper days, recovery days) for a stored race."""
+    ekm = race_effort_km(float(race["distance_km"]), race.get("elevation_gain_m"))
+    effort = race.get("effort") or "race"
+    taper = 0 if race.get("kept_against") == "not_recommended" else taper_days(ekm, effort)
+    return taper, recovery_days(ekm, effort, kept_risky=race.get("kept_against") == "risky")
+
+
+def _race_minutes(race: dict[str, Any]) -> float:
+    band = race.get("predicted") or {}
+    if band.get("low_sec") and band.get("high_sec"):
+        return round((band["low_sec"] + band["high_sec"]) / 2 / 60)
+    return round(6 * race_effort_km(float(race["distance_km"]), race.get("elevation_gain_m")))
+
+
+def enforce(
+    workouts: list[dict[str, Any]], races: list[dict[str, Any]], plan_monday: date, lang: str = "en"
+) -> list[dict[str, Any]]:
+    """Pins each B-race into `workouts` (returns the new list). Idempotent; never touches A-race taper weeks."""
+    if not races:
+        return workouts
+    weeks = {int(w["week_number"]) for w in workouts if w.get("week_number")}
+    out = list(workouts)
+    shaped = []
+    for race in races:
+        rdate = _date(race["race_date"])
+        week, day = week_and_day(plan_monday, rdate)
+        if week not in weeks:
+            continue
+        shaped.append((race, rdate, *_race_shape(race)))
+        phase = next((w.get("phase") for w in out if w.get("week_number") == week and w.get("phase")), None)
+        if phase in _A_RACE_PHASES:
+            continue
+        out = [
+            w
+            for w in out
+            if not (
+                w.get("week_number") == week and w.get("day_of_week") == day and w.get("plan_race_id") != race["id"]
+            )
+        ]
+        if not any(w.get("plan_race_id") == race["id"] for w in out):
+            out.append(
+                {
+                    "week_number": week,
+                    "day_of_week": day,
+                    "phase": phase,
+                    "type": "Race",
+                    "title": race["race_name"],
+                    "description": (
+                        "B-race: chạy như buổi tập dài, không dốc hết sức."
+                        if lang == "vi"
+                        else "B-race: run it as a rehearsal, not all-out."
+                    )
+                    if (race.get("effort") or "race") == "training"
+                    else (
+                        "B-race. Tập dượt dinh dưỡng, gậy và nhịp độ."
+                        if lang == "vi"
+                        else "B-race. Rehearse fuel, poles and pacing."
+                    ),
+                    "duration_minutes": float(_race_minutes(race)),
+                    "distance_km": float(race["distance_km"]),
+                    "elevation_gain_m": float(race.get("elevation_gain_m") or 0),
+                    "target_zone": "",
+                    "is_priority": True,
+                    "session_slot": "main",
+                    "plan_race_id": race["id"],
+                }
+            )
+        for w in out:  # the race replaces the week's long run
+            if w.get("week_number") == week and w.get("type") == "Long Run":
+                _rest(w, lang)
+
+    def editable(w: dict[str, Any]) -> bool:
+        return w.get("type") not in ("Race", "Rest") and w.get("phase") not in _A_RACE_PHASES
+
+    for race, rdate, taper, _rec in shaped:
+        taper_dates = {rdate - timedelta(days=d) for d in range(1, taper + 1)}
+        week, _ = week_and_day(plan_monday, rdate)
+        easy = sorted(
+            float(w.get("duration_minutes") or 0)
+            for w in out
+            if w.get("week_number") == week
+            and w.get("type") in _EASY_TYPES
+            and _row_date(plan_monday, w) not in taper_dates
+        )
+        cap = easy[len(easy) // 2] * _TAPER_CAP_SHARE if easy else _TAPER_CAP_FALLBACK_MIN
+        last = max(taper_dates) if taper_dates else None
+        for w in out:
+            d = _row_date(plan_monday, w)
+            if d not in taper_dates or not editable(w):
+                continue
+            if w.get("type") not in _EASY_TYPES and w.get("type") not in ("Interval", "Tempo", "Threshold", "Long Run"):
+                _rest(w, lang)  # strength and cross-training wait until after the race
+                continue
+            _easy(w, cap, "Zone 2", lang, "Easy Run (mini-taper)", "Chạy nhẹ (mini-taper)")
+            if d == last and "strides" not in (w.get("description") or ""):
+                w["description"] = (w.get("description") or "").rstrip() + _STRIDES
+
+    for race, rdate, _taper, rec in shaped:
+        window = {rdate + timedelta(days=d) for d in range(1, rec + 1)}
+        for w in out:
+            if _row_date(plan_monday, w) not in window or not editable(w):
+                continue
+            if w.get("type") in _EASY_TYPES:
+                _easy(w, _RECOVERY_CAP_MIN, "Zone 1", lang, "Easy Recovery Run", "Chạy hồi phục nhẹ")
+            elif w.get("type") in ("Interval", "Tempo", "Threshold", "Long Run"):
+                _easy(w, _RECOVERY_CONVERTED_MIN, "Zone 1", lang, "Easy Recovery Run", "Chạy hồi phục nhẹ")
+                w["duration_minutes"] = float(_RECOVERY_CONVERTED_MIN)
+            else:
+                _rest(w, lang)
+    return out
+
+
+def _by_day(workouts: list[dict[str, Any]]) -> dict[tuple[int, str], list[dict[str, Any]]]:
+    out: dict[tuple[int, str], list[dict[str, Any]]] = {}
+    for w in workouts:
+        out.setdefault((int(w.get("week_number") or 0), w.get("day_of_week") or ""), []).append(w)
+    return out
+
+
+def _peak_minutes(workouts: list[dict[str, Any]]) -> float | None:
+    weeks: dict[int, float] = {}
+    for w in workouts:
+        if w.get("phase") == "Peak":
+            weeks[int(w["week_number"])] = weeks.get(int(w["week_number"]), 0) + float(w.get("duration_minutes") or 0)
+    return max(weeks.values()) if weeks else None
+
+
+def cost(race: dict[str, Any], workouts: list[dict[str, Any]], plan_monday: date) -> dict[str, Any]:
+    """What adding `race` would change, from a dry run of the guard on a copy of the plan."""
+    import copy
+
+    after = enforce(copy.deepcopy(workouts), [race], plan_monday)
+    before_days, after_days = _by_day(workouts), _by_day(after)
+    changed = []
+    for key in sorted(
+        set(before_days) | set(after_days), key=lambda k: (k[0], DAYS.index(k[1]) if k[1] in DAYS else 7)
+    ):
+        b, a = before_days.get(key, []), after_days.get(key, [])
+        tb = " + ".join(w.get("title") or w.get("type") or "" for w in b if w.get("type") != "Rest") or "Rest"
+        ta = " + ".join(w.get("title") or w.get("type") or "" for w in a if w.get("type") != "Rest") or "Rest"
+        mb = sum(float(w.get("duration_minutes") or 0) for w in b)
+        ma = sum(float(w.get("duration_minutes") or 0) for w in a)
+        if (tb, mb) != (ta, ma):
+            changed.append(
+                {
+                    "week": key[0],
+                    "day": key[1],
+                    "title_before": tb,
+                    "title_after": ta,
+                    "minutes_before": mb,
+                    "minutes_after": ma,
+                }  # fmt: skip
+            )
+    pb, pa = _peak_minutes(workouts), _peak_minutes(after)
+    return {"changed": changed, "peak_week_minutes": {"before": pb, "after": pa} if pb is not None else None}
+
+
+def prompt_block(races: list[dict[str, Any]], plan_monday: date) -> str:
+    """The rule block the plan prompt carries: the B-races and the days around them are fixed."""
+    if not races:
+        return ""
+    lines = ["B-RACES (fixed by the coach; the app pins these days, do not move them):"]
+    for race in races:
+        rdate = _date(race["race_date"])
+        week, day = week_and_day(plan_monday, rdate)
+        taper, rec = _race_shape(race)
+        effort = "training effort, not all-out" if (race.get("effort") or "race") == "training" else "race effort"
+        parts = [f"- Week {week} {day}: {race['race_name']} ({race['distance_km']:g} km), {effort}."]
+        if taper:
+            start = rdate - timedelta(days=taper)
+            parts.append(
+                f"Mini-taper {DAYS[start.weekday()][:3]}–{DAYS[(rdate - timedelta(days=1)).weekday()][:3]}: easy and short."
+            )
+        end = rdate + timedelta(days=rec)
+        parts.append(
+            f"No hard session or long run until {DAYS[end.weekday()][:3]} (week {week_and_day(plan_monday, end)[0]})."
+        )
+        lines.append(" ".join(parts))
+    return "\n".join(lines) + "\n"
+
+
+def safe_races_for_plan(plan_id: int | None) -> list[dict[str, Any]]:
+    """Planned B-races for the generator; [] on any problem (a plan must always be produced)."""
+    import db
+
+    if not plan_id:
+        return []
+    try:
+        return [r for r in db.get_plan_races(plan_id) if r.get("status") == "planned"]
+    except Exception:
+        logger.warning("b-race load failed", exc_info=True, extra={"fields": {"plan_id": plan_id}})
+        return []
