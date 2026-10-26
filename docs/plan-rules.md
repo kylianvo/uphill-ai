@@ -41,7 +41,9 @@ Paths are under `backend/services/` unless stated.
 - **R-P1 Phases set by code**, not by the model (`PlanGenerator.phase_for_week`): Base → Build →
   Peak → Taper → Race week → Recovery.
 - **R-P2 Deload every 4th week**, never the last build week (`is_deload_week`). A deload week is
-  **at most 80% of the week before**, cut from easy runs (`_ramp_volume`). *UA: 3:1 loading.*
+  **at most 80% of the week before**, cut from easy runs (`_ramp_volume`), checked again against the week
+  before as it finally stands (`_cap_growth`). On a mountain-day ultra the deload's easy minutes go into runs of
+  at least 30 min, not runs too short to keep. *UA: 3:1 loading.*
 - **R-P3 Two-step taper** for plans of 12+ weeks (code: about 70%, then 50% of the peak week; one step at 50%
   for shorter plans; the lint holds each taper week to ≤85% of the week before). Taper weeks
   are built by code from the real peak (`TAPER_BY_RULES`), with no new hard work. *UA taper.*
@@ -51,9 +53,17 @@ Paths are under `backend/services/` unless stated.
   (`recent_weekly_minutes` = weekly km × own Zone 2 pace; `RECENT_LOAD_GROWTH`). The cut comes off
   easy runs; the long run, ME and quality sessions stay. With no data: 180 min. A mountain-day
   minimum can still push week 1 higher; that's the athlete's choice.
+- **R-V4 Over the limit with every easy run at its minimum** (`_fit_week`, for R-V1, R-V2 and R-P2): whole
+  easy runs go (a second run on a double day first, then a run on an ME day, then the shortest) while the
+  week is over by at least half a run, keeping at least **4 run days** (fewer only when the athlete trains
+  fewer). A week held this way may use fewer days than the athlete chose; the lint's `DAYS_SHORT` accepts
+  it (start load in weeks 1–2; growth on mountain-day ultras). *Plan 131 (2026-10-26): seven 60-min
+  weekday runs plus doubles gave a 49 km runner an 89 km week 2.*
 - **R-V2 Weekly growth cap.** No week goes above the week before × (1 + tier
   `max_weekly_progression`); the excess is trimmed from easy runs. Return from a deload is
-  measured against the larger of the last two weeks.
+  measured against the larger of the last two weeks. On a mountain-day ultra it runs again after the
+  week shape (`_cap_growth`, which lifts weekday runs to their minimum), on the rest of the week: the
+  long run's ladder step is R-U1's.
 - **R-V3 Ramp toward the goal.** Build weeks grow toward the race's peak-week volume
   (`_ramp_volume`), within R-V2 and the tier's weekday maximum.
 
@@ -77,7 +87,9 @@ Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
   the week.
 - **R-U2 Week shape.** Weekday easy runs 45–90 min (50 km) or 60–90 min (100 km+; 150 for advanced 100 mi);
   the other weekend day at most 90 / 60 / 45 min after a ≤4 h / 5 h / 6 h+ mountain day; no back-to-back;
-  no ME in a week with a 6 h+ long run; deload weeks ≤80% of the week before; first 2 weeks at current load.
+  no ME in a week with a 6 h+ long run; deload weeks ≤80% of the week before; first 2 weeks at current load
+  (Quang: a 50–60 km runner stays at 50–60 km), so the weekday minimum sets each run's length, not the
+  number of runs: a short week has fewer 60-min runs (R-V4), never shorter ones.
 - **R-U3 Quality sessions** only in the 8 weeks up to the peak (deloads excluded): Zone 3 uphill or
   rolling intervals, ≤90 min, 1 a week (2 for ungated sub-elite/elite), none before or in the taper; no
   Zone 4. Gated runners (R-I1) still get one at 20–30 min of work. `QUALITY_COUNT`, `_add_tempo`,
@@ -234,7 +246,7 @@ held:
 9. Natural Vietnamese.
 10. No week >80% of race D+.
 11. AeT gate respected.
-12. Week 1 within 10% of recent load.
+12. Week 1 within 10% of recent load (weeks 1–2 on a mountain-day ultra), at four run days or more.
 
 ## 7. Known gaps (say so when asked)
 
