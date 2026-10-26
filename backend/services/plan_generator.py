@@ -1206,7 +1206,10 @@ class PlanGenerator:
         )
         if not (steep_enough or venues.use_treadmill or venues.stair_access):
             return {}
-        start = getattr(race_info.get("fitness_snapshot"), "weekly_vert_m", None)
+        snapshot = race_info.get("fitness_snapshot")  # the live snapshot, or the plan's stored copy (a dict)
+        start = (
+            snapshot.get("weekly_vert_m") if isinstance(snapshot, dict) else getattr(snapshot, "weekly_vert_m", None)
+        )
         return goal_demands.vert_targets(demands, total_weeks, start, indoor_only=not steep_enough)
 
     @staticmethod

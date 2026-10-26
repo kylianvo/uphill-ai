@@ -174,6 +174,8 @@ Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
   course, a treadmill or stairs. The prompt states the block's targets; R-C2's second climb session is added
   while a week is under its target; the lint's `VERT_SHORT` flags a week under 70% of it (not a back-to-back
   weekend the athlete chose: it moves about 2 h off the mountain, and the choice's help text says so).
+  The plan views show each week's planned D+ against its target (web calendar week row, iOS week card;
+  `goal_service.vert_targets_for` in the plan payload).
 - **R-C9 Gentle mountain.** On a mountain under 60% of the course's steepness (e.g. Châu Thới, 28 m D+/km, for
   VHT at 53), Build/Peak mountain long runs spend their middle on repeats of its steepest climb; the vert credited
   is still the mountain's own rate. The setup screens (web and iOS) warn when such a mountain is the only climbing

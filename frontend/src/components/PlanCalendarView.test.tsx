@@ -28,6 +28,17 @@ describe("weekly planning calendar", () => {
     expect(screen.getByRole("button", { name: "Next month" })).toBeInTheDocument();
   });
 
+  it("shows the week's D+ against its climbing target", () => {
+    const climbing = workouts.map(w => (w.id === 2 ? { ...w, elevation_gain_m: 1200 } : w));
+    render(<PlanCalendarView {...props} workouts={climbing} plan={{ weekly_vert_targets: { "1": 2210 } }} />);
+    expect(screen.getAllByTestId("week-vert")[0]).toHaveTextContent("1,200 / 2,210 m D+");
+  });
+
+  it("shows no D+ for a week with no climbing and no target", () => {
+    render(<PlanCalendarView {...props} />);
+    expect(screen.queryByTestId("week-vert")).toBeNull();
+  });
+
   it("opens workout details using the keyboard", () => {
     render(<PlanCalendarView {...props} />);
     fireEvent.keyDown(screen.getByRole("button", { name: /Monday, September 28/ }), { key: "Enter" });

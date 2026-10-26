@@ -267,6 +267,20 @@ def demands_for(plan: dict[str, Any], assessment: dict[str, Any] | None = None) 
     )
 
 
+def vert_targets_for(plan: dict[str, Any]) -> dict[str, int]:
+    """The generator's weekly D+ targets (R-C8) for the plan view, keyed by week number as text (JSON); empty when
+    the course is flat, the athlete has nowhere to climb, or the plan has no demands."""
+    from services.plan_generator import PlanGenerator
+
+    try:
+        demands = PlanGenerator.goal_demands_for(plan, plan.get("cutoff_time_hours"))
+        targets = PlanGenerator.vert_targets_for(plan, demands, int(plan.get("total_weeks") or 0))
+    except Exception:
+        _logger.exception("vert targets failed", extra={"fields": {"plan_id": plan.get("id")}})
+        return {}
+    return {str(week): metres for week, metres in targets.items()}
+
+
 def feasibility_for(plan: dict[str, Any], assessment: dict[str, Any] | None = None) -> dict[str, Any] | None:
     """Whether the athlete's days, weeks and training venue can hold what the goal demands
     (services/goal_feasibility). A time goal uses the plan's target; any other goal uses the assessed B time

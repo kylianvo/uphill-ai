@@ -101,9 +101,24 @@ struct SummaryCarousel: View {
                     .font(UH.TextStyle.caption)
                     .foregroundStyle(UH.Palette.secondary)
                     .monospacedDigit()
+                if let vertLine = Self.vertLine(comp) {
+                    Text(verbatim: vertLine)
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+                        .monospacedDigit()
+                        .accessibilityIdentifier("summary.weekVert")
+                }
             }
         )
         .accessibilityElement(children: .contain)
+    }
+
+    /// "1,200 of 2,210 m D+ target" (R-C8), or the week's planned D+ alone; nil for a week with neither.
+    static func vertLine(_ comp: WeekVolumeComparison) -> String? {
+        let number = IntegerFormatStyle<Int>.number.locale(AppLanguage.current.locale)
+        let planned = Int(comp.plannedVertM.rounded()).formatted(number)
+        if let target = comp.vertTargetM { return L("%@ of %@ m D+ target", planned, target.formatted(number)) }
+        return comp.plannedVertM > 0 ? L("%@ m D+", planned) : nil
     }
 
     private var chartModePicker: some View {

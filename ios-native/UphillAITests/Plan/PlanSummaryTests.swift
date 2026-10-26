@@ -66,6 +66,24 @@ struct PlanSummaryTests {
         #expect(comp.adherencePct == 33) // 1 of 3 active done
     }
 
+    @Test func volumeComparisonCarriesTheWeeksDPlusAndItsTarget() {
+        let oldLanguage = UserDefaults.standard.string(forKey: AppLanguage.storageKey)
+        UserDefaults.standard.set(AppLanguage.en.rawValue, forKey: AppLanguage.storageKey)
+        defer { UserDefaults.standard.set(oldLanguage, forKey: AppLanguage.storageKey) }
+        let comp = PlanSummary.volumeComparison(week: 2, workouts: week2, vertTargets: ["2": 1200, "3": 1300])
+        #expect(comp.plannedVertM == 1030)
+        #expect(comp.vertTargetM == 1200)
+        #expect(SummaryCarousel.vertLine(comp) == "1,030 of 1,200 m D+ target")
+        let noTarget = PlanSummary.volumeComparison(week: 2, workouts: week2)
+        #expect(SummaryCarousel.vertLine(noTarget) == "1,030 m D+")
+        let flat = PlanSummary.volumeComparison(week: 9, workouts: week2)
+        #expect(SummaryCarousel.vertLine(flat) == nil)
+    }
+
+    @Test func planDecodesWeeklyVertTargets() {
+        #expect(TestData.plan(["weekly_vert_targets": ["1": 600, "9": 2210]]).weeklyVertTargets?["9"] == 2210)
+    }
+
     @Test func volumeComparisonCalculatesPreviousWeekDiff() {
         let w1 = [TestData.workout(["week_number": 1, "duration_minutes": 180, "distance_km": 25.0])]
         let w2 = [TestData.workout(["week_number": 2, "duration_minutes": 240, "distance_km": 35.0])]

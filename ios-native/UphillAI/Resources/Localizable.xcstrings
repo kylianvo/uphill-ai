@@ -14891,6 +14891,26 @@
         }
       }
     },
+    "%@ of %@ m D+ target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ / %2$@ m D+ mục tiêu"
+          }
+        }
+      }
+    },
+    "%@ m D+": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ m D+"
+          }
+        }
+      }
+    },
     "Duration settings": {
       "localizations": {
         "vi": {

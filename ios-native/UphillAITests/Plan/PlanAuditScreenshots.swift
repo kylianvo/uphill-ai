@@ -37,7 +37,8 @@ struct PlanAuditScreenshots {
 
         let plan = TestData.plan(["id": 7, "race_name": "Vietnam Mountain Marathon 70K", "race_date": "2026-12-12",
                                   "goal_type": "time", "target_time_hours": 11.0, "course_distance_km": 70, "course_elevation_gain_m": 4000, "total_weeks": 12, "current_week": 5,
-                                  "start_date": "2026-09-21", "plan_status": "active"])
+                                  "start_date": "2026-09-21", "plan_status": "active",
+                                  "weekly_vert_targets": ["5": 1400]])
         func w(_ id: Int, _ week: Int, _ day: String, _ type: String, _ min: Double, _ title: String, _ extra: [String: Any] = [:]) -> Workout {
             TestData.workout(["id": id, "week_number": week, "day_of_week": day, "type": type, "duration_minutes": min,
                               "title": title, "target_zone": "Z2"].merging(extra) { $1 })

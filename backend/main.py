@@ -1704,7 +1704,7 @@ def get_athlete_active_plan(athlete_id: int, acting_user: dict[str, Any] = Depen
     if not plan:
         return {"active": False}
     workouts = get_plan_workouts(plan["id"])
-    return {"active": True, "plan": _attach_milestones(plan), "workouts": workouts}
+    return {"active": True, "plan": _plan_payload(plan), "workouts": workouts}
 
 
 @app.get("/api/coaching/athletes/{athlete_id}/recent-plans")
@@ -2262,7 +2262,7 @@ def get_current_active_plan(user: dict[str, Any] = Depends(get_current_user)):
         return {"active": False}
 
     workouts = get_plan_workouts(plan["id"])
-    return {"active": True, "plan": _attach_milestones(plan), "workouts": workouts}
+    return {"active": True, "plan": _plan_payload(plan), "workouts": workouts}
 
 
 async def _generate_plan_for_athlete(
@@ -2581,6 +2581,13 @@ def get_user_recent_plans(user: dict[str, Any] = Depends(get_current_user)):
 # ─── Sequential Plan Endpoints ────────────────────────────────────────────────
 
 
+def _plan_payload(plan: dict[str, Any]) -> dict[str, Any]:
+    """A plan for the plan views: beginner milestones and the weekly D+ targets (R-C8) the week rows show."""
+    plan = _attach_milestones(plan)
+    plan["weekly_vert_targets"] = goal_service.vert_targets_for(plan)
+    return plan
+
+
 def _attach_milestones(plan: dict[str, Any]) -> dict[str, Any]:
     """Adds `beginner_milestones` (None for plans without a target) to a plan payload."""
     target = plan.get("milestone_target")
@@ -2655,7 +2662,7 @@ def upgrade_milestone_target(
         plan_id, "10k", weeks, clear_event=request.clear_event, race_name=end_name, race_date=end_date
     )
     plan = db.get_plan_by_id(plan_id) or plan
-    return {"plan": _attach_milestones(plan)}
+    return {"plan": _plan_payload(plan)}
 
 
 @app.get("/api/coach/block-completion/{plan_id}")
@@ -3358,7 +3365,7 @@ def select_plan_endpoint(request: SelectPlanRequest, user: dict[str, Any] = Depe
     workouts = get_plan_workouts(request.plan_id)
     return {
         "active": True,
-        "plan": _attach_milestones(updated_plan) if updated_plan else updated_plan,
+        "plan": _plan_payload(updated_plan) if updated_plan else updated_plan,
         "workouts": workouts,
     }
 

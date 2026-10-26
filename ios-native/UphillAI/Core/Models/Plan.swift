@@ -50,6 +50,8 @@ struct Plan: Codable, Sendable, Equatable, Identifiable {
     var trainingMountain: String? = nil
     var mountainMinMinutes: Int? = nil
     var longDayFormat: String? = nil
+    /// R-C8: m D+ each build week should climb, keyed by week number as text (backend goal_service.vert_targets_for).
+    var weeklyVertTargets: [String: Int]? = nil
     var stairAccess: Bool? = nil
     var treadmillMaxIncline: Int? = nil
     var maxContinuousJogMin: Int? = nil
