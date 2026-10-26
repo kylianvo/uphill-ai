@@ -33,7 +33,7 @@ export interface BRace {
   week?: number;
   day?: string;
 }
-export interface BRaceInput { race_name: string; race_date: string; distance_km?: number | null; elevation_gain_m?: number | null; effort: BRaceEffort }
+export interface BRaceInput { race_name: string; race_date: string; distance_km?: number | null; elevation_gain_m?: number | null; effort: BRaceEffort; race_id?: number }
 export interface BRaceAssessment { race: BRaceInput & { options_km: number[] }; verdict: BRaceVerdict; predicted: BRace["predicted"] }
 
 export const LEVELS: Record<BRaceLevel, { en: string; vi: string; fg: string; bg: string; line: string }> = {

@@ -20,7 +20,7 @@ struct AddBRaceSheet: View {
         _date = State(initialValue: day)
         _input = State(initialValue: BRaceInput(raceName: race?.raceName ?? "", raceDate: PlanCalendar.ymd(day),
                                                distanceKm: race?.distanceKm, elevationGainM: race?.elevationGainM,
-                                               effort: race?.effort ?? .race))
+                                               effort: race?.effort ?? .race, raceId: race?.id))
     }
 
     private var ready: Bool { input.raceName.trimmingCharacters(in: .whitespaces).count >= 3 }
@@ -105,6 +105,7 @@ struct AddBRaceSheet: View {
             case "distance_required": return L("We couldn't find this race in our list: add its distance.")
             case "date_out_of_range": return L("Pick a date after today and before your goal race.")
             case "too_many_races": return L("A plan holds up to 3 B-races.")
+            case "rebuild_in_progress": return L("Your plan is still updating. Try again in a minute.")
             default: break
             }
         }

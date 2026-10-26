@@ -158,7 +158,7 @@ def _claude_text(message: Any) -> str | None:
 def rows_after_race(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """The sessions planned after the goal race in its week: the day after a race is rest, never a recovery run.
     Only the last race counts, so a mid-plan tune-up race keeps the rest of its week."""
-    races = [w for w in workouts if w.get("type") == "Race"]
+    races = [w for w in workouts if w.get("type") == "Race" and not w.get("plan_race_id")]  # B-races keep their week
     if not races:
         return []
     goal = max(races, key=lambda w: (w.get("week_number") or 0, _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), 7)))
@@ -2340,7 +2340,8 @@ class PlanGenerator:
                 except ValueError:
                     incline = 0.0
                 if typ == "Race":
-                    wo["description"] = _race_text(minutes, float(wo.get("distance_km") or course_distance_km or 0))
+                    if not wo.get("plan_race_id"):  # a B-race keeps the guard's rehearsal text (services/b_race.py)
+                        wo["description"] = _race_text(minutes, float(wo.get("distance_km") or course_distance_km or 0))
                     continue
                 if (
                     any(kw in title_l for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)

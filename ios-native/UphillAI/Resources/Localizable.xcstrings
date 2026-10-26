@@ -1,6 +1,16 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Your plan is still updating. Try again in a minute.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan đang cập nhật. Thử lại sau một phút nhé."
+          }
+        }
+      }
+    },
     "Good test": {
       "localizations": {
         "vi": {

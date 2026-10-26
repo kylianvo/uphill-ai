@@ -1,3 +1,4 @@
+import asyncio
 import os
 import re
 import threading
@@ -260,6 +261,7 @@ class BRaceInput(BaseModel):
     distance_km: float | None = Field(default=None, gt=0, le=400)
     elevation_gain_m: float | None = Field(default=None, ge=0, le=20000)
     effort: Literal["race", "training"] = "race"
+    race_id: int | None = None  # on assess: the race being edited, left out of its own comparison
 
 
 class PlanGenerateRequest(BaseModel):
@@ -987,7 +989,6 @@ async def auth_google(request: GoogleAuthRequest):
 @app.post("/api/auth/apple")
 async def auth_apple(request: AppleAuthRequest):
     """Sign in with Apple from the native iOS app."""
-    import asyncio
 
     try:
         claims = await asyncio.to_thread(
@@ -1239,7 +1240,6 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     generation in the background. Returns immediately with a job_id the frontend
     can poll via GET /api/coach/plan-status/{job_id}.
     """
-    import asyncio
     from datetime import date, timedelta
 
     supplied_zones = request.model_dump(exclude_none=True)
@@ -1386,7 +1386,9 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     if beginner_shape:
         beginner_milestones.safe_apply_creation(user["id"], plan_id, request.milestone_target, request.current_jog_min)
     if request.b_races:
-        b_race.save_setup_races(user, plan_id, [r.model_dump() for r in request.b_races])
+        await asyncio.to_thread(
+            b_race.save_setup_races, user, plan_id, [r.model_dump(exclude={"race_id"}) for r in request.b_races]
+        )
     _assess_new_plan(user["id"], plan_id)
 
     # Mark onboarding complete immediately so the user can enter the app
@@ -2284,7 +2286,6 @@ async def _generate_plan_for_athlete(
     /api/coaching/athletes/{athlete_id}/generate-plan (created_by_user_id =
     coach.id, plan_status='draft', job_owner_user_id = coach.id so only the
     coach -- not yet the athlete -- can poll the job)."""
-    import asyncio
     from datetime import datetime, timedelta
 
     goal = request.goal_type
@@ -2388,8 +2389,11 @@ async def _generate_plan_for_athlete(
     if beginner_shape:
         beginner_milestones.safe_apply_creation(athlete_id, plan_id, request.milestone_target, request.current_jog_min)
     if request.b_races:
-        b_race.save_setup_races(
-            get_user_by_id(athlete_id) or {"id": athlete_id}, plan_id, [r.model_dump() for r in request.b_races]
+        await asyncio.to_thread(
+            b_race.save_setup_races,
+            get_user_by_id(athlete_id) or {"id": athlete_id},
+            plan_id,
+            [r.model_dump(exclude={"race_id"}) for r in request.b_races],
         )
     _assess_new_plan(athlete_id, plan_id)
 
@@ -2714,7 +2718,7 @@ def list_b_races(plan_id: int, user: dict[str, Any] = Depends(get_current_user))
 @app.post("/api/plans/{plan_id}/races/assess")
 def assess_b_race(plan_id: int, request: BRaceInput, user: dict[str, Any] = Depends(get_current_user)):
     plan = _owned_race_plan(plan_id, user["id"])
-    return _b_race_call(b_race.evaluate, user, plan, request.model_dump())
+    return _b_race_call(b_race.evaluate, user, plan, request.model_dump(exclude={"race_id"}), request.race_id)
 
 
 _b_race_logger = get_logger("b_race")
@@ -2754,10 +2758,32 @@ def _b_race_weeks(plan: dict[str, Any], race: dict[str, Any]) -> set[int]:
     return b_race.affected_weeks(race, monday) if monday else set()
 
 
+def _b_race_rebuilding(plan: dict[str, Any], weeks: set[int]) -> None:
+    """409 while an adapt job is re-planning one of these weeks: it read the races before this change, and a
+    second request for the same week would only get that job back."""
+    busy = any(
+        job.get("plan_id") == plan["id"]
+        and job.get("kind") == "adapt_week"
+        and job.get("target_week") in weeks
+        and job.get("status") == "generating"
+        for job in list(plan_jobs.values())
+    )
+    if busy:
+        raise HTTPException(status_code=409, detail="rebuild_in_progress")
+
+
 @app.post("/api/plans/{plan_id}/races")
 async def add_b_race(plan_id: int, request: BRaceInput, user: dict[str, Any] = Depends(get_current_user)):
     plan = _owned_race_plan(plan_id, user["id"])
-    race = await _b_race_words(user, plan, _b_race_call(b_race.create, user, plan, request.model_dump()))
+    data = request.model_dump(exclude={"race_id"})
+    _b_race_rebuilding(
+        plan,
+        _b_race_weeks(
+            plan, {**data, "effort": data["effort"], "kept_against": None, "distance_km": data.get("distance_km") or 0}
+        ),
+    )
+    # create() can reach the goal model for the prediction: keep it off the event loop
+    race = await _b_race_words(user, plan, await asyncio.to_thread(_b_race_call, b_race.create, user, plan, data))
     jobs = await _b_race_rebuild(user, plan, _b_race_weeks(plan, race), f"B-race added: {race['race_name']}.")
     return {"race": race, "rebuild_job_ids": jobs}
 
@@ -2768,8 +2794,11 @@ async def change_b_race(
 ):
     plan = _owned_race_plan(plan_id, user["id"])
     before = db.get_plan_race(plan_id, race_id)
+    if before:
+        _b_race_rebuilding(plan, _b_race_weeks(plan, before))
+    changes = request.model_dump(exclude_unset=True)
     race = await _b_race_words(
-        user, plan, _b_race_call(b_race.update, user, plan, race_id, request.model_dump(exclude_unset=True))
+        user, plan, await asyncio.to_thread(_b_race_call, b_race.update, user, plan, race_id, changes)
     )
     db.delete_race_workouts(race_id)  # the guard re-adds it on its (possibly new) day
     weeks = _b_race_weeks(plan, race) | (_b_race_weeks(plan, before) if before else set())
@@ -2780,6 +2809,8 @@ async def change_b_race(
 @app.delete("/api/plans/{plan_id}/races/{race_id}")
 async def cancel_b_race(plan_id: int, race_id: int, user: dict[str, Any] = Depends(get_current_user)):
     plan = _owned_race_plan(plan_id, user["id"])
+    if before := db.get_plan_race(plan_id, race_id):
+        _b_race_rebuilding(plan, _b_race_weeks(plan, before))
     race = _b_race_call(b_race.cancel, user, plan, race_id)
     db.delete_race_workouts(race_id)
     jobs = await _b_race_rebuild(user, plan, _b_race_weeks(plan, race), f"B-race cancelled: {race['race_name']}.")
@@ -2825,7 +2856,9 @@ async def b_race_debrief(
     words = await b_race_words.debrief_text(facts, lang, user.get("gemini_api_key"))
     debrief = {**(race.get("debrief") or {}), "answers": answers, "facts": facts, **words, "lang": lang}
     db.update_plan_race(race_id, {"debrief": debrief})
-    return {"debrief": debrief, "goal": {"suggested_target_hours": b_race.suggested_target_hours(user, plan)}}
+
+    hours = await asyncio.to_thread(b_race.suggested_target_hours, user, plan)  # may reach the goal model
+    return {"debrief": debrief, "goal": {"suggested_target_hours": hours}}
 
 
 @app.get("/api/coach/block-completion/{plan_id}")
@@ -2894,7 +2927,6 @@ async def _generate_next_block_for_athlete(
     it via the shared /api/coach/plan-status/{job_id}, same pattern as
     _generate_plan_for_athlete).
     """
-    import asyncio
 
     # Ownership check FIRST — before any reads or writes on this plan
     recent = get_recent_plans(athlete_id, limit=100)
@@ -3309,7 +3341,6 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
     /api/coach/adapt-week (athlete_id == job_owner_user_id) and the
     coach-triggered /api/coaching/athletes/{athlete_id}/adapt-week.
     """
-    import asyncio
     import uuid as _uuid
 
     recent = get_recent_plans(athlete_id, limit=100)
@@ -3944,7 +3975,6 @@ async def trigger_podcast_discovery(user: dict[str, Any] = Depends(require_admin
     """Discover new Evoke Endurance podcast episodes and append their knowledge cards
     (admin, background job). Incrementally appends cards from newly-found episodes,
     never touching the existing library."""
-    import asyncio
 
     from services.knowledge_extractor import discover_podcast_knowledge_web, save_podcast_knowledge_cards
 
@@ -3995,7 +4025,6 @@ async def trigger_kb_distill(domain: str = "all", user: dict[str, Any] = Depends
     can add products but never remove them. The scheduler's curated training philosophy is
     NOT swept here -- it replaces doctrine wholesale, so it is script-only
     (backend/scripts/distill_principles.py)."""
-    import asyncio
 
     from services.kb_distiller import WEB_DOMAINS, distill_domain
 
@@ -4060,7 +4089,6 @@ async def trigger_race_results_distill(user: dict[str, Any] = Depends(require_ad
     already have a curated `results` block -- never invents results for an
     untracked race, and never overwrites an already-curated (year, distance) entry.
     Background job, same pattern as /api/kb/distill."""
-    import asyncio
 
     from services.kb_distiller import discover_race_results_web, save_race_results
 
@@ -4127,7 +4155,6 @@ def save_course_profile_endpoint(request: CourseProfileRequest, user: dict[str, 
 async def import_kb_seed(domain: str = "all", user: dict[str, Any] = Depends(require_admin)):
     """Load committed backend/kb_seed/<domain>.json files into this environment's
     Postgres (+ Qdrant for scheduler). This is how prod gets the KB without re-distilling."""
-    import asyncio
 
     from services.kb_distiller import DOMAINS, HAND_CURATED_DOMAINS, load_seed
 

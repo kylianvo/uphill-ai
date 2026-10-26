@@ -103,3 +103,37 @@ def test_race_inside_the_a_taper_takes_only_its_own_day():
     out = b_race.enforce(copy.deepcopy(ws), [late], MON)
     assert [x["type"] for x in day(out, 10, "Wednesday")] == ["Race"]
     assert [x for x in out if x["day_of_week"] != "Wednesday"] == [x for x in ws if x["day_of_week"] != "Wednesday"]
+
+
+def test_recovery_in_the_next_week_is_guarded_when_only_that_week_is_built():
+    ws = b_race.enforce(week(6), [RACE], MON)  # one-week blocks: the race week isn't in this draft
+    for d in ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"):
+        x = day(ws, 6, d)[0]
+        assert x["type"] in ("Easy", "Rest") and (x["type"] == "Rest" or x["target_zone"] == "Zone 1")
+    assert not [x for x in ws if x["type"] == "Race"]  # the race row belongs to its own week's build
+
+
+def test_taper_in_the_previous_week_is_guarded():
+    monday_race = {**RACE, "race_date": "2026-11-02"}  # Monday of week 6: taper Fri–Sun of week 5
+    ws = b_race.enforce(week(5), [monday_race], MON)
+    assert day(ws, 5, "Sunday")[0]["type"] in ("Easy", "Rest")  # the long run doesn't stay
+    assert day(ws, 5, "Tuesday")[0]["type"] == "Interval"
+
+
+def test_taper_days_keep_at_least_twenty_minutes():
+    ws = [
+        w(5, "Tuesday", "Easy", 30),
+        w(5, "Wednesday", "Easy", 30),
+        w(5, "Friday", "Easy", 30),
+        w(5, "Sunday", "Long Run", 120),
+    ]
+    out = b_race.enforce(ws, [RACE], MON)
+    assert day(out, 5, "Friday")[0]["duration_minutes"] == 20  # 50% of 30 would be filler the generator drops
+
+
+def test_rows_after_race_ignores_b_races():
+    from services.plan_generator import rows_after_race
+
+    rows = [{"type": "Race", "week_number": 5, "day_of_week": "Saturday", "plan_race_id": 9},
+            {"type": "Easy", "week_number": 5, "day_of_week": "Sunday"}]  # fmt: skip
+    assert rows_after_race(rows) == []

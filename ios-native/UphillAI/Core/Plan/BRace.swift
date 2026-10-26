@@ -96,6 +96,8 @@ struct BRaceInput: Codable, Sendable, Equatable {
     var distanceKm: Double?
     var elevationGainM: Double?
     var effort: BRaceEffort = .race
+    /// On assess: the race being edited, so it isn't compared with itself.
+    var raceId: Int? = nil
 }
 
 /// POST /races/assess: the resolved race and the verdict, before anything is saved.

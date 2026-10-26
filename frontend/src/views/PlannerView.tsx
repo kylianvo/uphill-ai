@@ -351,7 +351,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       <AddRaceModal
         lang={lang}
         race={raceSheet.mode === "edit" ? raceSheet.race : undefined}
-        assess={assessRace}
+        assess={(input) => assessRace(raceSheet.mode === "edit" ? { ...input, race_id: raceSheet.race.id } : input)}
         save={(input) => saveRace(input, raceSheet.mode === "edit" ? raceSheet.race.id : undefined)}
         onCancelRace={raceSheet.mode === "edit" ? () => { cancelRace(raceSheet.race.id); setRaceSheet(null); } : undefined}
         onClose={() => setRaceSheet(null)}

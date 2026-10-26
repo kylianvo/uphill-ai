@@ -19,7 +19,7 @@ const T = {
     add: "Add race", save: "Save", addAs: (s: string) => `Add it as ${s}`, keep: (km: number) => `Keep ${km} km anyway`,
     addTraining: "Add as a training run", cancelRace: "Cancel this race", cost: "What it would change",
     plan: (t: number, r: number) => `${t} easy days before, ${r} easy days after.`, predicted: "Predicted",
-    distanceRequired: "We couldn't find this race in our list: add its distance.", dateOut: "Pick a date after today and before your goal race.",
+    distanceRequired: "We couldn't find this race in our list: add its distance.", busy: "Your plan is still updating. Try again in a minute.", dateOut: "Pick a date after today and before your goal race.",
     tooMany: "A plan holds up to 3 B-races.", failed: "Couldn't check this race. Try again.", confirmCancel: "Cancel this race? Your plan goes back to normal.",
   },
   vi: {
@@ -28,13 +28,13 @@ const T = {
     add: "Thêm race", save: "Lưu", addAs: (s: string) => `Thêm với ${s}`, keep: (km: number) => `Vẫn giữ ${km} km`,
     addTraining: "Thêm như buổi tập", cancelRace: "Huỷ race này", cost: "Những gì sẽ thay đổi",
     plan: (t: number, r: number) => `${t} ngày nhẹ trước, ${r} ngày nhẹ sau.`, predicted: "Dự đoán",
-    distanceRequired: "Không tìm thấy race này trong danh sách: hãy nhập cự ly.", dateOut: "Chọn ngày sau hôm nay và trước race mục tiêu.",
+    distanceRequired: "Không tìm thấy race này trong danh sách: hãy nhập cự ly.", busy: "Plan đang cập nhật. Thử lại sau một phút nhé.", dateOut: "Chọn ngày sau hôm nay và trước race mục tiêu.",
     tooMany: "Mỗi plan có tối đa 3 B-race.", failed: "Chưa kiểm tra được race này. Thử lại nhé.", confirmCancel: "Huỷ race này? Plan sẽ trở lại như cũ.",
   },
 } as const;
 
-const ERRORS: Record<string, "distanceRequired" | "dateOut" | "tooMany"> = {
-  distance_required: "distanceRequired", date_out_of_range: "dateOut", too_many_races: "tooMany",
+const ERRORS: Record<string, "distanceRequired" | "dateOut" | "tooMany" | "busy"> = {
+  rebuild_in_progress: "busy", distance_required: "distanceRequired", date_out_of_range: "dateOut", too_many_races: "tooMany",
 };
 
 const inputStyle: React.CSSProperties = { width: "100%", minHeight: 44, padding: "8px 10px", borderRadius: 10, border: "1px solid #c9d3cc", fontSize: 15, boxSizing: "border-box", background: "#ffffff", color: "#17231d", colorScheme: "light" };

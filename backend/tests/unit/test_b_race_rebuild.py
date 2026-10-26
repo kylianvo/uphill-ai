@@ -97,3 +97,47 @@ def test_partly_logged_week_keeps_logged_rows():
     ws[3]["is_completed"] = 1  # Thursday already done
     rng = week_rebuild.rebuild_range(PLAN, ws, 5, date(2026, 10, 27))  # Tuesday of week 5
     assert 53 not in rng.replaceable_ids and 53 in rng.kept_ids and rng.from_day == "Tuesday"
+
+
+def test_editing_assesses_the_race_without_itself(api):
+    rid = client.post("/api/plans/5/races", json=BODY).json()["race"]["id"]
+    same = client.post("/api/plans/5/races/assess", json={**BODY, "race_id": rid}).json()
+    assert "stacked" not in same["verdict"]["reasons"]
+    other = client.post("/api/plans/5/races/assess", json=BODY).json()  # a second race on the same day does stack
+    assert "stacked" in other["verdict"]["reasons"]
+
+
+def test_model_calls_run_off_the_event_loop(api, monkeypatch):
+    import asyncio
+
+    seen = []
+
+    def create(user, plan, data):
+        try:
+            asyncio.get_running_loop()
+            seen.append("on the loop")
+        except RuntimeError:
+            seen.append("worker thread")
+        return {**data, "id": 1, "race_date": data["race_date"], "verdict": {"level": "good"}, "status": "planned",
+                "effort": "race", "kept_against": None}  # fmt: skip
+
+    monkeypatch.setattr(b_race, "create", create)
+    monkeypatch.setattr(main, "_b_race_words", lambda user, plan, race: _same(race))
+    client.post("/api/plans/5/races", json=BODY)
+    assert seen == ["worker thread"]
+
+
+async def _same(race):
+    return race
+
+
+def test_edit_while_its_weeks_rebuild_is_409(api):
+    rid = client.post("/api/plans/5/races", json=BODY).json()["race"]["id"]
+    main.plan_jobs["busy"] = {"plan_id": 5, "kind": "adapt_week", "target_week": 6, "status": "generating"}
+    try:
+        r = client.patch(f"/api/plans/5/races/{rid}", json={"effort": "training"})
+        assert r.status_code == 409 and r.json()["detail"] == "rebuild_in_progress"
+        assert client.delete(f"/api/plans/5/races/{rid}").status_code == 409
+        assert api["deleted"] == []  # nothing was removed while the week was being rebuilt
+    finally:
+        main.plan_jobs.pop("busy", None)

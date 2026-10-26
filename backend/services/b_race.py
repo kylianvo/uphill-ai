@@ -428,6 +428,7 @@ _A_RACE_PHASES = {"Taper", "Race Week", "Race"}
 _EASY_TYPES = {"Easy", "Recovery", "Walk/Run"}
 _TAPER_CAP_SHARE = 0.5
 _TAPER_CAP_FALLBACK_MIN = 30
+_TAPER_MIN_MINUTES = 20
 _RECOVERY_CAP_MIN = 60
 _RECOVERY_CONVERTED_MIN = 45
 _STRIDES = " + 3 × 20 s relaxed strides"
@@ -488,9 +489,14 @@ def enforce(
     for race in races:
         rdate = _date(race["race_date"])
         week, day = week_and_day(plan_monday, rdate)
-        if week not in weeks:
+        taper, rec = _race_shape(race)
+        # Blocks are one week long: the taper can sit in the week before and the recovery in the week after.
+        span = {week_and_day(plan_monday, rdate + timedelta(days=d))[0] for d in range(-taper, rec + 1)}
+        if not span & weeks:
             continue
-        shaped.append((race, rdate, *_race_shape(race)))
+        shaped.append((race, rdate, taper, rec))
+        if week not in weeks:
+            continue  # the race row and the long-run swap belong to the race week's own build
         phase = next((w.get("phase") for w in out if w.get("week_number") == week and w.get("phase")), None)
         out = [
             w
@@ -538,15 +544,16 @@ def enforce(
 
     for race, rdate, taper, _rec in shaped:
         taper_dates = {rdate - timedelta(days=d) for d in range(1, taper + 1)}
-        week, _ = week_and_day(plan_monday, rdate)
+        taper_weeks = {week_and_day(plan_monday, d)[0] for d in taper_dates} | {week_and_day(plan_monday, rdate)[0]}
         easy = sorted(
             float(w.get("duration_minutes") or 0)
             for w in out
-            if w.get("week_number") == week
+            if w.get("week_number") in taper_weeks
             and w.get("type") in _EASY_TYPES
             and _row_date(plan_monday, w) not in taper_dates
         )
         cap = easy[len(easy) // 2] * _TAPER_CAP_SHARE if easy else _TAPER_CAP_FALLBACK_MIN
+        cap = max(cap, _TAPER_MIN_MINUTES)  # shorter runs are filler the generator turns into rest
         last = max(taper_dates) if taper_dates else None
         for w in out:
             d = _row_date(plan_monday, w)
