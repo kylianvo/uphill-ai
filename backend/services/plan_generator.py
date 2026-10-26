@@ -1815,12 +1815,9 @@ class PlanGenerator:
                 if not plan_lint.week_minutes(before):
                     continue
                 # the lint's measure (plan_lint VOLUME_JUMP): the rest of the week grows by the tier's step, the
-                # long run (and its back-to-back day) by its own ladder step; the whole week by WEEK_GROWTH_CAP at most
+                # long run (and its back-to-back day) by its own ladder step
                 rest_before = plan_lint.week_minutes(before) - plan_lint.long_block_minutes(before)
-                limit = min(
-                    plan_lint.long_block_minutes(rows) + rest_before * (1 + tier_profile.max_weekly_progression),
-                    plan_lint.week_minutes(before) * ultra_rules.WEEK_GROWTH_CAP,
-                )
+                limit = plan_lint.long_block_minutes(rows) + rest_before * (1 + tier_profile.max_weekly_progression)
                 _fit_week(wos, rows, limit, floor)
 
         def _cap_week_vert(wos: list[dict[str, Any]]) -> None:

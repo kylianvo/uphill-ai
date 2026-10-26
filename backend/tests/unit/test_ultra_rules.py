@@ -31,7 +31,7 @@ def test_100mi_advanced_peaks_at_8h_and_50k_at_5h():
 
 def test_short_plan_enters_late_and_never_jumps_more_than_an_hour():
     lad = u.ladder("100k", False, 8)  # peak_week 5
-    assert lad[5] == 360 and lad[1] >= 180
+    assert lad[5] == 420 and lad[1] >= 180
     assert u.long_run_target("100k", False, 5, 8, recent_longest=240) == 300
     assert u.long_run_target("100k", False, 6, 8, recent_longest=240) is None
 
@@ -79,16 +79,11 @@ def test_prompt_block_vietnamese():
     assert "420" in u.prompt_block("100k", False, {16: 420}, 20, False, "vi")
 
 
-def test_13_week_100k_peaks_at_6h_without_hour_steps_every_week():
-    """Plan 131 (13 weeks, recreational): 4 -> 5 -> 6 -> 7 h on consecutive build weeks became two 5 h weeks and a
-    6 h peak; the first recovery week drops to 3 h instead of repeating week 3's 4 h."""
+def test_13_week_100k_recovery_weeks_step_down_a_rung():
+    """Plan 131 (13 weeks): the first recovery week drops to 3 h instead of repeating week 3's 4 h; the 7 h peak
+    (Quang: 6-7 h for finishers too) comes after the week-8 recovery week, not straight after the 6 h week."""
     lad = u.ladder("100k", False, 13)
-    assert lad == {1: 180, 2: 180, 3: 240, 4: 180, 5: 240, 6: 300, 7: 300, 8: 240, 9: 360}
-
-
-def test_advanced_and_long_plans_keep_the_7h_peak():
-    assert u.ladder("100k", True, 13)[9] == 420
-    assert u.ladder("100k", False, 20)[16] == 420
+    assert lad == {1: 180, 2: 180, 3: 240, 4: 180, 5: 240, 6: 300, 7: 360, 8: 240, 9: 420}
 
 
 def test_back_to_back_split_adds_up_to_more_than_the_single_day():

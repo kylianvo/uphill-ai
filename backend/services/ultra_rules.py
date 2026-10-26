@@ -12,7 +12,6 @@ Band = Literal["50k", "100k", "100mi"]
 
 LONG_SHARE_CAP = 0.60
 STEP_CAP_MIN = 60  # a ladder week is never more than an hour above the last two weeks' longest run
-WEEK_GROWTH_CAP = 1.15  # the whole week, ladder step included, grows at most 15% (rest of the week: tier's 10%)
 QUALITY_MAX_MIN = 90
 QUALITY_WINDOW_WEEKS = 8
 ME_FREE_LONG_RUN_MIN = 360
@@ -101,9 +100,6 @@ def ladder(band: Band, advanced: bool, total_weeks: int) -> dict[int, int]:
     start, filler, end, recovery = _LADDERS[(band, advanced and band == "100mi")]
     peak = peak_week(total_weeks)
     n = sum(1 for w in range(1, peak + 1) if not is_deload(w, total_weeks))
-    if not advanced and band != "50k" and n < len(start) + len(end) + 2:
-        # too short for two 5 h weeks: peak at 6 h (Quang: 6-7 h) instead of +1 h on three build weeks running
-        end = end[:-1]
     steps = start + end
     seq = start + [filler] * (n - len(steps)) + end if n >= len(steps) else steps[-n:] if n > 0 else []
     out: dict[int, int] = {}

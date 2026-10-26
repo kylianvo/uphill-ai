@@ -477,13 +477,19 @@ def test_single_long_day_stays_the_default(rule_based_plan):
     assert _longs(wos)[16] == 420 and not any(plan_lint.is_b2b_day(w) for w in wos)
 
 
-def test_ladder_weeks_grow_at_most_15_percent_in_all(rule_based_plan):
+def test_ladder_weeks_grow_by_the_ladder_step_and_10_percent_on_the_rest(rule_based_plan):
+    """Quang's step on the long run, the tier's 10% on the rest of the week (measured from the week before a
+    recovery week); no extra cap on the whole week, which would stop the weekday growth Quang asks for."""
     wos = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="recreational")
     for wk in range(3, 17):
         if ultra_rules.is_deload(wk, 20):
             continue
         ref = wk - 2 if ultra_rules.is_deload(wk - 1, 20) else wk - 1
-        assert _week_min(wos, wk) <= _week_min(wos, ref) * ultra_rules.WEEK_GROWTH_CAP + 1, wk
+        rows = [w for w in wos if w["week_number"] == wk]
+        before = [w for w in wos if w["week_number"] == ref]
+        rest = _week_min(wos, wk) - plan_lint.long_block_minutes(rows)
+        rest_before = _week_min(wos, ref) - plan_lint.long_block_minutes(before)
+        assert rest <= rest_before * 1.10 + 30, wk  # 30: an overshoot under half a run stays (R-V4)
 
 
 def test_mid_week_start_gets_its_share_of_week_one(rule_based_plan):

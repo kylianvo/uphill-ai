@@ -68,9 +68,9 @@ Paths are under `backend/services/` unless stated.
   `max_weekly_progression`); the excess is trimmed from easy runs. Return from a deload is
   measured against the larger of the last two weeks. On a mountain-day ultra it runs again after the
   week shape (`_cap_growth`, which lifts weekday runs to their minimum), on the rest of the week: the
-  long run's ladder step (and its back-to-back day) is R-U1's. The **whole week**, ladder step included, grows at
-  most **15%** (`WEEK_GROWTH_CAP`). After a recovery week both the generator and the lint measure against the
-  week before it.
+  long run's ladder step (and its back-to-back day) is R-U1's. No extra cap on the whole week: it would use up
+  the room Quang gives the weekdays (a 15% cap was tried on 2026-10-27 and cut plan 131's peak from 109 to 77 km).
+  After a recovery week both the generator and the lint measure against the week before it.
 - **R-V3 Ramp toward the goal.** Build weeks grow toward the race's peak-week volume
   (`_ramp_volume`), within R-V2 and the tier's weekday maximum.
 
@@ -91,10 +91,9 @@ Paths are under `backend/services/` unless stated.
 Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
 `docs/superpowers/specs/2026-10-23-ultra-rules-design.md`, which records where this departs from the book).
 - **R-U1 Long-run ladder** in hours, read back from the peak week: 100 km 3, 3, 4, 4, 5 … 6, 7 h; 50 km
-  3 h ×4 → 4 → 4.5 → 5 h; 100 mi as 100 km, 8 h peak for sub-elite/elite. A plan too short for two 5 h weeks
-  peaks at **6 h** (recreational and below, 100 km+; Quang: 6–7 h), so the build is never +1 h on three weeks
-  running (a 13-week 100 km: 3, 3, 4, (3), 4, 5, 5, (4), 6 h). A recovery week's long run is **a rung below the
-  last build week**, 4 h at most (3 h at the first one). Never more than 60 min above the last two weeks'
+  3 h ×4 → 4 → 4.5 → 5 h; 100 mi as 100 km, 8 h peak for sub-elite/elite; a short plan keeps the top steps
+  (a 13-week 100 km: 3, 3, 4, (3), 4, 5, 6, (4), 7 h). A recovery week's long run is **a rung below the last
+  build week**, 4 h at most (3 h at the first one). Never more than 60 min above the last two weeks'
   longest. Session cap 300 / 420 / 420–480 min, long-run share 60%; ladder steps are exempt from
   `LONG_RUN_JUMP` and the weekly growth checks measure the rest of the week.
   **Back-to-back (athlete's choice, `long_day_format`; owner 2026-10-27: Quang allows both):** the 6 h and 7 h

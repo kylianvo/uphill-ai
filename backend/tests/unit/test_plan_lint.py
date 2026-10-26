@@ -586,3 +586,16 @@ def test_week_after_a_recovery_week_is_held_to_the_week_before_it():
     week5 = _ladder_week(5, 240, phase="Build")[1:]  # held at week 3's rest of the week: no room for a 4th run
     found = lint_weeks(week3 + week4 + week5, {5}, for_race(REC, 104.2, True), _ladder_prefs())
     assert "DAYS_SHORT" not in codes(found)
+
+
+def test_ladder_week_overshoot_under_half_a_run_is_not_a_volume_jump():
+    """R-V4 keeps an overshoot under half the shortest easy run rather than drop a run; the lint agrees."""
+    ultra = for_race(REC, 104.2, True)
+    week6 = _ladder_week(6, 300, phase="Build")  # rest of the week 240
+    week7 = _ladder_week(7, 360, phase="Build") + [s(7, "Sunday", "Easy", 45, phase="Build")]  # rest 285: +19%
+    assert "VOLUME_JUMP" not in codes(lint_weeks(week6 + week7, {7}, ultra, _ladder_prefs()))
+    week7_big = _ladder_week(7, 360, phase="Build") + [
+        s(7, "Sunday", "Easy", 60, phase="Build"),
+        s(7, "Monday", "Easy", 60, phase="Build"),
+    ]
+    assert "VOLUME_JUMP" in codes(lint_weeks(week6 + week7_big, {7}, ultra, _ladder_prefs()))

@@ -253,7 +253,10 @@ def lint_week(
     # On a ladder plan the long run's step is Quang's (ultra_rules), so growth is judged on the rest of the week.
     lr_now = long_block_minutes(ws) if ultra else 0.0
     lr_prev = long_block_minutes(_active(prev_ws)) if ultra else 0.0
-    if prev_total and not _is_down(weeks, week - 1) and total - lr_now > (prev_total - lr_prev) * (1 + cap) + 1:
+    # a ladder plan's generator keeps an overshoot under half its shortest easy run rather than drop a run (R-V4)
+    easy = [_min(w) for w in ws if w.get("type") in ("Easy", "Aerobic Capacity", "Recovery") and not is_b2b_day(w)]
+    slack = 0.5 * min(easy) if ultra and easy else 1.0
+    if prev_total and not _is_down(weeks, week - 1) and total - lr_now > (prev_total - lr_prev) * (1 + cap) + slack:
         issues.append(
             Issue(
                 "VOLUME_JUMP",
