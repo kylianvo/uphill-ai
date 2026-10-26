@@ -50,6 +50,15 @@ struct PlanViewModelTests {
         #expect(cache.load(PlanSnapshot.self, .plan) != nil)
     }
 
+    @Test func loadFetchesTheCoachReview() async throws {
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snapshot()) }
+        service.nudgeResult.withLock { $0 = CoachNudge(tone: "steady", text: "a b c", messages: ["a", "b", "c"]) }
+        let model = make(service)
+        await model.load()
+        #expect(model.coachNudge?.messages == ["a", "b", "c"])
+    }
+
     @Test func daysForSelectedWeek() async {
         let service = FakePlanService()
         service.activeResult.withLock { $0 = .success(snapshot()) }
@@ -230,7 +239,7 @@ struct PlanViewModelTests {
         let target = try #require(model.moveTargets(for: workout).first)
         #expect(await model.move(workout, to: target) == false)
         await model.select(snap.plan)
-        #expect(service.calls.withLock { $0 } == ["active", "completion \(snap.plan.id)", "active"])
+        #expect(service.calls.withLock { $0 } == ["active", "completion \(snap.plan.id)", "journey \(snap.plan.id)", "nudge \(snap.plan.id)", "active"])
         #expect(model.actionError == PlanViewModel.offlineMessage)
     }
 
