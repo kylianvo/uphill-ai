@@ -158,3 +158,11 @@ def test_send_needs_the_workout_permission(world, monkeypatch):
     with pytest.raises(garmin_push.PushError) as exc:
         _push(FakeGarmin())
     assert exc.value.code == "GARMIN_no_workout_permission"
+
+
+def test_the_daily_send_cap_counts_on_the_server_date(world, monkeypatch):
+    seen = []
+    monkeypatch.setattr(garmin_push.db, "claim_garmin_push_slot", lambda u, d, limit: seen.append(d) or True)
+    world["window"] = _window(TODAY + dt.timedelta(days=1))
+    asyncio.run(garmin_push.push(42, dt.date(2030, 1, 1), "en", transport=httpx.MockTransport(FakeGarmin())))
+    assert seen == [dt.datetime.now(dt.UTC).date()]

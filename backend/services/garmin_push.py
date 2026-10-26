@@ -138,7 +138,9 @@ async def _push_locked(user_id, plan, connection, today, lang, transport) -> dic
         raise PushError("NOTHING_to_push", 409)
 
     limit = settings.GARMIN_DAILY_PUSH_LIMIT
-    if not db.claim_garmin_push_slot(user_id, today, limit):
+    # The server's UTC date, not the client's `today`: a client could otherwise alternate
+    # dates to reset the count and spend Garmin's per-athlete call budget.
+    if not db.claim_garmin_push_slot(user_id, dt.datetime.now(dt.UTC).date(), limit):
         raise PushError("PUSH_limit", 429, {"limit": limit})
     try:
         token = await garmin_oauth.access_token(connection)
