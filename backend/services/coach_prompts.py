@@ -144,6 +144,14 @@ def format_recovery(summary: dict[str, Any]) -> str:
         vitals.append(f"Resting HR {rhr:g} bpm")
     if vitals:
         lines.append("- " + " | ".join(vitals))
+    battery, stress = summary.get("latest_body_battery"), summary.get("avg_stress")
+    extras = []
+    if battery is not None:
+        extras.append(f"Body Battery {battery} (latest morning high, 0-100)")
+    if stress is not None:
+        extras.append(f"Stress {stress} avg (1-100)")
+    if extras:
+        lines.append("- " + " | ".join(extras))
     nights, avg_sleep = summary.get("nights_recorded") or 0, summary.get("avg_sleep_minutes")
     if nights and avg_sleep is not None:
         lines.append(f"- Sleep {format_sleep(avg_sleep)} avg over {nights} nights")

@@ -14,7 +14,7 @@ from services.providers.base import CanonicalActivity, CanonicalDailyMetric
 PROVIDER = "garmin"
 ACTIVITY_KEYS = ("activities", "activityDetails", "manuallyUpdatedActivities")
 # Health summaries that feed readiness. Each one fills its own fields of the day's row.
-RECOVERY_KEYS = ("dailies", "sleeps", "hrv")
+RECOVERY_KEYS = ("dailies", "sleeps", "hrv", "stressDetails")
 # Sleep without device data behind it: typed in by hand, or a window with no heart rate.
 _UNMEASURED_SLEEP = frozenset({"MANUAL", "OFF_WRIST"})
 
@@ -95,7 +95,22 @@ def to_daily_metric(key: str, item: dict[str, Any]) -> CanonicalDailyMetric | No
         return None
     if key == "dailies":
         rhr = _in(item.get("restingHeartRateInBeatsPerMinute"), 25, 120)
-        return CanonicalDailyMetric(metric_date=day, provider=PROVIDER, resting_hr=int(rhr)) if rhr else None
+        stress = _in(item.get("averageStressLevel"), 1, 100)  # -1 means not enough data
+        if not rhr and not stress:
+            return None
+        return CanonicalDailyMetric(
+            metric_date=day,
+            provider=PROVIDER,
+            resting_hr=int(rhr) if rhr else None,
+            stress_avg=int(stress) if stress else None,
+        )
+    if key == "stressDetails":
+        values = [v for v in (item.get("timeOffsetBodyBatteryValues") or {}).values() if _in(v, 0, 100) is not None]
+        return (
+            CanonicalDailyMetric(metric_date=day, provider=PROVIDER, body_battery_high=int(max(values)))
+            if values
+            else None
+        )
     if key == "hrv":
         # lastNightAvg is overnight RMSSD in ms, the same measure COROS reports.
         hrv = _in(item.get("lastNightAvg"), 5, 250)

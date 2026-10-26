@@ -6,6 +6,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAppContext } from "@/contexts/AppContext";
 import { RaceMatch } from "@/hooks/useRaceMatch";
 import { RaceNameField } from "@/components/RaceNameField";
+import GarminCourseButton from "@/components/GarminCourseButton";
 import {
   CourseCheckpoint,
   PacedCheckpoint,
@@ -79,6 +80,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
 
   const [gpxCheckpoints, setGpxCheckpoints] = useState<CourseCheckpoint[]>([]);
   const [gpxFileName, setGpxFileName] = useState("");
+  const [gpxFile, setGpxFile] = useState<File | null>(null);
   const [gpxLoading, setGpxLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -249,6 +251,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
     setGpxLoading(true);
     setErrorMsg("");
     setGpxFileName(file.name);
+    setGpxFile(file);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -422,12 +425,16 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   e.stopPropagation();
                   setGpxCheckpoints([]);
                   setGpxFileName("");
+                  setGpxFile(null);
                   setRestMins({});
                 }}
                 style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "11px", cursor: "pointer", textDecoration: "underline" }}
               >
                 {t("remove — use race numbers", "xóa — dùng số liệu giải")}
               </button>
+            )}
+            {hasGpx && gpxFile && (
+              <GarminCourseButton file={gpxFile} name={raceName || gpxFileName.replace(/\.gpx$/i, "")} lang={lang} />
             )}
             <input type="file" ref={fileInputRef} onChange={handleGpxFile} accept=".gpx" style={{ display: "none" }} />
           </div>

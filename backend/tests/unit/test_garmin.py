@@ -384,3 +384,41 @@ def test_allowlist_limits_garmin_to_listed_accounts(monkeypatch):
     )
     assert client.get("/api/integrations/garmin/connect", params={"ai_consent": "true"}).status_code == 200
     assert client.get("/api/integrations/status").json()["garmin"]["enabled"] is True
+
+
+def test_stress_and_body_battery_map_to_their_own_fields():
+    day = {"calendarDate": "2026-10-24"}
+    d = garmin.to_daily_metric("dailies", {**day, "restingHeartRateInBeatsPerMinute": 48, "averageStressLevel": 31})
+    assert (d.resting_hr, d.stress_avg) == (48, 31)
+    no_stress = garmin.to_daily_metric(
+        "dailies", {**day, "restingHeartRateInBeatsPerMinute": 48, "averageStressLevel": -1}
+    )
+    assert no_stress.stress_avg is None
+    bb = garmin.to_daily_metric(
+        "stressDetails", {**day, "timeOffsetBodyBatteryValues": {"0": 40, "21600": 87, "43200": 62}}
+    )
+    assert bb.body_battery_high == 87
+    assert garmin.to_daily_metric("stressDetails", {**day, "timeOffsetBodyBatteryValues": {}}) is None
+
+
+def test_ingest_stores_garmin_vo2max_apart_from_coros(monkeypatch):
+    _ingest_stubs(monkeypatch)
+    stored = []
+    monkeypatch.setattr(garmin_ingest.db, "set_garmin_vo2max", lambda u, v: stored.append((u, v)))
+    items = [
+        {"userId": "g-1", "calendarDate": "2026-10-23", "vo2Max": 52.0},
+        {"userId": "g-1", "calendarDate": "2026-10-20", "vo2Max": 50.0},
+        {"userId": "g-1", "calendarDate": "2026-10-24", "vo2Max": 300},
+    ]
+    asyncio.run(garmin_ingest.process({"userMetrics": items}))
+    assert stored == [(42, 50.0), (42, 52.0)]  # oldest first so the newest wins; the glitch is dropped
+
+
+def test_coach_recovery_section_shows_body_battery_and_stress():
+    from services.coach_prompts import format_recovery
+
+    text = format_recovery(
+        {"source_provider": "garmin", "avg_hrv_ms": 55.0, "latest_body_battery": 72, "avg_stress": 28,
+         "readiness_flag": "optimal"}
+    )  # fmt: skip
+    assert "Garmin" in text and "Body Battery 72" in text and "Stress 28 avg" in text
