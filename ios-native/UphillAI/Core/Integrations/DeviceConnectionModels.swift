@@ -22,6 +22,14 @@ public func deviceSourceName(_ provider: String) -> String {
     }
 }
 
+/// A race course created on the athlete's Garmin account from their GPX.
+public struct GarminCourseResult: Codable, Sendable, Equatable {
+    public let status: String
+    public let courseId: String?
+    public let distanceKm: Double
+    public let points: Int
+}
+
 /// Garmin delivers data by push after the athlete's next watch sync, so there is no
 /// "Sync now"; `lastSyncAt` is when data last arrived.
 public struct GarminConnectionStatus: Codable, Sendable, Equatable {

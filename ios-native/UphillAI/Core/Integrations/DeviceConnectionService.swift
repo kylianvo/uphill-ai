@@ -16,6 +16,7 @@ public protocol DeviceConnectionServicing: Sendable {
     func disconnectGarmin() async throws
     func fetchGarminPushStatus(clientToday: String) async throws -> CorosPushStatus
     func pushToGarmin(clientToday: String, lang: String) async throws -> CorosPushOutcome
+    func sendGarminCourse(gpx: Data, fileName: String, name: String) async throws -> GarminCourseResult
 }
 
 /// Stubs (previews, tests) that predate Garmin get a Garmin that can't connect.
@@ -25,6 +26,9 @@ public extension DeviceConnectionServicing {
     func disconnectGarmin() async throws {}
     func fetchGarminPushStatus(clientToday: String) async throws -> CorosPushStatus { CorosPushStatus(connected: false) }
     func pushToGarmin(clientToday: String, lang: String) async throws -> CorosPushOutcome { throw URLError(.unsupportedURL) }
+    func sendGarminCourse(gpx: Data, fileName: String, name: String) async throws -> GarminCourseResult {
+        throw URLError(.unsupportedURL)
+    }
 }
 
 final class DeviceConnectionService: DeviceConnectionServicing {
@@ -144,6 +148,25 @@ final class DeviceConnectionService: DeviceConnectionServicing {
 
     func pushToGarmin(clientToday: String, lang: String = AppLanguage.code) async throws -> CorosPushOutcome {
         try await push(provider: "garmin", clientToday: clientToday, lang: lang)
+    }
+
+    /// Uploads the race GPX as multipart form data; Garmin syncs the course to the watch.
+    func sendGarminCourse(gpx: Data, fileName: String, name: String) async throws -> GarminCourseResult {
+        let boundary = "UphillAI-\(UUID().uuidString)"
+        var body = Data()
+        func field(_ header: String, _ value: Data) {
+            body.append(Data("--\(boundary)\r\n\(header)\r\n\r\n".utf8))
+            body.append(value)
+            body.append(Data("\r\n".utf8))
+        }
+        field("Content-Disposition: form-data; name=\"name\"", Data(name.utf8))
+        let safeName = fileName.replacingOccurrences(of: "\"", with: "")
+        field("Content-Disposition: form-data; name=\"file\"; filename=\"\(safeName)\"\r\nContent-Type: application/gpx+xml", gpx)
+        body.append(Data("--\(boundary)--\r\n".utf8))
+        var endpoint = Endpoint<GarminCourseResult>(method: .post, path: "/api/integrations/garmin/course", body: body)
+        endpoint.contentType = "multipart/form-data; boundary=\(boundary)"
+        endpoint.timeout = 60
+        return try await client.send(endpoint)
     }
 
     /// A refusal the backend explains with a `detail.code` comes back as an

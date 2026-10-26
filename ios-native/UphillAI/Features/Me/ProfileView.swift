@@ -176,7 +176,8 @@ struct ProfileView: View {
                         activePlan: app.plan.snapshot?.plan,
                         user: app.session.user,
                         onOpenNutrition: { path.append(.nutritionLab) },
-                        onOpenGear: { path.append(.gearVault) }
+                        onOpenGear: { path.append(.gearVault) },
+                        deviceService: app.deviceConnectionService
                     )
                 case .watch:
                     ScrollView {

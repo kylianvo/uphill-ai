@@ -109,6 +109,21 @@ struct DeviceConnectionServiceTests {
         #expect(outcome.errorMessage?.contains("Garmin Connect") == true)
     }
 
+    @Test func sendGarminCourseUploadsTheGpxAsMultipart() async throws {
+        let seen = Mutex<(String, String, String)>(("", "", ""))
+        let service = DeviceConnectionService(client: makeStubClient { request in
+            let body = String(decoding: StubURLProtocol.bodyData(request) ?? Data(), as: UTF8.self)
+            seen.withLock { $0 = (request.url?.path() ?? "", request.value(forHTTPHeaderField: "Content-Type") ?? "", body) }
+            return (200, json(["status": "sent", "course_id": "77", "distance_km": 50.2, "points": 2400]))
+        })
+        let result = try await service.sendGarminCourse(gpx: Data("<gpx/>".utf8), fileName: "utmb.gpx", name: "UTMB 50K")
+        let (path, contentType, body) = seen.withLock { $0 }
+        #expect(path == "/api/integrations/garmin/course")
+        #expect(contentType.hasPrefix("multipart/form-data; boundary="))
+        #expect(body.contains("name=\"name\"\r\n\r\nUTMB 50K") && body.contains("filename=\"utmb.gpx\"") && body.contains("<gpx/>"))
+        #expect(result.distanceKm == 50.2 && result.courseId == "77")
+    }
+
     @Test func disconnectGarminDeletesTheGarminConnection() async throws {
         let seen = Mutex<(String, String)>(("", ""))
         let service = DeviceConnectionService(client: makeStubClient { request in
