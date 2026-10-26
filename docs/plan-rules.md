@@ -231,7 +231,7 @@ Code: `week_rebuild.py`, `plan_rules.missed_reason_rules`.
   are never changed. Only the rest of the week is rebuilt; past weeks are refused.
 - **R-A2 Reference volume.**
   - The reference is the week as planned. If that's missing, use the prior week as planned. If
-    that's missing too, use current volume.
+    that's missing too, use current volume (weekly km × the athlete's own easy pace, as R-V1).
   - If the prior week was **<80% complete**, the week **holds** at 95–102% of the reference: a
     repeat, not progression and not a punishment.
 - **R-A3 Feeling band.** Reported effort sets the allowed range of the reference:
@@ -288,8 +288,6 @@ held:
 
 ## 7. Known gaps (say so when asked)
 
-- Adapt week still converts km to minutes at 6.0 min/km (R-A2); create and next block use the
-  athlete's own pace (R-V1).
 - Capacity-bound plans (3 days a week, low volume, long race) can't reach the long-day target; the verdict says
   so on the Goal screen, in the coach nudge and in the week brief.
 - Gentle mountains (R-C9) have no measured repeat-climb rates, so their repeats earn no extra vert credit and
