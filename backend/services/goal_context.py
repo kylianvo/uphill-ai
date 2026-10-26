@@ -188,7 +188,7 @@ def gather(
             easy_pace = (_pace(zone2[0]) + _pace(zone2[1])) / 2
             athlete["easy_pace_min_km"] = round(easy_pace, 2)
 
-        vo2 = user.get("coros_vo2max")
+        vo2 = user.get("coros_vo2max") or user.get("garmin_vo2max")
         if vo2 and use("vo2max", f"VO2max {vo2:.0f}"):
             athlete["vo2max"] = vo2
         elif not vo2:

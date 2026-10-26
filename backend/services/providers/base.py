@@ -54,3 +54,5 @@ class CanonicalDailyMetric:
     sleep_end: time | None = None
     hrv_range_low: float | None = None  # the provider's own normal range, when it reports one
     hrv_range_high: float | None = None
+    body_battery_high: int | None = None  # the day's highest Body Battery (Garmin), its morning recharge
+    stress_avg: int | None = None  # the day's average stress, 1-100 (Garmin)

@@ -1036,6 +1036,10 @@ def init_db():
             # Garmin Agreement §15.11: once set (first Garmin connect), never cleared -- chats built on that
             # data stay Garmin data even after disconnect, so the user never feeds AI evaluation.
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_eval_excluded BOOLEAN NOT NULL DEFAULT FALSE",
+            # Garmin recovery extras and VO2 max (kept apart from COROS's fitness_assessments).
+            "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS body_battery_high INTEGER",
+            "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS stress_avg INTEGER",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS garmin_vo2max REAL",
             "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_last_week_review TEXT",
             "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_this_week_description TEXT",
             # Coach Chat 4b (week rebuild) -- see the chat_proposals / chat_daily_usage CREATE TABLEs.
@@ -3969,12 +3973,12 @@ def upsert_daily_metric(user_id: int, metric) -> int:
                 user_id, metric_date, source_provider, resting_hr, hrv_ms,
                 hrv_baseline_ms, hrv_status, training_load_short,
                 training_load_long, load_ratio, recovery_percent, sleep_minutes,
-                sleep_start, sleep_end, hrv_range_low, hrv_range_high
+                sleep_start, sleep_end, hrv_range_low, hrv_range_high, body_battery_high, stress_avg
             ) VALUES (
                 :user_id, :metric_date, :provider, :resting_hr, :hrv_ms,
                 :hrv_baseline_ms, :hrv_status, :load_short, :load_long,
                 :load_ratio, :recovery_percent, :sleep_minutes,
-                :sleep_start, :sleep_end, :hrv_range_low, :hrv_range_high
+                :sleep_start, :sleep_end, :hrv_range_low, :hrv_range_high, :body_battery_high, :stress_avg
             )
             ON CONFLICT (user_id, metric_date, source_provider) DO UPDATE SET
                 resting_hr = COALESCE(EXCLUDED.resting_hr, daily_metrics.resting_hr),
@@ -3989,7 +3993,9 @@ def upsert_daily_metric(user_id: int, metric) -> int:
                 sleep_start = COALESCE(EXCLUDED.sleep_start, daily_metrics.sleep_start),
                 sleep_end = COALESCE(EXCLUDED.sleep_end, daily_metrics.sleep_end),
                 hrv_range_low = COALESCE(EXCLUDED.hrv_range_low, daily_metrics.hrv_range_low),
-                hrv_range_high = COALESCE(EXCLUDED.hrv_range_high, daily_metrics.hrv_range_high)
+                hrv_range_high = COALESCE(EXCLUDED.hrv_range_high, daily_metrics.hrv_range_high),
+                body_battery_high = COALESCE(EXCLUDED.body_battery_high, daily_metrics.body_battery_high),
+                stress_avg = COALESCE(EXCLUDED.stress_avg, daily_metrics.stress_avg)
             RETURNING id
             """),
             {
@@ -4009,10 +4015,17 @@ def upsert_daily_metric(user_id: int, metric) -> int:
                 "sleep_end": metric.sleep_end,
                 "hrv_range_low": metric.hrv_range_low,
                 "hrv_range_high": metric.hrv_range_high,
+                "body_battery_high": metric.body_battery_high,
+                "stress_avg": metric.stress_avg,
             },
         ).fetchone()
         conn.commit()
         return row[0]
+
+
+def set_garmin_vo2max(user_id: int, vo2max: float) -> None:
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE users SET garmin_vo2max = :v WHERE id = :u"), {"v": vo2max, "u": user_id})
 
 
 def mark_ai_eval_excluded(user_id: int) -> None:
@@ -4112,6 +4125,7 @@ def delete_provider_data(user_id: int, provider: str) -> None:
         )
         if provider == "garmin":
             conn.execute(text("DELETE FROM garmin_push_links WHERE user_id = :u"), {"u": user_id})
+            conn.execute(text("UPDATE users SET garmin_vo2max = NULL WHERE id = :u"), {"u": user_id})
         if provider == "coros":
             conn.execute(text("DELETE FROM coros_plan_links WHERE user_id = :u"), {"u": user_id})
             conn.execute(text("DELETE FROM coros_push_usage WHERE user_id = :u"), {"u": user_id})
@@ -4807,7 +4821,7 @@ def get_recent_readiness_summary(user_id: int, days: int = 7) -> dict[str, Any]:
         rows = conn.execute(
             text("""
                 SELECT metric_date, source_provider, resting_hr, hrv_ms, hrv_status,
-                       load_ratio, recovery_percent, sleep_minutes
+                       load_ratio, recovery_percent, sleep_minutes, body_battery_high, stress_avg
                 FROM daily_metrics
                 WHERE user_id = :uid
                   AND metric_date >= CURRENT_DATE - CAST(:days AS INTEGER)
@@ -4828,6 +4842,8 @@ def get_recent_readiness_summary(user_id: int, days: int = 7) -> dict[str, Any]:
             "avg_recovery_percent": None,
             "avg_sleep_minutes": None,
             "nights_recorded": 0,
+            "latest_body_battery": None,
+            "avg_stress": None,
             "readiness_flag": "insufficient_data",
         }
 
@@ -4847,6 +4863,8 @@ def get_recent_readiness_summary(user_id: int, days: int = 7) -> dict[str, Any]:
     latest_hrv_status = rows[0].hrv_status if rows[0].hrv_status else None
     avg_recov = int(round(sum(recovs) / len(recovs))) if recovs else None
     avg_sleep = int(round(sum(sleeps) / len(sleeps))) if sleeps else None
+    batteries = [int(r.body_battery_high) for r in rows if r.body_battery_high is not None]
+    stresses = [int(r.stress_avg) for r in rows if r.stress_avg is not None]
 
     # Determine readiness flag based on ACWR (sweet spot: 0.8-1.3), recovery and sleep
     readiness_flag = "optimal"
@@ -4872,6 +4890,8 @@ def get_recent_readiness_summary(user_id: int, days: int = 7) -> dict[str, Any]:
         "avg_recovery_percent": avg_recov,
         "avg_sleep_minutes": avg_sleep,
         "nights_recorded": len(sleeps),
+        "latest_body_battery": batteries[0] if batteries else None,
+        "avg_stress": int(round(sum(stresses) / len(stresses))) if stresses else None,
         "readiness_flag": readiness_flag,
     }
 

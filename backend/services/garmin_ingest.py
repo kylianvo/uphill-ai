@@ -30,6 +30,8 @@ async def process(body: dict[str, Any]) -> None:
             await _activities(items)
         elif key in garmin.RECOVERY_KEYS:
             _recovery(key, items)
+        elif key == "userMetrics":
+            _user_metrics(items)
         elif key == "deregistrations":
             await _deregistrations(items)
         elif key == "userPermissionsChange":
@@ -90,6 +92,16 @@ def _recovery(key: str, items: list[dict[str, Any]]) -> None:
             # Garmin sends no HRV status; derive it from the athlete's own 28-day baseline.
             recovery_baseline.refresh(user_id, dates, garmin.PROVIDER)
         _log("recovery_stored", user_id=user_id, summary_type=key, days=len(dates))
+
+
+def _user_metrics(items: list[dict[str, Any]]) -> None:
+    """Garmin's running VO2 max estimate; the newest calendar date wins."""
+    for item in sorted(items, key=lambda i: str(i.get("calendarDate") or "")):
+        connection = _connection(item)
+        vo2 = item.get("vo2Max")
+        if connection is not None and isinstance(vo2, int | float) and 20 <= vo2 <= 95:
+            db.set_garmin_vo2max(connection["user_id"], float(vo2))
+            _log("vo2max_stored", user_id=connection["user_id"])
 
 
 async def _registration_gone(connection: dict[str, Any]) -> bool | None:
