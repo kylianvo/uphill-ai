@@ -1,6 +1,86 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Send to Garmin": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi sang Garmin"
+          }
+        }
+      }
+    },
+    "Sent to Garmin · %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã gửi sang Garmin · %@"
+          }
+        }
+      }
+    },
+    "Sent %lld workouts to Garmin through %@.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã gửi %lld buổi tập sang Garmin tới %@."
+          }
+        }
+      }
+    },
+    "Could not send to Garmin.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không gửi được sang Garmin."
+          }
+        }
+      }
+    },
+    "YOUR PLAN ON GARMIN": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PLAN TRÊN GARMIN"
+          }
+        }
+      }
+    },
+    "Garmin isn't connected. Reconnect it in your profile.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Garmin chưa kết nối. Kết nối lại trong hồ sơ."
+          }
+        }
+      }
+    },
+    "Garmin isn't accepting workouts from Uphill AI. Allow workout import for Uphill AI in Garmin Connect, then send again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Garmin chưa cho Uphill AI gửi buổi tập. Hãy bật quyền nhập buổi tập cho Uphill AI trong Garmin Connect rồi gửi lại."
+          }
+        }
+      }
+    },
+    "Couldn't reach Garmin. Nothing changed. Try again shortly.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không kết nối được Garmin. Không có gì thay đổi. Thử lại sau."
+          }
+        }
+      }
+    },
     "From Garmin: %lld km a week over the last 4 full weeks": {
       "localizations": {
         "vi": {

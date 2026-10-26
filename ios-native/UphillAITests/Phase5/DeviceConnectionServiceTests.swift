@@ -98,6 +98,17 @@ struct DeviceConnectionServiceTests {
         #expect(url.host() == "connect.garmin.com")
     }
 
+    @Test func pushToGarminPostsToGarminAndExplainsMissingPermission() async throws {
+        let service = DeviceConnectionService(client: makeStubClient { request in
+            #expect(request.url?.path() == "/api/integrations/garmin/push")
+            return (409, json(["detail": ["code": "GARMIN_no_workout_permission", "params": [:]]]))
+        })
+        let outcome = try await service.pushToGarmin(clientToday: "2026-10-26", lang: "en")
+        #expect(outcome.isSuccess == false)
+        #expect(outcome.errorCode == "GARMIN_no_workout_permission")
+        #expect(outcome.errorMessage?.contains("Garmin Connect") == true)
+    }
+
     @Test func disconnectGarminDeletesTheGarminConnection() async throws {
         let seen = Mutex<(String, String)>(("", ""))
         let service = DeviceConnectionService(client: makeStubClient { request in

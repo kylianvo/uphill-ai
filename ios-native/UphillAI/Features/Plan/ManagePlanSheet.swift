@@ -457,6 +457,22 @@ struct ManagePlanSheet: View {
                     Divider().overlay(UH.Palette.line.opacity(0.6))
                 }
 
+                // Garmin Push Row: the same runs, to the Garmin calendar. Shown only once connected.
+                if model.athleteId == nil, let deviceService, connectionStatus?.garmin?.connected == true {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("YOUR PLAN ON GARMIN")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundStyle(UH.Palette.muted)
+                        CorosPushButton(service: deviceService, provider: .garmin)
+                        Text(verbatim: "Garmin")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(UH.Palette.muted)
+                    }
+                    .padding(UH.Space.regular)
+
+                    Divider().overlay(UH.Palette.line.opacity(0.6))
+                }
+
                 // Add to Calendar (.ics) row
                 Button {
                     showExportCalendar = true

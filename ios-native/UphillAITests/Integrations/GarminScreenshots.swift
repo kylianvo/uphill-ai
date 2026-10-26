@@ -36,6 +36,18 @@ struct GarminScreenshots {
             ("not-connected", GarminConnectionStatus(enabled: true, connected: false, lastSyncAt: nil)),
             ("connected", GarminConnectionStatus(enabled: true, connected: true, lastSyncAt: "2026-10-24T05:00:00Z")),
         ]
+        save(
+            VStack(alignment: .leading, spacing: 6) {
+                Text("YOUR PLAN ON GARMIN")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(UH.Palette.muted)
+                CorosPushButton(service: NoCalls(),
+                                initialStatus: CorosPushStatus(connected: true, lastPushedAt: "2026-10-26T04:00:00Z", outOfDate: true),
+                                provider: .garmin)
+            }
+            .environment(\.locale, AppLanguage.current.locale),
+            name: "push"
+        )
         for (name, garmin) in states {
             let status = DeviceConnectionStatus(coros: CorosConnectionStatus(connected: false), garmin: garmin)
             save(

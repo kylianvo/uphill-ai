@@ -14,6 +14,8 @@ public protocol DeviceConnectionServicing: Sendable {
     func connectGarminURL() async throws -> URL
     func completeGarmin(state: String, token: String) async throws -> Bool
     func disconnectGarmin() async throws
+    func fetchGarminPushStatus(clientToday: String) async throws -> CorosPushStatus
+    func pushToGarmin(clientToday: String, lang: String) async throws -> CorosPushOutcome
 }
 
 /// Stubs (previews, tests) that predate Garmin get a Garmin that can't connect.
@@ -21,6 +23,8 @@ public extension DeviceConnectionServicing {
     func connectGarminURL() async throws -> URL { throw URLError(.unsupportedURL) }
     func completeGarmin(state: String, token: String) async throws -> Bool { false }
     func disconnectGarmin() async throws {}
+    func fetchGarminPushStatus(clientToday: String) async throws -> CorosPushStatus { CorosPushStatus(connected: false) }
+    func pushToGarmin(clientToday: String, lang: String) async throws -> CorosPushOutcome { throw URLError(.unsupportedURL) }
 }
 
 final class DeviceConnectionService: DeviceConnectionServicing {
@@ -131,12 +135,27 @@ final class DeviceConnectionService: DeviceConnectionServicing {
         )
     }
 
+    /// Garmin's send answers with the same shapes as COROS's.
+    func fetchGarminPushStatus(clientToday: String) async throws -> CorosPushStatus {
+        try await client.send(
+            .get("/api/integrations/garmin/push-status", query: [URLQueryItem(name: "client_today", value: clientToday)])
+        )
+    }
+
+    func pushToGarmin(clientToday: String, lang: String = AppLanguage.code) async throws -> CorosPushOutcome {
+        try await push(provider: "garmin", clientToday: clientToday, lang: lang)
+    }
+
     /// A refusal the backend explains with a `detail.code` comes back as an
     /// unsuccessful outcome; anything else (network, 500) throws.
     func pushToCoros(clientToday: String, lang: String = AppLanguage.code) async throws -> CorosPushOutcome {
+        try await push(provider: "coros", clientToday: clientToday, lang: lang)
+    }
+
+    private func push(provider: String, clientToday: String, lang: String) async throws -> CorosPushOutcome {
         do {
             let resp: PushApiResponse = try await client.send(
-                .send(.post, "/api/integrations/coros/push", body: PushBody(client_today: clientToday, lang: lang))
+                .send(.post, "/api/integrations/\(provider)/push", body: PushBody(client_today: clientToday, lang: lang))
             )
             return CorosPushOutcome(
                 isSuccess: resp.status == "sent" || resp.status == "partial",
@@ -164,6 +183,10 @@ final class DeviceConnectionService: DeviceConnectionServicing {
         case "PUSH_in_progress": L("A send is already running. Try again in a moment.")
         case "PUSH_limit": L("You've reached today's limit for sending to COROS. Try again tomorrow.")
         case "COROS_rejected": L("COROS didn't accept the plan. Nothing changed on your watch.")
+        case "GARMIN_not_connected": L("Garmin isn't connected. Reconnect it in your profile.")
+        case "GARMIN_no_workout_permission":
+            L("Garmin isn't accepting workouts from Uphill AI. Allow workout import for Uphill AI in Garmin Connect, then send again.")
+        case "GARMIN_unavailable": L("Couldn't reach Garmin. Nothing changed. Try again shortly.")
         default: L("Couldn't reach COROS. Nothing changed. Try again shortly.")
         }
     }
