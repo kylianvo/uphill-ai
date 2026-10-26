@@ -3044,6 +3044,8 @@ async def _generate_next_block_for_athlete(
     )
     if milestone_fact:
         brief_decision_log.append(milestone_fact)
+    if b_fact := b_race.safe_brief_fact(request.plan_id, block_start):
+        brief_decision_log.append(b_fact)
     # Can the load still reach the book's benchmark peak week before the taper? Tell the generator
     # what this block must total, and the brief when the timeline cannot make it.
     readiness = race_readiness.assess_week(
@@ -4922,6 +4924,7 @@ async def _plan_nudge(plan_id: int, owner_id: int, lang: str, client_today: str 
         plan_supported=support["a_supported"] if support else True,
         path=goal_service.path_for(plan),
         beginner_rows=db.get_plan_milestone_rows(plan_id) if plan.get("milestone_target") else None,
+        b_races=db.get_plan_races(plan_id) if b_race.is_race_plan(plan) else None,
     )
     tone = coach_nudge.tone_for(facts)
     if tone is None:

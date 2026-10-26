@@ -60,3 +60,33 @@ def week_review_impl(user_id: int, weeks_ago: int = 0) -> ToolResult:
     return ToolResult(
         tool_call_id="", name="week_review", status="success", card_type="week_review", card_data=card_data
     )
+
+
+def assess_b_race_impl(
+    user_id: int,
+    race_name: str,
+    race_date: str,
+    distance_km: float | None = None,
+    elevation_gain_m: float | None = None,
+    effort: str = "race",
+) -> ToolResult:
+    """The coach's rules on a tune-up race the athlete mentions. Read-only: adding happens on the plan screen."""
+    from services import b_race
+
+    plan = db.get_active_plan(user_id)
+    if plan is None:
+        return ToolResult(tool_call_id="", name="assess_b_race", status="error", error="no_active_plan")
+    if not b_race.is_race_plan(plan):
+        return ToolResult(tool_call_id="", name="assess_b_race", status="error", error="not_a_race_plan")
+    data = {"race_name": race_name, "race_date": race_date, "distance_km": distance_km,
+            "elevation_gain_m": elevation_gain_m, "effort": effort if effort in ("race", "training") else "race"}  # fmt: skip
+    try:
+        b_race.validate(plan, b_race._date(race_date))
+        result = b_race.evaluate(db.get_user_by_id(user_id) or {"id": user_id}, plan, data)
+    except ValueError as exc:
+        return ToolResult(tool_call_id="", name="assess_b_race", status="error", error=str(exc))
+    card = {
+        **_json_safe(result),
+        "how_to_add": "The athlete adds it on the Plan screen: Next races > Add race. Adding re-plans the weeks around it.",
+    }
+    return ToolResult(tool_call_id="", name="assess_b_race", status="success", card_data=card)

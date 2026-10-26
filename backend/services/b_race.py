@@ -798,3 +798,77 @@ def suggested_target_hours(user: dict[str, Any], plan: dict[str, Any]) -> float 
         return None
     hours = round(b / 60, 2)
     return hours if abs(hours - float(plan["target_time_hours"])) / float(plan["target_time_hours"]) >= 0.01 else None
+
+
+# ─── Coach surfaces: week brief, Coach Uphill context ────────────────────────
+
+
+def brief_fact(races: list[dict[str, Any]], week: int, plan_monday: date) -> str | None:
+    """One decision-log line for the week brief, in the race week and in the weeks its recovery reaches."""
+    for race in races:
+        rdate = _date(race["race_date"])
+        rweek, day = week_and_day(plan_monday, rdate)
+        taper, rec = _race_shape(race)
+        end = rdate + timedelta(days=rec)
+        end_week, end_day = week_and_day(plan_monday, end)
+        if week == rweek:
+            effort = "training effort" if (race.get("effort") or "race") == "training" else "race effort"
+            parts = [f"B-race this week: {race['race_name']} on {day} ({float(race['distance_km']):g} km, {effort})"]
+            if taper:
+                first = rdate - timedelta(days=taper)
+                parts.append(f"taper {DAYS[first.weekday()][:3]}–{DAYS[(rdate - timedelta(days=1)).weekday()][:3]}")
+            parts.append(f"easy Zone 1 until {end_day} (week {end_week})")
+            return "; ".join(parts)
+        if rweek < week <= end_week:
+            return f"B-race recovery: Zone 1 only until {end_day}" + (f" (week {end_week})" if end_week != week else "")
+    return None
+
+
+def safe_brief_fact(plan_id: int | None, week: int) -> str | None:
+    """brief_fact for the brief writers; None on any problem."""
+    import db
+    from services.calendar_rules import start_monday
+
+    races = safe_races_for_plan(plan_id)
+    if not races:
+        return None
+    try:
+        monday = start_monday((db.get_plan_by_id(plan_id) or {}).get("start_date"))
+        return brief_fact(races, week, monday) if monday else None
+    except Exception:
+        logger.warning("b-race brief fact failed", exc_info=True)
+        return None
+
+
+def coach_context_block(plan: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """The athlete's planned B-races for Coach Uphill chat."""
+    import db
+
+    if not plan or not is_race_plan(plan):
+        return []
+    try:
+        rows = [r for r in db.get_plan_races(plan["id"]) if r.get("status") == "planned"]
+    except Exception:
+        logger.warning("b-race coach context failed", exc_info=True)
+        return []
+    return [
+        {
+            "race_name": r["race_name"],
+            "race_date": _date(r["race_date"]).isoformat(),
+            "distance_km": r["distance_km"],
+            "elevation_gain_m": r.get("elevation_gain_m"),
+            "effort": r.get("effort"),
+            "level": (r.get("verdict") or {}).get("level"),
+        }
+        for r in rows
+    ]
+
+
+def this_week(races: list[dict[str, Any]] | None, week: int, plan_monday: date) -> dict[str, Any] | None:
+    """The planned B-race in `week`, for the coach review facts."""
+    for race in races or []:
+        rweek, day = week_and_day(plan_monday, _date(race["race_date"]))
+        if rweek == week and race.get("status", "planned") == "planned":
+            return {"race_name": race["race_name"], "day": day, "distance_km": race["distance_km"],
+                    "effort": race.get("effort") or "race"}  # fmt: skip
+    return None

@@ -16,7 +16,7 @@ from typing import Any
 import telemetry
 from config import settings
 from log_utils import get_logger
-from services import beginner_milestones, claude_llm, observability, plan_journey
+from services import b_race, beginner_milestones, claude_llm, observability, plan_journey
 from services.plan_generator import narrative_lang_instruction
 
 _logger = get_logger(__name__)
@@ -155,6 +155,7 @@ def facts_for(
     plan_supported: bool,
     path: dict[str, Any] | None = None,
     beginner_rows: list[dict[str, Any]] | None = None,
+    b_races: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     total = int(plan.get("total_weeks") or 0)
     start = _monday(plan["start_date"]) if plan.get("start_date") else today - timedelta(days=today.weekday())
@@ -204,6 +205,7 @@ def facts_for(
             "elevation_gain_m": plan.get("course_elevation_gain_m"),
         },
         "this_week": _this_week(workouts, week, total),
+        "b_race_this_week": b_race.this_week(b_races, week, start),
         "readiness_flag": readiness_flag,
         "feasibility_verdict": feasibility_verdict,
         "plan_supported": plan_supported,
