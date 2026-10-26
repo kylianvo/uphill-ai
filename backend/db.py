@@ -2497,6 +2497,20 @@ def update_plan_race(race_id: int, fields: dict[str, Any]) -> None:
         conn.commit()
 
 
+def delete_race_workouts(plan_race_id: int) -> int:
+    """Removes a cancelled B-race's own session, unless it was already logged."""
+    with engine.connect() as conn:
+        n = conn.execute(
+            text(
+                "DELETE FROM workouts WHERE plan_race_id = :r AND COALESCE(is_completed, 0) = 0 "
+                "AND matched_activity_id IS NULL"
+            ),
+            {"r": plan_race_id},
+        ).rowcount
+        conn.commit()
+    return n
+
+
 def longest_recent_run(user_id: int, since: datetime.date) -> tuple[float | None, float | None]:
     """(max km, max minutes) of the athlete's running activities since `since`."""
     from services.matching.bundler import RUN_TYPES

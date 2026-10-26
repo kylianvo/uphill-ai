@@ -2717,25 +2717,60 @@ def assess_b_race(plan_id: int, request: BRaceInput, user: dict[str, Any] = Depe
     return _b_race_call(b_race.evaluate, user, plan, request.model_dump())
 
 
+_b_race_logger = get_logger("b_race")
+
+
+async def _b_race_rebuild(user: dict[str, Any], plan: dict[str, Any], weeks: set[int], note: str) -> list[str]:
+    """Re-plans the generated weeks a B-race touches through the adapt-week job; logged sessions stay.
+    A week that can't be rebuilt (past, nothing left) is skipped; ungenerated weeks pick the race up later."""
+    generated = b_race.generated_weeks(get_plan_workouts(plan["id"]))
+    job_ids = []
+    for week in sorted(weeks & generated):
+        try:
+            job = await _adapt_week_for_athlete(
+                AdaptWeekRequest(plan_id=plan["id"], week_number=week, coach_notes=note), user["id"], user["id"]
+            )
+            job_ids.append(job["job_id"])
+        except HTTPException as exc:
+            _b_race_logger.info("b-race rebuild skipped", extra={"fields": {"week": week, "detail": str(exc.detail)}})
+    return job_ids
+
+
+def _b_race_weeks(plan: dict[str, Any], race: dict[str, Any]) -> set[int]:
+    from services.calendar_rules import start_monday
+
+    monday = start_monday(plan.get("start_date"))
+    return b_race.affected_weeks(race, monday) if monday else set()
+
+
 @app.post("/api/plans/{plan_id}/races")
-def add_b_race(plan_id: int, request: BRaceInput, user: dict[str, Any] = Depends(get_current_user)):
+async def add_b_race(plan_id: int, request: BRaceInput, user: dict[str, Any] = Depends(get_current_user)):
     plan = _owned_race_plan(plan_id, user["id"])
     race = _b_race_call(b_race.create, user, plan, request.model_dump())
-    return {"race": race, "rebuild_job_ids": []}
+    jobs = await _b_race_rebuild(user, plan, _b_race_weeks(plan, race), f"B-race added: {race['race_name']}.")
+    return {"race": race, "rebuild_job_ids": jobs}
 
 
 @app.patch("/api/plans/{plan_id}/races/{race_id}")
-def change_b_race(plan_id: int, race_id: int, request: BRacePatch, user: dict[str, Any] = Depends(get_current_user)):
+async def change_b_race(
+    plan_id: int, race_id: int, request: BRacePatch, user: dict[str, Any] = Depends(get_current_user)
+):
     plan = _owned_race_plan(plan_id, user["id"])
+    before = db.get_plan_race(plan_id, race_id)
     race = _b_race_call(b_race.update, user, plan, race_id, request.model_dump(exclude_unset=True))
-    return {"race": race, "rebuild_job_ids": []}
+    db.delete_race_workouts(race_id)  # the guard re-adds it on its (possibly new) day
+    weeks = _b_race_weeks(plan, race) | (_b_race_weeks(plan, before) if before else set())
+    jobs = await _b_race_rebuild(user, plan, weeks, f"B-race changed: {race['race_name']}.")
+    return {"race": race, "rebuild_job_ids": jobs}
 
 
 @app.delete("/api/plans/{plan_id}/races/{race_id}")
-def cancel_b_race(plan_id: int, race_id: int, user: dict[str, Any] = Depends(get_current_user)):
+async def cancel_b_race(plan_id: int, race_id: int, user: dict[str, Any] = Depends(get_current_user)):
     plan = _owned_race_plan(plan_id, user["id"])
     race = _b_race_call(b_race.cancel, user, plan, race_id)
-    return {"race": race, "rebuild_job_ids": []}
+    db.delete_race_workouts(race_id)
+    jobs = await _b_race_rebuild(user, plan, _b_race_weeks(plan, race), f"B-race cancelled: {race['race_name']}.")
+    return {"race": race, "rebuild_job_ids": jobs}
 
 
 @app.get("/api/coach/block-completion/{plan_id}")

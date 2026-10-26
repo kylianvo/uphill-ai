@@ -39,6 +39,8 @@ def api(monkeypatch):
 
     monkeypatch.setattr(main.db, "insert_plan_race", insert)
     monkeypatch.setattr(main.db, "update_plan_race", update)
+    monkeypatch.setattr(main.db, "delete_race_workouts", lambda rid: 0)
+    monkeypatch.setattr(main, "get_plan_workouts", lambda pid: [])
     monkeypatch.setattr(race_matcher, "race_distances", lambda name: [])
     monkeypatch.setattr(race_matcher, "match_race", lambda name, **k: None)
     monkeypatch.setattr(course_match, "resolve_course_match", lambda n, d, g: (d, g, None))

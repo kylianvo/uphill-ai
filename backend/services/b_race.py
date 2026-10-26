@@ -654,3 +654,14 @@ def lint_view(races: list[dict[str, Any]], plan_monday: date) -> list[dict[str, 
             }
         )
     return out
+
+
+def affected_weeks(race: dict[str, Any], plan_monday: date) -> set[int]:
+    """Weeks the race touches: its mini-taper, the race week and the recovery window."""
+    rdate = _date(race["race_date"])
+    taper, rec = _race_shape(race)
+    return {week_and_day(plan_monday, rdate + timedelta(days=d))[0] for d in range(-taper, rec + 1)}
+
+
+def generated_weeks(workouts: list[dict[str, Any]]) -> set[int]:
+    return {int(w["week_number"]) for w in workouts if w.get("week_number")}
