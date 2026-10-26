@@ -20,13 +20,22 @@ class TestMeasuredWeeklyVolume:
     def test_partial_week_after_last_sync_is_excluded(self):
         """REGRESSION: synthetic sync stopped Aug 28, so the Aug 24 week (32.4 km) is incomplete."""
         km, vert, end = fs.measured_weekly_volume(WEEKS, FIRST, datetime(2026, 8, 28, 6, 17, tzinfo=UTC), TODAY)
-        assert km == pytest.approx((152.4 + 131.1 + 128.7) / 3, abs=0.1)
+        assert km == pytest.approx(131.1, abs=0.1)  # the median of the three complete weeks
         assert end == date(2026, 8, 23)
 
     def test_covered_week_without_activity_counts_as_zero(self):
         weeks = [w for w in WEEKS if w["week_start"] != date(2026, 8, 10)]
         km, _, _ = fs.measured_weekly_volume(weeks, FIRST, datetime(2026, 9, 3, tzinfo=UTC), TODAY)
-        assert km == pytest.approx((152.4 + 0 + 128.7 + 32.4) / 4, abs=0.1)
+        assert km == pytest.approx((32.4 + 128.7) / 2, abs=0.1)  # median of 152.4, 0, 128.7, 32.4
+
+    def test_one_down_week_does_not_pull_the_typical_week_under(self):
+        """Plan 131: weeks of 52, 53, 26 and 52 km are a 52 km runner, not a 46 km one (the mean)."""
+        weeks = [
+            {"week_start": date(2026, 8, 3) + timedelta(weeks=i), "km": km, "vert_m": 0.0}
+            for i, km in enumerate((52.0, 53.0, 26.0, 52.0))
+        ]
+        km, _, _ = fs.measured_weekly_volume(weeks, FIRST, datetime(2026, 9, 3, tzinfo=UTC), TODAY)
+        assert km == 52.0
 
     def test_weeks_before_the_first_synced_activity_do_not_count(self):
         assert (
@@ -79,7 +88,7 @@ class TestBuild:
     def test_measured_volume_beats_profile_value(self, stub_db):
         snap = fs.build(30, today=TODAY)
         assert snap.weekly_km_source == "coros"
-        assert snap.weekly_km == pytest.approx(137.4, abs=0.1)
+        assert snap.weekly_km == pytest.approx(131.1, abs=0.1)
 
     def test_measured_volume_beats_a_typed_prefill(self, stub_db):
         assert fs.build(30, typed_weekly_km=90.0, today=TODAY).weekly_km_source == "coros"
@@ -115,7 +124,7 @@ class TestBuild:
         snap.resolve_tier(None, "race", None, None, 138, 168)
         block = snap.prompt_block("en")
         assert block.startswith("ATHLETE FITNESS SNAPSHOT")
-        assert "137 km/week" in block and "COROS" in block
+        assert "131 km/week" in block and "COROS" in block
         assert "Marathon prediction 2:56:00" in block
         assert "UTMB" not in block
         assert "not used" in block
@@ -187,7 +196,7 @@ class TestChronicCap:
 
     def test_short_history_skips_the_cap(self, stub_db):
         # the default stub has data from 2026-07-26 only: < 8 weeks, cap not applied
-        assert fs.build(30, today=TODAY).weekly_km == pytest.approx(137.4, abs=0.1)
+        assert fs.build(30, today=TODAY).weekly_km == pytest.approx(131.1, abs=0.1)
 
 
 def _road(**kw):
@@ -258,7 +267,7 @@ def test_chat_summary_uses_snapshot_volume_and_plan_tier(stub_db, monkeypatch):
     plan = {"athlete_tier": "sub_elite", "fitness_snapshot": {"tier_score": 3.4}}
     out = fs.chat_summary(30, plan)
     assert out["weekly_km_source"] == "coros"
-    assert out["weekly_km"] == pytest.approx(137.4, abs=0.1)
+    assert out["weekly_km"] == pytest.approx(131.1, abs=0.1)
     assert out["athlete_tier"] == "sub_elite" and out["tier_score"] == 3.4
 
 
@@ -278,7 +287,7 @@ class TestDeviceProviders:
         )
         snap = fs.build(30, today=TODAY)
         assert snap.weekly_km_source == "apple_health"
-        assert snap.weekly_km == pytest.approx(137.4, abs=0.1)
+        assert snap.weekly_km == pytest.approx(131.1, abs=0.1)
         assert "Apple Health" in snap.prompt_block("en")
 
     def test_fresher_provider_wins(self, stub_db, monkeypatch):

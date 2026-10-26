@@ -108,3 +108,11 @@ def test_back_to_back_targets_keep_the_long_run_near_last_weeks_and_add_a_long_s
     ws = _plan_with_long_runs([120, 140, 145])
     sat, sun = b2b_targets(ws, week=6, longest_target=300)
     assert 145 <= sun <= 145 * 1.25 and 90 <= sat <= sun  # within the 25% weekly long-run growth cap
+
+
+def test_ladder_plans_get_no_second_longest_session_target():
+    """A mountain-day ultra's long runs come from the ladder (7 h); the 300 min demand line contradicted it."""
+    d = goal_demands.compute(104.2, 5533, 15.75, None)
+    assert "longest session should reach about 300 min" in goal_demands.prompt_block(d, "en")
+    assert "longest session" not in goal_demands.prompt_block(d, "en", ladder=True)
+    assert "buổi dài nhất" not in goal_demands.prompt_block(d, "vi", ladder=True)

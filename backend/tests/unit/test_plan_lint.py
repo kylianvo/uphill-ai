@@ -1,6 +1,6 @@
 """Fixtures are the weeks the prod coach review found (Vietnam Highlands Trail test plans)."""
 
-from services.athlete_tier import TIER_PROFILES
+from services.athlete_tier import TIER_PROFILES, for_race
 from services.plan_lint import Prefs, lint_week, lint_weeks
 
 REC = TIER_PROFILES["recreational"]
@@ -533,3 +533,56 @@ def test_me_load_on_ladder_plans():
     assert "ME_LOAD" not in codes(lint_week(two, 3, SUB, ULTRA_PREFS))  # advanced, Base: 2 sessions, 60 of 660 min
     assert "ME_LOAD" in codes(lint_week(two, 3, REC, ULTRA_PREFS))
     assert "ME_LOAD" not in codes(lint_week(ok, 3, REC, Prefs()))
+
+
+def _ladder_prefs(**kw):
+    from services import goal_demands
+
+    d = goal_demands.compute(104.2, 5533, 15.75, None)
+    return Prefs(long_run_day="Saturday", days_per_week=6, demands=d, total_weeks=20, mountain_day=True, **kw)
+
+
+def _ladder_week(wk, long_min, b2b=0, phase="Peak"):
+    rows = [
+        s(wk, "Tuesday", "Easy", 60, phase=phase),
+        s(wk, "Wednesday", "Easy", 60, phase=phase),
+        s(wk, "Thursday", "Easy", 60, phase=phase),
+        s(wk, "Friday", "Easy", 60, phase=phase),
+        s(wk, "Saturday", "Long Run", long_min, phase=phase),
+    ]
+    if b2b:
+        rows.append(s(wk, "Sunday", "Easy", b2b, phase=phase, title="Back-to-back day (Zone 2)"))
+    return rows
+
+
+def test_back_to_back_weekend_holds_the_ladder_rung():
+    """Week 16 of a 20-week 100K is the 7 h rung; 5 h + 2 h 45 holds it when the athlete chose a back-to-back."""
+    ctx = _ladder_week(14, 300) + _ladder_week(15, 360)
+    week16 = _ladder_week(16, 300, b2b=165)
+    ultra = for_race(REC, 104.2, True)
+    found = codes(lint_weeks(ctx + week16, {16}, ultra, _ladder_prefs(back_to_back=True)))
+    assert "ULTRA_LADDER" not in found
+    week16_single = _ladder_week(16, 300) + [s(16, "Sunday", "Easy", 90, phase="Peak")]  # not a lighter week
+    assert "ULTRA_LADDER" in codes(lint_weeks(ctx + week16_single, {16}, ultra, _ladder_prefs()))
+
+
+def test_mid_week_start_asks_for_the_days_left_in_week_one():
+    """A Thursday start leaves 4 days: three run days and a mountain day are a full week 1, not DAYS_SHORT."""
+    wk1 = [
+        s(1, "Thursday", "Easy", 60),
+        s(1, "Friday", "Easy", 60),
+        s(1, "Saturday", "Long Run", 180),
+        s(1, "Sunday", "Easy", 45),
+    ]
+    prefs = Prefs(days_per_week=6, start_load_minutes=600, first_week_share=4 / 7)
+    assert "DAYS_SHORT" not in codes(lint_weeks(wk1, {1}, REC, prefs))
+    assert "DAYS_SHORT" in codes(lint_weeks(wk1[:3], {1}, REC, prefs))
+
+
+def test_week_after_a_recovery_week_is_held_to_the_week_before_it():
+    """The generator measures week 5 against week 3 (week 4 is a recovery week); so does DAYS_SHORT's room."""
+    week3 = _ladder_week(3, 240, phase="Build")[1:]  # 3 weekday runs
+    week4 = [s(4, "Tuesday", "Easy", 30, phase="Build"), s(4, "Saturday", "Long Run", 180, phase="Build")]
+    week5 = _ladder_week(5, 240, phase="Build")[1:]  # held at week 3's rest of the week: no room for a 4th run
+    found = lint_weeks(week3 + week4 + week5, {5}, for_race(REC, 104.2, True), _ladder_prefs())
+    assert "DAYS_SHORT" not in codes(found)

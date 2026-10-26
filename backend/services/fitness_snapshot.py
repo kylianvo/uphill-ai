@@ -10,6 +10,7 @@ docs/superpowers/specs/2026-10-02-fitness-snapshot-design.md
 
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime, timedelta
+from statistics import median
 from typing import Any
 
 import db
@@ -89,13 +90,14 @@ def measured_weekly_volume(
     last_sync_at: datetime | None,
     today: date,
 ) -> tuple[float, float, date] | None:
-    """Mean km and vert over the last VOLUME_WEEKS covered weeks, and the end of the
-    last counted week. None when fewer than MIN_COUNTED_WEEKS weeks qualify."""
+    """Median km and vert over the last VOLUME_WEEKS covered weeks (the athlete's typical week: one recovery or
+    holiday week must not pull it under what they really run), and the end of the last counted week. None when
+    fewer than MIN_COUNTED_WEEKS weeks qualify."""
     counted = _counted_weeks(weeks, first_activity_at, last_sync_at, today, VOLUME_WEEKS)
     if len(counted) < MIN_COUNTED_WEEKS:
         return None
-    km = sum(w["km"] for _, w in counted) / len(counted)
-    vert = sum(w["vert_m"] for _, w in counted) / len(counted)
+    km = median(w["km"] for _, w in counted)
+    vert = median(w["vert_m"] for _, w in counted)
     last_end = max(s for s, _ in counted) + timedelta(days=6)
     return round(km, 1), round(vert), last_end
 
@@ -223,7 +225,7 @@ class FitnessSnapshot:
         if self.weekly_vert_m:
             vol += f", {self.weekly_vert_m:,.0f} m vert"
         vol += f" ({SOURCE_LABELS[self.weekly_km_source]}"
-        vol += f", 4-week avg to {self.volume_as_of})" if self.volume_as_of else ")"
+        vol += f", typical week of the last 4 to {self.volume_as_of})" if self.volume_as_of else ")"
         lines.append(vol)
         a = self.assessment
         if a:

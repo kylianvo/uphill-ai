@@ -30,6 +30,7 @@ WHERE THE NUMBERS COME FROM
 
 import math
 from dataclasses import dataclass, field, replace
+from datetime import date
 from typing import Any
 
 BEGINNER = "beginner"
@@ -454,6 +455,23 @@ def recent_weekly_minutes(weekly_km: float | None, flat_pace_min_per_km: float |
     if not weekly_km or weekly_km <= 0 or not flat_pace_min_per_km or flat_pace_min_per_km <= 0:
         return None
     return float(weekly_km) * float(flat_pace_min_per_km)
+
+
+FATIGUE_FLAGS = ("fatigued", "overreaching")
+
+
+def start_load_growth(readiness_flag: str | None) -> float:
+    """R-V1's growth on recent load: none while the watch says the athlete is fatigued (hold, don't build)."""
+    return 1.0 if readiness_flag in FATIGUE_FLAGS else RECENT_LOAD_GROWTH
+
+
+def first_week_share(plan_start_date: Any) -> float:
+    """The share of week 1 left after a mid-week start (Thursday -> 4/7); 1.0 for a Monday start or no date."""
+    try:
+        start = date.fromisoformat(str(plan_start_date)[:10])
+    except (TypeError, ValueError):
+        return 1.0
+    return (7 - start.weekday()) / 7
 
 
 def explain_tier(

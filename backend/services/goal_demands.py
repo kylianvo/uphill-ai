@@ -76,21 +76,24 @@ def _pace(p: float) -> str:
     return f"{int(p)}:{round((p - int(p)) * 60):02d}"
 
 
-def prompt_block(d: Demands, lang: str) -> str:
-    """Short lines for the generator. Technical terms stay in English in Vietnamese."""
+def prompt_block(d: Demands, lang: str, ladder: bool = False) -> str:
+    """Short lines for the generator. Technical terms stay in English in Vietnamese. `ladder`: a mountain-day ultra,
+    whose long runs come from ultra_rules.prompt_block, so no second (shorter) longest-session target here."""
     h, m = divmod(round(d.target_time_min), 60)
     longest = round(d.longest_session_min)
     if lang == "vi":
         lines = [
             f"Yêu cầu của mục tiêu ({d.source}: {h}h{m:02d}): giữ khoảng {_pace(d.required_flat_pace_min_km)} min/km quy đổi đường bằng.",
             f"Cung đường leo {round(d.gain_m)} m D+ ({round(d.steepness_m_per_km)} m D+/km), tốc độ leo cần có khoảng {round(d.climb_rate_m_per_h)} m D+/h.",
-            f"Peak week mục tiêu {round(d.peak_week_km_lo)}-{round(d.peak_week_km_hi)} km quy đổi; buổi dài nhất cần đạt khoảng {longest} phút.",
+            f"Peak week mục tiêu {round(d.peak_week_km_lo)}-{round(d.peak_week_km_hi)} km quy đổi"
+            + ("." if ladder else f"; buổi dài nhất cần đạt khoảng {longest} phút."),
         ]
     else:
         lines = [
             f"Goal demands ({d.source}, {h}h{m:02d}): hold about {_pace(d.required_flat_pace_min_km)} min/km flat-equivalent.",
             f"The course climbs {round(d.gain_m)} m D+ ({round(d.steepness_m_per_km)} m D+/km), needing about {round(d.climb_rate_m_per_h)} m D+/h.",
-            f"Peak-week target {round(d.peak_week_km_lo)}-{round(d.peak_week_km_hi)} flat-equivalent km; the longest session should reach about {longest} min.",
+            f"Peak-week target {round(d.peak_week_km_lo)}-{round(d.peak_week_km_hi)} flat-equivalent km"
+            + ("." if ladder else f"; the longest session should reach about {longest} min."),
         ]
     if d.venue_climb_rate:
         lines.append(

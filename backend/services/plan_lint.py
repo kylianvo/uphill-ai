@@ -58,6 +58,9 @@ class Prefs:
     quality_gated: bool = False  # AeT gate on (gap > 10% or estimated thresholds): one quality session at most
     # minutes the athlete runs in a week now: weeks 1-2 held there may use fewer days than chosen (R-V1, R-U2)
     start_load_minutes: float | None = None
+    start_growth: float = RECENT_LOAD_GROWTH  # 1.0 while the athlete is fatigued at plan creation (R-V1)
+    first_week_share: float = 1.0  # a mid-week start leaves only part of week 1 (Thursday -> 4/7)
+    back_to_back: bool = False  # the athlete chose a back-to-back weekend over one 6 h+ mountain day (R-U1)
 
 
 @dataclass(frozen=True)
@@ -88,6 +91,23 @@ def is_hard(w: dict[str, Any]) -> bool:
 
 def is_long(w: dict[str, Any]) -> bool:
     return (w.get("type") or "").strip().lower() == "long run"
+
+
+def is_b2b_day(w: dict[str, Any]) -> bool:
+    """The second day of a ladder plan's back-to-back weekend (or the first of a generic one): it belongs with
+    the long run, not with the weekday easy runs."""
+    return (w.get("title") or "").strip().lower().startswith("back-to-back")
+
+
+def long_block_minutes(ws: list[dict[str, Any]]) -> float:
+    """The week's long run plus its back-to-back day: the ladder's step, judged apart from the rest of the week."""
+    return max((_min(w) for w in ws if is_long(w)), default=0.0) + sum(_min(w) for w in ws if is_b2b_day(w))
+
+
+def rung_minutes(ws: list[dict[str, Any]]) -> float:
+    """The ladder rung a week held: its long run, or the single day a back-to-back weekend stands for."""
+    longest = max((_min(w) for w in ws if is_long(w)), default=0.0)
+    return longest + ultra_rules.B2B_DAY1_SHORTER if longest and any(is_b2b_day(w) for w in ws) else longest
 
 
 def _is_me(w: dict[str, Any]) -> bool:
@@ -231,8 +251,8 @@ def lint_week(
 
     cap = profile.max_weekly_progression
     # On a ladder plan the long run's step is Quang's (ultra_rules), so growth is judged on the rest of the week.
-    lr_now = max((_min(w) for w in ws if is_long(w)), default=0.0) if ultra else 0.0
-    lr_prev = max((_min(w) for w in _active(prev_ws) if is_long(w)), default=0.0) if ultra else 0.0
+    lr_now = long_block_minutes(ws) if ultra else 0.0
+    lr_prev = long_block_minutes(_active(prev_ws)) if ultra else 0.0
     if prev_total and not _is_down(weeks, week - 1) and total - lr_now > (prev_total - lr_prev) * (1 + cap) + 1:
         issues.append(
             Issue(
@@ -405,28 +425,27 @@ def lint_week(
     )  # race/taper/recovery weeks are short on purpose
     # A week at its volume limit (R-V1 start load in weeks 1-2; on a mountain-day ultra, R-V2 growth on the rest of
     # the week) has no room for another weekday run, so it may train on fewer days than the athlete chose.
-    lr_now_d = max((_min(w) for w in ws if is_long(w)), default=0.0) if ultra else 0.0
-    lr_prev_d = max((_min(w) for w in _active(prev_ws) if is_long(w)), default=0.0) if ultra else 0.0
+    # the generator's reference (_cap_growth): the week before, or the one before a recovery week
+    ref = week - 2 if _is_down(weeks, week - 1) else week - 1
+    ref_ws = weeks.get(ref) or []
+    lr_now_d = long_block_minutes(ws) if ultra else 0.0
+    lr_ref_d = long_block_minutes(_active(ref_ws)) if ultra else 0.0
+    share = prefs.first_week_share if prefs and week == 1 else 1.0
     if prefs and prefs.start_load_minutes and week <= 2:
-        room = prefs.start_load_minutes * RECENT_LOAD_GROWTH - total
-    elif ultra and prev_total and not _is_down(weeks, week - 1):  # only ladder plans drop runs for growth
-        room = (prev_total - lr_prev_d) * (1 + profile.max_weekly_progression) - (total - lr_now_d)
+        room = prefs.start_load_minutes * prefs.start_growth * share - total
+    elif ultra and week_minutes(ref_ws) and not _is_down(weeks, ref):  # only ladder plans drop runs for growth
+        room = (week_minutes(ref_ws) - lr_ref_d) * (1 + profile.max_weekly_progression) - (total - lr_now_d)
     else:
         room = float("inf")
     at_volume_limit = room < _WEEKDAY_RUN_MIN
-    if (
-        prefs
-        and prefs.days_per_week
-        and len(training_days) < prefs.days_per_week
-        and not in_down_phase
-        and not at_volume_limit
-    ):
+    wanted = min(prefs.days_per_week, round(7 * share)) if prefs and prefs.days_per_week else None
+    if wanted and len(training_days) < wanted and not in_down_phase and not at_volume_limit:
         issues.append(
             Issue(
                 "DAYS_SHORT",
                 week,
-                f"Week {week} has {len(training_days)} training days; the athlete trains {prefs.days_per_week} days "
-                f"a week. Spread the week over {prefs.days_per_week} days.",
+                f"Week {week} has {len(training_days)} training days; the athlete trains {wanted} days "
+                f"this week. Spread the week over {wanted} days.",
             )
         )
     recent_long = max(
@@ -519,7 +538,10 @@ def _ultra_issues(
                 )
                 break
         target = ultra_rules.long_run_target(band, advanced, week, prefs.total_weeks, recent_long or None)
-        longest = max((_min(w) for w in ws if is_long(w)), default=0.0)
+        # a back-to-back weekend holds the rung over two days (R-U1)
+        longest = (
+            long_block_minutes(ws) if prefs.back_to_back else max((_min(w) for w in ws if is_long(w)), default=0.0)
+        )
         if target and not ultra_rules.is_deload(week, prefs.total_weeks) and longest < target * 0.9:
             out.append(
                 Issue(

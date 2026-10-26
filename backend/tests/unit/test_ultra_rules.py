@@ -17,7 +17,7 @@ def test_applies_needs_a_mountain_day():
 def test_100k_ladder_20_weeks():
     lad = u.ladder("100k", False, 20)  # peak_week = 20 - 3 - 1 = 16; deloads 4, 8, 12
     assert [lad[w] for w in (1, 2, 3, 5)] == [180, 180, 240, 240]
-    assert lad[4] == lad[8] == lad[12] == 240
+    assert lad[4] == 180 and lad[8] == lad[12] == 240  # a rung below the last build week, 4 h at most
     assert lad[15] == 360 and lad[16] == 420
     assert set(lad) == set(range(1, 17))
 
@@ -31,7 +31,7 @@ def test_100mi_advanced_peaks_at_8h_and_50k_at_5h():
 
 def test_short_plan_enters_late_and_never_jumps_more_than_an_hour():
     lad = u.ladder("100k", False, 8)  # peak_week 5
-    assert lad[5] == 420 and lad[1] >= 180
+    assert lad[5] == 360 and lad[1] >= 180
     assert u.long_run_target("100k", False, 5, 8, recent_longest=240) == 300
     assert u.long_run_target("100k", False, 6, 8, recent_longest=240) is None
 
@@ -77,3 +77,31 @@ def test_prompt_block_outside_the_window_has_no_zone3():
 
 def test_prompt_block_vietnamese():
     assert "420" in u.prompt_block("100k", False, {16: 420}, 20, False, "vi")
+
+
+def test_13_week_100k_peaks_at_6h_without_hour_steps_every_week():
+    """Plan 131 (13 weeks, recreational): 4 -> 5 -> 6 -> 7 h on consecutive build weeks became two 5 h weeks and a
+    6 h peak; the first recovery week drops to 3 h instead of repeating week 3's 4 h."""
+    lad = u.ladder("100k", False, 13)
+    assert lad == {1: 180, 2: 180, 3: 240, 4: 180, 5: 240, 6: 300, 7: 300, 8: 240, 9: 360}
+
+
+def test_advanced_and_long_plans_keep_the_7h_peak():
+    assert u.ladder("100k", True, 13)[9] == 420
+    assert u.ladder("100k", False, 20)[16] == 420
+
+
+def test_back_to_back_split_adds_up_to_more_than_the_single_day():
+    assert u.b2b_split(420) == (300, 165)
+    assert u.b2b_split(360) == (240, 150)
+    assert u.b2b_split(300) is None
+    day1, day2 = u.b2b_split(420)
+    assert day1 + day2 > 420
+
+
+def test_prompt_block_states_the_back_to_back_weekend_only_when_chosen():
+    single = u.prompt_block("100k", False, {9: 420}, 13, True, "en")
+    b2b = u.prompt_block("100k", False, {9: 420}, 13, True, "en", back_to_back=True)
+    assert "Long Run 420 min" in single and "No back-to-back weekend" in single
+    assert "Long Run 300 min on the mountain day, then 165 min" in b2b and "No other back-to-back" in b2b
+    assert "60-90 g carbs per hour" in single

@@ -12,6 +12,7 @@ Band = Literal["50k", "100k", "100mi"]
 
 LONG_SHARE_CAP = 0.60
 STEP_CAP_MIN = 60  # a ladder week is never more than an hour above the last two weeks' longest run
+WEEK_GROWTH_CAP = 1.15  # the whole week, ladder step included, grows at most 15% (rest of the week: tier's 10%)
 QUALITY_MAX_MIN = 90
 QUALITY_WINDOW_WEEKS = 8
 ME_FREE_LONG_RUN_MIN = 360
@@ -23,6 +24,10 @@ ME_FIRST_PER_WEEK = 2  # 6 sessions in 3 weeks: about the least that builds loca
 # shortcut: weekly climbing from the watch stands in for "long runs already hammer the legs"; upgrade when the
 # block review asks whether the legs were still sore two days after the long run.
 ME_SKIP_WEEKLY_VERT_M = 1500
+B2B_MIN_RUNG = 360  # a back-to-back replaces only the 6-7 h days (2-3 weekends: the book's overreach limit)
+B2B_DAY1_SHORTER = 120  # the mountain day is 2 h under the rung...
+B2B_TOTAL_SHARE = 1.10  # ...and the weekend adds up to about 10% more than the single day would
+REHEARSAL_MIN = 300  # long runs this long rehearse race day: pack, fueling, a night start (KB: gut training)
 
 # (start steps, filler, end steps ending at the peak, recovery-week long run), in minutes
 _LADDERS: dict[tuple[Band, bool], tuple[list[int], int, list[int], int]] = {
@@ -96,13 +101,30 @@ def ladder(band: Band, advanced: bool, total_weeks: int) -> dict[int, int]:
     start, filler, end, recovery = _LADDERS[(band, advanced and band == "100mi")]
     peak = peak_week(total_weeks)
     n = sum(1 for w in range(1, peak + 1) if not is_deload(w, total_weeks))
+    if not advanced and band != "50k" and n < len(start) + len(end) + 2:
+        # too short for two 5 h weeks: peak at 6 h (Quang: 6-7 h) instead of +1 h on three build weeks running
+        end = end[:-1]
     steps = start + end
     seq = start + [filler] * (n - len(steps)) + end if n >= len(steps) else steps[-n:] if n > 0 else []
     out: dict[int, int] = {}
     it = iter(seq)
+    last = 0
     for w in range(1, peak + 1):
-        out[w] = recovery if is_deload(w, total_weeks) else next(it)
+        if is_deload(w, total_weeks):  # a recovery week's long run is a rung below the last build week's
+            out[w] = max(start[0], min(recovery, last - STEP_CAP_MIN)) if last else recovery
+        else:
+            out[w] = last = next(it)
     return out
+
+
+def b2b_split(rung_min: int) -> tuple[int, int] | None:
+    """(mountain day, next day) minutes when the athlete chose a back-to-back weekend over one long day, for the
+    6 h+ rungs only. 7 h -> 5 h + 2 h 45; 6 h -> 4 h + 2 h 30."""
+    if rung_min < B2B_MIN_RUNG:
+        return None
+    total = round(rung_min * B2B_TOTAL_SHARE / 15) * 15
+    day1 = rung_min - B2B_DAY1_SHORTER
+    return day1, total - day1
 
 
 def long_run_target(
@@ -142,9 +164,11 @@ def prompt_block(
     aet_gated: bool,
     lang: str,
     me_weeks: frozenset[int] = frozenset(),
+    back_to_back: bool = False,
 ) -> str:
     """Rule lines for the generator: this block's ladder long runs and quality sessions. Technical terms stay in
-    English in Vietnamese, like goal_demands.prompt_block."""
+    English in Vietnamese, like goal_demands.prompt_block. `back_to_back`: the athlete chose a back-to-back weekend
+    over one 6 h+ day."""
     lo, hi = weekday_minutes(band, advanced)
     n = quality_per_week(advanced, aet_gated)
     work_lo, work_hi = quality_work_minutes(advanced, aet_gated)
@@ -179,18 +203,31 @@ def prompt_block(
                 if not vi
                 else "không có buổi Zone 3+: chỉ hill sprints, strides và ME"
             )
-        lines.append(
-            f"- Week {week}: Long Run {minutes} min on the mountain day; the other weekend day at most {other} min "
-            f"easy; {quality}."
-            if not vi
-            else f"- Tuần {week}: Long Run {minutes} phút vào ngày lên núi; ngày cuối tuần còn lại tối đa {other} "
-            f"phút nhẹ; {quality}."
-        )
+        split = b2b_split(minutes) if back_to_back else None
+        if split:
+            weekend = (
+                f"back-to-back weekend: Long Run {split[0]} min on the mountain day, then {split[1]} min easy Zone 2 "
+                f"on the other weekend day (flat ground is fine)"
+                if not vi
+                else f"back-to-back cuối tuần: Long Run {split[0]} phút vào ngày lên núi, rồi {split[1]} phút Zone 2 "
+                f"nhẹ vào ngày cuối tuần còn lại (đường bằng cũng được)"
+            )
+        else:
+            weekend = (
+                f"Long Run {minutes} min on the mountain day; the other weekend day at most {other} min easy"
+                if not vi
+                else f"Long Run {minutes} phút vào ngày lên núi; ngày cuối tuần còn lại tối đa {other} phút nhẹ"
+            )
+        lines.append(f"- Week {week}: {weekend}; {quality}." if not vi else f"- Tuần {week}: {weekend}; {quality}.")
     lines.append(
-        f"Weekday easy runs {lo}-{hi} min; extra volume goes on weekdays, never on the long run. No back-to-back "
-        f"weekend. No ME in a week with a Long Run of {ME_FREE_LONG_RUN_MIN // 60} h or more."
+        f"Weekday easy runs {lo}-{hi} min; extra volume goes on weekdays, never on the long run. "
+        f"{'No other' if back_to_back else 'No'} back-to-back weekend. No ME in a week with a Long Run of "
+        f"{ME_FREE_LONG_RUN_MIN // 60} h or more. Long Runs of {REHEARSAL_MIN // 60} h or more rehearse race day: "
+        f"the race pack, 60-90 g carbs per hour, and a pre-dawn start with a headlamp."
         if not vi
         else f"Easy run ngày thường {lo}-{hi} phút; khối lượng thêm đặt vào ngày thường, không cộng vào Long Run. "
-        f"Không chạy back-to-back cuối tuần. Không tập ME trong tuần có Long Run từ {ME_FREE_LONG_RUN_MIN // 60} h trở lên."
+        f"{'Không có back-to-back nào khác' if back_to_back else 'Không chạy back-to-back cuối tuần'}. Không tập ME "
+        f"trong tuần có Long Run từ {ME_FREE_LONG_RUN_MIN // 60} h trở lên. Long Run từ {REHEARSAL_MIN // 60} h trở "
+        f"lên là buổi tập dượt ngày race: balo race, 60-90 g carbs mỗi giờ, và xuất phát trước bình minh với đèn đội đầu."
     )
     return "\n".join(lines)

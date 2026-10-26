@@ -681,6 +681,7 @@ def build_rebuild_inputs(
         "training_mountain": request.training_mountain
         if request.training_mountain is not None or request.clear_training_mountain
         else plan.get("training_mountain"),
+        "long_day_format": plan.get("long_day_format"),
         "mountain_min_minutes": request.mountain_min_minutes
         if request.mountain_min_minutes is not None or request.clear_mountain_min_minutes
         else plan.get("mountain_min_minutes"),

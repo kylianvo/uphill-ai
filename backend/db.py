@@ -164,6 +164,7 @@ def init_db():
             mountain_days           TEXT,
             training_mountain       TEXT,
             mountain_min_minutes    INTEGER,
+            long_day_format         TEXT,                   -- 'single' (default when NULL) | 'back_to_back'
             stair_access            BOOLEAN DEFAULT FALSE,
             treadmill_max_incline   INTEGER DEFAULT 15,
             -- explicit tier override for THIS plan; NULL means derive it from the
@@ -981,6 +982,7 @@ def init_db():
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS mountain_days TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS training_mountain TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS mountain_min_minutes INTEGER",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS long_day_format TEXT",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS mountain_mode TEXT",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS mountain_climb_rate REAL",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS stair_access BOOLEAN DEFAULT FALSE",
@@ -1254,6 +1256,7 @@ def create_plan(
     mountain_min_minutes: int | None = None,
     stair_access: bool = False,
     treadmill_max_incline: int | None = None,
+    long_day_format: str | None = None,
     created_by_user_id: int | None = None,
     plan_status: str = "active",
     athlete_notes: str | None = None,
@@ -1270,14 +1273,14 @@ def create_plan(
                                days_per_week, double_session_days, start_date,
                                has_gym_access, use_treadmill, training_environment,
                                mountain_days, training_mountain, mountain_min_minutes, stair_access, treadmill_max_incline,
-                               created_by_user_id, plan_status, athlete_notes, cutoff_time_hours,
+                               long_day_format, created_by_user_id, plan_status, athlete_notes, cutoff_time_hours,
                                milestone_target, has_target_event)
             VALUES (:user_id, :race_name, :race_date, :goal_type,
                     :tth, :total_weeks, :dist_km, :elev_m, :preferred_run_days,
                     :long_run_day, :days_per_week, :double_session_days, :start_date,
                     :has_gym_access, :use_treadmill, :training_environment,
                     :mountain_days, :training_mountain, :mountain_min_minutes, :stair_access, :treadmill_max_incline,
-                    :created_by_user_id, :plan_status, :athlete_notes, :cutoff_time_hours,
+                    :long_day_format, :created_by_user_id, :plan_status, :athlete_notes, :cutoff_time_hours,
                     :milestone_target, :has_target_event)
             RETURNING id
         """),
@@ -1303,6 +1306,7 @@ def create_plan(
                 "mountain_min_minutes": mountain_min_minutes,
                 "stair_access": bool(stair_access),
                 "treadmill_max_incline": treadmill_max_incline or 15,
+                "long_day_format": long_day_format,
                 "created_by_user_id": created_by_user_id if created_by_user_id is not None else user_id,
                 "plan_status": plan_status,
                 "cutoff_time_hours": cutoff_time_hours,
@@ -1534,6 +1538,7 @@ def update_plan_schedule(
     clear_mountain_min_minutes: bool = False,
     stair_access: bool | None = None,
     treadmill_max_incline: int | None = None,
+    long_day_format: str | None = None,
 ) -> dict[str, Any] | None:
     """Partial update of a plan's mid-plan-editable schedule columns. Any
     argument left as None keeps that column's current value (COALESCE) --
@@ -1555,7 +1560,8 @@ def update_plan_schedule(
                     training_mountain = CASE WHEN :clear_training_mountain THEN NULL ELSE COALESCE(:training_mountain, training_mountain) END,
                     mountain_min_minutes = CASE WHEN :clear_mountain_min_minutes THEN NULL ELSE COALESCE(:mountain_min_minutes, mountain_min_minutes) END,
                     stair_access = COALESCE(:stair_access, stair_access),
-                    treadmill_max_incline = COALESCE(:treadmill_max_incline, treadmill_max_incline)
+                    treadmill_max_incline = COALESCE(:treadmill_max_incline, treadmill_max_incline),
+                    long_day_format = COALESCE(:long_day_format, long_day_format)
                 WHERE id = :plan_id
                 RETURNING *
             """),
@@ -1576,6 +1582,7 @@ def update_plan_schedule(
                 "mountain_min_minutes": mountain_min_minutes,
                 "stair_access": stair_access,
                 "treadmill_max_incline": treadmill_max_incline,
+                "long_day_format": long_day_format,
             },
         )
         conn.commit()

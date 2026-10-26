@@ -278,6 +278,8 @@ class PlanGenerateRequest(BaseModel):
     mountain_days: list[str] | None = None
     training_mountain: str | None = None
     mountain_min_minutes: int | None = Field(default=None, ge=0)
+    # One 6-7 h mountain day, or a back-to-back weekend longer in all (services/ultra_rules.b2b_split)
+    long_day_format: Literal["single", "back_to_back"] | None = None
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     # Non-race / start date fields
@@ -357,6 +359,8 @@ class GenerateNextBlockRequest(BaseModel):
     mountain_days: list[str] | None = None
     training_mountain: str | None = None
     mountain_min_minutes: int | None = Field(default=None, ge=0)
+    # One 6-7 h mountain day, or a back-to-back weekend longer in all (services/ultra_rules.b2b_split)
+    long_day_format: Literal["single", "back_to_back"] | None = None
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     athlete_notes: str | None = None
@@ -545,6 +549,8 @@ class OnboardingRequest(BaseModel):
     mountain_days: list[str] | None = None
     training_mountain: str | None = None
     mountain_min_minutes: int | None = Field(default=None, ge=0)
+    # One 6-7 h mountain day, or a back-to-back weekend longer in all (services/ultra_rules.b2b_split)
+    long_day_format: Literal["single", "back_to_back"] | None = None
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     # Goal-specific extras
@@ -1366,6 +1372,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         mountain_min_minutes=request.mountain_min_minutes,
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
+        long_day_format=request.long_day_format,
         athlete_notes=request.athlete_notes,
         milestone_target=request.milestone_target if beginner_shape else None,
         has_target_event=bool(beginner_shape and beginner_shape.has_event),
@@ -1402,6 +1409,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "mountain_min_minutes": request.mountain_min_minutes,
         "stair_access": bool(request.stair_access),
         "treadmill_max_incline": request.treadmill_max_incline,
+        "long_day_format": request.long_day_format,
         "plan_start_date": onboarding_start_date,
         "athlete_notes": request.athlete_notes or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,
@@ -2363,6 +2371,7 @@ async def _generate_plan_for_athlete(
         mountain_min_minutes=request.mountain_min_minutes,
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
+        long_day_format=request.long_day_format,
         milestone_target=request.milestone_target if beginner_shape else None,
         has_target_event=bool(beginner_shape and beginner_shape.has_event),
         created_by_user_id=created_by_user_id,
@@ -2402,6 +2411,7 @@ async def _generate_plan_for_athlete(
         "mountain_min_minutes": request.mountain_min_minutes,
         "stair_access": bool(request.stair_access),
         "treadmill_max_incline": request.treadmill_max_incline,
+        "long_day_format": request.long_day_format,
         # Start date
         "plan_start_date": start_date_str,
         "athlete_notes": request.athlete_notes or fresh_user.get("athlete_notes"),
@@ -2789,6 +2799,7 @@ async def _generate_next_block_for_athlete(
         request.mountain_min_minutes,
         request.stair_access,
         request.treadmill_max_incline,
+        request.long_day_format,
     )
     if (
         any(f is not None for f in _schedule_fields)
@@ -2813,6 +2824,7 @@ async def _generate_next_block_for_athlete(
             and request.mountain_min_minutes is None,
             stair_access=request.stair_access,
             treadmill_max_incline=request.treadmill_max_incline,
+            long_day_format=request.long_day_format,
         )
         if updated_plan:
             plan = updated_plan
@@ -2988,6 +3000,7 @@ async def _generate_next_block_for_athlete(
         "mountain_days": plan.get("mountain_days"),
         "training_mountain": plan.get("training_mountain"),
         "mountain_min_minutes": plan.get("mountain_min_minutes"),
+        "long_day_format": plan.get("long_day_format"),
         "stair_access": plan.get("stair_access"),
         "treadmill_max_incline": plan.get("treadmill_max_incline"),
         "plan_start_date": plan.get("start_date"),

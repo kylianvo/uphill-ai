@@ -19,7 +19,7 @@ def rule_based_plan(monkeypatch):
     monkeypatch.setattr(settings, "PLAN_LINT_ENABLED", False)
     monkeypatch.setattr(plan_generator, "get_plan_workouts", lambda plan_id: [])
 
-    def build(km, weeks, mountain_days, tier, weekly_km=65, race_weekday=5, **profile):
+    def build(km, weeks, mountain_days, tier, weekly_km=65, race_weekday=5, race_extra=None, **profile):
         race_info = {
             "name": "VHT 100K",
             "date": (START + timedelta(weeks=weeks - 2, days=race_weekday)).isoformat(),
@@ -35,6 +35,7 @@ def rule_based_plan(monkeypatch):
             "training_mountain": "nui_dinh" if mountain_days else None,
             "mountain_days": json.dumps(mountain_days) if mountain_days else None,
             "athlete_tier": tier,
+            **(race_extra or {}),
         }
         user = {
             "max_hr": 185,
@@ -68,7 +69,7 @@ def _longs(wos):
 def test_100k_mountain_plan_follows_ladder(rule_based_plan):
     wos = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="recreational")
     longs = _longs(wos)
-    assert longs[1] == 180 and longs[4] == 240 and longs[16] == 420
+    assert longs[1] == 180 and longs[4] == 180 and longs[16] == 420  # week 4: a rung below week 3
     assert max(longs.values()) <= 420
     weekday = [
         w
@@ -447,3 +448,72 @@ def test_deload_week_keeps_its_easy_runs_as_real_runs(rule_based_plan):
     runs = [w for w in week_4 if w["type"] in ("Easy", "Aerobic Capacity", "Recovery", "Long Run")]
     assert ultra_rules.is_deload(4, 13) and len({w["day_of_week"] for w in runs}) >= 4
     assert all(w["duration_minutes"] >= 30 for w in runs)
+
+
+def _week_min(wos, wk):
+    return plan_lint.week_minutes([w for w in wos if w["week_number"] == wk])
+
+
+def test_back_to_back_weekend_replaces_the_6_and_7_hour_days(rule_based_plan):
+    """Owner 2026-10-27: an athlete who prefers a back-to-back holds the 6-7 h rung over two days, longer in all."""
+    wos = rule_based_plan(
+        km=104.2,
+        weeks=20,
+        mountain_days=["Saturday"],
+        tier="recreational",
+        race_extra={"long_day_format": "back_to_back"},
+    )
+    b2b = {w["week_number"]: w for w in wos if plan_lint.is_b2b_day(w)}
+    longs = _longs(wos)
+    assert set(b2b) == {15, 16}
+    assert (longs[15], b2b[15]["duration_minutes"]) == (240, 150)
+    assert (longs[16], b2b[16]["duration_minutes"]) == (300, 165)
+    assert all(w["day_of_week"] == "Sunday" and w["target_zone"] == "Zone 2" for w in b2b.values())
+    assert not any(w["type"] == "Muscular Endurance" for w in wos if w["week_number"] in (15, 16))
+
+
+def test_single_long_day_stays_the_default(rule_based_plan):
+    wos = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="recreational")
+    assert _longs(wos)[16] == 420 and not any(plan_lint.is_b2b_day(w) for w in wos)
+
+
+def test_ladder_weeks_grow_at_most_15_percent_in_all(rule_based_plan):
+    wos = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="recreational")
+    for wk in range(3, 17):
+        if ultra_rules.is_deload(wk, 20):
+            continue
+        ref = wk - 2 if ultra_rules.is_deload(wk - 1, 20) else wk - 1
+        assert _week_min(wos, wk) <= _week_min(wos, ref) * ultra_rules.WEEK_GROWTH_CAP + 1, wk
+
+
+def test_mid_week_start_gets_its_share_of_week_one(rule_based_plan):
+    """Plan 131 started on a Thursday: week 1 held a full week of load in 4 days."""
+    thursday = START + timedelta(days=3)
+    wos = rule_based_plan(
+        km=104.2,
+        weeks=20,
+        mountain_days=["Saturday"],
+        tier="recreational",
+        weekly_km=60,
+        race_extra={"plan_start_date": thursday.isoformat()},
+    )
+    week1 = [w for w in wos if w["week_number"] == 1 and w["type"] != "Rest"]
+    recent = 60 * PlanGenerator.flat_zone2_pace({"zone2_pace_min": "6:30", "zone2_pace_max": "5:45"}, "finish", None)
+    # the 180 min mountain day plus at most one more run: the share of the load, or the mountain minimum
+    assert plan_lint.week_minutes(week1) <= max(recent * 1.1 * 4 / 7, 180 + 60) + 1
+    assert all(w["day_of_week"] in ("Thursday", "Friday", "Saturday", "Sunday") for w in week1)
+
+
+def test_steep_race_gets_eccentric_me_descents_and_race_rehearsal(rule_based_plan):
+    wos = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="recreational")
+    me = [w for w in wos if w["type"] == "Muscular Endurance"]
+    # the step-text rules may fold it in as a step before the cool-down
+    assert me and all("3 x 10 slow step-downs per leg" in w["description"] for w in me)
+    longs = {w["week_number"]: w for w in wos if w["type"] == "Long Run"}
+    assert plan_generator.DESCENT_EN in longs[16]["description"]
+    assert plan_generator.DESCENT_EN not in longs[5]["description"]
+    assert all(
+        plan_generator.REHEARSAL_EN in (w.get("fueling_tip") or "")
+        for w in longs.values()
+        if w["duration_minutes"] >= 300 and w["phase"] in ("Build", "Peak")
+    )
