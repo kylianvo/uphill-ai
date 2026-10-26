@@ -2833,6 +2833,8 @@ def _owned_b_race(plan_id: int, race_id: int, user_id: int) -> tuple[dict[str, A
     race = db.get_plan_race(plan_id, race_id)
     if not race or race["status"] == "cancelled":
         raise HTTPException(status_code=404, detail="not_found")
+    if b_race._date(race["race_date"]) > b_race.current_date():  # a result or debrief needs the race to have happened
+        raise HTTPException(status_code=409, detail="race_not_run_yet")
     return plan, race
 
 

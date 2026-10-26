@@ -11,7 +11,7 @@ import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 import WatchZonesGuideModal from "../components/WatchZonesGuideModal";
 import RaceHistoryPanel from "../components/RaceHistoryPanel";
 import { LongRunDaySelect, TrainingVenueFields } from "../components/TrainingVenueFields";
-import BRaceSetupFields, { completeRaces } from "../components/BRaceSetupFields";
+import BRaceSetupFields, { completeRaces, racesBlocked } from "../components/BRaceSetupFields";
 
 export default function OnboardingWizard() {
   const ctx = useAppContext();
@@ -877,7 +877,7 @@ export default function OnboardingWizard() {
                   <input type="date" className="chat-input" style={inputS} value={onboardingAnswers.race_date} onChange={e => setAns("race_date", e.target.value)} />
 
                   <div style={{ marginTop: "12px" }}>
-                    <BRaceSetupFields lang={lang} value={onboardingAnswers.b_races ?? []} onChange={(v) => setAns("b_races", v)} />
+                    <BRaceSetupFields lang={lang} goalDate={onboardingAnswers.race_date} value={onboardingAnswers.b_races ?? []} onChange={(v) => setAns("b_races", v)} />
                   </div>
 
                 </div>
@@ -1962,7 +1962,7 @@ export default function OnboardingWizard() {
 
                 <button type="button" onClick={handleNextStep}
 
-                  disabled={(currentStepKey === "goal" && !onboardingAnswers.goal_type) || (currentStepKey === "dob" && !!onboardingAnswers.dob_error)}
+                  disabled={(currentStepKey === "goal" && !onboardingAnswers.goal_type) || (currentStepKey === "dob" && !!onboardingAnswers.dob_error) || (currentStepKey === "target" && onboardingAnswers.goal_type === "race" && racesBlocked(onboardingAnswers.b_races, onboardingAnswers.race_date))}
 
                   className="btn btn-primary" style={{ flex: 2, height: "40px", fontSize: "13px" }}>
 

@@ -45,6 +45,7 @@ def st(monkeypatch):
     )
     monkeypatch.setattr(main, "get_recent_plans", lambda uid, limit=3: [{"id": 5}])
     monkeypatch.setattr(main.db, "get_plan_by_id", lambda pid: dict(PLAN))
+    monkeypatch.setattr(b_race, "current_date", lambda: date(2026, 11, 2))  # the race is past
     main.app.dependency_overrides[main.get_current_user] = lambda: {"id": 7}
     yield st
     main.app.dependency_overrides.pop(main.get_current_user, None)
@@ -89,6 +90,14 @@ def test_kept_risky_adds_two_recovery_days():
     plain = b_race.debrief_facts({**RACE, "result_seconds": 11460}, {})
     risky = b_race.debrief_facts({**RACE, "result_seconds": 11460, "kept_against": "risky"}, {})
     assert risky["recovery_days"] == plain["recovery_days"] + 2
+
+
+@pytest.mark.parametrize("path, body", [("result", {"finish_time_sec": 11460}), ("debrief", {"fuel": "plan"})])
+def test_no_result_or_debrief_before_race_day(monkeypatch, st, path, body):
+    monkeypatch.setattr(b_race, "current_date", lambda: date(2026, 10, 31))
+    r = client.post(f"/api/plans/5/races/3/{path}", json=body)
+    assert r.status_code == 409 and r.json()["detail"] == "race_not_run_yet"
+    assert st["race"]["status"] == "planned" and not st["history"] and not st["updates"]
 
 
 def test_target_change_is_only_suggested(st):

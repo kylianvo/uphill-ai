@@ -7,9 +7,11 @@ export interface SetupRace { race_name: string; race_date: string; distance_km: 
 const MAX = 3;
 const T = {
   en: { title: "Other races before your goal (optional)", hint: "Coach Uphill checks each one and plans the taper and recovery around it.",
-    add: "+ Add a tune-up race", race: "Race", date: "Date", km: "km", remove: "Remove" },
+    add: "+ Add a tune-up race", race: "Race", date: "Date", km: "km", remove: "Remove",
+    incomplete: "Add the name, distance and a date before your goal race, or remove it." },
   vi: { title: "Các race khác trước race mục tiêu (không bắt buộc)", hint: "Coach Uphill sẽ xem từng race và sắp xếp taper, hồi phục quanh nó.",
-    add: "+ Thêm race tập dượt", race: "Race", date: "Ngày", km: "km", remove: "Xoá" },
+    add: "+ Thêm race tập dượt", race: "Race", date: "Ngày", km: "km", remove: "Xoá",
+    incomplete: "Thêm tên, cự ly và ngày trước race mục tiêu, hoặc xoá race này." },
 } as const;
 
 /** The rows a plan request sends as `b_races`: a name and a date at least (the race list can fill the distance). */
@@ -18,7 +20,16 @@ export const completeRaces = (rows: SetupRace[] | undefined): BRaceInput[] =>
     .filter((r) => r.race_name.trim() && r.race_date)
     .map((r) => ({ race_name: r.race_name.trim(), race_date: r.race_date, distance_km: r.distance_km, effort: "race" as const }));
 
-export default function BRaceSetupFields({ lang, value, onChange }: { lang: Lang; value: SetupRace[]; onChange: (v: SetupRace[]) => void }) {
+/** A row the runner started that the server would skip: it needs a name, a distance and a date before the goal race. */
+const rowBlocked = (r: SetupRace, goalDate?: string): boolean => {
+  if (!r.race_name.trim() && !r.race_date && r.distance_km == null) return false;
+  const km = r.distance_km ?? 0;
+  return !r.race_name.trim() || !r.race_date || !(km > 0 && km <= 400) || (!!goalDate && r.race_date >= goalDate);
+};
+
+export const racesBlocked = (rows: SetupRace[] | undefined, goalDate?: string): boolean => (rows ?? []).some((r) => rowBlocked(r, goalDate));
+
+export default function BRaceSetupFields({ lang, value, onChange, goalDate }: { lang: Lang; value: SetupRace[]; onChange: (v: SetupRace[]) => void; goalDate?: string }) {
   const t = T[lang] ?? T.en;
   const rows = value ?? [];
   const edit = (i: number, patch: Partial<SetupRace>) => onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -29,7 +40,8 @@ export default function BRaceSetupFields({ lang, value, onChange }: { lang: Lang
       <legend style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>{t.title}</legend>
       <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t.hint}</span>
       {rows.map((r, i) => (
-        <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 0.8fr) auto", gap: 6, alignItems: "end" }}>
+        <React.Fragment key={i}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 0.8fr) auto", gap: 6, alignItems: "end" }}>
           <label style={{ fontSize: 11 }}>{t.race}<input style={input} value={r.race_name} onChange={(e) => edit(i, { race_name: e.target.value })} /></label>
           <label style={{ fontSize: 11 }}>{t.date}<input type="date" style={input} value={r.race_date} onChange={(e) => edit(i, { race_date: e.target.value })} /></label>
           <label style={{ fontSize: 11 }}>{t.km}<input type="number" inputMode="decimal" style={input} value={r.distance_km ?? ""}
@@ -37,6 +49,8 @@ export default function BRaceSetupFields({ lang, value, onChange }: { lang: Lang
           <button type="button" aria-label={`${t.remove} ${r.race_name || i + 1}`} onClick={() => onChange(rows.filter((_, j) => j !== i))}
             style={{ minHeight: 44, minWidth: 44, border: "none", background: "none", cursor: "pointer", color: "var(--text-secondary)" }}>×</button>
         </div>
+        {rowBlocked(r, goalDate) && <span role="alert" style={{ fontSize: 12, color: "#b42318" }}>{t.incomplete}</span>}
+        </React.Fragment>
       ))}
       {rows.length < MAX && (
         <button type="button" onClick={() => onChange([...rows, { race_name: "", race_date: "", distance_km: null }])}

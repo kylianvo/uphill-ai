@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import BRaceSetupFields, { completeRaces } from "./BRaceSetupFields";
+import BRaceSetupFields, { completeRaces, racesBlocked } from "./BRaceSetupFields";
 
 describe("BRaceSetupFields", () => {
   it("adds up to three races and edits them", () => {
@@ -20,5 +20,17 @@ describe("BRaceSetupFields", () => {
       { race_name: "", race_date: "2026-11-08", distance_km: 21 }])).toEqual([
       { race_name: "Ta Xua", race_date: "2026-11-01", distance_km: null, effort: "race" },
     ]);
+  });
+  it("blocks a started race the server would drop, and says why", () => {
+    const blank = { race_name: "", race_date: "", distance_km: null };
+    const ok = { race_name: "Ta Xua", race_date: "2026-11-01", distance_km: 25 };
+    expect(racesBlocked([blank, ok], "2026-12-13")).toBe(false);
+    expect(racesBlocked([{ ...ok, distance_km: null }], "2026-12-13")).toBe(true);
+    expect(racesBlocked([{ ...ok, race_date: "" }], "2026-12-13")).toBe(true);
+    expect(racesBlocked([{ ...ok, race_name: " " }], "2026-12-13")).toBe(true);
+    expect(racesBlocked([{ ...ok, race_date: "2026-12-13" }], "2026-12-13")).toBe(true);
+    render(<BRaceSetupFields lang="vi" goalDate="2026-12-13" value={[blank, { ...ok, distance_km: null }]} onChange={vi.fn()} />);
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert").textContent).toBe("Thêm tên, cự ly và ngày trước race mục tiêu, hoặc xoá race này.");
   });
 });

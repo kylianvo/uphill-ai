@@ -2011,6 +2011,16 @@
         }
       }
     },
+    "Add the name, distance and a date before your goal race, or remove it.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm tên, cự ly và ngày trước race mục tiêu, hoặc xoá race này."
+          }
+        }
+      }
+    },
     "Add the race name.": {
       "localizations": {
         "vi": {

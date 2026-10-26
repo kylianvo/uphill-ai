@@ -1193,7 +1193,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               </div>
 
               {["race", "distance"].includes(planForm.plan_goal_category) && (
-                <BRaceSetupFields lang={lang} value={planForm.b_races ?? []} onChange={(b_races) => setPlanForm({ ...planForm, b_races })} />
+                <BRaceSetupFields lang={lang} goalDate={planForm.race_date} value={planForm.b_races ?? []} onChange={(b_races) => setPlanForm({ ...planForm, b_races })} />
               )}
 
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "12px" : "16px", marginBottom: "16px" }}>

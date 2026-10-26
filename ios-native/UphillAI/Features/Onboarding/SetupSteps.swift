@@ -236,6 +236,7 @@ struct SetupSteps: View {
                 .frame(minHeight: 44)
                 .accessibilityIdentifier("setup.addBRace")
             }
+            SetupError(model: model, field: .bRaces)
         }
         .trainingCard()
     }

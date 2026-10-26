@@ -82,7 +82,7 @@ enum SetupStep: Equatable, Sendable {
 }
 
 enum SetupField: Hashable, Sendable {
-    case goal, raceName, raceDate, distance, targetTime, beginnerEventDate, timeAway, fitnessFeel, raceCompleted, daysSinceRace, recoveryFeel
+    case goal, raceName, raceDate, bRaces, distance, targetTime, beginnerEventDate, timeAway, fitnessFeel, raceCompleted, daysSinceRace, recoveryFeel
     case preferredDays, longRunDay, weeklyKm, startDate, height, weight, maxHr, restingHr, trainingZones
 }
 
@@ -248,6 +248,9 @@ struct PlanSetupDraft: Equatable, Sendable {
             let earliest = calendar.date(byAdding: .day, value: 14, to: start)!
             if raceDate.map({ $0 < earliest }) ?? true {
                 add(.raceDate, L("Pick a date at least 2 weeks away so the plan has room to build."))
+            }
+            if goal == .race, bRaces.contains(where: { !$0.isSavable(before: raceDate, calendar: calendar) }) {
+                add(.bRaces, L("Add the name, distance and a date before your goal race, or remove it."))
             }
         case .raceGoal:
             if raceGoal == .time, !(1...6000).contains(targetMinutes ?? 0) {

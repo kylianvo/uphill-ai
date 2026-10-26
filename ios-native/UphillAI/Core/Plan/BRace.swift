@@ -183,3 +183,13 @@ struct SetupBRace: Identifiable, Equatable, Sendable {
     var date: Date
     var distanceKm: Double?
 }
+
+extension SetupBRace {
+    /// A blank row is skipped; a started one needs what the server needs, or it would be dropped without a word.
+    func isSavable(before goalDate: Date?, calendar: Calendar) -> Bool {
+        let named = !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if !named, distanceKm == nil { return true }
+        let beforeGoal = goalDate.map { calendar.startOfDay(for: date) < calendar.startOfDay(for: $0) } ?? true
+        return named && (0.1...400).contains(distanceKm ?? 0) && beforeGoal
+    }
+}

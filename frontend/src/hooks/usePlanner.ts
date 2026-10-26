@@ -5,7 +5,7 @@ import { ActivePlan, Workout } from "../types";
 import { resolveCurrentWeek, computeWorkoutDate } from "../utils/planDate";
 import { describeGuard, describeWarning, localToday, tr } from "../lib/scheduleProposals";
 import type { BRaceAssessment, BRaceInput } from "../lib/bRace";
-import { completeRaces } from "../components/BRaceSetupFields";
+import { completeRaces, racesBlocked } from "../components/BRaceSetupFields";
 
 export type CalendarNotice = { kind: "error" | "warning"; text: string };
 
@@ -317,6 +317,10 @@ export function usePlanner() {
     }
     if (!planForm.current_weekly_km) {
       setPlanErrorMsg("Please enter your current weekly mileage.");
+      return;
+    }
+    if (isRaceOrDistVal && racesBlocked(planForm.b_races, planForm.race_date)) {
+      setPlanErrorMsg(lang === "vi" ? "Một race tập dượt chưa đủ thông tin. Sửa hoặc xoá nó." : "A tune-up race is missing details. Fix or remove it.");
       return;
     }
     setPlanLoading(true);
