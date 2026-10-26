@@ -12,7 +12,7 @@ from typing import Any
 import db
 from config import settings
 from log_utils import get_logger
-from services import aerobic_speed, coros_oauth, token_crypto
+from services import aerobic_speed, beginner_milestones, coros_oauth, token_crypto
 from services.mcp_client import McpClient
 from services.providers.coros import PROVIDER, SPORT_TYPE_NAMES, CorosAdapter
 
@@ -124,6 +124,8 @@ async def persist(user_id: int, adapter, days: int) -> dict[str, int]:
                     }
                 },
             )
+    if stored_activities:
+        beginner_milestones.safe_refresh_milestones(user_id)
     if activities and not stored_activities:
         raise CorosSyncPersistError(f"all {len(activities)} activities failed to persist for user {user_id}")
 

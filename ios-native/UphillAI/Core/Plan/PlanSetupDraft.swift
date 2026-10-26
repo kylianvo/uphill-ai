@@ -61,7 +61,7 @@ enum TrainingEnvironment: String, CaseIterable, Sendable {
 }
 
 enum SetupStep: Equatable, Sendable {
-    case goal, details, raceDate, raceGoal, fitnessFeel, daysSinceRace, recoveryFeel
+    case goal, details, raceDate, raceGoal, fitnessFeel, daysSinceRace, recoveryFeel, beginnerGoal
     case watch, schedule, venues, body, trainingZones, raceHistory, startDate, review
 
     /// Watch, body and race history are profile answers, asked once at onboarding and edited in Profile afterwards.
@@ -73,7 +73,7 @@ enum SetupStep: Equatable, Sendable {
         case .race, .distance: questions = [.details, .raceDate, .raceGoal]
         case .returning: questions = [.details, .fitnessFeel]
         case .recovery: questions = [.details, .daysSinceRace, .recoveryFeel]
-        case .startRunning: questions = []
+        case .startRunning: questions = [.beginnerGoal]
         }
         let profile: [SetupStep] = includeProfile ? [.body, .trainingZones, .raceHistory] : []
         let watch: [SetupStep] = includeProfile ? [.watch] : []
@@ -82,7 +82,7 @@ enum SetupStep: Equatable, Sendable {
 }
 
 enum SetupField: Hashable, Sendable {
-    case goal, raceName, raceDate, distance, targetTime, timeAway, fitnessFeel, raceCompleted, daysSinceRace, recoveryFeel
+    case goal, raceName, raceDate, distance, targetTime, beginnerEventDate, timeAway, fitnessFeel, raceCompleted, daysSinceRace, recoveryFeel
     case preferredDays, longRunDay, weeklyKm, startDate, height, weight, maxHr, restingHr, trainingZones
 }
 
@@ -128,6 +128,12 @@ struct PlanSetupDraft: Equatable, Sendable {
     // Return
     var timeAway: String?
     var fitnessFeel: String?
+    // Beginner (start running): the milestone target, today's longest jog and an optional event
+    var milestoneTarget: MilestoneTarget = .fiveK
+    var currentJogMin = 0
+    var hasBeginnerEvent = false
+    var beginnerEventName = ""
+    var beginnerEventDate: Date?
     // Recovery
     var raceDistanceCompleted: String?
     var daysSinceRace = 7
@@ -244,6 +250,11 @@ struct PlanSetupDraft: Equatable, Sendable {
         case .raceGoal:
             if raceGoal == .time, !(1...6000).contains(targetMinutes ?? 0) {
                 add(.targetTime, L("Set your target finish time."))
+            }
+        case .beginnerGoal:
+            if hasBeginnerEvent {
+                if let date = beginnerEventDate, date > start { break }
+                add(.beginnerEventDate, L("Pick an event date after today."))
             }
         case .schedule:
             if preferredDays.count != daysPerWeek {
@@ -372,7 +383,11 @@ struct PlanSetupDraft: Equatable, Sendable {
             recoveryFeel: goal == .recovery ? recoveryFeel : nil,
             skipPlan: skipPlan,
             planStartDate: PlanCalendar.ymd(startDate, calendar: calendar),
-            athleteNotes: nonEmpty(notes)
+            athleteNotes: nonEmpty(notes),
+            milestoneTarget: beginnerBody ? milestoneTarget.rawValue : nil,
+            currentJogMin: beginnerBody ? currentJogMin : nil,
+            eventName: beginnerBody && hasBeginnerEvent ? nonEmpty(beginnerEventName) : nil,
+            eventDate: beginnerBody && hasBeginnerEvent ? beginnerEventDate.map { PlanCalendar.ymd($0, calendar: calendar) } : nil
         )
     }
 
@@ -407,9 +422,15 @@ struct PlanSetupDraft: Equatable, Sendable {
             raceDistanceCompleted: goal == .recovery ? raceDistanceCompleted : nil,
             daysSinceRace: goal == .recovery ? daysSinceRace : nil,
             recoveryFeel: goal == .recovery ? recoveryFeel : nil,
-            athleteNotes: nonEmpty(notes)
+            athleteNotes: nonEmpty(notes),
+            milestoneTarget: beginnerBody ? milestoneTarget.rawValue : nil,
+            currentJogMin: beginnerBody ? currentJogMin : nil,
+            eventName: beginnerBody && hasBeginnerEvent ? nonEmpty(beginnerEventName) : nil,
+            eventDate: beginnerBody && hasBeginnerEvent ? beginnerEventDate.map { PlanCalendar.ymd($0, calendar: calendar) } : nil
         )
     }
+
+    private var beginnerBody: Bool { goal == .startRunning }
 
     /// Facts the plan is built from, shown while it generates. Inputs, not invented progress.
     var summaryLines: [String] { summaryItems.map(\.text) }
@@ -431,6 +452,15 @@ struct PlanSetupDraft: Equatable, Sendable {
                 items.append((L("Target time %@", target), .raceGoal))
             } else {
                 items.append((raceGoal.title, .raceGoal))
+            }
+        } else if goal == .startRunning {
+            items.append((milestoneTarget.title, .beginnerGoal))
+            if hasBeginnerEvent, let date = beginnerEventDate {
+                let style = Date.FormatStyle(date: .omitted, time: .omitted, locale: AppLanguage.current == .vi ? AppLanguage.vi.locale : Locale(identifier: "en_GB"),
+                                             calendar: Calendar(identifier: .gregorian), timeZone: summaryTimeZone)
+                    .weekday(.abbreviated).day().month(.abbreviated)
+                let name = nonEmpty(beginnerEventName) ?? L("Your event")
+                items.append((L("%@ on %@", name, date.formatted(style)), .beginnerGoal))
             }
         } else if let goal {
             items.append((goal.title, .goal))
@@ -510,6 +540,10 @@ struct OnboardingBody: Encodable, Sendable {
     var skipPlan: Bool
     var planStartDate: String
     var athleteNotes: String?
+    var milestoneTarget: String? = nil
+    var currentJogMin: Int? = nil
+    var eventName: String? = nil
+    var eventDate: String? = nil
 }
 
 /// POST /api/coach/generate-plan. Nil fields are omitted from the JSON.
@@ -543,4 +577,8 @@ struct PlanBody: Encodable, Sendable {
     var daysSinceRace: Int?
     var recoveryFeel: String?
     var athleteNotes: String?
+    var milestoneTarget: String? = nil
+    var currentJogMin: Int? = nil
+    var eventName: String? = nil
+    var eventDate: String? = nil
 }

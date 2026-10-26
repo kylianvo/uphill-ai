@@ -34,6 +34,16 @@ struct PlanSetupViewModelTests {
         #expect(model.steps == [.goal, .details, .daysSinceRace, .recoveryFeel, .watch, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
     }
 
+    @Test func startRunningDropsTheGenericWeeklyKmButKeepsATypedOne() {
+        let (fresh, _, _, _) = make(.onboarding)
+        fresh.selectGoal(.startRunning)
+        #expect(fresh.draft.currentWeeklyKm == 0)
+        let (typed, _, _, _) = make(.onboarding)
+        typed.setWeeklyKm(12)
+        typed.selectGoal(.startRunning)
+        #expect(typed.draft.currentWeeklyKm == 12)
+    }
+
     @Test func revisitingSetupKeepsAnEditedCourse() async {
         let (model, _, _, _) = make(.newPlan)
         model.selectGoal(.race)
@@ -172,6 +182,8 @@ struct PlanSetupViewModelTests {
     @Test func onboardingAsksForWatchBeforeTheWeek() {
         let (model, _, _, _) = make(.onboarding)
         model.selectGoal(.startRunning)
+        #expect(model.step == .beginnerGoal)
+        model.next()
         #expect(model.step == .watch)
         #expect(model.primaryTitle == "Skip for now")
     }
@@ -180,8 +192,8 @@ struct PlanSetupViewModelTests {
         let (model, _, _, _) = make(.onboarding)
         #expect(model.step == .goal)
         model.selectGoal(.startRunning)
-        #expect(model.step == .watch)
-        #expect(model.steps == [.goal, .watch, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
+        #expect(model.step == .beginnerGoal)
+        #expect(model.steps == [.goal, .beginnerGoal, .watch, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
         #expect(model.direction == .forward)
     }
 
@@ -270,12 +282,14 @@ struct PlanSetupViewModelTests {
         model.next()
         model.next()
         model.next()
+        model.next()
         #expect(model.step == .review)
         #expect(model.primaryTitle == "Build my plan")
     }
     @Test func reviewCanReturnToScheduleWithoutLosingAnswers() {
         let (model, _, _, _) = make(.newPlan)
         model.selectGoal(.startRunning)
+        model.next()
         model.next()
         model.jump(to: .schedule)
         #expect(model.step == .schedule)

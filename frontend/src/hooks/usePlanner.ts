@@ -348,6 +348,14 @@ export function usePlanner() {
         double_session_days: planForm.double_session_days,
         plan_start_date: planForm.plan_start_date || null,
         plan_duration_weeks: isRaceOrDist ? null : planForm.plan_duration_weeks,
+        ...(planForm.plan_goal_category === "start_running"
+          ? {
+              milestone_target: planForm.milestone_target,
+              current_jog_min: planForm.current_jog_min,
+              event_name: planForm.event_name || null,
+              event_date: planForm.event_date || null,
+            }
+          : {}),
         // non-race context fields
         time_away: planForm.time_away || null,
         fitness_feel: planForm.fitness_feel || null,
@@ -452,6 +460,7 @@ export function usePlanner() {
       targetStr = p.goal_type.charAt(0).toUpperCase() + p.goal_type.slice(1).replace("_", " ");
     }
 
+    if (p.milestone_target && !p.has_target_event) return `First ${p.milestone_target.toUpperCase()} plan`;
     if (["start_running", "return", "recovery"].includes(p.goal_type || "")) {
       dateStr = `Ends ${p.race_date}`;
       return `${p.race_name || "Untitled Plan"} (${dateStr}) | ${targetStr}`;
@@ -561,6 +570,29 @@ export function usePlanner() {
     }
   };
 
+  // Beginner milestones: athlete-only routes (no coach-scoped mirror), so they do nothing while acting as an athlete.
+  const callMilestone = async (method: "POST" | "DELETE" | "PATCH", path: string, body?: object) => {
+    if (!activePlan?.id || actingAsAthleteId) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/plans/${activePlan.id}/${path}`, {
+        method,
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.plan) setActivePlan({ ...activePlan, ...data.plan });
+      else setActivePlan({ ...activePlan, beginner_milestones: data.beginner_milestones });
+    } catch {
+      // the card keeps showing the last known state
+    }
+  };
+  const markMilestone = (key: string) => callMilestone("POST", `milestones/${key}`);
+  const undoMilestone = (key: string) => callMilestone("DELETE", `milestones/${key}`);
+  const upgradeMilestoneTarget = (clearEvent = false) => callMilestone("PATCH", "milestone-target", { target: "10k", clear_event: clearEvent });
+
   const handleMarkMissed = async (woId: number, isMissed: boolean, reason?: string) => {
     setWorkouts((prev: any) =>
       prev.map((wo: any) =>
@@ -625,5 +657,5 @@ export function usePlanner() {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing, fetchActivePlanWithToken };
+  return { markMilestone, undoMilestone, upgradeMilestoneTarget, handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing, fetchActivePlanWithToken };
 }

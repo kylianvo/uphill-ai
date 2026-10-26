@@ -873,4 +873,61 @@ final class PlanViewModel {
             actionError = error.localizedDescription
         }
     }
+
+    // MARK: - Beginner milestones
+
+    /// The milestone just reached that has not been celebrated on this device yet.
+    private(set) var celebration: PlanMilestones.Item?
+
+    var beginnerMilestones: PlanMilestones? { snapshot?.plan.beginnerMilestones }
+
+    /// "First 5K · 3 of 6 milestones", plus the weeks to the athlete's event when there is one.
+    var beginnerHeaderText: String? {
+        guard let milestones = beginnerMilestones, let plan = snapshot?.plan else { return nil }
+        let weeks = plan.hasTargetEvent == true ? daysToRace.map { Int((Double($0) / 7).rounded(.up)) } : nil
+        return milestones.headerText(weeksToEvent: weeks)
+    }
+
+    private func seenMilestoneKeys(planID: Int) -> Set<String> {
+        Set(UserDefaults.standard.stringArray(forKey: "milestonesSeen.\(planID)") ?? [])
+    }
+
+    /// Shows the celebration for the latest unseen milestone once, then records every reached key as seen.
+    func refreshCelebration() {
+        guard let plan = snapshot?.plan, let milestones = plan.beginnerMilestones else { return }
+        let seen = seenMilestoneKeys(planID: plan.id)
+        if celebration == nil, let item = milestones.unseenEarned(seen: seen) { celebration = item }
+        let reached = Set(milestones.items.filter(\.isReached).map(\.key))
+        UserDefaults.standard.set(Array(seen.union(reached)), forKey: "milestonesSeen.\(plan.id)")
+    }
+
+    func dismissCelebration() { celebration = nil }
+
+    private func setBeginnerMilestones(_ milestones: PlanMilestones) {
+        guard var plan = snapshot?.plan, let workouts = snapshot?.workouts else { return }
+        plan.beginnerMilestones = milestones
+        snapshot = PlanSnapshot(plan: plan, workouts: workouts)
+        refreshCelebration()
+    }
+
+    func markMilestone(_ key: String) async {
+        guard athleteId == nil, let plan = snapshot?.plan else { return }
+        do { setBeginnerMilestones(try await service.markMilestone(planID: plan.id, key: key)) } catch { actionError = error.localizedDescription }
+    }
+
+    func undoMilestone(_ key: String) async {
+        guard athleteId == nil, let plan = snapshot?.plan else { return }
+        do { setBeginnerMilestones(try await service.undoMilestone(planID: plan.id, key: key)) } catch { actionError = error.localizedDescription }
+    }
+
+    /// Moves a First 5K plan up to First 10K. `clearEvent` drops the event so the plan can extend.
+    func upgradeMilestoneTarget(clearEvent: Bool) async {
+        guard athleteId == nil, let plan = snapshot?.plan, let workouts = snapshot?.workouts else { return }
+        do {
+            let upgraded = try await service.upgradeMilestoneTarget(planID: plan.id, clearEvent: clearEvent)
+            snapshot = PlanSnapshot(plan: upgraded, workouts: workouts)
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
 }

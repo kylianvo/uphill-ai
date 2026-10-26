@@ -52,6 +52,9 @@ struct Plan: Codable, Sendable, Equatable, Identifiable {
     var stairAccess: Bool? = nil
     var treadmillMaxIncline: Int? = nil
     var maxContinuousJogMin: Int? = nil
+    var milestoneTarget: String? = nil
+    var hasTargetEvent: Bool? = nil
+    var beginnerMilestones: PlanMilestones? = nil
 }
 
 /// Week-to-date for a matched workout's week, from GET /api/integrations/matching.

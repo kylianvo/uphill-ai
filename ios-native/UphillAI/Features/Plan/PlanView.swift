@@ -152,6 +152,17 @@ struct PlanView: View {
             if model.state == .loading { await model.load() }
             if let app { await app.refreshPendingInvites() }
         }
+        .onChange(of: model.beginnerMilestones) { _, _ in model.refreshCelebration() }
+        .task(id: model.snapshot?.plan.id) { model.refreshCelebration() }
+        .sheet(item: Binding(get: { model.celebration }, set: { if $0 == nil { model.dismissCelebration() } })) { item in
+            MilestoneCelebrationSheet(
+                item: item,
+                next: model.beginnerMilestones?.next,
+                targetTitle: model.beginnerMilestones?.targetTitle ?? "",
+                canUpgrade: model.beginnerMilestones?.canUpgrade == true,
+                onUpgrade: { Task { await model.upgradeMilestoneTarget(clearEvent: model.beginnerMilestones?.hasEvent == true) } }
+            )
+        }
     }
 
     @ViewBuilder
@@ -520,11 +531,18 @@ struct PlanView: View {
                             .foregroundStyle(UH.Palette.ink)
                             .lineLimit(1)
 
-                        // Race date and course, so the week's km below isn't read as the race distance; one Text so it wraps.
-                        raceFacts(plan)
-                            .font(UH.TextStyle.caption)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityIdentifier("plan.raceFacts")
+                        if let beginnerHeader = model.beginnerHeaderText {
+                            Text(verbatim: beginnerHeader)
+                                .font(UH.TextStyle.caption)
+                                .foregroundStyle(UH.Palette.accentInk)
+                                .accessibilityIdentifier("plan.milestones.header")
+                        } else {
+                            // Race date and course, so the week's km below isn't read as the race distance; one Text so it wraps.
+                            raceFacts(plan)
+                                .font(UH.TextStyle.caption)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("plan.raceFacts")
+                        }
                     }
 
                 }

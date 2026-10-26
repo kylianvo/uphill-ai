@@ -15,6 +15,7 @@ from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator
 from sqlalchemy import text
 
+import db
 from config import settings
 from db import (
     COACH_EDITABLE_PROFILE_FIELDS,
@@ -115,6 +116,7 @@ from routers.notifications import router as notifications_router
 from routers.progress import router as progress_router
 from services import (
     apple_auth,
+    beginner_milestones,
     calendar_ops,
     claude_llm,
     coros_sync,
@@ -280,6 +282,11 @@ class PlanGenerateRequest(BaseModel):
     treadmill_max_incline: int | None = None
     # Non-race / start date fields
     plan_start_date: str | None = None  # YYYY-MM-DD
+    # Beginner milestones (services/beginner_milestones.py): only read for goal_type 'start_running'
+    milestone_target: Literal["5k", "10k"] | None = None
+    current_jog_min: int | None = Field(default=None, ge=0, le=120)
+    event_name: str | None = None
+    event_date: str | None = None  # YYYY-MM-DD
     plan_duration_weeks: int | None = None
     time_away: str | None = None
     fitness_feel: str | None = None
@@ -478,6 +485,11 @@ class OnboardingRequest(BaseModel):
     weight_kg: float | None = None
     # Step 2
     goal_type: str  # race|distance|start_running|return|recovery
+    # Beginner milestones (services/beginner_milestones.py): only read for goal_type 'start_running'
+    milestone_target: Literal["5k", "10k"] | None = None
+    current_jog_min: int | None = Field(default=None, ge=0, le=120)
+    event_name: str | None = None
+    event_date: str | None = None  # YYYY-MM-DD
     # Fitness
     aet_hr: int | None = None
     # How the stored AeT/AnT pair was obtained. Only "lab"/"field" let the gap count
@@ -1309,6 +1321,24 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid plan_start_date format. Expected YYYY-MM-DD.")
     total_weeks = _calculate_total_weeks(race_date, start_date_parsed)
+    beginner_shape = None
+    if request.goal_type == "start_running" and request.milestone_target:
+        try:
+            beginner_shape = beginner_milestones.plan_shape(
+                request.milestone_target,
+                start_date_parsed,
+                today,
+                request.current_jog_min,
+                request.event_name,
+                request.event_date,
+            )
+        except ValueError:
+            raise HTTPException(status_code=400, detail="event_date must be a future YYYY-MM-DD date.")
+        race_name, race_date, total_weeks = (
+            beginner_shape.race_name,
+            beginner_shape.race_date,
+            beginner_shape.total_weeks,
+        )
     course_context = None
     if is_event:
         request.course_distance_km, request.course_elevation_gain_m, course_context = _resolve_course_match(
@@ -1337,7 +1367,11 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
         athlete_notes=request.athlete_notes,
+        milestone_target=request.milestone_target if beginner_shape else None,
+        has_target_event=bool(beginner_shape and beginner_shape.has_event),
     )
+    if beginner_shape:
+        beginner_milestones.safe_apply_creation(user["id"], plan_id, request.milestone_target, request.current_jog_min)
     _assess_new_plan(user["id"], plan_id)
 
     # Mark onboarding complete immediately so the user can enter the app
@@ -1428,6 +1462,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         },
         "workouts": [],
         "user": format_user_response(fresh_user),
+        "warning": beginner_shape.warning if beginner_shape else None,
     }
 
 
@@ -1660,7 +1695,7 @@ def get_athlete_active_plan(athlete_id: int, acting_user: dict[str, Any] = Depen
     if not plan:
         return {"active": False}
     workouts = get_plan_workouts(plan["id"])
-    return {"active": True, "plan": plan, "workouts": workouts}
+    return {"active": True, "plan": _attach_milestones(plan), "workouts": workouts}
 
 
 @app.get("/api/coaching/athletes/{athlete_id}/recent-plans")
@@ -2218,7 +2253,7 @@ def get_current_active_plan(user: dict[str, Any] = Depends(get_current_user)):
         return {"active": False}
 
     workouts = get_plan_workouts(plan["id"])
-    return {"active": True, "plan": plan, "workouts": workouts}
+    return {"active": True, "plan": _attach_milestones(plan), "workouts": workouts}
 
 
 async def _generate_plan_for_athlete(
@@ -2239,6 +2274,7 @@ async def _generate_plan_for_athlete(
 
     goal = request.goal_type
     is_race_or_dist = goal in ["finish", "time", "optimal"]
+    beginner_shape = None
 
     # Parse plan start date (default to today if missing)
     start_date_str = request.plan_start_date or datetime.now().strftime("%Y-%m-%d")
@@ -2274,7 +2310,23 @@ async def _generate_plan_for_athlete(
         request.course_distance_km = None
         request.course_elevation_gain_m = None
 
-        if goal == "start_running":
+        if goal == "start_running" and request.milestone_target:
+            try:
+                beginner_shape = beginner_milestones.plan_shape(
+                    request.milestone_target,
+                    start_date_parsed,
+                    datetime.now().date(),
+                    request.current_jog_min,
+                    request.event_name,
+                    request.event_date,
+                )
+            except ValueError:
+                raise HTTPException(status_code=400, detail="event_date must be a future YYYY-MM-DD date.")
+            total_weeks = beginner_shape.total_weeks
+            race_date_str = beginner_shape.race_date
+        if beginner_shape:
+            race_name_str = beginner_shape.race_name
+        elif goal == "start_running":
             race_name_str = "Base Building"
         elif goal == "return":
             race_name_str = "Return to Running"
@@ -2311,11 +2363,15 @@ async def _generate_plan_for_athlete(
         mountain_min_minutes=request.mountain_min_minutes,
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
+        milestone_target=request.milestone_target if beginner_shape else None,
+        has_target_event=bool(beginner_shape and beginner_shape.has_event),
         created_by_user_id=created_by_user_id,
         cutoff_time_hours=request.cutoff_time_hours,
         plan_status=plan_status,
         athlete_notes=request.athlete_notes,
     )
+    if beginner_shape:
+        beginner_milestones.safe_apply_creation(athlete_id, plan_id, request.milestone_target, request.current_jog_min)
     _assess_new_plan(athlete_id, plan_id)
 
     # Fetch latest athlete details from database to ensure fresh physiological values
@@ -2434,6 +2490,7 @@ async def _generate_plan_for_athlete(
             "course_elevation_gain_m": request.course_elevation_gain_m,
         },
         "workouts": [],
+        "warning": beginner_shape.warning if beginner_shape else None,
     }
 
 
@@ -2512,11 +2569,81 @@ def get_user_recent_plans(user: dict[str, Any] = Depends(get_current_user)):
 # ─── Sequential Plan Endpoints ────────────────────────────────────────────────
 
 
+def _attach_milestones(plan: dict[str, Any]) -> dict[str, Any]:
+    """Adds `beginner_milestones` (None for plans without a target) to a plan payload."""
+    target = plan.get("milestone_target")
+    plan["beginner_milestones"] = (
+        beginner_milestones.serialize(
+            target, bool(plan.get("has_target_event")), db.get_plan_milestone_rows(plan["id"])
+        )
+        if target
+        else None
+    )
+    return plan
+
+
 def _verify_plan_ownership(plan_id: int, user_id: int):
     """Raise 404 if the plan doesn't belong to this user (prevents IDOR)."""
     recent = get_recent_plans(user_id, limit=100)
     if not any(p["id"] == plan_id for p in recent):
         raise HTTPException(status_code=404, detail="Plan not found.")
+
+
+class MilestoneTargetRequest(BaseModel):
+    target: Literal["5k", "10k"]
+    clear_event: bool = False
+
+
+def _owned_beginner_plan(plan_id: int, user_id: int) -> dict[str, Any]:
+    _verify_plan_ownership(plan_id, user_id)
+    plan = db.get_plan_by_id(plan_id)
+    if not plan or not plan.get("milestone_target"):
+        raise HTTPException(status_code=400, detail="This plan has no milestone target.")
+    return plan
+
+
+@app.post("/api/plans/{plan_id}/milestones/{key}")
+def tick_milestone(plan_id: int, key: str, user: dict[str, Any] = Depends(get_current_user)):
+    plan = _owned_beginner_plan(plan_id, user["id"])
+    if key not in {m.key for m in beginner_milestones.ladder_for(plan["milestone_target"])}:
+        raise HTTPException(status_code=400, detail="Unknown milestone for this plan.")
+    db.set_milestone_manual(plan_id, key)
+    milestone = next(m for m in beginner_milestones.ladder_for(plan["milestone_target"]) if m.key == key)
+    if milestone.kind == "jog_min":
+        db.set_max_continuous_jog_min(user["id"], int(milestone.threshold))
+    return {"beginner_milestones": _attach_milestones(plan)["beginner_milestones"]}
+
+
+@app.delete("/api/plans/{plan_id}/milestones/{key}")
+def undo_milestone(plan_id: int, key: str, user: dict[str, Any] = Depends(get_current_user)):
+    plan = _owned_beginner_plan(plan_id, user["id"])
+    if key not in {m.key for m in beginner_milestones.ladder_for(plan["milestone_target"])}:
+        raise HTTPException(status_code=400, detail="Unknown milestone for this plan.")
+    db.revoke_milestone(plan_id, key)  # kept as a revoked row so the next sync cannot re-tick it
+    return {"beginner_milestones": _attach_milestones(plan)["beginner_milestones"]}
+
+
+@app.patch("/api/plans/{plan_id}/milestone-target")
+def upgrade_milestone_target(
+    plan_id: int, request: MilestoneTargetRequest, user: dict[str, Any] = Depends(get_current_user)
+):
+    plan = _owned_beginner_plan(plan_id, user["id"])
+    if request.target != "10k" or plan["milestone_target"] != "5k":
+        raise HTTPException(status_code=400, detail="Only a 5K target can move up to 10K.")
+    has_event = bool(plan.get("has_target_event")) and not request.clear_event
+    weeks = None if has_event else max(int(plan.get("total_weeks") or 0), beginner_milestones.default_weeks("10k"))
+    end_name = end_date = None
+    if not has_event and plan.get("start_date"):
+        from datetime import date, timedelta
+
+        # No event any more: the block ends where the longer plan does, and carries the new goal's name.
+        start = date.fromisoformat(str(plan["start_date"])[:10])
+        end_name, end_date = "First 10K", (start + timedelta(weeks=weeks - 1)).isoformat()
+    db.set_plan_milestone_target(
+        plan_id, "10k", weeks, clear_event=request.clear_event, race_name=end_name, race_date=end_date
+    )
+    plan = db.get_plan_by_id(plan_id) or plan
+    return {"plan": _attach_milestones(plan)}
 
 
 @app.get("/api/coach/block-completion/{plan_id}")
@@ -2729,6 +2856,12 @@ async def _generate_next_block_for_athlete(
         for line in context_lines
         if line.strip().startswith((f"Block {prev_block} ", "Coach evaluation", "Execution quality", "Coach takeaway"))
     ] + reason_lines
+    milestone_fact = beginner_milestones.brief_fact(
+        beginner_milestones.safe_prompt_context(request.plan_id),
+        (get_user_by_id(athlete_id) or {}).get("max_continuous_jog_min"),
+    )
+    if milestone_fact:
+        brief_decision_log.append(milestone_fact)
     # Can the load still reach the book's benchmark peak week before the taper? Tell the generator
     # what this block must total, and the brief when the timeline cannot make it.
     readiness = race_readiness.assess_week(
@@ -3204,7 +3337,11 @@ def select_plan_endpoint(request: SelectPlanRequest, user: dict[str, Any] = Depe
 
     updated_plan = get_active_plan(user["id"])
     workouts = get_plan_workouts(request.plan_id)
-    return {"active": True, "plan": updated_plan, "workouts": workouts}
+    return {
+        "active": True,
+        "plan": _attach_milestones(updated_plan) if updated_plan else updated_plan,
+        "workouts": workouts,
+    }
 
 
 @app.post("/api/coach/modify-calendar")
@@ -3325,6 +3462,8 @@ def log_workout(request: WorkoutLogRequest, user: dict[str, Any] = Depends(get_c
     )
     if not ok:
         raise HTTPException(status_code=404, detail="Workout not found.")
+    if request.is_completed == 1:
+        beginner_milestones.safe_refresh_milestones(user["id"])
     updated = get_plan_workouts(active_plan["id"])
     return {"workouts": updated}
 
@@ -4600,6 +4739,7 @@ async def _plan_nudge(plan_id: int, owner_id: int, lang: str, client_today: str 
         feasibility_verdict=(feasibility or {}).get("verdict"),
         plan_supported=support["a_supported"] if support else True,
         path=goal_service.path_for(plan),
+        beginner_rows=db.get_plan_milestone_rows(plan_id) if plan.get("milestone_target") else None,
     )
     tone = coach_nudge.tone_for(facts)
     if tone is None:

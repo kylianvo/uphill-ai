@@ -9,6 +9,9 @@ from fastapi.testclient import TestClient
 
 from config import settings
 from routers import integrations
+from services import beginner_milestones
+
+_REAL_SAFE_REFRESH = beginner_milestones.safe_refresh_milestones
 
 app = FastAPI()
 app.include_router(integrations.router, prefix="/api")
@@ -72,6 +75,12 @@ def fake(monkeypatch):
     monkeypatch.setattr(integrations.db, "get_user_by_id", lambda uid: {"id": uid})
     monkeypatch.setattr(integrations.matching_runner, "match_user", match_user)
     monkeypatch.setattr(settings, "APPLE_HEALTH_ENABLED", True)
+    state["milestone_refreshes"] = []
+    monkeypatch.setattr(
+        integrations.beginner_milestones,
+        "safe_refresh_milestones",
+        lambda uid: state["milestone_refreshes"].append(uid),
+    )
     app.dependency_overrides[integrations.get_current_user] = lambda: {"id": 7}
     yield state
     app.dependency_overrides.pop(integrations.get_current_user, None)
@@ -275,3 +284,32 @@ def test_more_than_60_metric_rows_is_a_422(metrics):
 
 def test_status_reports_recovery_enabled(metrics):
     assert client.get("/api/integrations/status").json()["apple_health"]["recovery_enabled"] is True
+
+
+def test_sync_refreshes_beginner_milestones_once(fake):
+    client.post(SYNC, json={"workouts": [_row("a"), _row("b")], "deleted_ids": []})
+    assert fake["milestone_refreshes"] == [7]
+
+
+def test_apple_health_sync_survives_milestone_error(fake, monkeypatch):
+    # Real wrapper over a refresh that raises: the sync response must still be 200.
+    monkeypatch.setattr(integrations.beginner_milestones, "safe_refresh_milestones", _REAL_SAFE_REFRESH)
+    monkeypatch.setattr(
+        integrations.beginner_milestones,
+        "refresh_milestones",
+        lambda uid: (_ for _ in ()).throw(RuntimeError("db down")),
+    )
+    resp = client.post(SYNC, json={"workouts": [_row()], "deleted_ids": []})
+    assert resp.status_code == 200 and resp.json()["accepted"] == 1
+
+
+def test_milestone_refresh_runs_after_deleted_activities_are_removed(fake, monkeypatch):
+    order = []
+    monkeypatch.setattr(
+        integrations.beginner_milestones, "safe_refresh_milestones", lambda uid: order.append("refresh")
+    )
+    monkeypatch.setattr(
+        integrations.db, "delete_activities_by_external_ids", lambda uid, p, ids: order.append("delete") or len(ids)
+    )
+    client.post(SYNC, json={"workouts": [_row()], "deleted_ids": ["HK-9"]})
+    assert order == ["delete", "refresh"]

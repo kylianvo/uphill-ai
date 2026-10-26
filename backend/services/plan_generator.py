@@ -12,6 +12,7 @@ from config import settings
 from db import block_number_for_week, get_plan_by_id, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
 from services import (
+    beginner_milestones,
     claude_llm,
     goal_demands,
     observability,
@@ -3201,8 +3202,9 @@ class PlanGenerator:
             is_event_goal = race_info.get("goal_type") not in ["start_running", "return", "recovery"]
 
             # Build goal description for AI context
+            beginner_ctx = beginner_milestones.safe_prompt_context(plan_id) if plan_id else None
             if race_info.get("goal_type") == "start_running":
-                goal_description = (
+                goal_description = beginner_milestones.goal_description(beginner_ctx) or (
                     "Goal: Start Running / Learn to run. Build a safe, injury-free aerobic base "
                     "starting with walk-to-run progressions. Do NOT assign high-intensity threshold "
                     "or anaerobic intervals. Volume must start low and increase very slowly."
@@ -3438,7 +3440,10 @@ class PlanGenerator:
             )
 
             rules_block = build_rules_block(
-                tier_profile, _max_jog_min, treadmill_max_incline=int(venues.treadmill_incline_cap)
+                tier_profile,
+                _max_jog_min,
+                treadmill_max_incline=int(venues.treadmill_incline_cap),
+                milestones=beginner_ctx,
             )
 
             # The SCHEMA has to be tier-aware too, not just the rules. Fixing only the

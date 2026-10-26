@@ -76,7 +76,7 @@ struct PlanSetupDraftTests {
                 == [.goal, .details, .raceDate, .raceGoal, .watch, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
         #expect(SetupStep.steps(for: .race, includeProfile: false)
                 == [.goal, .details, .raceDate, .raceGoal, .schedule, .venues, .startDate, .review])
-        #expect(SetupStep.steps(for: .startRunning, includeProfile: true) == [.goal, .watch, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
+        #expect(SetupStep.steps(for: .startRunning, includeProfile: true) == [.goal, .beginnerGoal, .watch, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
         #expect(SetupStep.steps(for: .returning, includeProfile: false) == [.goal, .details, .fitnessFeel, .schedule, .venues, .startDate, .review])
     }
 

@@ -94,6 +94,8 @@ interface Workout {
 }
 interface ActivePlan {
   id: number;
+  milestone_target?: "5k" | "10k" | null;
+  has_target_event?: boolean;
   race_name: string;
   race_date: string;
   goal_type: string;
@@ -2047,6 +2049,7 @@ export default function AppPage() {
         p.goal_type.charAt(0).toUpperCase() +
         p.goal_type.slice(1).replace("_", " ");
     }
+    if (p.milestone_target && !p.has_target_event) return `First ${p.milestone_target.toUpperCase()} plan`;
     if (["start_running", "return", "recovery"].includes(p.goal_type || "")) {
       dateStr = `Ends ${p.race_date}`;
       return `${p.race_name || "Untitled Plan"} (${dateStr}) | ${targetStr}`;

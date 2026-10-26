@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import BeginnerGoalFields from "../components/BeginnerGoalFields";
 import React from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { usePlanner } from "../hooks/usePlanner";
@@ -122,7 +123,7 @@ export default function OnboardingWizard() {
 
         days_per_week: onboardingAnswers.days_per_week || 4,
 
-        current_weekly_km: parseFloat(onboardingAnswers.current_weekly_km) || 30.0,
+        current_weekly_km: Number.isNaN(parseFloat(onboardingAnswers.current_weekly_km)) ? 30.0 : parseFloat(onboardingAnswers.current_weekly_km),
 
         has_gym_access: onboardingAnswers.has_gym_access || false,
 
@@ -185,6 +186,12 @@ export default function OnboardingWizard() {
       if (onboardingAnswers.course_elevation_gain_m) payload.course_elevation_gain_m = parseFloat(onboardingAnswers.course_elevation_gain_m);
 
       if (onboardingAnswers.plan_start_date) payload.plan_start_date = onboardingAnswers.plan_start_date;
+      if (onboardingAnswers.goal_type === "start_running") {
+        payload.milestone_target = onboardingAnswers.milestone_target || "5k";
+        payload.current_jog_min = onboardingAnswers.current_jog_min || 0;
+        payload.event_name = onboardingAnswers.event_name || null;
+        payload.event_date = onboardingAnswers.event_date || null;
+      }
       if (onboardingAnswers.athlete_notes) payload.athlete_notes = onboardingAnswers.athlete_notes;
 
 
@@ -575,11 +582,15 @@ export default function OnboardingWizard() {
 
                         setAns("zone2_pace_max", "7:30");
 
+                        if (onboardingAnswers.current_weekly_km === "30") setAns("current_weekly_km", "0");
+
                       } else {
 
                         if (onboardingAnswers.zone2_pace_min === "8:30") setAns("zone2_pace_min", "6:30");
 
                         if (onboardingAnswers.zone2_pace_max === "7:30") setAns("zone2_pace_max", "5:45");
+
+                        if (onboardingAnswers.current_weekly_km === "0") setAns("current_weekly_km", "30");
 
                       }
 
@@ -1441,6 +1452,14 @@ export default function OnboardingWizard() {
 
               )}
 
+              <div style={{ marginTop: "20px" }}>
+                <BeginnerGoalFields
+                  lang={lang}
+                  startDate={onboardingAnswers.plan_start_date}
+                  value={{ milestone_target: onboardingAnswers.milestone_target || "5k", current_jog_min: onboardingAnswers.current_jog_min || 0, event_name: onboardingAnswers.event_name || "", event_date: onboardingAnswers.event_date || "" }}
+                  onChange={(v) => setOnboardingAnswers({ ...onboardingAnswers, ...v })}
+                />
+              </div>
             </div>
 
           );
@@ -1763,7 +1782,7 @@ export default function OnboardingWizard() {
                       <div>{lang === "en" ? "Starts:" : "Bắt đầu:"} <strong>{onboardingAnswers.plan_start_date || "Today"}</strong> · {onboardingAnswers.days_per_week || 4} {lang === "en" ? "days/week" : "ngày/tuần"}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <Moon size={14} weight="bold" color="var(--accent-primary)" aria-hidden="true" />
-                        <span>{lang === "en" ? "Long run:" : "Long Run:"}</span> <strong>{onboardingAnswers.long_run_day}</strong> · <span>{lang === "en" ? "Volume:" : "Khối lượng:"}</span> <strong>{onboardingAnswers.current_weekly_km || 30} km/{lang === "en" ? "wk" : "tuần"}</strong>
+                        <span>{lang === "en" ? "Long run:" : "Long Run:"}</span> <strong>{onboardingAnswers.long_run_day}</strong> · <span>{lang === "en" ? "Volume:" : "Khối lượng:"}</span> <strong>{onboardingAnswers.current_weekly_km ?? 30} km/{lang === "en" ? "wk" : "tuần"}</strong>
                       </div>
                       {onboardingAnswers.race_name && (
                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>

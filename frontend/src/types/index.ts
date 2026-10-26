@@ -57,6 +57,9 @@ export type MissedReason = "busy" | "sick" | "pain" | "tired" | "weather" | "oth
 
 export interface ActivePlan {
   id: number;
+  milestone_target?: "5k" | "10k" | null;
+  has_target_event?: boolean;
+  beginner_milestones?: import("../lib/beginnerMilestones").PlanMilestones | null;
   race_name: string;
   race_date: string;
   start_date?: string;

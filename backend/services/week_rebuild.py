@@ -16,7 +16,7 @@ from typing import Any
 
 import db
 from config import settings
-from services import calendar_ops
+from services import beginner_milestones, calendar_ops
 from services.block_history import build_history_lines, missed_rules_for_week
 from services.calendar_rules import (
     DAYS,
@@ -444,6 +444,12 @@ def build_rebuild_inputs(
     )
     context_lines.extend(f"  {line}" for line in reason_lines)
     decision_log: list[str] = list(reason_lines)
+    milestone_fact = beginner_milestones.brief_fact(
+        beginner_milestones.safe_prompt_context(plan["id"]),
+        fresh_user.get("max_continuous_jog_min"),
+    )
+    if milestone_fact:
+        decision_log.append(milestone_fact)
 
     # Note any workouts already completed/matched in the target week
     curr_completed = [

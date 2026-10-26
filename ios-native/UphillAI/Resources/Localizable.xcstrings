@@ -1,6 +1,386 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "First 5K": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5K đầu tiên"
+          }
+        }
+      }
+    },
+    "First 10K": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10K đầu tiên"
+          }
+        }
+      }
+    },
+    "Next: First 10K": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp: 10K đầu tiên"
+          }
+        }
+      }
+    },
+    "First run/walk session": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy/đi bộ đầu tiên"
+          }
+        }
+      }
+    },
+    "5 min unbroken jog": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy liên tục 5 phút"
+          }
+        }
+      }
+    },
+    "10 min unbroken jog": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy liên tục 10 phút"
+          }
+        }
+      }
+    },
+    "20 min unbroken jog": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy liên tục 20 phút"
+          }
+        }
+      }
+    },
+    "30 min non-stop": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy không nghỉ 30 phút"
+          }
+        }
+      }
+    },
+    "First 5 km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 km đầu tiên"
+          }
+        }
+      }
+    },
+    "45 min non-stop": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy không nghỉ 45 phút"
+          }
+        }
+      }
+    },
+    "60 min non-stop": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy không nghỉ 60 phút"
+          }
+        }
+      }
+    },
+    "First 10 km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10 km đầu tiên"
+          }
+        }
+      }
+    },
+    "usually around week %lld–%lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "thường quanh tuần %lld–%lld"
+          }
+        }
+      }
+    },
+    "%@ · %lld of %lld milestones": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %lld/%lld cột mốc"
+          }
+        }
+      }
+    },
+    "%lld weeks to event": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "còn %lld tuần tới sự kiện"
+          }
+        }
+      }
+    },
+    "Your path": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lộ trình của bạn"
+          }
+        }
+      }
+    },
+    "I did it": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mình làm được rồi"
+          }
+        }
+      }
+    },
+    "Yes, mark it": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đúng, đánh dấu"
+          }
+        }
+      }
+    },
+    "All milestones": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tất cả cột mốc"
+          }
+        }
+      }
+    },
+    "Undo": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn tác"
+          }
+        }
+      }
+    },
+    "Undo %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn tác %@"
+          }
+        }
+      }
+    },
+    "Milestone reached": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đạt cột mốc"
+          }
+        }
+      }
+    },
+    "Next: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp theo: %@"
+          }
+        }
+      }
+    },
+    "Nice": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuyệt"
+          }
+        }
+      }
+    },
+    "Repeating a week is normal. You move on when you're ready.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lặp lại một tuần là bình thường. Bạn tiến tiếp khi sẵn sàng."
+          }
+        }
+      }
+    },
+    "A clear finish line keeps the first weeks easy to follow.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một mốc đích rõ ràng giúp những tuần đầu dễ theo hơn."
+          }
+        }
+      }
+    },
+    "What's your first goal?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu đầu tiên của bạn là gì?"
+          }
+        }
+      }
+    },
+    "Longest jog without stopping today": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quãng chạy liên tục dài nhất hiện tại"
+          }
+        }
+      }
+    },
+    "About 10 min": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khoảng 10 phút"
+          }
+        }
+      }
+    },
+    "1–5 min": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1–5 phút"
+          }
+        }
+      }
+    },
+    "20+ min": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "20+ phút"
+          }
+        }
+      }
+    },
+    "I have an event in mind": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mình có một sự kiện cụ thể"
+          }
+        }
+      }
+    },
+    "Event name (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên sự kiện (không bắt buộc)"
+          }
+        }
+      }
+    },
+    "Event date": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày sự kiện"
+          }
+        }
+      }
+    },
+    "Your event": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sự kiện của bạn"
+          }
+        }
+      }
+    },
+    "Pick an event date after today.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn ngày sự kiện sau hôm nay."
+          }
+        }
+      }
+    },
+    "Most beginners need about %lld weeks. Pick a later date, or plan to run/walk the event.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phần lớn người mới cần khoảng %lld tuần. Chọn ngày muộn hơn, hoặc chạy/đi bộ ở sự kiện."
+          }
+        }
+      }
+    },
+    "wk %lld–%lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tuần %lld–%lld"
+          }
+        }
+      }
+    },
     "Reconnect": {
       "localizations": {
         "vi": {

@@ -466,6 +466,21 @@ def init_db():
 
         conn.execute(
             text("""
+        CREATE TABLE IF NOT EXISTS plan_milestones (
+            plan_id       INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            milestone_key TEXT NOT NULL,
+            achieved_at   TIMESTAMPTZ,  -- NULL when source = 'revoked'
+            source        TEXT NOT NULL,  -- 'auto' | 'manual' | 'baseline' | 'revoked'
+            activity_id   INTEGER REFERENCES activities(id) ON DELETE SET NULL,
+            workout_id    INTEGER REFERENCES workouts(id) ON DELETE SET NULL,
+            created_at    TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (plan_id, milestone_key)
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS race_profile_claims (
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -1011,6 +1026,8 @@ def init_db():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS pace_zone_model TEXT DEFAULT '5_zone'",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_pace_zones JSONB",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS milestone_target TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS has_target_event BOOLEAN NOT NULL DEFAULT FALSE",
             # Langfuse trace of the latest block generation: block_compliance and plan_reworked scores attach to it.
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS generation_trace_id TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS generation_block INTEGER",
@@ -1241,6 +1258,8 @@ def create_plan(
     plan_status: str = "active",
     athlete_notes: str | None = None,
     cutoff_time_hours: float | None = None,
+    milestone_target: str | None = None,
+    has_target_event: bool = False,
 ) -> int:
     with engine.connect() as conn:
         result = conn.execute(
@@ -1251,13 +1270,15 @@ def create_plan(
                                days_per_week, double_session_days, start_date,
                                has_gym_access, use_treadmill, training_environment,
                                mountain_days, training_mountain, mountain_min_minutes, stair_access, treadmill_max_incline,
-                               created_by_user_id, plan_status, athlete_notes, cutoff_time_hours)
+                               created_by_user_id, plan_status, athlete_notes, cutoff_time_hours,
+                               milestone_target, has_target_event)
             VALUES (:user_id, :race_name, :race_date, :goal_type,
                     :tth, :total_weeks, :dist_km, :elev_m, :preferred_run_days,
                     :long_run_day, :days_per_week, :double_session_days, :start_date,
                     :has_gym_access, :use_treadmill, :training_environment,
                     :mountain_days, :training_mountain, :mountain_min_minutes, :stair_access, :treadmill_max_incline,
-                    :created_by_user_id, :plan_status, :athlete_notes, :cutoff_time_hours)
+                    :created_by_user_id, :plan_status, :athlete_notes, :cutoff_time_hours,
+                    :milestone_target, :has_target_event)
             RETURNING id
         """),
             {
@@ -1286,6 +1307,8 @@ def create_plan(
                 "plan_status": plan_status,
                 "cutoff_time_hours": cutoff_time_hours,
                 "athlete_notes": athlete_notes,
+                "milestone_target": milestone_target,
+                "has_target_event": bool(has_target_event),
             },
         )
         conn.commit()
@@ -2288,6 +2311,116 @@ def set_max_continuous_jog_min(user_id: int, minutes: int) -> bool:
         )
         conn.commit()
     return result.rowcount > 0
+
+
+def get_plan_milestone_rows(plan_id: int) -> list[dict[str, Any]]:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT milestone_key, achieved_at, source, activity_id, workout_id "
+                "FROM plan_milestones WHERE plan_id = :p ORDER BY created_at, milestone_key"
+            ),
+            {"p": plan_id},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def insert_milestone_if_absent(
+    plan_id: int,
+    key: str,
+    source: str,
+    achieved_at: datetime.datetime | None,
+    activity_id: int | None = None,
+    workout_id: int | None = None,
+) -> bool:
+    """Insert once per (plan, key). Any existing row, revoked included, wins, so an undone milestone stays undone."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+            INSERT INTO plan_milestones (plan_id, milestone_key, achieved_at, source, activity_id, workout_id)
+            VALUES (:p, :k, :at, :src, :aid, :wid)
+            ON CONFLICT (plan_id, milestone_key) DO NOTHING
+        """),
+            {"p": plan_id, "k": key, "at": achieved_at, "src": source, "aid": activity_id, "wid": workout_id},
+        )
+        conn.commit()
+    return result.rowcount > 0
+
+
+def _upsert_milestone(plan_id: int, key: str, source: str, at_now: bool) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text(f"""
+            INSERT INTO plan_milestones (plan_id, milestone_key, achieved_at, source)
+            VALUES (:p, :k, {"NOW()" if at_now else "NULL"}, :src)
+            ON CONFLICT (plan_id, milestone_key) DO UPDATE
+            SET achieved_at = EXCLUDED.achieved_at, source = EXCLUDED.source,
+                activity_id = NULL, workout_id = NULL
+        """),
+            {"p": plan_id, "k": key, "src": source},
+        )
+        conn.commit()
+
+
+def set_milestone_manual(plan_id: int, key: str) -> None:
+    _upsert_milestone(plan_id, key, "manual", True)
+
+
+def revoke_milestone(plan_id: int, key: str) -> None:
+    _upsert_milestone(plan_id, key, "revoked", False)
+
+
+def set_plan_milestone_target(
+    plan_id: int,
+    target: str,
+    total_weeks: int | None = None,
+    clear_event: bool = False,
+    race_name: str | None = None,
+    race_date: str | None = None,
+) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+            UPDATE plans
+            SET milestone_target = :t,
+                total_weeks = COALESCE(:w, total_weeks),
+                race_name = COALESCE(:rn, race_name),
+                race_date = COALESCE(:rd, race_date),
+                has_target_event = CASE WHEN :clear THEN FALSE ELSE has_target_event END
+            WHERE id = :p
+        """),
+            {"t": target, "w": total_weeks, "clear": clear_event, "rn": race_name, "rd": race_date, "p": plan_id},
+        )
+        conn.commit()
+
+
+def get_completed_run_workouts(plan_id: int) -> list[dict[str, Any]]:
+    """Completed workouts of a plan; callers filter to runs with coros_workouts.workout_kind."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT id, week_number, type, duration_minutes, interval_reps, interval_rep_value, "
+                "interval_rep_unit, walk_interval_value FROM workouts "
+                "WHERE plan_id = :p AND is_completed = 1 ORDER BY week_number, id"
+            ),
+            {"p": plan_id},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def get_run_activities_since(user_id: int, since: datetime.date) -> list[dict[str, Any]]:
+    from services.matching.bundler import RUN_TYPES
+
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT id, start_time, distance_km, duration_seconds FROM activities "
+                "WHERE user_id = :u AND activity_type = ANY(:types) AND start_time >= :since "
+                "ORDER BY start_time"
+            ),
+            {"u": user_id, "types": sorted(RUN_TYPES), "since": since},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
 
 
 def set_plan_athlete_tier(plan_id: int, tier: str | None) -> bool:

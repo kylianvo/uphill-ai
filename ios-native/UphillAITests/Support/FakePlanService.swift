@@ -21,6 +21,7 @@ final class FakePlanService: PlanServicing {
     let syncWatchResult = Mutex<Result<String, APIError>>(.success("Watch synced · Up to date"))
     let watchActivitiesResult = Mutex<Result<[WatchActivity], APIError>>(.success([]))
     let evaluationResult = Mutex<Result<BlockEvaluation, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
+    let milestoneResult = Mutex<Result<PlanMilestones, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
     let calls = Mutex<[String]>([])
 
     private func record(_ call: String) { calls.withLock { $0.append(call) } }
@@ -45,6 +46,16 @@ final class FakePlanService: PlanServicing {
     func swapDays(planID: Int, weekNumber: Int, day1: Weekday, day2: Weekday, clientToday: String?) async throws -> CalendarMoveResult {
         record("swap w\(weekNumber) \(day1.rawValue) <-> \(day2.rawValue) today=\(clientToday ?? "-")")
         return CalendarMoveResult(workouts: try swapResult.withLock { $0 }.get(), warnings: swapWarnings.withLock { $0 })
+    }
+
+    func markMilestone(planID: Int, key: String) async throws -> PlanMilestones {
+        record("milestone mark \(key)")
+        return try milestoneResult.withLock { $0 }.get()
+    }
+
+    func undoMilestone(planID: Int, key: String) async throws -> PlanMilestones {
+        record("milestone undo \(key)")
+        return try milestoneResult.withLock { $0 }.get()
     }
 
     func deletePlan(id: Int) async throws {

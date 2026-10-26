@@ -324,6 +324,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     plan_goal_category: "race" as string,  // race | distance | start_running | return | recovery
     plan_start_date: new Date().toISOString().split("T")[0],
     plan_duration_weeks: 12,
+    milestone_target: "5k" as "5k" | "10k",
+    current_jog_min: 0,
+    event_name: "",
+    event_date: "",
     time_away: "",
     fitness_feel: "",
     race_distance_completed: "",
@@ -393,6 +397,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     weight_kg: "",
     goal_type: "",
     fitness_input_mode: "manual",
+    milestone_target: "5k", current_jog_min: 0, event_name: "", event_date: "",
     aet_hr: "", ant_hr: "", max_hr: "", resting_hr: "",
     zone2_pace_min: "6:30", zone2_pace_max: "5:45",
     race_distance: "10k", race_time_hours: "0", race_time_minutes: "50",

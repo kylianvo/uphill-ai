@@ -34,6 +34,9 @@ import { localToday } from "../lib/scheduleProposals";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { GoalPill } from "../components/GoalPill";
 import PlanSummaryCarousel from "../components/PlanSummaryCarousel";
+import MilestonePath from "../components/MilestonePath";
+import BeginnerGoalFields from "../components/BeginnerGoalFields";
+import { daysToRace } from "../utils/planSummary";
 import { weekVolume } from "../utils/planSummary";
 import { weekDiffChips } from "../utils/weekDiff";
 import WeekBrief from "../components/WeekBrief";
@@ -57,7 +60,7 @@ const WEEKS_PER_BLOCK = 1;
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
+  const { markMilestone, undoMilestone, upgradeMilestoneTarget, handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
   const [addWorkoutTarget, setAddWorkoutTarget] = useState<{ week: number; day: string } | null>(null);
   const { lang, activePlan, planLoading, planErrorMsg, setPlanErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName, handleTabSwitch, activePlanLoading } = ctx;
@@ -315,6 +318,18 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCoachActingAsAthlete, API_BASE_URL]);
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
+  // The beginner's path to First 5K / 10K: the carousel's goal slot (v2 shell) and under the plan header (v1).
+  const milestonePath = activePlan?.beginner_milestones ? (
+    <MilestonePath
+      milestones={activePlan.beginner_milestones}
+      lang={lang}
+      planId={activePlan.id}
+      weeksToEvent={activePlan.beginner_milestones.has_event ? Math.max(0, Math.ceil(((daysToRace(activePlan.race_date) ?? 0)) / 7)) : null}
+      onMark={markMilestone}
+      onUndo={undoMilestone}
+      onUpgrade={() => upgradeMilestoneTarget(activePlan.beginner_milestones.has_event ? window.confirm(lang === "en" ? "Clear your event so the plan can extend to a 10K? Cancel keeps the event." : "Xóa sự kiện để plan kéo dài tới 10K? Chọn Hủy để giữ sự kiện.") : false)}
+    />
+  ) : undefined;
 
   // Automatically select the calendar-derived current week when an active plan loads or changes
   const lastAutoSelectedPlanIdRef = useRef<number | null>(null);
@@ -1261,22 +1276,18 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 <div style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>
                   {lang === "en" ? "We'll build a gentle walk-to-run programme starting from your plan start date." : "Chúng tôi sẽ xây dựng một lộ trình chạy kết hợp đi bộ nhẹ nhàng bắt đầu từ ngày bạn chọn."}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
-                      {lang === "en" ? "Plan Start Date" : "Ngày bắt đầu kế hoạch"}
-                    </label>
-                    <input type="date" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "10px" }} value={planForm.plan_start_date} onChange={e => setPlanForm({ ...planForm, plan_start_date: e.target.value })} />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
-                      {lang === "en" ? "Duration (weeks)" : "Thời lượng (tuần)"}
-                    </label>
-                    <select className="chat-input" style={{ borderRadius: "8px", width: "100%", height: "38px", padding: "0 8px", fontSize: "13px" }} value={planForm.plan_duration_weeks} onChange={e => setPlanForm({ ...planForm, plan_duration_weeks: parseInt(e.target.value) })}>
-                      {[6,8,10,12,16].map(w => <option key={w} value={w}>{w} {lang === "en" ? "weeks" : "tuần"}</option>)}
-                    </select>
-                  </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
+                    {lang === "en" ? "Plan Start Date" : "Ngày bắt đầu kế hoạch"}
+                  </label>
+                  <input type="date" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "10px" }} value={planForm.plan_start_date} onChange={e => setPlanForm({ ...planForm, plan_start_date: e.target.value })} />
                 </div>
+                <BeginnerGoalFields
+                  lang={lang}
+                  startDate={planForm.plan_start_date}
+                  value={{ milestone_target: planForm.milestone_target, current_jog_min: planForm.current_jog_min, event_name: planForm.event_name, event_date: planForm.event_date }}
+                  onChange={(v) => setPlanForm({ ...planForm, ...v })}
+                />
               </div>
             )}
 
@@ -1548,6 +1559,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   maxGeneratedWeek={maxGeneratedWeek}
                   distanceKm={getPlanDistance(activePlan) || 0}
                   elevationM={getPlanElevation(activePlan) || 0}
+                  milestoneContent={milestonePath}
                   goalPill={activePlan.id && activePlan.course_distance_km > 0 ? (
                     <GoalPill
                       planId={activePlan.id}
@@ -1671,10 +1683,12 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     </span>
                   )}
                 </h3>
+                {!milestonePath && (
                 <p style={{ color: "var(--text-secondary)", fontSize: "12px", marginTop: "2px", fontWeight: "500" }}>
                   {(() => {
                     const goal = activePlan.goal_type || "";
                     if (["start_running", "return", "recovery"].includes(goal)) {
+                      if (activePlan.has_target_event) return lang === "en" ? `Event: ${activePlan.race_date}` : `Sự kiện: ${activePlan.race_date}`;
                       return lang === "en" ? `Block ends: ${activePlan.race_date}` : `Kết thúc: ${activePlan.race_date}`;
                     } else {
                       return lang === "en" ? `Race Day: ${activePlan.race_date}` : `Ngày đua: ${activePlan.race_date}`;
@@ -1688,6 +1702,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                         : activePlan.goal_type.toUpperCase().replace("_", " ")}
                   {activePlan.target_time_hours ? ` (${formatTargetTimeHours(activePlan.target_time_hours)})` : ""}
                 </p>
+                )}
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-start" }}>
                   <CoachNoteThread
                     athleteId={actingAsAthleteId ?? (user?.id ?? null)}
@@ -1705,6 +1720,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     />
                   )}
                 </div>
+                {milestonePath && <div style={{ marginTop: "12px", maxWidth: "520px" }}>{milestonePath}</div>}
               </div>
 
               <div style={{ display: "flex", background: "rgba(0,0,0,0.05)", border: "1px solid var(--border-color)", borderRadius: "999px", padding: "3px", gap: "2px", alignSelf: "flex-start" }}>
