@@ -315,7 +315,7 @@ struct NextWeekSheet: View {
         DisclosureGroup(isExpanded: $scheduleExpanded) {
             VStack(spacing: UH.Space.regular) {
                 Divider()
-                ScheduleEditor(draft: $schedule, workouts: model.snapshot?.workouts.filter { $0.weekNumber == model.currentWeek } ?? [], includeBeginnerProgress: false)
+                ScheduleEditor(draft: $schedule, workouts: model.snapshot?.workouts.filter { $0.weekNumber == model.currentWeek } ?? [], includeBeginnerProgress: false, showLongDayFormat: true)
             }
             .padding(.top, UH.Space.compact)
         } label: {

@@ -14841,6 +14841,46 @@
         }
       }
     },
+    "Your longest days": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày tập dài nhất"
+          }
+        }
+      }
+    },
+    "One long mountain day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một ngày dài trên núi"
+          }
+        }
+      }
+    },
+    "Back-to-back weekend": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back-to-back cuối tuần"
+          }
+        }
+      }
+    },
+    "For 100 km+ races. The 6-7 h days are one run, or a shorter mountain day plus an easy run on the other weekend day, longer in all.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race từ 100 km. Ngày 6-7 h là một buổi, hoặc ngày núi ngắn hơn cộng buổi chạy nhẹ vào ngày cuối tuần còn lại, tổng dài hơn."
+          }
+        }
+      }
+    },
     "Duration settings": {
       "localizations": {
         "vi": {

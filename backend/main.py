@@ -2942,6 +2942,10 @@ async def _generate_next_block_for_athlete(
         from services import goal_service
 
         brief_decision_log.extend(plan_adequacy.summary_lines(goal_service.plan_adequacy_for(plan)))
+        from services import goal_feasibility
+
+        if line := goal_feasibility.brief_line(goal_service.feasibility_for({**plan, "user_id": athlete_id})):
+            brief_decision_log.append(line)
     except Exception:
         _goal_logger.exception("plan support for brief failed", extra={"fields": {"plan_id": request.plan_id}})
     if gate is not None:

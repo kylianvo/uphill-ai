@@ -35,6 +35,19 @@ struct ScheduleDraftTests {
         #expect(nextJSON["mountain_min_minutes"] is NSNull)
     }
 
+    @Test func longDayFormatGoesWithTheNextBlockOnly() throws {
+        var draft = ScheduleDraft(plan: TestData.plan(["long_day_format": "back_to_back"]))
+        #expect(draft.longDayFormat == .backToBack)
+        draft.longDayFormat = .single
+        #expect(draft.hasChanges)
+        var next = NextBlockBody(planId: 1, blockNumber: 2, overallRpe: nil, notes: nil, overrideGate: false, lang: "en")
+        draft.applyChanges(to: &next)
+        let json = try #require(try JSONSerialization.jsonObject(with: JSONCoding.encoder.encode(next)) as? [String: Any])
+        #expect(json["long_day_format"] as? String == "single")
+        #expect(try body(draft)["long_day_format"] == nil)  // adapt week does not save it
+        #expect(ScheduleDraft(plan: TestData.plan()).longDayFormat == .single)
+    }
+
     @Test func unchangedFieldsAreOmitted() throws {
         let draft = ScheduleDraft(plan: TestData.plan())
         let json = try body(draft)

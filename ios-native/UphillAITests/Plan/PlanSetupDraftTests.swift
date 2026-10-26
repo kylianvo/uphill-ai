@@ -44,6 +44,14 @@ struct PlanSetupDraftTests {
         }
     }
 
+    @Test func longDayFormatReachesBothCreationRequests() throws {
+        var draft = raceDraft()
+        draft.longDayFormat = .backToBack
+        for json in [try encoded(draft.planBody(calendar: cal)), try encoded(draft.onboardingBody(skipPlan: false, calendar: cal))] {
+            #expect(json["long_day_format"] as? String == "back_to_back")
+        }
+    }
+
     @Test func decodesRecordedRaceSearch() throws {
         let response = try Fixture.decode(RaceMatchResponse.self, "race_match.json")
         #expect(!response.matched)

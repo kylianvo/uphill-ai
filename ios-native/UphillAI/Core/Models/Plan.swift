@@ -49,6 +49,7 @@ struct Plan: Codable, Sendable, Equatable, Identifiable {
     var mountainDays: String? = nil
     var trainingMountain: String? = nil
     var mountainMinMinutes: Int? = nil
+    var longDayFormat: String? = nil
     var stairAccess: Bool? = nil
     var treadmillMaxIncline: Int? = nil
     var maxContinuousJogMin: Int? = nil

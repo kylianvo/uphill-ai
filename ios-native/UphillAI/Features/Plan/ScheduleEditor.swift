@@ -5,6 +5,8 @@ struct ScheduleEditor: View {
     @Binding var draft: ScheduleDraft
     let workouts: [Workout]
     var includeBeginnerProgress = true
+    /// The next block saves the long-day format; adapt week does not.
+    var showLongDayFormat = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: UH.Space.regular) {
@@ -82,7 +84,8 @@ struct ScheduleEditor: View {
                 useTreadmill: $draft.useTreadmill,
                 treadmillMaxIncline: draft.useTreadmill ? $draft.treadmillMaxIncline : nil,
                 longRunDay: $draft.longRunDay,
-                runDays: draft.preferredDays
+                runDays: draft.preferredDays,
+                longDayFormat: showLongDayFormat ? $draft.longDayFormat : nil
             )
 
             if draft.isGettingStarted && includeBeginnerProgress {

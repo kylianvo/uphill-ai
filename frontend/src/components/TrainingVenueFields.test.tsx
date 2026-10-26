@@ -27,11 +27,12 @@ const mountains = [
 beforeEach(() => vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => mountains })));
 afterEach(() => vi.unstubAllGlobals());
 
-function renderFields(initial: Partial<TrainingVenueValue> = {}) {
+function renderFields(initial: Partial<TrainingVenueValue> = {}, showLongDayFormat = false) {
   const onChange = vi.fn();
   function Fields() {
     const [value, setValue] = useState<TrainingVenueValue>({ mountain_days: [], stair_access: false, treadmill_max_incline: 15, ...initial });
-    return <TrainingVenueFields lang="en" t={key => translations.en[key]} value={value} useTreadmill={false} onChange={patch => {
+    return <TrainingVenueFields lang="en" t={key => translations.en[key]} value={value} useTreadmill={false}
+      showLongDayFormat={showLongDayFormat} onChange={patch => {
       onChange(patch); setValue(v => ({ ...v, ...patch }));
     }} />;
   }
@@ -166,4 +167,17 @@ describe("LongRunDaySelect", () => {
     render(<LongRunDaySelect lang="en" t={t} value="Saturday" trailDays={[]} onChange={() => {}} />);
     expect((screen.getByRole("combobox") as HTMLSelectElement).options).toHaveLength(7);
   });
+});
+
+it("offers one long mountain day or a back-to-back weekend once a trail place is set", () => {
+  const onChange = renderFields({ training_mountain: "nui_dinh", mountain_days: ["Saturday"] }, true);
+  expect(screen.getByRole("radio", { name: "One long mountain day" })).toBeChecked();
+  fireEvent.click(screen.getByRole("radio", { name: "Back-to-back weekend" }));
+  expect(onChange).toHaveBeenLastCalledWith({ long_day_format: "back_to_back" });
+  expect(screen.getByRole("radio", { name: "Back-to-back weekend" })).toBeChecked();
+});
+
+it("hides the long-day choice where the plan cannot save it (adapt week)", () => {
+  renderFields({ training_mountain: "nui_dinh", mountain_days: ["Saturday"] });
+  expect(screen.queryByRole("radio", { name: "Back-to-back weekend" })).toBeNull();
 });

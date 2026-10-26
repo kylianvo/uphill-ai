@@ -56,6 +56,7 @@ struct NextBlockBody: Encodable, Sendable {
     // Outer nil omits the field; an inner nil explicitly clears the saved value.
     var trainingMountain: String?? = nil
     var mountainMinMinutes: Int?? = nil
+    var longDayFormat: String? = nil
     var stairAccess: Bool? = nil
     var treadmillMaxIncline: Int? = nil
     var athleteNotes: String? = nil

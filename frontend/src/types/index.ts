@@ -74,6 +74,7 @@ export interface ActivePlan {
   training_environment?: "flat" | "hilly" | "mixed";
   training_mountain?: string | null;
   mountain_min_minutes?: number | null;
+  long_day_format?: LongDayFormat | null;
   mountain_days?: string; // JSON-encoded array of weekdays with hill/trail access
   stair_access?: boolean;
   treadmill_max_incline?: number;
@@ -159,3 +160,6 @@ export interface TrainingMountain {
   repeats_only: boolean;
   default_min_minutes: number | null;
 }
+
+// One 6-7 h mountain day, or a back-to-back weekend longer in all (backend services/ultra_rules.b2b_split).
+export type LongDayFormat = "single" | "back_to_back";

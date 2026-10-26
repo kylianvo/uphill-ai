@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { Keyboard } from "@capacitor/keyboard";
-import { Message, ParsedSummary, RagSource, Workout, ActivePlan, PacedCheckpoint, FuelStrategy, Shoe, User } from "../types";
+import { Message, ParsedSummary, RagSource, Workout, ActivePlan, PacedCheckpoint, FuelStrategy, Shoe, User, LongDayFormat } from "../types";
 import { isNativePlatform } from "../utils/native";
 import { isShellV2 } from "../utils/uiVersion";
 import { ME_SUBTABS, TabName, deepLinkNeedsRole, deepLinkTab, reconcileOpenedFromMe, resolveHeldDeepLink, tabFromQuery, shouldApplyV2Default, shouldMirrorTab, withTabParam } from "../utils/tabModel";
@@ -318,6 +318,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     mountain_days: [] as string[],
     training_mountain: null as string | null,
     mountain_min_minutes: null as number | null,
+    long_day_format: null as LongDayFormat | null,
     stair_access: false,
     treadmill_max_incline: 15,
     double_session_days: [] as string[],
@@ -414,6 +415,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     mountain_days: [] as string[],
     training_mountain: null as string | null,
     mountain_min_minutes: null as number | null,
+    long_day_format: null as LongDayFormat | null,
     stair_access: false,
     time_away: "", reason_for_break: "", fitness_feel: "",
     race_distance_completed: "", days_since_race: "", recovery_feel: "", next_goal: "",

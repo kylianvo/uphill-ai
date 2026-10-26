@@ -13,6 +13,8 @@ struct TrainingVenueSection: View {
     /// When set, picking trail days moves the long run onto the nearest one that is also a run day.
     var longRunDay: Binding<Weekday?>? = nil
     var runDays: Set<Weekday> = Set(Weekday.allCases)
+    /// Only where the plan saves it (setup, next block): one 6-7 h mountain day or a back-to-back weekend.
+    var longDayFormat: Binding<LongDayFormat>? = nil
     @State private var mountains: [TrainingMountain] = []
     @State private var loadError = false
     @State private var loadAttempt = 0
@@ -148,6 +150,20 @@ struct TrainingVenueSection: View {
                         }
                         .tint(UH.Palette.accentInk)
                     }
+                    if let longDayFormat {
+                        VStack(alignment: .leading, spacing: UH.Space.compact) {
+                            Text("Your longest days").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                            Picker("Your longest days", selection: longDayFormat) {
+                                Text("One long mountain day").tag(LongDayFormat.single)
+                                Text("Back-to-back weekend").tag(LongDayFormat.backToBack)
+                            }
+                            .pickerStyle(.segmented)
+                            .accessibilityIdentifier("trail.longDayFormat")
+                            Text("For 100 km+ races. The 6-7 h days are one run, or a shorter mountain day plus an easy run on the other weekend day, longer in all.")
+                                .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
             }
 
@@ -219,6 +235,12 @@ struct TrainingVenueSection: View {
         .accessibilityIdentifier(enabled ? "trail.access.yes" : "trail.access.no")
         .accessibilityAddTraits(hasAccess == enabled ? .isSelected : [])
     }
+}
+
+/// plans.long_day_format; nil on the server means single (backend services/ultra_rules.b2b_split).
+enum LongDayFormat: String, Sendable {
+    case single
+    case backToBack = "back_to_back"
 }
 
 struct TrainingMountain: Decodable, Sendable, Identifiable {

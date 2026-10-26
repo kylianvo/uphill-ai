@@ -1,4 +1,5 @@
 import { translations } from "../app/translations";
+import type { LongDayFormat } from "../types";
 import { LongRunDaySelect, TrainingVenueFields } from "./TrainingVenueFields";
 
 export interface ScheduleFieldsValue {
@@ -11,6 +12,7 @@ export interface ScheduleFieldsValue {
   mountain_days: string[];
   training_mountain?: string | null;
   mountain_min_minutes?: number | null;
+  long_day_format?: LongDayFormat | null;
   stair_access: boolean;
   treadmill_max_incline: number;
   double_session_days: string[];
@@ -123,6 +125,7 @@ export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange }: Sch
         onChange={onChange}
         longRunDay={value.long_run_day}
         onLongRunDayChange={day => onChange({ long_run_day: day })}
+        showLongDayFormat
       />
 
       <div style={{ marginTop: "12px" }}>

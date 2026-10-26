@@ -343,6 +343,7 @@ export function usePlanner() {
         mountain_days: planForm.mountain_days,
         training_mountain: planForm.training_mountain,
         mountain_min_minutes: planForm.mountain_min_minutes,
+        long_day_format: planForm.long_day_format,
         stair_access: planForm.stair_access,
         treadmill_max_incline: planForm.treadmill_max_incline,
         double_session_days: planForm.double_session_days,

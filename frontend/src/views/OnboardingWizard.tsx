@@ -132,6 +132,7 @@ export default function OnboardingWizard() {
         mountain_days: onboardingAnswers.mountain_days || [],
         training_mountain: onboardingAnswers.training_mountain ?? null,
         mountain_min_minutes: onboardingAnswers.mountain_min_minutes ?? null,
+        long_day_format: onboardingAnswers.long_day_format ?? null,
 
         stair_access: !!onboardingAnswers.stair_access,
 
@@ -1584,6 +1585,7 @@ export default function OnboardingWizard() {
                     mountain_days: onboardingAnswers.mountain_days || [],
                     training_mountain: onboardingAnswers.training_mountain ?? null,
                     mountain_min_minutes: onboardingAnswers.mountain_min_minutes ?? null,
+                    long_day_format: onboardingAnswers.long_day_format ?? null,
                     stair_access: !!onboardingAnswers.stair_access,
                     treadmill_max_incline: 15,
                   }}
@@ -1595,6 +1597,7 @@ export default function OnboardingWizard() {
                   onChange={(patch) => Object.entries(patch).forEach(([k, v]) => setAns(k, v))}
                   longRunDay={onboardingAnswers.long_run_day || "Saturday"}
                   onLongRunDayChange={day => setAns("long_run_day", day)}
+                  showLongDayFormat
                 />
 
               </div>

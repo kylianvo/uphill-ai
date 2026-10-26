@@ -18,9 +18,11 @@ Paths are under `backend/services/` unless stated.
 | Input | Where it comes from | Used for |
 |---|---|---|
 | Race: distance, D+, cut-off, target time, date, terrain | plan wizard; cut-off saved on `plans.cutoff_time_hours` | race demands (R-D) |
-| Recent load: weekly km (and vert) | watch (≥3 full weeks, `fitness_snapshot`), else typed `current_weekly_km` | week 1, ramp, tier |
+| Recent load: weekly km (and vert) | watch (≥3 full weeks, `fitness_snapshot`: the **median** of the last 4, so one down week doesn't pull it under), else typed `current_weekly_km` | week 1, ramp, tier |
+| Readiness flag | watch (`fitness_snapshot.readiness`) | R-V1 hold while fatigued |
 | Zone 2 pace, AeT/AnT HR, `threshold_source` | profile; COROS threshold pace if synced | zones, AeT gate (R-I1) |
 | Days, long-run day, gym, treadmill (max incline), stairs, training mountain, mountain days | wizard / adapt form | layout, climbing venues |
+| Long-day format: one long mountain day or a back-to-back weekend (`plans.long_day_format`) | wizard / next block (web, iOS) | R-U1 |
 | Tier (beginner … elite) | `athlete_tier.explain_tier`: load, performance, measured physiology, experience | every cap below |
 
 ---
@@ -52,7 +54,10 @@ Paths are under `backend/services/` unless stated.
 - **R-V1 Week 1 from recent load.** Week 1 is at most **10% above** what the athlete runs now
   (`recent_weekly_minutes` = weekly km × own Zone 2 pace; `RECENT_LOAD_GROWTH`). The cut comes off
   easy runs; the long run, ME and quality sessions stay. With no data: 180 min. A mountain-day
-  minimum can still push week 1 higher; that's the athlete's choice.
+  minimum can still push week 1 higher; that's the athlete's choice. While the watch says the athlete is
+  fatigued (`readiness_flag` fatigued/overreaching) weeks 1–2 **hold** at recent load, no +10%
+  (`start_load_growth`). A mid-week start gets its **share** of week 1 (Thursday: 4/7 of the load and of the
+  4 kept run days, `first_week_share`); the lint asks for that many days, not the full week's.
 - **R-V4 Over the limit with every easy run at its minimum** (`_fit_week`, for R-V1, R-V2 and R-P2): whole
   easy runs go (a second run on a double day first, then a run on an ME day, then the shortest) while the
   week is over by at least half a run, keeping at least **4 run days** (fewer only when the athlete trains
@@ -63,7 +68,9 @@ Paths are under `backend/services/` unless stated.
   `max_weekly_progression`); the excess is trimmed from easy runs. Return from a deload is
   measured against the larger of the last two weeks. On a mountain-day ultra it runs again after the
   week shape (`_cap_growth`, which lifts weekday runs to their minimum), on the rest of the week: the
-  long run's ladder step is R-U1's.
+  long run's ladder step (and its back-to-back day) is R-U1's. The **whole week**, ladder step included, grows at
+  most **15%** (`WEEK_GROWTH_CAP`). After a recovery week both the generator and the lint measure against the
+  week before it.
 - **R-V3 Ramp toward the goal.** Build weeks grow toward the race's peak-week volume
   (`_ramp_volume`), within R-V2 and the tier's weekday maximum.
 
@@ -71,22 +78,33 @@ Paths are under `backend/services/` unless stated.
 - **R-L1 Long run grows toward the race's time on feet**, asked at most +20%/week (the lint allows +25%,
   `LONG_RUN_JUMP`), capped by the session cap (300 min; 480 min sub-elite 100-mile) and the long-run share
   (tier cap ±5%, `LONG_SHARE_SOFT`). Mountain-day ultras follow R-U instead.
-- **R-L2 Back-to-back weekend** for ultras in the last build weeks (not for mountain-day ultras: R-U).
+- **R-L2 Back-to-back weekend** for ultras in the last build weeks (mountain-day ultras: only by the athlete's
+  choice, R-U1).
 - **R-L3 Taper long run** about 60%, then 40% of the peak, and inside the long-run share even when
   short taper runs are dropped (`_fit_taper_long_share`).
 - **R-L4 Mountain minimum.** On a mountain day the long run is at least the athlete's chosen
   minimum (default 180 min), except in recovery/taper/deload weeks ("chill" mode).
+- **R-L5 Race rehearsal.** On an ultra, Build/Peak long runs of 5 h+ carry the race pack, 60–90 g carbs per hour
+  and, once, a pre-dawn start with a headlamp (set in code, `_race_specifics`, and in the ladder prompt).
 
 ### Ultras with a mountain day (R-U, coach Quang 2026-10-22)
 Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
 `docs/superpowers/specs/2026-10-23-ultra-rules-design.md`, which records where this departs from the book).
 - **R-U1 Long-run ladder** in hours, read back from the peak week: 100 km 3, 3, 4, 4, 5 … 6, 7 h; 50 km
-  3 h ×4 → 4 → 4.5 → 5 h; 100 mi as 100 km, 8 h peak for sub-elite/elite. Deload weeks 3 h (50 km) or 4 h.
-  Never more than 60 min above the last two weeks' longest. Session cap 300 / 420 / 420–480 min, long-run
-  share 60%; ladder steps are exempt from `LONG_RUN_JUMP` and the weekly growth checks measure the rest of
-  the week.
+  3 h ×4 → 4 → 4.5 → 5 h; 100 mi as 100 km, 8 h peak for sub-elite/elite. A plan too short for two 5 h weeks
+  peaks at **6 h** (recreational and below, 100 km+; Quang: 6–7 h), so the build is never +1 h on three weeks
+  running (a 13-week 100 km: 3, 3, 4, (3), 4, 5, 5, (4), 6 h). A recovery week's long run is **a rung below the
+  last build week**, 4 h at most (3 h at the first one). Never more than 60 min above the last two weeks'
+  longest. Session cap 300 / 420 / 420–480 min, long-run share 60%; ladder steps are exempt from
+  `LONG_RUN_JUMP` and the weekly growth checks measure the rest of the week.
+  **Back-to-back (athlete's choice, `long_day_format`; owner 2026-10-27: Quang allows both):** the 6 h and 7 h
+  rungs become the mountain day 2 h shorter plus an easy Zone 2 run on the other weekend day (flat is fine),
+  about 10% longer in all: 6 h → 4 h + 2 h 30, 7 h → 5 h + 2 h 45 (`b2b_split`). Only on a day the athlete runs
+  and never over ME or quality; the pair holds the rung for `ULTRA_LADDER` and the step cap. The default is
+  one long day.
 - **R-U2 Week shape.** Weekday easy runs 45–90 min (50 km) or 60–90 min (100 km+; 150 for advanced 100 mi);
-  the other weekend day at most 90 / 60 / 45 min after a ≤4 h / 5 h / 6 h+ mountain day; no back-to-back;
+  the other weekend day at most 90 / 60 / 45 min after a ≤4 h / 5 h / 6 h+ mountain day; no back-to-back
+  unless the athlete chose one (R-U1);
   no ME in a week with a 6 h+ long run; deload weeks ≤80% of the week before; first 2 weeks at current load
   (Quang: a 50–60 km runner stays at 50–60 km), so the weekday minimum sets each run's length, not the
   number of runs: a short week has fewer 60-min runs (R-V4), never shorter ones.
@@ -130,6 +148,8 @@ Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
   - *UA ME chapter.*
 - **R-M2 Climbing ME for flat athletes.** On a steep race with no hills, Build/Peak ME is climbing
   work (incline treadmill, stairs, weighted step-ups) (`CLIMB_SPECIFICITY`).
+- **R-M3 Eccentric finisher.** On a course of 40+ m D+/km every ME session ends with eccentric work for the
+  descents: 3 × 10 slow step-downs per leg, or walking down the stairs with the pack on (`_race_specifics`).
 
 ### Climbing (vert)
 - **R-C1 Climb session.** For races ≥20 m D+/km, an athlete with a treadmill or stairs gets a
@@ -144,6 +164,8 @@ Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
   climbing.
 - **R-C6 Trail pace.** Runs of ≥15 m D+/km get a climb-adjusted pace (flat × (1 + 0.012 × D+/km));
   mountain runs use the venue's climb rate (`trail_pace.py`, `training_mountains.py`).
+- **R-C7 Descents.** On a course of 40+ m D+/km the mountain-day long run in the last 6 build weeks runs 2–3 of
+  the descents at controlled race effort (`_race_specifics`); with R-M3 this is the downhill rule.
 
 ### Session text
 - **R-T1** Step minutes add up to the session; a session whose steps disagree by >15% is
@@ -183,6 +205,8 @@ the R-rules that set the number in question.
   Terrain is read from the course (D+/km), not the profile.
 - **R-N4 Progression from real weeks.** R-V2 compares against the weeks already saved, so a block
   never jumps over what the athlete was actually given.
+- **R-N5 Goal check in the brief.** A stretch or unsupported goal (R-D2) is a fact in the week brief, with what
+  would help (`goal_feasibility.brief_line`); the coach nudge and the Goal screen already say it.
 - Section 2 applies unchanged.
 
 ## 5. Adapt week (`POST /api/coach/adapt-week`, chat `propose_rebuild_week`)
@@ -252,8 +276,9 @@ held:
 
 - Mountain athletes without a treadmill or stairs (e.g. Hà Nội + Hàm Lợn at weekends) can peak
   below the climbing a coach wants; repeat-climb rates per mountain are not set yet.
-- No downhill/eccentric conditioning rule yet.
 - Adapt week still converts km to minutes at 6.0 min/km (R-A2); create and next block use the
   athlete's own pace (R-V1).
 - Capacity-bound plans (3 days a week, low volume, long race) can't reach the long-day target.
-  The feasibility verdict says "stretch", but the plan text doesn't explain it yet.
+  The verdict reaches the Goal screen, the coach nudge and (from block 2) the week brief; week 1 has no brief.
+- Mountains below the course's steepness (e.g. Châu Thới, 28 m D+/km, for VHT at 53) have no repeat-climb
+  rates or vert targets yet.
