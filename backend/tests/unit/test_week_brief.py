@@ -81,3 +81,43 @@ def test_decision_log_includes_milestone_fact():
     rows = [{"milestone_key": "first_session", "achieved_at": datetime(2026, 10, 6, tzinfo=UTC), "source": "auto"}]
     fact = bm.brief_fact(bm.serialize("5k", False, rows), 5)
     assert fact.startswith("Milestone: next = 5 minutes of unbroken jogging") and "1 of 6 reached" in fact
+
+
+def test_week_one_facts_explain_a_mid_week_start_and_dropped_days():
+    """Plan 131: a Thursday start, a 7-day runner held near 52 km/week on 3 run days of 4, a 100 km ladder plan."""
+    from types import SimpleNamespace
+
+    from services.week_brief import week_one_facts
+
+    race_info = {
+        "plan_start_date": "2026-10-22",
+        "days_per_week": 7,
+        "course_distance_km": 104.2,
+        "mountain_days": '["Saturday"]',
+        "fitness_snapshot": SimpleNamespace(readiness={"readiness_flag": "fatigued"}),
+    }
+    week1 = [
+        {"week_number": 1, "day_of_week": d, "type": t, "duration_minutes": m}
+        for d, t, m in (
+            ("Thursday", "Easy", 60),
+            ("Friday", "Rest", 0),
+            ("Saturday", "Long Run", 180),
+            ("Sunday", "Easy", 45),
+        )
+    ]
+    facts = week_one_facts(week1, race_info, 52.0, "Goal check: unsupported.")
+    assert "52 km a week" in facts[0] and "no increase" in facts[0]
+    assert "4 days and about 57% of a normal week" in facts[1]
+    assert "runs on 3 days, not 4" in facts[2] and "at least 60 min" in facts[2]
+    assert facts[-1] == "Goal check: unsupported."
+
+
+def test_week_one_facts_for_a_monday_start_with_every_day_used():
+    from services.week_brief import week_one_facts
+
+    week1 = [
+        {"week_number": 1, "day_of_week": d, "type": "Easy", "duration_minutes": 40}
+        for d in ("Tuesday", "Thursday", "Saturday")
+    ]
+    facts = week_one_facts(week1, {"plan_start_date": "2026-10-19", "days_per_week": 3}, 30.0)
+    assert len(facts) == 1 and "at most 10% above it" in facts[0]

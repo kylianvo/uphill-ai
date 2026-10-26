@@ -275,6 +275,15 @@ _DELOAD_FLOOR_MIN = 30  # an easy run in a deload week, as _ramp_volume cuts it
 _DOWNHILL_M_PER_KM = 40  # races this steep get descent work: eccentric ME and descents on the mountain day (R-C7)
 _DESCENT_WEEKS = 6  # descents on the mountain day in the last build weeks before the taper
 _OTHER_WEEKEND_DAY = {"Saturday": "Sunday", "Sunday": "Saturday"}
+_VENUE_SHARE = 0.60  # goal_feasibility.VENUE_SHARE: a mountain gentler than this share of the course can't rehearse it
+DESCENT_RAMP_EN = (
+    "Finish with 4-6 x 1 min controlled downhill on a ramp, bridge or overpass (quick light steps), walking back up "
+    "between: the race's descents need it and the city has no mountain this week."
+)
+DESCENT_RAMP_VI = (
+    "Kết thúc bằng 4-6 x 1 phút chạy xuống dốc có kiểm soát trên dốc hầm xe, cầu hoặc cầu vượt (bước ngắn, nhẹ), "
+    "đi bộ lên lại giữa các lần: race có nhiều đoạn xuống dốc và tuần này không có ngày lên núi."
+)
 ECCENTRIC_EN = (
     "Finish with eccentric work for the descents: 3 x 10 slow step-downs per leg from a knee-high box (3-4 s down), "
     "or walk down the stairs with the pack still on."
@@ -1183,6 +1192,24 @@ class PlanGenerator:
         )
 
     @staticmethod
+    def vert_targets_for(
+        race_info: dict[str, Any], demands: "goal_demands.Demands | None", total_weeks: int
+    ) -> dict[int, int]:
+        """R-C8's weekly D+ targets, when the athlete has somewhere to climb: hills at home, a mountain day on a
+        mountain at least 60% as steep as the course (indoor share otherwise), a treadmill or stairs."""
+        if demands is None:
+            return {}
+        venues = Venues.from_race_info(race_info)
+        steep_enough = venues.local_hills or (
+            bool(venues.mountain_days)
+            and (demands.venue_climb_rate or demands.steepness_m_per_km) >= _VENUE_SHARE * demands.steepness_m_per_km
+        )
+        if not (steep_enough or venues.use_treadmill or venues.stair_access):
+            return {}
+        start = getattr(race_info.get("fitness_snapshot"), "weekly_vert_m", None)
+        return goal_demands.vert_targets(demands, total_weeks, start, indoor_only=not steep_enough)
+
+    @staticmethod
     def _lint_issues(
         workouts: list[dict[str, Any]],
         tier: str,
@@ -1228,6 +1255,11 @@ class PlanGenerator:
             ),
             first_week_share=first_week_share(race_info.get("plan_start_date")),
             back_to_back=race_info.get("long_day_format") == "back_to_back",
+            vert_targets={}
+            if target_week is not None
+            else PlanGenerator.vert_targets_for(
+                race_info, PlanGenerator.goal_demands_for(race_info, cutoff_time_hours), total_weeks
+            ),
             me_first_weeks=(
                 ultra_rules.me_first_weeks(
                     total_weeks,
@@ -1435,6 +1467,7 @@ class PlanGenerator:
         # Hill Bound sessions need hills, stairs or a treadmill to substitute for them.
         venues = Venues.from_race_info(race_info)
         demands = PlanGenerator.goal_demands_for(race_info, cutoff_time_hours)
+        vert_goal = PlanGenerator.vert_targets_for(race_info, demands, total_weeks)
 
         course_distance_km = race_info.get("course_distance_km")
         course_elevation_gain_m = race_info.get("course_elevation_gain_m")
@@ -2172,11 +2205,12 @@ class PlanGenerator:
                 duration_minutes=float(split[1]),
                 description=(
                     f"Nửa còn lại của back-to-back cuối tuần: {split[1]} phút Zone 2 nhẹ, sát ngày lên núi. Đường bằng "
-                    f"cũng được. Giữ nhịp nói chuyện được, đeo balo race và ăn uống như ngày race."
+                    f"cũng được; có dốc, cầu thang hoặc cầu vượt thì leo thêm. Giữ nhịp nói chuyện được, đeo balo race "
+                    f"và ăn uống như ngày race."
                     if vi
                     else f"The other half of this weekend's back-to-back: {split[1]} min easy Zone 2, next to the "
-                    f"mountain day. Flat ground is fine. Keep it conversational, wear the race pack and eat as on race "
-                    f"day."
+                    f"mountain day. Flat ground is fine; climb hills, stairs or an overpass if you can. Keep it "
+                    f"conversational, wear the race pack and eat as on race day."
                 ),
                 treadmill_incline="0",
                 treadmill_speed="0",
@@ -2190,8 +2224,9 @@ class PlanGenerator:
 
         def _race_specifics(wos: list[dict[str, Any]]) -> None:
             """What the race itself asks for, in code, not left to the model: on a course of 40+ m D+/km, eccentric
-            work at the end of every ME session and descents on the mountain day in the last build weeks (R-C7); on
-            an ultra, Build/Peak long runs of 5 h+ rehearse race day (R-L5)."""
+            work at the end of every ME session and descents in the last build weeks, on the mountain day or, with no
+            mountain day, on a city ramp (R-C7); on a mountain gentler than the course, repeats of its steepest climb
+            (R-C9); on an ultra, Build/Peak long runs of 5 h+ rehearse race day (R-L5)."""
             if demands is None:
                 return
             steep = demands.steepness_m_per_km >= _DOWNHILL_M_PER_KM
@@ -2201,6 +2236,44 @@ class PlanGenerator:
             def add(wo: dict[str, Any], key: str, text: str) -> None:
                 if text not in (wo.get(key) or ""):
                     wo[key] = f"{wo.get(key) or ''} {text}".strip()
+
+            venue = demands.venue_climb_rate
+            gentle = bool(venue) and venue < _VENUE_SHARE * demands.steepness_m_per_km
+            repeats = (
+                (
+                    f"Núi này leo khoảng {venue:.0f} m D+/km, race khoảng {demands.steepness_m_per_km:.0f}: dành phần giữa "
+                    f"buổi để leo lặp lại con dốc dốc nhất, đi bộ nhanh lên và chạy xuống có kiểm soát."
+                    if vi
+                    else f"This mountain climbs about {venue:.0f} m D+ per km, the race about "
+                    f"{demands.steepness_m_per_km:.0f}: spend the middle of the run on repeats of its steepest climb, "
+                    f"power-hiking up and running down controlled."
+                )
+                if gentle
+                else ""
+            )
+            weeks = _week_rows(wos)
+            if steep and not venues.mountain_days:  # R-C7 without a mountain: descents on a city ramp
+                for week_no, rows in weeks.items():
+                    if (
+                        rows[0].get("phase") not in ("Build", "Peak")
+                        or week_no <= last_build - _DESCENT_WEEKS
+                        or PlanGenerator.is_deload_week(week_no, total_weeks)
+                    ):
+                        continue
+                    easy = [
+                        r
+                        for r in rows
+                        if r.get("type") in ("Easy", "Aerobic Capacity")
+                        and float(r.get("duration_minutes") or 0) >= 40
+                        and not r.get("mountain_mode")
+                        and not plan_lint.is_b2b_day(r)
+                    ]
+                    if easy:
+                        add(
+                            max(easy, key=lambda r: float(r["duration_minutes"])),
+                            "description",
+                            DESCENT_RAMP_VI if vi else DESCENT_RAMP_EN,
+                        )
 
             for wo in wos:
                 week_no = wo.get("week_number")
@@ -2214,6 +2287,8 @@ class PlanGenerator:
                     continue
                 if steep and wo.get("mountain_mode") and week_no > last_build - _DESCENT_WEEKS:
                     add(wo, "description", DESCENT_VI if vi else DESCENT_EN)
+                if repeats and wo.get("mountain_mode"):
+                    add(wo, "description", repeats)
                 if float(wo.get("duration_minutes") or 0) >= ultra_rules.REHEARSAL_MIN:
                     add(wo, "fueling_tip", REHEARSAL_VI if vi else REHEARSAL_EN)
 
@@ -2936,11 +3011,12 @@ class PlanGenerator:
                 if phase not in ("Base", "Build", "Peak", "Taper"):
                     continue
                 # book: vert is the mountain runner's main load. Build/Peak weeks get a second climb session while the
-                # week is under 40% of race D+; a taper week keeps one short one so the climbing legs stay.
+                # week is under its D+ target (R-C8; 40% of race D+ without one); a taper week keeps one short one.
                 deload = PlanGenerator.is_deload_week(week_no, total_weeks)
                 for _round in range(2 if phase in ("Build", "Peak") and not deload else 1):
                     week_vert = sum(float(r.get("elevation_gain_m") or 0) for r in rows if _vert(r))
-                    if sum(1 for r in rows if _vert(r)) > _round or week_vert >= 0.4 * float(course_elevation_gain_m):
+                    target = vert_goal.get(week_no, 0.4 * float(course_elevation_gain_m))
+                    if sum(1 for r in rows if _vert(r)) > _round or week_vert >= target:
                         break
                     long_day = next((r["day_of_week"] for r in rows if r.get("type") == "Long Run"), None)
                     days = list(_PRIORITY_DAY_ORDER)
@@ -3484,6 +3560,10 @@ class PlanGenerator:
 
             if demands and is_event_goal:
                 goal_description += "\n" + goal_demands.prompt_block(demands, lang, ladder=bool(ultra))
+                if vert_lines := goal_demands.vert_block(
+                    vert_goal, range(block_start_week, block_end_week + 1), demands.gain_m, lang
+                ):
+                    goal_description += "\n" + vert_lines
             if ultra:  # Quang's ladder for this block's weeks (services/ultra_rules.py)
                 block_ladder = ultra_rules.ladder(ultra, ultra_advanced, total_weeks)
                 goal_description += "\n" + ultra_rules.prompt_block(

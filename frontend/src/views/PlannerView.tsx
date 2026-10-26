@@ -1475,6 +1475,10 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 athlete_notes: planForm.athlete_notes,
               }}
               onChange={(patch) => setPlanForm({ ...planForm, ...patch })}
+              courseSteepness={
+                (parseFloat(String(planForm.course_elevation_gain_m)) || 0) /
+                (parseFloat(String(planForm.course_distance_km)) || Infinity)
+              }
             />
 
             {isCoachActingAsAthlete && (

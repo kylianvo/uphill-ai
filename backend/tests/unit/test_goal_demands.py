@@ -116,3 +116,23 @@ def test_ladder_plans_get_no_second_longest_session_target():
     assert "longest session should reach about 300 min" in goal_demands.prompt_block(d, "en")
     assert "longest session" not in goal_demands.prompt_block(d, "en", ladder=True)
     assert "buổi dài nhất" not in goal_demands.prompt_block(d, "vi", ladder=True)
+
+
+def test_vert_targets_ramp_from_recent_vert_to_40_percent_of_race_d_plus():
+    """VHT 100K (5533 m D+), 13 weeks, a runner climbing 589 m a week now: the peak build week asks 40% of race
+    D+, no week grows more than 20%, and recovery weeks have no target."""
+    d = goal_demands.compute(104.2, 5533, 15.75, None)
+    t = goal_demands.vert_targets(d, 13, 589, indoor_only=False)
+    assert 4 not in t and 8 not in t  # recovery weeks
+    assert t[9] == round(0.40 * 5533, -1)
+    weeks = sorted(t)
+    assert all(t[b] <= t[a] * 1.2 ** (b - a) + 10 for a, b in zip(weeks, weeks[1:]))
+    assert t[1] >= 589
+
+
+def test_vert_targets_indoor_only_and_flat_courses():
+    d = goal_demands.compute(104.2, 5533, 15.75, None)
+    assert max(goal_demands.vert_targets(d, 13, None, indoor_only=True).values()) == round(0.25 * 5533, -1)
+    flat = goal_demands.compute(50, 400, 5, None)
+    assert goal_demands.vert_targets(flat, 13, 500, indoor_only=False) == {}
+    assert goal_demands.vert_targets(None, 13, 500, indoor_only=False) == {}

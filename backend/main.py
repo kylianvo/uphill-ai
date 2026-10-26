@@ -148,7 +148,7 @@ from services.rag_service import RagService
 from services.training_mountains import MOUNTAINS
 from services.training_rules import TrainingRules, resolve_zone2_pace
 from services.weather_service import WeatherService
-from services.week_brief import generate_week_brief
+from services.week_brief import generate_week_brief, week_one_facts
 from services.week_review_narrative import generate_week_narrative
 from telemetry import plan_job_duration_seconds
 
@@ -1450,6 +1450,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
             plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="onboarding", status="done").observe(time.monotonic() - _t0)
             print(f"[PlanJob][{job_id}] Onboarding plan generation complete — {len(workouts)} workouts saved.")
+            await _week_one_brief(plan_id, race_info, workouts, fresh_user, model_api_key)
         except Exception as ex:
             notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"
@@ -2477,6 +2478,7 @@ async def _generate_plan_for_athlete(
             plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="generate", status="done").observe(time.monotonic() - _t0)
             print(f"[PlanJob][{job_id}] generate-plan complete — {len(workouts)} workouts saved.")
+            await _week_one_brief(plan_id, race_info, workouts, fresh_user, model_api_key)
         except Exception as ex:
             notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"
@@ -4560,6 +4562,38 @@ async def _plan_snapshot(user_id: int, typed_weekly_km: float | None = None, typ
 def _store_plan_snapshot(plan_id: int, snapshot) -> None:
     if snapshot is not None:
         set_plan_fitness_snapshot(plan_id, snapshot.to_dict())
+
+
+async def _week_one_brief(
+    plan_id: int, race_info: dict[str, Any], workouts: list[dict[str, Any]], user: dict[str, Any], api_key: str | None
+) -> None:
+    """A new plan's week 1 gets a brief too (R-N5): start load, a mid-week start, dropped run days and the goal
+    check. Best-effort, after the plan is saved: a failure never touches the plan."""
+    try:
+        from services import goal_feasibility, goal_service
+
+        plan = get_plan_by_id(plan_id) or {}
+        snapshot = race_info.get("fitness_snapshot")
+        week1 = [w for w in workouts if w.get("week_number") == 1]
+        facts = week_one_facts(
+            week1,
+            race_info,
+            getattr(snapshot, "weekly_km", None) or user.get("current_weekly_km"),
+            goal_feasibility.brief_line(goal_service.feasibility_for(plan)) if plan else None,
+        )
+        brief = await generate_week_brief(
+            race_info=race_info,
+            block_context="",
+            week_number=1,
+            workouts=week1,
+            prev_workouts=[],
+            decision_log=facts,
+            api_key=api_key,
+        )
+        if brief:
+            upsert_week_brief(plan_id, 1, brief)
+    except Exception:
+        _snapshot_logger.exception("week 1 brief failed (non-fatal)")
 
 
 _goal_logger = get_logger("goal_assessment")

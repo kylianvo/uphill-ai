@@ -153,8 +153,8 @@ Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
 ### Climbing (vert)
 - **R-C1 Climb session.** For races ≥20 m D+/km, an athlete with a treadmill or stairs gets a
   Zone 2 climb session in every Base/Build/Peak week without climbing (`_add_climb_session`).
-- **R-C2 Second climb session** in Build/Peak (not deload) weeks while the week is under 40% of
-  race D+. Taper weeks keep one short session (≤45 min).
+- **R-C2 Second climb session** in Build/Peak (not deload) weeks while the week is under its R-C8 target (40% of
+  race D+ without one). Taper weeks keep one short session (≤45 min).
 - **R-C3 Incline long runs.** A treadmill-only athlete (no hills, no mountain) gets three incline
   blocks inside the Base/Build/Peak long run, filled up to the cap in R-C4 (`_incline_long_run`).
 - **R-C4 Weekly cap.** No week carries more than **80% of race D+** (`_cap_week_vert`).
@@ -163,8 +163,21 @@ Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
   climbing.
 - **R-C6 Trail pace.** Runs of ≥15 m D+/km get a climb-adjusted pace (flat × (1 + 0.012 × D+/km));
   mountain runs use the venue's climb rate (`trail_pace.py`, `training_mountains.py`).
-- **R-C7 Descents.** On a course of 40+ m D+/km the mountain-day long run in the last 6 build weeks runs 2–3 of
-  the descents at controlled race effort (`_race_specifics`); with R-M3 this is the downhill rule.
+- **R-C7 Descents.** On a course of 40+ m D+/km, the last 6 build weeks train descents: the mountain-day long run
+  runs 2–3 of them at controlled race effort; an athlete with no mountain day ends one easy run a week with
+  4–6 × 1 min controlled downhill on a ramp, bridge or overpass (`_race_specifics`). With R-M3 this is the
+  downhill rule.
+- **R-C8 Weekly D+ target.** For courses of 20+ m D+/km, each build week has a D+ target: from the athlete's recent
+  weekly vert (watch; else 10% of race D+) toward **40% of race D+** by the last build week (25% when only a
+  treadmill or stairs can deliver it), at most +20% a week, none in recovery weeks (`goal_demands.vert_targets`).
+  Only where a venue can deliver it: hills at home, a mountain day on a mountain at least 60% as steep as the
+  course, a treadmill or stairs. The prompt states the block's targets; R-C2's second climb session is added
+  while a week is under its target; the lint's `VERT_SHORT` flags a week under 70% of it (not a back-to-back
+  weekend the athlete chose: it moves about 2 h off the mountain, and the choice's help text says so).
+- **R-C9 Gentle mountain.** On a mountain under 60% of the course's steepness (e.g. Châu Thới, 28 m D+/km, for
+  VHT at 53), Build/Peak mountain long runs spend their middle on repeats of its steepest climb; the vert credited
+  is still the mountain's own rate. The setup screens (web and iOS) warn when such a mountain is the only climbing
+  and ask for stairs (a building or an overpass) or a treadmill.
 
 ### Session text
 - **R-T1** Step minutes add up to the session; a session whose steps disagree by >15% is
@@ -205,7 +218,9 @@ the R-rules that set the number in question.
 - **R-N4 Progression from real weeks.** R-V2 compares against the weeks already saved, so a block
   never jumps over what the athlete was actually given.
 - **R-N5 Goal check in the brief.** A stretch or unsupported goal (R-D2) is a fact in the week brief, with what
-  would help (`goal_feasibility.brief_line`); the coach nudge and the Goal screen already say it.
+  would help (`goal_feasibility.brief_line`); the coach nudge and the Goal screen already say it. A new plan's
+  week 1 gets a brief too (`main._week_one_brief`, `week_brief.week_one_facts`): current volume and the fatigue
+  hold, a mid-week start, run days left out (R-V4) and the goal check.
 - Section 2 applies unchanged.
 
 ## 5. Adapt week (`POST /api/coach/adapt-week`, chat `propose_rebuild_week`)
@@ -273,11 +288,9 @@ held:
 
 ## 7. Known gaps (say so when asked)
 
-- Mountain athletes without a treadmill or stairs (e.g. Hà Nội + Hàm Lợn at weekends) can peak
-  below the climbing a coach wants; repeat-climb rates per mountain are not set yet.
 - Adapt week still converts km to minutes at 6.0 min/km (R-A2); create and next block use the
   athlete's own pace (R-V1).
-- Capacity-bound plans (3 days a week, low volume, long race) can't reach the long-day target.
-  The verdict reaches the Goal screen, the coach nudge and (from block 2) the week brief; week 1 has no brief.
-- Mountains below the course's steepness (e.g. Châu Thới, 28 m D+/km, for VHT at 53) have no repeat-climb
-  rates or vert targets yet.
+- Capacity-bound plans (3 days a week, low volume, long race) can't reach the long-day target; the verdict says
+  so on the Goal screen, in the coach nudge and in the week brief.
+- Gentle mountains (R-C9) have no measured repeat-climb rates, so their repeats earn no extra vert credit and
+  get no D+ target.

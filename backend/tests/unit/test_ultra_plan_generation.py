@@ -201,6 +201,7 @@ def test_model_prompt_carries_the_ladder_block(monkeypatch):
         )
     prompt = str(client.models.generate_content.call_args_list[0])
     assert "MOUNTAIN-DAY ULTRA RULES" in prompt and "Week 3: Long Run 240 min" in prompt
+    assert "WEEKLY CLIMBING TARGET" in prompt and "- Week 1: about 600 m D+ (11% of race D+)" in prompt
 
 
 def test_a_mid_plan_tune_up_race_does_not_rest_the_week():
@@ -523,3 +524,48 @@ def test_steep_race_gets_eccentric_me_descents_and_race_rehearsal(rule_based_pla
         for w in longs.values()
         if w["duration_minutes"] >= 300 and w["phase"] in ("Build", "Peak")
     )
+
+
+def test_flat_city_runner_gets_downhill_on_a_ramp_in_the_last_build_weeks(rule_based_plan):
+    """No mountain day on a 53 m D+/km course: the last 6 build weeks end one easy run with ramp descents."""
+    wos = rule_based_plan(km=104.2, weeks=20, mountain_days=[], tier="recreational")
+    with_ramp = {w["week_number"] for w in wos if plan_generator.DESCENT_RAMP_EN in (w.get("description") or "")}
+    assert with_ramp and min(with_ramp) > 16 - 6 and max(with_ramp) <= 16
+    assert not any(ultra_rules.is_deload(wk, 20) for wk in with_ramp)
+
+
+def test_gentle_mountain_long_runs_ask_for_repeats(rule_based_plan):
+    """Châu Thới (28 m D+/km) for a 53 m D+/km course: Build/Peak mountain long runs repeat its steepest climb."""
+    wos = rule_based_plan(
+        km=104.2,
+        weeks=20,
+        mountain_days=["Saturday"],
+        tier="recreational",
+        race_extra={"training_mountain": "chau_thoi"},
+    )
+    build_longs = [
+        w
+        for w in wos
+        if w["type"] == "Long Run"
+        and w["phase"] in ("Build", "Peak")
+        and w.get("mountain_mode")
+        and not ultra_rules.is_deload(w["week_number"], 20)
+    ]
+    assert build_longs and all("repeats of its steepest climb" in w["description"] for w in build_longs)
+    dinh = rule_based_plan(km=104.2, weeks=20, mountain_days=["Saturday"], tier="recreational")
+    assert not any("repeats of its steepest climb" in (w.get("description") or "") for w in dinh)
+
+
+def test_vert_targets_need_somewhere_to_climb():
+    d_info = {"course_distance_km": 104.2, "course_elevation_gain_m": 5533, "goal_type": "finish"}
+    from services import goal_demands
+
+    d = goal_demands.compute(104.2, 5533, None, 29)
+    assert PlanGenerator.vert_targets_for(d_info, d, 20) == {}  # flat, no stairs, no treadmill
+    stairs = PlanGenerator.vert_targets_for({**d_info, "stair_access": True}, d, 20)
+    assert max(stairs.values()) == round(0.25 * 5533, -1)  # indoor only
+    dinh = {**d_info, "mountain_days": json.dumps(["Saturday"]), "training_mountain": "nui_dinh"}
+    d_dinh = goal_demands.compute(104.2, 5533, None, 29, venue_climb_rate=60)
+    assert max(PlanGenerator.vert_targets_for(dinh, d_dinh, 20).values()) == round(0.40 * 5533, -1)
+    d_gentle = goal_demands.compute(104.2, 5533, None, 29, venue_climb_rate=28)
+    assert PlanGenerator.vert_targets_for({**dinh, "training_mountain": "chau_thoi"}, d_gentle, 20) == {}

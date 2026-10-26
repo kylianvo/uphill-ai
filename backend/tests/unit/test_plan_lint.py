@@ -599,3 +599,18 @@ def test_ladder_week_overshoot_under_half_a_run_is_not_a_volume_jump():
         s(7, "Monday", "Easy", 60, phase="Build"),
     ]
     assert "VOLUME_JUMP" in codes(lint_weeks(week6 + week7_big, {7}, ultra, _ladder_prefs()))
+
+
+def test_week_short_of_its_climbing_target_is_vert_short_unless_the_athlete_chose_a_back_to_back():
+    ultra = for_race(REC, 104.2, True)
+    week9 = _ladder_week(9, 420)
+    for w in week9:
+        w["elevation_gain_m"] = 1200 if w["type"] == "Long Run" else 0
+    found = lint_weeks(week9, {9}, ultra, _ladder_prefs(vert_targets={9: 2210}))
+    assert "VERT_SHORT" in codes(found)
+    assert "VERT_SHORT" not in codes(lint_weeks(week9, {9}, ultra, _ladder_prefs(vert_targets={9: 1500})))
+    b2b = _ladder_week(9, 300, b2b=165)
+    for w in b2b:
+        w["elevation_gain_m"] = 1200 if w["type"] == "Long Run" else 0
+    prefs = _ladder_prefs(vert_targets={9: 2210}, back_to_back=True)
+    assert "VERT_SHORT" not in codes(lint_weeks(b2b, {9}, ultra, prefs))

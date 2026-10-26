@@ -6,7 +6,7 @@ Each Issue.message is an imperative instruction, written to be pasted into a cor
 retry prompt. Caps come from the athlete's tier profile, not from one-size numbers.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from services import ultra_rules
@@ -32,6 +32,7 @@ LONG_SHARE_TOLERANCE = LONG_SHARE_SOFT + 0.02  # soft margin plus rounding of pl
 # the vertical check only catches gross spikes; the doctrine's 7-10% cap is applied to time.
 MAX_VERT_GROWTH = 0.25
 MIN_VERT_STEP_M = 300  # ignore growth on tiny bases
+VERT_SHORT_SHARE = 0.70  # a week under 70% of its R-C8 D+ target is short of climbing
 BACK_TO_BACK_SHARE = 0.50  # two consecutive big days may hold at most half the week
 BACK_TO_BACK_MIN_DAY = 0.25  # ...and a "big" day is one holding a quarter of the week (a long run + a short recovery run is not a back-to-back)
 # hill sprints, short hill repeats (PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS), bounding, strides, and the
@@ -61,6 +62,7 @@ class Prefs:
     start_growth: float = RECENT_LOAD_GROWTH  # 1.0 while the athlete is fatigued at plan creation (R-V1)
     first_week_share: float = 1.0  # a mid-week start leaves only part of week 1 (Thursday -> 4/7)
     back_to_back: bool = False  # the athlete chose a back-to-back weekend over one 6 h+ mountain day (R-U1)
+    vert_targets: dict[int, int] = field(default_factory=dict)  # R-C8 m D+ per build week, where a venue can deliver
 
 
 @dataclass(frozen=True)
@@ -286,6 +288,20 @@ def lint_week(
                 f"Week {week}: planned climbing {_vert(ws):.0f} m D+ is {(_vert(ws) / prev_vert - 1) * 100:.0f}% "
                 f"above week {week - 1} ({prev_vert:.0f} m). Keep vertical progression gradual "
                 f"(at most about +{MAX_VERT_GROWTH * 100:.0f}%).",
+            )
+        )
+
+    target_vert = prefs.vert_targets.get(week) if prefs else None
+    chose_b2b = (
+        prefs is not None and prefs.back_to_back and any(is_b2b_day(w) for w in ws)
+    )  # moves time off the mountain
+    if target_vert and not chose_b2b and not _is_down(weeks, week) and _vert(ws) < VERT_SHORT_SHARE * target_vert:
+        issues.append(
+            Issue(
+                "VERT_SHORT",
+                week,
+                f"Week {week} climbs {_vert(ws):.0f} m D+; its target is about {target_vert} m. Add climbing where the "
+                f"athlete can: the mountain day, hill or stair repeats, or an incline-treadmill climb session.",
             )
         )
 

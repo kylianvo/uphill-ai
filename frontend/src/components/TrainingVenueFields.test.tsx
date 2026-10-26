@@ -181,3 +181,20 @@ it("hides the long-day choice where the plan cannot save it (adapt week)", () =>
   renderFields({ training_mountain: "nui_dinh", mountain_days: ["Saturday"] });
   expect(screen.queryByRole("radio", { name: "Back-to-back weekend" })).toBeNull();
 });
+
+it("warns when the chosen mountain is too gentle for the course and there is no weekday climbing", async () => {
+  const onChange = vi.fn();
+  function Fields({ stairs }: { stairs: boolean }) {
+    return <TrainingVenueFields lang="en" t={key => translations.en[key]} useTreadmill={false} onChange={onChange}
+      courseSteepness={53}
+      value={{ mountain_days: ["Saturday"], training_mountain: "chau_thoi", stair_access: stairs, treadmill_max_incline: 15 }} />;
+  }
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => [
+    ...mountains,
+    { key: "chau_thoi", area: "hcmc", name_en: "Núi Châu Thới", name_vi: "Núi Châu Thới", climb_rate: 28, repeats_only: false, default_min_minutes: 180 },
+  ] }));
+  const { rerender } = render(<Fields stairs={false} />);
+  expect(await screen.findByTestId("venue-too-gentle")).toHaveTextContent("Núi Châu Thới climbs about 28 m D+ per km; this course about 53.");
+  rerender(<Fields stairs={true} />);
+  expect(screen.queryByTestId("venue-too-gentle")).toBeNull();
+});

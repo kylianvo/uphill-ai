@@ -180,3 +180,43 @@ def climb_line(week: int, total_weeks: int, demands: Demands, flat_only: bool) -
         f"stair or incline-treadmill format (climbing laps of 5+ min with a 5-15% bodyweight pack), not gym straight "
         f"sets, and finish with eccentric step-downs."
     )
+
+
+VERT_MIN_M_PER_KM = 20.0  # flatter courses need no weekly climbing target (R-C1's threshold)
+VERT_PEAK_SHARE = 0.40  # the peak week climbs 40% of race D+ (quality bar #1) ...
+VERT_PEAK_SHARE_INDOOR = 0.25  # ... 25% when only a treadmill or stairs can deliver it
+VERT_START_SHARE = 0.10  # an athlete with no watch vert starts from 10% of race D+
+VERT_WEEKLY_GROWTH = 0.20  # under the lint's VERT_JUMP (+25%)
+
+
+def vert_targets(d: Demands | None, total_weeks: int, start_vert_m: float | None, indoor_only: bool) -> dict[int, int]:
+    """m D+ each build week should climb (R-C8): from the athlete's recent weekly vert toward the peak share of race
+    D+ by the last build week, at most +20% a week. Recovery weeks have none (they climb less on purpose)."""
+    from services import ultra_rules  # ultra_rules imports athlete_tier, like this module
+
+    if d is None or d.steepness_m_per_km < VERT_MIN_M_PER_KM or not total_weeks:
+        return {}
+    last_build = total_weeks - 3 - taper_shift(total_weeks)
+    peak = d.gain_m * (VERT_PEAK_SHARE_INDOOR if indoor_only else VERT_PEAK_SHARE)
+    start = max(float(start_vert_m or 0), VERT_START_SHARE * d.gain_m)
+    out: dict[int, int] = {}
+    for week in range(1, last_build + 1):
+        if ultra_rules.is_deload(week, total_weeks):
+            continue
+        ramp = start * (peak / start) ** (week / last_build) if peak > start else start
+        out[week] = int(round(min(ramp, start * (1 + VERT_WEEKLY_GROWTH) ** week, peak) / 10) * 10)
+    return out
+
+
+def vert_block(targets: dict[int, int], weeks: range, gain_m: float, lang: str) -> str | None:
+    """Prompt lines with this block's weekly D+ targets."""
+    lines = [(w, targets[w]) for w in weeks if w in targets]
+    if not lines:
+        return None
+    if lang == "vi":
+        return "MỤC TIÊU D+ MỖI TUẦN (leo núi, buổi Climb, cầu thang, treadmill dốc):\n" + "\n".join(
+            f"- Tuần {w}: khoảng {t} m D+ ({t / gain_m * 100:.0f}% D+ của race)." for w, t in lines
+        )
+    return "WEEKLY CLIMBING TARGET (mountain day, climb sessions, stairs, incline treadmill):\n" + "\n".join(
+        f"- Week {w}: about {t} m D+ ({t / gain_m * 100:.0f}% of race D+)." for w, t in lines
+    )
