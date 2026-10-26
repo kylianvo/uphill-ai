@@ -1349,7 +1349,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         has_target_event=bool(beginner_shape and beginner_shape.has_event),
     )
     if beginner_shape:
-        beginner_milestones.apply_creation(user["id"], plan_id, request.milestone_target, request.current_jog_min)
+        beginner_milestones.safe_apply_creation(user["id"], plan_id, request.milestone_target, request.current_jog_min)
     _assess_new_plan(user["id"], plan_id)
 
     # Mark onboarding complete immediately so the user can enter the app
@@ -2257,7 +2257,7 @@ async def _generate_plan_for_athlete(
         athlete_notes=request.athlete_notes,
     )
     if beginner_shape:
-        beginner_milestones.apply_creation(athlete_id, plan_id, request.milestone_target, request.current_jog_min)
+        beginner_milestones.safe_apply_creation(athlete_id, plan_id, request.milestone_target, request.current_jog_min)
     _assess_new_plan(athlete_id, plan_id)
 
     # Fetch latest athlete details from database to ensure fresh physiological values
@@ -2491,6 +2491,9 @@ def tick_milestone(plan_id: int, key: str, user: dict[str, Any] = Depends(get_cu
     if key not in {m.key for m in beginner_milestones.ladder_for(plan["milestone_target"])}:
         raise HTTPException(status_code=400, detail="Unknown milestone for this plan.")
     db.set_milestone_manual(plan_id, key)
+    milestone = next(m for m in beginner_milestones.ladder_for(plan["milestone_target"]) if m.key == key)
+    if milestone.kind == "jog_min":
+        db.set_max_continuous_jog_min(user["id"], int(milestone.threshold))
     return {"beginner_milestones": _attach_milestones(plan)["beginner_milestones"]}
 
 
@@ -2512,7 +2515,16 @@ def upgrade_milestone_target(
         raise HTTPException(status_code=400, detail="Only a 5K target can move up to 10K.")
     has_event = bool(plan.get("has_target_event")) and not request.clear_event
     weeks = None if has_event else max(int(plan.get("total_weeks") or 0), beginner_milestones.default_weeks("10k"))
-    db.set_plan_milestone_target(plan_id, "10k", weeks, clear_event=request.clear_event)
+    end_name = end_date = None
+    if not has_event and plan.get("start_date"):
+        from datetime import date, timedelta
+
+        # No event any more: the block ends where the longer plan does, and carries the new goal's name.
+        start = date.fromisoformat(str(plan["start_date"])[:10])
+        end_name, end_date = "First 10K", (start + timedelta(weeks=weeks - 1)).isoformat()
+    db.set_plan_milestone_target(
+        plan_id, "10k", weeks, clear_event=request.clear_event, race_name=end_name, race_date=end_date
+    )
     plan = db.get_plan_by_id(plan_id) or plan
     return {"plan": _attach_milestones(plan)}
 

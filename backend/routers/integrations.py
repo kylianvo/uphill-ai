@@ -747,8 +747,8 @@ async def apple_health_sync(body: AppleHealthSyncRequest, user: dict[str, Any] =
             continue
         db.upsert_activity(user_id, _to_canonical(workout))
         accepted += 1
-    beginner_milestones.safe_refresh_milestones(user_id)
     deleted = db.delete_activities_by_external_ids(user_id, APPLE_HEALTH, body.deleted_ids)
+    beginner_milestones.safe_refresh_milestones(user_id)  # after deletes: a removed run must not tick a distance
     daily_metrics = _store_daily_metrics(user_id, body.daily_metrics)
     db.mark_connection_synced(user_id, APPLE_HEALTH)
     if rejected:

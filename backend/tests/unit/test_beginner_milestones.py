@@ -189,3 +189,20 @@ def test_apply_creation_without_jog_does_nothing(monkeypatch):
     monkeypatch.setattr(db, "insert_milestone_if_absent", lambda *a, **k: pytest.fail("no baseline"))
     bm.apply_creation(7, 5, "5k", 0)
     bm.apply_creation(7, 5, "5k", None)
+
+
+def test_jog_credit_walk_run_without_walk_value_is_not_full_duration():
+    w = {
+        "type": "Walk/Run",
+        "duration_minutes": 30,
+        "interval_rep_value": 3,
+        "interval_rep_unit": "min",
+        "walk_interval_value": None,
+    }
+    assert jog_credit_minutes(w) == 3
+    assert jog_credit_minutes({"type": "Walk/Run", "duration_minutes": 30}) is None
+
+
+def test_shape_event_before_start_raises():
+    with pytest.raises(ValueError):
+        bm.plan_shape("5k", date(2026, 12, 1), MON, 0, None, "2026-11-20")

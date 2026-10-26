@@ -80,7 +80,8 @@ def jog_credit_minutes(workout: dict[str, Any]) -> float | None:
     """Unbroken jog minutes a completed workout shows, or None for non-runs and distance-based reps."""
     if workout_kind(workout) != "run":
         return None
-    if workout.get("walk_interval_value"):
+    is_walk_run = str(workout.get("type") or "").strip().lower() == "walk/run"
+    if workout.get("walk_interval_value") or is_walk_run:
         value, unit = workout.get("interval_rep_value"), (workout.get("interval_rep_unit") or "min").lower()
         if not value:
             return None
@@ -235,8 +236,8 @@ def plan_shape(
         weeks = default_weeks(target)
         return PlanShape(label, (start + timedelta(weeks=weeks - 1)).isoformat(), weeks, False, None)
     event = date.fromisoformat(event_date)
-    if event <= today:
-        raise ValueError("event_date must be in the future")
+    if event <= today or event <= start:
+        raise ValueError("event_date must be after today and after the plan start")
     monday_start = start - timedelta(days=start.weekday())
     monday_event = event - timedelta(days=event.weekday())
     weeks = max(3, (monday_event - monday_start).days // 7 + 1)
@@ -352,3 +353,11 @@ def just_reached(rows: list[dict[str, Any]], now: datetime, days: int = 7) -> li
         for r in rows
         if r.get("source") in ("auto", "manual") and r.get("achieved_at") and r["achieved_at"] >= cutoff
     ]
+
+
+def safe_apply_creation(user_id: int, plan_id: int, target: Target, current_jog_min: int | None) -> None:
+    """apply_creation for request handlers: the plan row is already committed, so a failure here is only logged."""
+    try:
+        apply_creation(user_id, plan_id, target, current_jog_min)
+    except Exception:
+        logger.warning("beginner milestone baseline failed", exc_info=True, extra={"fields": {"plan_id": plan_id}})

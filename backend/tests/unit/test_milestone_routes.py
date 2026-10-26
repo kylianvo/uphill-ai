@@ -34,8 +34,12 @@ def api(monkeypatch):
         st["rows"][:] = [r for r in st["rows"] if r["milestone_key"] != key]
         st["rows"].append({"milestone_key": key, "source": "revoked", "achieved_at": None})
 
-    def set_target(pid, target, weeks=None, clear_event=False):
+    st["jog"] = []
+    monkeypatch.setattr(main.db, "set_max_continuous_jog_min", lambda uid, m: st["jog"].append(m) or True)
+
+    def set_target(pid, target, weeks=None, clear_event=False, race_name=None, race_date=None):
         st["calls"].append((target, weeks, clear_event))
+        st["ends"] = (race_name, race_date)
         st["plan"].update(milestone_target=target, total_weeks=weeks or st["plan"]["total_weeks"])
         if clear_event:
             st["plan"]["has_target_event"] = False
@@ -115,3 +119,22 @@ def test_patch_target_clear_event_extends_weeks(api):
 def test_patch_target_10k_to_5k_400(api):
     api["plan"]["milestone_target"] = "10k"
     assert client.patch("/api/plans/5/milestone-target", json={"target": "5k"}).status_code == 400
+
+
+def test_manual_tick_raises_the_jog_ceiling(api):
+    client.post("/api/plans/5/milestones/jog_5")
+    assert api["jog"] == [5]
+    client.post("/api/plans/5/milestones/first_session")  # not a jog milestone
+    assert api["jog"] == [5]
+
+
+def test_upgrade_without_event_moves_the_end_date_and_name(api):
+    api["plan"].update(start_date="2026-10-05", race_name="First 5K", race_date="2026-12-21")
+    client.patch("/api/plans/5/milestone-target", json={"target": "10k"})
+    assert api["ends"] == ("First 10K", "2027-03-01")  # start + 21 weeks
+
+
+def test_upgrade_keeping_event_leaves_name_and_date(api):
+    api["plan"].update(start_date="2026-10-05", has_target_event=True)
+    client.patch("/api/plans/5/milestone-target", json={"target": "10k"})
+    assert api["ends"] == (None, None)

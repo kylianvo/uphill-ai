@@ -2286,7 +2286,12 @@ def revoke_milestone(plan_id: int, key: str) -> None:
 
 
 def set_plan_milestone_target(
-    plan_id: int, target: str, total_weeks: int | None = None, clear_event: bool = False
+    plan_id: int,
+    target: str,
+    total_weeks: int | None = None,
+    clear_event: bool = False,
+    race_name: str | None = None,
+    race_date: str | None = None,
 ) -> None:
     with engine.connect() as conn:
         conn.execute(
@@ -2294,10 +2299,12 @@ def set_plan_milestone_target(
             UPDATE plans
             SET milestone_target = :t,
                 total_weeks = COALESCE(:w, total_weeks),
+                race_name = COALESCE(:rn, race_name),
+                race_date = COALESCE(:rd, race_date),
                 has_target_event = CASE WHEN :clear THEN FALSE ELSE has_target_event END
             WHERE id = :p
         """),
-            {"t": target, "w": total_weeks, "clear": clear_event, "p": plan_id},
+            {"t": target, "w": total_weeks, "clear": clear_event, "rn": race_name, "rd": race_date, "p": plan_id},
         )
         conn.commit()
 

@@ -301,3 +301,15 @@ def test_apple_health_sync_survives_milestone_error(fake, monkeypatch):
     )
     resp = client.post(SYNC, json={"workouts": [_row()], "deleted_ids": []})
     assert resp.status_code == 200 and resp.json()["accepted"] == 1
+
+
+def test_milestone_refresh_runs_after_deleted_activities_are_removed(fake, monkeypatch):
+    order = []
+    monkeypatch.setattr(
+        integrations.beginner_milestones, "safe_refresh_milestones", lambda uid: order.append("refresh")
+    )
+    monkeypatch.setattr(
+        integrations.db, "delete_activities_by_external_ids", lambda uid, p, ids: order.append("delete") or len(ids)
+    )
+    client.post(SYNC, json={"workouts": [_row()], "deleted_ids": ["HK-9"]})
+    assert order == ["delete", "refresh"]
