@@ -5,7 +5,7 @@ never from the model. Spec: docs/superpowers/specs/2026-10-26-b-race-design.md
 """
 
 import math
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from datetime import date, timedelta
 from typing import Any, Literal
 
@@ -171,3 +171,112 @@ def suggest(race: BRace, facts: PlanFacts) -> dict[str, Any] | None:
 def assess(race: BRace, facts: PlanFacts) -> Verdict:
     v = _verdict(race, facts)
     return v if v.level == "good" else replace(v, suggestion=suggest(race, facts))
+
+
+# ─── Plan facts, course lookup and prediction (impure) ───────────────────────
+
+LEVELS = ("good", "conditions", "risky", "not_recommended")
+ELIGIBLE_GOALS = ("finish", "time", "optimal")
+MAX_PLANNED = 3
+LONGEST_RUN_WINDOW_DAYS = 42
+
+
+def is_race_plan(plan: dict[str, Any]) -> bool:
+    return plan.get("goal_type") in ELIGIBLE_GOALS
+
+
+def _date(v: Any) -> date:
+    return v if isinstance(v, date) else date.fromisoformat(str(v)[:10])
+
+
+def _row_race(row: dict[str, Any]) -> BRace:
+    return BRace(
+        _date(row["race_date"]),
+        float(row["distance_km"]),
+        row.get("elevation_gain_m"),
+        row.get("effort") or "race",
+        tuple(row.get("options_km") or ()),
+    )
+
+
+def facts_for_plan(
+    user_id: int, plan: dict[str, Any], exclude_race_id: int | None = None, today: date | None = None
+) -> PlanFacts:
+    import db
+    from services.calendar_rules import start_monday
+
+    today = today or date.today()
+    km, minutes = db.longest_recent_run(user_id, today - timedelta(days=LONGEST_RUN_WINDOW_DAYS))
+    others = tuple(_row_race(r) for r in db.get_plan_races(plan["id"]) if r["id"] != exclude_race_id)
+    return PlanFacts(
+        a_date=_date(plan["race_date"]),
+        a_distance_km=float(plan.get("course_distance_km") or 0),
+        a_gain_m=plan.get("course_elevation_gain_m"),
+        plan_monday=start_monday(plan.get("start_date")) or today - timedelta(days=today.weekday()),
+        total_weeks=int(plan.get("total_weeks") or 1),
+        longest_recent_km=km,
+        longest_recent_min=minutes,
+        other_races=others,
+    )
+
+
+def resolve_input(data: dict[str, Any]) -> dict[str, Any]:
+    """The race as stored: the race list fills distance, climb and the distance options. Raises
+    ValueError("distance_required") when neither the runner nor the race list gives a distance."""
+    from services import course_match, race_matcher
+
+    name = (data.get("race_name") or "").strip()
+    distance, gain, _ = course_match.resolve_course_match(name, data.get("distance_km"), data.get("elevation_gain_m"))
+    if not distance or distance <= 0:
+        raise ValueError("distance_required")
+    options = sorted({float(d["distance_km"]) for d in race_matcher.race_distances(name) if d.get("distance_km")})
+    matched = race_matcher.match_race(name, distance_km=distance)
+    return {
+        "race_name": name,
+        "course_ref": getattr(matched, "race_name", None),
+        "race_date": _date(data["race_date"]),
+        "distance_km": float(distance),
+        "elevation_gain_m": float(gain) if gain is not None else None,
+        "options_km": [int(o) if o.is_integer() else o for o in options],
+        "effort": data.get("effort") or "race",
+    }
+
+
+def predict_band(user: dict[str, Any], race: dict[str, Any]) -> dict[str, int] | None:
+    """The finish band from the goal engine, or None. Run without the plan, so the B-race assessment never
+    becomes the plan's latest one (which the A-race Goal pill reads)."""
+    from services import goal_service
+
+    try:
+        out = goal_service.run(
+            user=user,
+            race_name=race.get("course_ref") or race["race_name"],
+            distance_km=race["distance_km"],
+            elevation_gain_m=race.get("elevation_gain_m"),
+            race_date=str(race["race_date"]),
+            plan=None,
+            trigger="b_race",
+        )
+        goals = out.get("goals") or {}
+        return {"low_sec": int(goals["a"] * 60), "high_sec": int(goals["c"] * 60)}
+    except Exception:
+        logger.warning("b-race prediction failed", exc_info=True)
+        return None
+
+
+def evaluate(
+    user: dict[str, Any],
+    plan: dict[str, Any],
+    data: dict[str, Any],
+    race_id: int | None = None,
+    predict: bool = False,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """Resolve, assess and (when asked) predict one race against the plan. The live assess skips the
+    prediction: it can reach the model and runs on every change of distance or effort."""
+    race = resolve_input(data)
+    facts = facts_for_plan(user["id"], plan, exclude_race_id=race_id, today=today)
+    verdict = assess(_row_race(race), facts)
+    out = asdict(verdict)
+    out["cost"] = None
+    return {"race": race, "verdict": out, "predicted": predict_band(user, race) if predict else None}
