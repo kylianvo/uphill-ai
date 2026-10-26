@@ -202,3 +202,67 @@ def current_text(stored: dict[str, Any] | None, verdict: dict[str, Any], race: d
     if stored and stored.get("hash") == _hash(opinion_facts(verdict, race), lang):
         return stored["text"]
     return fallback_opinion(verdict, race, lang)
+
+
+_VS = {
+    "inside": ("Right inside the predicted range: your goal-race fitness is on track.",
+               "Nằm đúng trong khoảng dự đoán: thể lực cho race mục tiêu đang đúng hướng."),
+    "faster": ("Faster than predicted: a good sign for your goal race.",
+               "Nhanh hơn dự đoán: dấu hiệu tốt cho race mục tiêu."),
+    "slower": ("Slower than predicted. Treat it as information, not a verdict.",
+               "Chậm hơn dự đoán. Hãy xem đây là thông tin, không phải kết luận."),
+}  # fmt: skip
+_ANSWERS = {
+    ("fuel", "plan"): ("Your fuel worked: keep exactly that plan for race day.",
+                       "Dinh dưỡng đã ổn: giữ nguyên kế hoạch đó cho ngày race."),
+    ("fuel", "stomach"): ("Your stomach struggled: try smaller, more frequent doses or a different gel on your next long runs.",
+                          "Bụng bị khó chịu: thử chia nhỏ liều, dùng thường xuyên hơn hoặc đổi loại gel ở các buổi chạy dài tới."),
+    ("fuel", "skipped"): ("You skipped some fuel: set a timer so it happens on race day.",
+                          "Bạn đã bỏ lỡ vài lần nạp: hãy đặt hẹn giờ để ngày race không bị sót."),
+    ("pacing", "even"): ("Even pacing: keep that patience.", "Nhịp độ đều: hãy giữ sự kiên nhẫn đó."),
+    ("pacing", "fast_start"): ("You went out too fast: on race day, hold back on the first climb.",
+                               "Bạn xuất phát quá nhanh: ngày race, hãy kìm lại ở con dốc đầu tiên."),
+    ("pacing", "held_back"): ("You held back: there may be more in the tank than you think.",
+                              "Bạn đã chạy dè dặt: có thể bạn còn nhiều sức hơn mình nghĩ."),
+    ("gear", "ok"): ("Gear is settled.", "Trang bị đã ổn."),
+    ("gear", "change"): ("Sort out the gear you want to change before your next long run.",
+                         "Hãy xử lý món trang bị cần đổi trước buổi chạy dài tới."),
+}  # fmt: skip
+
+
+def fallback_debrief(facts: dict[str, Any], lang: str) -> str:
+    vi = lang == "vi"
+    i = 1 if vi else 0
+    parts = []
+    if facts.get("result_time"):
+        parts.append(f"{facts['race_name']}: {facts['result_time']}.")
+    if facts.get("vs_prediction") in _VS:
+        parts.append(_VS[facts["vs_prediction"]][i])
+    for key in ("fuel", "pacing", "gear"):
+        if (key, (facts.get("answers") or {}).get(key)) in _ANSWERS:
+            parts.append(_ANSWERS[(key, facts["answers"][key])][i])
+    rec = facts["recovery_days"]
+    parts.append(
+        f"Chạy nhẹ {rec} ngày trước khi các buổi nặng quay lại."
+        if vi
+        else f"Take {rec} easy days before hard sessions return."
+    )
+    return " ".join(parts)
+
+
+def grounded_debrief(text: str, facts: dict[str, Any]) -> bool:
+    return len(text) <= MAX_CHARS and grounded(text, facts)
+
+
+async def debrief_text(facts: dict[str, Any], lang: str, api_key: str | None) -> dict[str, Any]:
+    """{"text", "source"}. Never raises."""
+    key = claude_llm.key_for(settings.COACH_NUDGE_LLM_PROVIDER, api_key)
+    if key:
+        try:
+            with observability.trace("b_race_debrief", feature="b_race"):
+                text = await _model_text("b_race_debrief", DEBRIEF_PROMPT, facts, lang, key)
+            if text and grounded_debrief(text, facts):
+                return {"text": text, "source": "model"}
+        except Exception as ex:  # noqa: BLE001
+            _logger.warning(f"[BRace] debrief model failed: {type(ex).__name__}: {ex}")
+    return {"text": fallback_debrief(facts, lang), "source": "rules"}

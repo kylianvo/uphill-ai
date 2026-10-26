@@ -2786,6 +2786,48 @@ async def cancel_b_race(plan_id: int, race_id: int, user: dict[str, Any] = Depen
     return {"race": race, "rebuild_job_ids": jobs}
 
 
+class BRaceResult(BaseModel):
+    finish_time_sec: int = Field(gt=0, le=200000)
+
+
+class BRaceDebrief(BaseModel):
+    fuel: Literal["plan", "stomach", "skipped"] | None = None
+    pacing: Literal["even", "fast_start", "held_back"] | None = None
+    gear: Literal["ok", "change"] | None = None
+    note: str | None = Field(default=None, max_length=1000)
+
+
+def _owned_b_race(plan_id: int, race_id: int, user_id: int) -> tuple[dict[str, Any], dict[str, Any]]:
+    plan = _owned_race_plan(plan_id, user_id)
+    race = db.get_plan_race(plan_id, race_id)
+    if not race or race["status"] == "cancelled":
+        raise HTTPException(status_code=404, detail="not_found")
+    return plan, race
+
+
+@app.post("/api/plans/{plan_id}/races/{race_id}/result")
+def b_race_result(plan_id: int, race_id: int, request: BRaceResult, user: dict[str, Any] = Depends(get_current_user)):
+    _plan, race = _owned_b_race(plan_id, race_id, user["id"])
+    b_race.record_result(user["id"], race, request.finish_time_sec)
+    return {"race": db.get_plan_race(plan_id, race_id)}
+
+
+@app.post("/api/plans/{plan_id}/races/{race_id}/debrief")
+async def b_race_debrief(
+    plan_id: int, race_id: int, request: BRaceDebrief, user: dict[str, Any] = Depends(get_current_user)
+):
+    from services import b_race_words
+
+    plan, race = _owned_b_race(plan_id, race_id, user["id"])
+    answers = request.model_dump(exclude_none=True)
+    facts = b_race.debrief_facts(race, answers)
+    lang = "vi" if user.get("lang") == "vi" else "en"
+    words = await b_race_words.debrief_text(facts, lang, user.get("gemini_api_key"))
+    debrief = {**(race.get("debrief") or {}), "answers": answers, "facts": facts, **words, "lang": lang}
+    db.update_plan_race(race_id, {"debrief": debrief})
+    return {"debrief": debrief, "goal": {"suggested_target_hours": b_race.suggested_target_hours(user, plan)}}
+
+
 @app.get("/api/coach/block-completion/{plan_id}")
 def get_plan_block_completion(plan_id: int, user: dict[str, Any] = Depends(get_current_user)):
     """Return completion % for each 2-week block generated so far."""

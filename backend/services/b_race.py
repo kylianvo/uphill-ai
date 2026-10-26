@@ -191,6 +191,8 @@ def is_race_plan(plan: dict[str, Any]) -> bool:
 
 
 def _date(v: Any) -> date:
+    if isinstance(v, datetime):
+        return v.date()
     return v if isinstance(v, date) else date.fromisoformat(str(v)[:10])
 
 
@@ -682,3 +684,117 @@ def affected_weeks(race: dict[str, Any], plan_monday: date) -> set[int]:
 
 def generated_weeks(workouts: list[dict[str, Any]]) -> set[int]:
     return {int(w["week_number"]) for w in workouts if w.get("week_number")}
+
+
+# ─── After the race: result and debrief ──────────────────────────────────────
+
+RESULT_DISTANCE_TOLERANCE = 0.15
+RESULT_DAY_TOLERANCE = 1
+FUEL = ("plan", "stomach", "skipped")
+PACING = ("even", "fast_start", "held_back")
+GEAR = ("ok", "change")
+
+
+def match_result(race: dict[str, Any], activities: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The synced run that is the race: on race day (±1), within 15% of its distance; closest distance wins.
+    A shakeout or a warm-up on race day is never taken for the race."""
+    rdate, km = _date(race["race_date"]), float(race["distance_km"])
+    near = [
+        a
+        for a in activities
+        if a.get("distance_km")
+        and a.get("start_time")
+        and abs((_date(a["start_time"]) - rdate).days) <= RESULT_DAY_TOLERANCE
+        and abs(float(a["distance_km"]) - km) / km <= RESULT_DISTANCE_TOLERANCE
+    ]
+    return min(near, key=lambda a: abs(float(a["distance_km"]) - km), default=None)
+
+
+def record_result(user_id: int, race: dict[str, Any], seconds: int, activity_id: int | None = None) -> None:
+    """Marks the race done with its time. The first result also goes to race history (it feeds the goal
+    estimate); a correction only updates the time."""
+    import db
+    from services import race_history
+
+    debrief = dict(race.get("debrief") or {})
+    if not debrief.get("race_result_id"):
+        entry = race_history.create_manual(
+            user_id,
+            {
+                "discipline": "trail" if (race.get("elevation_gain_m") or 0) > 0 else "road",
+                "race_name": race["race_name"],
+                "race_date": _date(race["race_date"]).isoformat(),
+                "distance_km": float(race["distance_km"]),
+                "elevation_gain_m": race.get("elevation_gain_m"),
+                "finish_time_sec": int(seconds),
+                "is_dnf": False,
+                "rank_overall": None,
+                "total_overall": None,
+            },
+        )
+        debrief["race_result_id"] = entry.get("id")
+    fields: dict[str, Any] = {"status": "done", "result_seconds": int(seconds), "debrief": debrief}
+    if activity_id:
+        fields["activity_id"] = activity_id
+    db.update_plan_race(race["id"], fields)
+
+
+def safe_refresh_results(user_id: int) -> None:
+    """Links synced runs to past planned B-races of the active plan. Never fails the sync it rides on."""
+    import db
+
+    try:
+        plan = db.get_active_plan(user_id)
+        if not plan or not is_race_plan(plan):
+            return
+        today = current_date()
+        due = [r for r in db.get_plan_races(plan["id"]) if r["status"] == "planned" and _date(r["race_date"]) <= today]
+        if not due:
+            return
+        since = min(_date(r["race_date"]) for r in due) - timedelta(days=RESULT_DAY_TOLERANCE)
+        activities = db.get_run_activities_since(user_id, since)
+        for race in due:
+            if hit := match_result(race, activities):
+                record_result(user_id, race, int(hit["duration_seconds"]), activity_id=hit["id"])
+    except Exception:
+        logger.warning("b-race result refresh failed", exc_info=True, extra={"fields": {"user_id": user_id}})
+
+
+def _hms(seconds: int) -> str:
+    return f"{seconds // 3600}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}"
+
+
+def debrief_facts(race: dict[str, Any], answers: dict[str, Any]) -> dict[str, Any]:
+    secs = race.get("result_seconds")
+    band = race.get("predicted") or {}
+    vs = "unknown"
+    if secs and band.get("low_sec") and band.get("high_sec"):
+        vs = "faster" if secs < band["low_sec"] else "slower" if secs > band["high_sec"] else "inside"
+    _taper, rec = _race_shape(race)
+    return {
+        "race_name": race["race_name"],
+        "distance_km": race["distance_km"],
+        "result_time": _hms(int(secs)) if secs else None,
+        "predicted_range": [_hms(band["low_sec"]), _hms(band["high_sec"])] if vs != "unknown" else None,
+        "vs_prediction": vs,
+        "answers": {k: answers.get(k) for k in ("fuel", "pacing", "gear", "note") if answers.get(k)},
+        "recovery_days": rec,
+    }
+
+
+def suggested_target_hours(user: dict[str, Any], plan: dict[str, Any]) -> float | None:
+    """The goal engine re-run with the new result. A changed time target is only suggested: the Goal flow
+    asks the runner to confirm it, exactly as for any other re-assessment."""
+    from services import goal_service
+
+    if plan.get("goal_type") != "time" or not plan.get("target_time_hours"):
+        return None
+    try:
+        b = (goal_service.run_for_plan(user, plan, trigger="b_race_result").get("goals") or {}).get("b")
+    except Exception:
+        logger.warning("b-race goal re-assessment failed", exc_info=True)
+        return None
+    if not b:
+        return None
+    hours = round(b / 60, 2)
+    return hours if abs(hours - float(plan["target_time_hours"])) / float(plan["target_time_hours"]) >= 0.01 else None
