@@ -47,3 +47,8 @@ def test_no_races_no_issues():
 def test_race_week_is_not_asked_for_a_long_run_or_quality():
     ws = [w(5, d) for d in ("Tuesday", "Wednesday", "Friday")] + [w(5, "Sunday", "Race", 195, plan_race_id=9)]
     assert not codes(ws) & {"LONG_RUN_DAY", "QUALITY_COUNT", "LONG_SHARE", "WEEKDAY_SHORT", "DAYS_SHORT"}
+
+
+def test_recovery_reaching_the_a_taper_is_not_flagged():
+    taper_row = {**w(6, "Tuesday", "Interval", 60, target_zone="Zone 4"), "phase": "Taper"}
+    assert "B_RACE_RECOVERY_HARD" not in codes([taper_row])

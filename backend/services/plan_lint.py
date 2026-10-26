@@ -686,6 +686,8 @@ def _b_race_issues(workouts: list[dict[str, Any]], weeks: set[int], races: list[
     found: list[Issue] = []
     rows: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
     for w in _active(workouts):
+        if w.get("phase") in ("Taper", "Race Week") and w.get("type") != "Race":
+            continue  # the A-race taper is never reshaped for a B-race (services/b_race.enforce)
         rows.setdefault((w.get("week_number"), w.get("day_of_week")), []).append(w)
     for race in races:
         if race["week"] in weeks and not any(

@@ -473,8 +473,6 @@ def enforce(
             continue
         shaped.append((race, rdate, *_race_shape(race)))
         phase = next((w.get("phase") for w in out if w.get("week_number") == week and w.get("phase")), None)
-        if phase in _A_RACE_PHASES:
-            continue
         out = [
             w
             for w in out
@@ -510,6 +508,8 @@ def enforce(
                     "plan_race_id": race["id"],
                 }
             )
+        if phase in _A_RACE_PHASES:
+            continue  # inside the A-race taper the race only takes its own day; nothing else moves
         for w in out:  # the race replaces the week's long run
             if w.get("week_number") == week and w.get("type") == "Long Run":
                 _rest(w, lang)

@@ -95,3 +95,11 @@ def test_cost_lists_long_run_lost_and_peak_minutes():
 def test_prompt_block_names_fixed_days():
     text = b_race.prompt_block([RACE], MON)
     assert "Week 5 Sunday: Ta Xua 25K" in text and "Thu" in text
+
+
+def test_race_inside_the_a_taper_takes_only_its_own_day():
+    late = {**RACE, "race_date": "2026-12-02", "effort": "training", "kept_against": "not_recommended"}
+    ws = week(10, "Taper")  # Wednesday of week 10
+    out = b_race.enforce(copy.deepcopy(ws), [late], MON)
+    assert [x["type"] for x in day(out, 10, "Wednesday")] == ["Race"]
+    assert [x for x in out if x["day_of_week"] != "Wednesday"] == [x for x in ws if x["day_of_week"] != "Wednesday"]
