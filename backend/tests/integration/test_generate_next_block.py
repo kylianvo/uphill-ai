@@ -541,13 +541,16 @@ class TestGenerateNextBlockPlanSupport:
         plan_id = readiness._plan(client, auth_headers["headers"], distance_km=104.2)
         brief_mock = AsyncMock(return_value=None)
 
+        def next_block_calls():  # plan creation briefs week 1 too (R-N5); this test is about the new block's brief
+            return [c for c in brief_mock.call_args_list if c.kwargs["week_number"] != 1]
+
         with patch("main.generate_week_brief", new=brief_mock):
             readiness._block_context(client, auth_headers["headers"], plan_id)
             for _ in range(60):
-                if brief_mock.await_count:
+                if next_block_calls():
                     break
                 time.sleep(0.05)
 
-        assert brief_mock.await_count == 1
-        log = " ".join(brief_mock.call_args.kwargs["decision_log"])
+        assert len(next_block_calls()) == 1
+        log = " ".join(next_block_calls()[0].kwargs["decision_log"])
         assert "The goal times assume" in log and "improvement from structured training" in log
