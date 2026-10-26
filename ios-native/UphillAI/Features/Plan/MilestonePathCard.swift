@@ -9,7 +9,7 @@ struct MilestonePathCard: View {
     var body: some View {
         if let milestones = model.beginnerMilestones {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Your path".uppercased())
+                Text(L("Your path").uppercased())
                     .font(UH.TextStyle.eyebrow).tracking(0.5).foregroundStyle(UH.Palette.secondary)
                 Text(verbatim: model.beginnerHeaderText ?? milestones.targetTitle)
                     .font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink).lineLimit(2).minimumScaleFactor(0.8)

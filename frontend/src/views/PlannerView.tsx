@@ -318,6 +318,18 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCoachActingAsAthlete, API_BASE_URL]);
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
+  // The beginner's path to First 5K / 10K: the carousel's goal slot (v2 shell) and under the plan header (v1).
+  const milestonePath = activePlan?.beginner_milestones ? (
+    <MilestonePath
+      milestones={activePlan.beginner_milestones}
+      lang={lang}
+      planId={activePlan.id}
+      weeksToEvent={activePlan.beginner_milestones.has_event ? Math.max(0, Math.ceil(((daysToRace(activePlan.race_date) ?? 0)) / 7)) : null}
+      onMark={markMilestone}
+      onUndo={undoMilestone}
+      onUpgrade={() => upgradeMilestoneTarget(activePlan.beginner_milestones.has_event ? window.confirm(lang === "en" ? "Clear your event so the plan can extend to a 10K? Cancel keeps the event." : "Xóa sự kiện để plan kéo dài tới 10K? Chọn Hủy để giữ sự kiện.") : false)}
+    />
+  ) : undefined;
 
   // Automatically select the calendar-derived current week when an active plan loads or changes
   const lastAutoSelectedPlanIdRef = useRef<number | null>(null);
@@ -1547,17 +1559,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   maxGeneratedWeek={maxGeneratedWeek}
                   distanceKm={getPlanDistance(activePlan) || 0}
                   elevationM={getPlanElevation(activePlan) || 0}
-                  milestoneContent={activePlan.beginner_milestones ? (
-                    <MilestonePath
-                      milestones={activePlan.beginner_milestones}
-                      lang={lang}
-                      planId={activePlan.id}
-                      weeksToEvent={activePlan.beginner_milestones.has_event ? Math.max(0, Math.ceil(((daysToRace(activePlan.race_date) ?? 0)) / 7)) : null}
-                      onMark={markMilestone}
-                      onUndo={undoMilestone}
-                      onUpgrade={() => upgradeMilestoneTarget(activePlan.beginner_milestones.has_event ? window.confirm(lang === "en" ? "Clear your event so the plan can extend to a 10K? Cancel keeps the event." : "Xóa sự kiện để plan kéo dài tới 10K? Chọn Hủy để giữ sự kiện.") : false)}
-                    />
-                  ) : undefined}
+                  milestoneContent={milestonePath}
                   goalPill={activePlan.id && activePlan.course_distance_km > 0 ? (
                     <GoalPill
                       planId={activePlan.id}
@@ -1681,6 +1683,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     </span>
                   )}
                 </h3>
+                {!milestonePath && (
                 <p style={{ color: "var(--text-secondary)", fontSize: "12px", marginTop: "2px", fontWeight: "500" }}>
                   {(() => {
                     const goal = activePlan.goal_type || "";
@@ -1699,6 +1702,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                         : activePlan.goal_type.toUpperCase().replace("_", " ")}
                   {activePlan.target_time_hours ? ` (${formatTargetTimeHours(activePlan.target_time_hours)})` : ""}
                 </p>
+                )}
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-start" }}>
                   <CoachNoteThread
                     athleteId={actingAsAthleteId ?? (user?.id ?? null)}
@@ -1716,6 +1720,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     />
                   )}
                 </div>
+                {milestonePath && <div style={{ marginTop: "12px", maxWidth: "520px" }}>{milestonePath}</div>}
               </div>
 
               <div style={{ display: "flex", background: "rgba(0,0,0,0.05)", border: "1px solid var(--border-color)", borderRadius: "999px", padding: "3px", gap: "2px", alignSelf: "flex-start" }}>

@@ -388,21 +388,6 @@ def init_db():
 
         conn.execute(
             text("""
-        CREATE TABLE IF NOT EXISTS plan_milestones (
-            plan_id       INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
-            milestone_key TEXT NOT NULL,
-            achieved_at   TIMESTAMPTZ,  -- NULL when source = 'revoked'
-            source        TEXT NOT NULL,  -- 'auto' | 'manual' | 'baseline' | 'revoked'
-            activity_id   INTEGER REFERENCES activities(id) ON DELETE SET NULL,
-            workout_id    INTEGER REFERENCES workouts(id) ON DELETE SET NULL,
-            created_at    TIMESTAMPTZ DEFAULT NOW(),
-            PRIMARY KEY (plan_id, milestone_key)
-        )
-        """)
-        )
-
-        conn.execute(
-            text("""
         CREATE TABLE IF NOT EXISTS coach_nudges (
             plan_id     INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
             day         DATE NOT NULL,
@@ -475,6 +460,21 @@ def init_db():
             anaerobic_te          REAL,
             duplicate_of          INTEGER REFERENCES activities(id) ON DELETE SET NULL,
             created_at            TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS plan_milestones (
+            plan_id       INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            milestone_key TEXT NOT NULL,
+            achieved_at   TIMESTAMPTZ,  -- NULL when source = 'revoked'
+            source        TEXT NOT NULL,  -- 'auto' | 'manual' | 'baseline' | 'revoked'
+            activity_id   INTEGER REFERENCES activities(id) ON DELETE SET NULL,
+            workout_id    INTEGER REFERENCES workouts(id) ON DELETE SET NULL,
+            created_at    TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (plan_id, milestone_key)
         )
         """)
         )

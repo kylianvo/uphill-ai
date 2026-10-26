@@ -34,12 +34,10 @@ struct SummaryCarousel: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: UH.Space.compact) {
+                // A beginner's path is the first thing they see: it is their goal.
+                if model.beginnerMilestones != nil { MilestonePathCard(model: model) }
                 weekCard
-                if model.beginnerMilestones != nil {
-                    MilestonePathCard(model: model)
-                } else if let progress = model.goalProgress {
-                    goalProgressCard(progress)
-                }
+                if model.beginnerMilestones == nil, let progress = model.goalProgress { goalProgressCard(progress) }
             }
             .scrollTargetLayout()
             .padding(.horizontal, UH.Space.regular)

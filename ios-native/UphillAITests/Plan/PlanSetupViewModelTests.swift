@@ -34,6 +34,16 @@ struct PlanSetupViewModelTests {
         #expect(model.steps == [.goal, .details, .daysSinceRace, .recoveryFeel, .watch, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
     }
 
+    @Test func startRunningDropsTheGenericWeeklyKmButKeepsATypedOne() {
+        let (fresh, _, _, _) = make(.onboarding)
+        fresh.selectGoal(.startRunning)
+        #expect(fresh.draft.currentWeeklyKm == 0)
+        let (typed, _, _, _) = make(.onboarding)
+        typed.setWeeklyKm(12)
+        typed.selectGoal(.startRunning)
+        #expect(typed.draft.currentWeeklyKm == 12)
+    }
+
     @Test func revisitingSetupKeepsAnEditedCourse() async {
         let (model, _, _, _) = make(.newPlan)
         model.selectGoal(.race)

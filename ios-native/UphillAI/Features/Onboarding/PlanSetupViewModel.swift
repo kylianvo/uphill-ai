@@ -230,6 +230,8 @@ final class PlanSetupViewModel {
     func selectGoal(_ goal: SetupGoal) {
         draft.goal = goal
         if goal.isEvent, draft.raceDate == nil { draft.raceDate = earliestRaceDate }
+        // A new runner does not start from the generic 30 km default; a typed or watch value stays.
+        if goal == .startRunning, !editedWeeklyKm, !draft.weeklyKmFromWatch { draft.currentWeeklyKm = 0 }
         next()
     }
 
