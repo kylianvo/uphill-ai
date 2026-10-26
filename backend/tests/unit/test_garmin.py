@@ -369,3 +369,18 @@ def test_ingest_stores_recovery_and_derives_hrv_status_from_the_baseline(monkeyp
     from datetime import date
 
     assert refreshed == [(42, [date(2026, 10, 24)], "garmin")]
+
+
+def test_allowlist_limits_garmin_to_listed_accounts(monkeypatch):
+    monkeypatch.setattr(settings, "GARMIN_ALLOWED_EMAILS", ["me@uphill-ai.io.vn"])
+    monkeypatch.setitem(app.dependency_overrides, integrations.get_current_user, lambda: {"id": 42, "email": "x@y.z"})
+    monkeypatch.setattr(integrations.db, "get_connection", lambda u, p: None)
+    monkeypatch.setattr(integrations.db, "get_user_by_id", lambda u: {})
+    assert client.get("/api/integrations/garmin/connect", params={"ai_consent": "true"}).status_code == 404
+    assert client.get("/api/integrations/status").json()["garmin"]["enabled"] is False
+
+    monkeypatch.setitem(
+        app.dependency_overrides, integrations.get_current_user, lambda: {"id": 42, "email": "Me@Uphill-AI.io.vn"}
+    )
+    assert client.get("/api/integrations/garmin/connect", params={"ai_consent": "true"}).status_code == 200
+    assert client.get("/api/integrations/status").json()["garmin"]["enabled"] is True
