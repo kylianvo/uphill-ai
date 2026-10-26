@@ -29,7 +29,7 @@ struct BRaceSuggestion: Codable, Sendable, Equatable {
 }
 
 struct BRaceVerdict: Codable, Sendable, Equatable {
-    struct Change: Codable, Sendable, Equatable {
+    struct Change: Codable, Sendable, Hashable {
         let week: Int
         let day: String
         let titleBefore: String
@@ -131,4 +131,53 @@ struct BRaceDebriefResult: Decodable, Sendable, Equatable {
 extension Int {
     /// 11460 → "3:11:00"
     var raceTime: String { String(format: "%d:%02d:%02d", self / 3600, self % 3600 / 60, self % 60) }
+}
+
+/// One row of the Next races card: a B-race, or the plan's A-race (`isGoal`).
+struct NextRace: Identifiable, Equatable {
+    let id: String
+    let name: String
+    let date: Date
+    let race: BRace?
+
+    var isGoal: Bool { race == nil }
+}
+
+/// The buttons the add sheet offers for a verdict: the safer option first whenever the race isn't a good test.
+struct BRaceChoice: Equatable {
+    struct Option: Equatable {
+        let label: String
+        let input: BRaceInput
+        var isWarning = false
+    }
+    let primary: Option
+    let secondary: Option?
+
+    static func options(for verdict: BRaceVerdict, input: BRaceInput) -> BRaceChoice {
+        let km = (input.distanceKm ?? 0).formatted(.number.precision(.fractionLength(0...1)))
+        switch verdict.level {
+        case .good:
+            return BRaceChoice(primary: Option(label: L("Add race"), input: input), secondary: nil)
+        case .notRecommended:
+            var training = input
+            training.effort = .training
+            return BRaceChoice(primary: Option(label: L("Add as a training run"), input: training), secondary: nil)
+        case .conditions, .risky:
+            let keep = Option(label: L("Keep %@ km anyway", km), input: input, isWarning: verdict.level == .risky)
+            guard let s = verdict.suggestion else { return BRaceChoice(primary: keep, secondary: nil) }
+            var safer = input
+            safer.distanceKm = s.distanceKm
+            safer.effort = s.effort
+            if let gain = input.elevationGainM, let d = input.distanceKm, d > 0 { safer.elevationGainM = (gain * s.distanceKm / d).rounded() }
+            return BRaceChoice(primary: Option(label: L("Add it as %@", s.label), input: safer), secondary: keep)
+        }
+    }
+}
+
+/// A tune-up race typed during plan setup (sent as `b_races`).
+struct SetupBRace: Identifiable, Equatable, Sendable {
+    var id = UUID()
+    var name: String
+    var date: Date
+    var distanceKm: Double?
 }

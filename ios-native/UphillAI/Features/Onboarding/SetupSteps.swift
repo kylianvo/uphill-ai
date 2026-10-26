@@ -68,6 +68,8 @@ struct SetupSteps: View {
                 }
                 .trainingCard()
 
+                if model.draft.goal == .race { otherRaces }
+
             case .raceGoal:
                 raceGoal
             case .beginnerGoal:
@@ -192,6 +194,50 @@ struct SetupSteps: View {
             model.draft.terrain = terrain
             model.selectGoal(goal)
         }.accessibilityIdentifier(goal == .race ? "goal.race.\(terrain.rawValue)" : "goal.\(goal.rawValue)")
+    }
+
+    // MARK: Other races (B-races)
+
+    @ViewBuilder private var otherRaces: some View {
+        VStack(alignment: .leading, spacing: UH.Space.compact) {
+            Text("Other races before your goal (optional)").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+            Text("Coach Uphill checks each one and plans the taper and recovery around it.")
+                .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+            ForEach($model.draft.bRaces) { $race in
+                VStack(spacing: 6) {
+                    HStack {
+                        TextField("Race", text: $race.name).textInputAutocapitalization(.words)
+                        Button {
+                            model.draft.bRaces.removeAll { $0.id == race.id }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(UH.Palette.secondary)
+                        }
+                        .frame(minWidth: 44, minHeight: 44)
+                        .accessibilityLabel(Text("Remove"))
+                    }
+                    HStack {
+                        DatePicker("Date", selection: $race.date, in: model.earliestRaceDate..., displayedComponents: .date).labelsHidden()
+                        Spacer()
+                        TextField("km", value: $race.distanceKm, format: .number).keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing).frame(maxWidth: 70)
+                        Text("km").foregroundStyle(UH.Palette.secondary)
+                    }
+                }
+                .padding(UH.Space.small)
+                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+            }
+            if model.draft.bRaces.count < 3 {
+                Button("+ Add a tune-up race") {
+                    model.draft.bRaces.append(SetupBRace(name: "", date: model.draft.raceDate.flatMap {
+                        Calendar.current.date(byAdding: .day, value: -42, to: $0)
+                    }.map { max($0, model.earliestRaceDate) } ?? model.earliestRaceDate, distanceKm: nil))
+                }
+                .font(UH.TextStyle.label).foregroundStyle(UH.Palette.accentInk)
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("setup.addBRace")
+            }
+        }
+        .trainingCard()
     }
 
     // MARK: Beginner goal
