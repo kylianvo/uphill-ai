@@ -310,3 +310,130 @@ def test_me_first_weeks_rules():
     assert ultra_rules.me_first_weeks(16, legs_loaded=False) == frozenset()  # long plans: ME block in Base
     assert ultra_rules.me_first_weeks(13, legs_loaded=True) == frozenset()  # climbing already loads the legs
     assert ultra_rules.legs_loaded(1600) and not ultra_rules.legs_loaded(None)
+
+
+# Plan 131 (prod, 2026-10-26): 7 days a week, Tuesday doubles, a Saturday mountain day, 49 km/week. The model's
+# week 2 had eight runs, seven of them at the 60-min weekday minimum: about 600 min against about 300 the athlete
+# runs, which the start-load cap could not touch because it only shortens runs and never below that minimum.
+PLAN_131_WEEK_1 = [
+    ("Thursday", "Muscular Endurance", 55, "morning"),
+    ("Thursday", "Easy", 45, "afternoon"),
+    ("Friday", "Easy", 55, "main"),
+    ("Saturday", "Easy", 80, "main"),
+    ("Sunday", "Long Run", 119, "main"),
+]
+PLAN_131_WEEK_2 = [
+    ("Monday", "Muscular Endurance", 70, "morning"),
+    ("Monday", "Easy", 60, "afternoon"),
+    ("Tuesday", "Easy", 60, "morning"),
+    ("Tuesday", "Easy", 60, "afternoon"),
+    ("Wednesday", "Muscular Endurance", 70, "morning"),
+    ("Wednesday", "Easy", 60, "afternoon"),
+    ("Thursday", "Easy", 60, "main"),
+    ("Friday", "Easy", 60, "main"),
+    ("Saturday", "Long Run", 179, "main"),
+    ("Sunday", "Easy", 60, "main"),
+]
+ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def _rows(week, spec):
+    return [
+        {"week_number": week, "day_of_week": d, "type": t, "title": f"{t} {d} {s}", "description": "Run",
+         "duration_minutes": m, "session_slot": s, "phase": "Base"}
+        for d, t, m, s in spec
+    ]  # fmt: skip
+
+
+def _plan_131_week_2(monkeypatch, week_no=2, prior=None):
+    """Week 2 as Claude (the prod plan model) wrote it, run through the real post-processing; `week_no` and `prior`
+    replay the same model week later in the plan."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock, patch
+
+    monkeypatch.setattr(settings, "PLAN_LINT_ENABLED", False)
+    monkeypatch.setattr(settings, "PLAN_LLM_PROVIDER", "claude")
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "anthropic-key")
+    prior = prior if prior is not None else _rows(1, PLAN_131_WEEK_1)
+    monkeypatch.setattr(plan_generator, "get_plan_workouts", lambda plan_id: prior)
+    monkeypatch.setattr("services.kb_retrieval._client", lambda: None)
+    reply = SimpleNamespace(
+        content=[SimpleNamespace(type="text", text=json.dumps(_rows(week_no, PLAN_131_WEEK_2)))],
+        stop_reason="end_turn",
+        usage=SimpleNamespace(input_tokens=1000, output_tokens=200),
+    )
+    stream = MagicMock()
+    stream.__enter__.return_value.get_final_message.return_value = reply
+    client = MagicMock()
+    client.messages.stream.return_value = stream
+    race_info = {
+        "name": "Vietnam Highlands Trail by UTMB",
+        "date": "2027-01-09",
+        "plan_start_date": "2026-10-22",
+        "terrain": "trail",
+        "course_distance_km": 104.2,
+        "course_elevation_gain_m": 5533,
+        "goal_type": "time",
+        "target_time_hours": 15.75,
+        "preferred_days": ALL_DAYS,
+        "long_run_day": "Saturday",
+        "days_per_week": 7,
+        "double_session_days": json.dumps(["Tuesday"]),
+        "mountain_days": json.dumps(["Saturday"]),
+        "training_mountain": "chau_thoi",
+        "mountain_min_minutes": 180,
+        "athlete_tier": "recreational",
+    }
+    user = {"max_hr": 185, "resting_hr": 53, "zone2_pace_min": "6:23", "zone2_pace_max": "5:13",
+            "current_weekly_km": 49.0}  # fmt: skip
+    with patch("anthropic.Anthropic", return_value=client):
+        wos, tier = asyncio.run(
+            PlanGenerator.generate_plan_workouts(
+                plan_id=131,
+                user_profile=user,
+                race_info=race_info,
+                total_weeks=13,
+                api_key="test-key",
+                cutoff_time_hours=29,
+                block_number=week_no,
+                weeks_per_block=1,
+            )
+        )
+    assert client.messages.stream.called  # the model's week, not the rule-based fallback
+    recent = 49.0 * PlanGenerator.flat_zone2_pace(user, "time", tier)
+    return [w for w in wos if w["week_number"] == week_no], recent
+
+
+def test_week_2_held_at_current_load_by_dropping_extra_runs(monkeypatch):
+    week, recent = _plan_131_week_2(monkeypatch)
+    runs = [w for w in week if w["type"] not in ("Rest", "Muscular Endurance", "Strength")]
+    run_days = {w["day_of_week"] for w in runs}
+    # R-U2: the first two weeks at current load, down to four run days (the mountain long run stays whole)
+    assert len(run_days) == 4 and len(runs) == 4
+    assert plan_lint.week_minutes(week) <= 180 + 3 * 60  # was 600: eight runs, seven at the 60-min weekday minimum
+    assert [w["duration_minutes"] >= 179 for w in week if w["type"] == "Long Run"] == [True]  # the mountain day stays
+    assert sum(w["type"] == "Muscular Endurance" for w in week) == 2  # ME is not volume (R-G1)
+    assert all(w["duration_minutes"] >= 60 for w in runs if w["day_of_week"] not in ("Saturday", "Sunday"))
+    tuesday = [w for w in runs if w["day_of_week"] == "Tuesday"]
+    assert len(tuesday) <= 1  # the double's second run goes first
+
+
+def test_week_held_at_current_load_is_not_days_short(monkeypatch):
+    from services.athlete_tier import get_profile
+
+    week, recent = _plan_131_week_2(monkeypatch)
+    rows = _rows(1, PLAN_131_WEEK_1) + week
+    prefs = dict(long_run_day="Saturday", days_per_week=7, mountain_day=True, total_weeks=13)
+    codes = {i.code for i in plan_lint.lint_weeks(rows, {2}, get_profile("recreational"), plan_lint.Prefs(**prefs))}
+    assert "DAYS_SHORT" in codes  # without the athlete's load the lint can't tell why the week is short
+    held = plan_lint.Prefs(**prefs, start_load_minutes=recent)
+    assert "DAYS_SHORT" not in {i.code for i in plan_lint.lint_weeks(rows, {2}, get_profile("recreational"), held)}
+
+
+def test_week_3_grows_by_the_tier_step_plus_the_ladder_step(monkeypatch):
+    week_2, _ = _plan_131_week_2(monkeypatch)
+    week_3, _ = _plan_131_week_2(monkeypatch, 3, _rows(1, PLAN_131_WEEK_1) + week_2)
+    long_2, long_3 = (max(w["duration_minutes"] for w in wk if w["type"] == "Long Run") for wk in (week_2, week_3))
+    # R-V2 on the week before, plus the long run's ladder step (R-U1: ladder steps are exempt)
+    assert plan_lint.week_minutes(week_3) <= plan_lint.week_minutes(week_2) * 1.10 + (long_3 - long_2) + 1
+    assert sum(w["type"] == "Muscular Endurance" for w in week_3) == 2

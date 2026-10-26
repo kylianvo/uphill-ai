@@ -269,6 +269,10 @@ VN_MOUNTAIN_NOTE_VI = (
 )
 
 
+_MIN_RUN_DAYS = 4  # run days a capped week keeps (fewer only when the athlete trains fewer)
+_DELOAD_FLOOR_MIN = 30  # an easy run in a deload week, as _ramp_volume cuts it
+
+
 class PlanGenerator:
     @staticmethod
     def parse_pace_to_decimal(pace_str: str) -> float:
@@ -1114,6 +1118,11 @@ class PlanGenerator:
                     block_context=block_context,
                     target_week=target_week,
                     flat_pace_min_km=PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), tier),
+                    start_load_minutes=recent_weekly_minutes(
+                        getattr(race_info.get("fitness_snapshot"), "weekly_km", None)
+                        or user_profile.get("current_weekly_km"),
+                        PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), tier),
+                    ),
                 )
             from services import fitness_snapshot, plan_signals
 
@@ -1157,6 +1166,7 @@ class PlanGenerator:
         cutoff_time_hours: float | None,
         target_week: int | None,
         flat_pace_min_km: float | None = None,
+        start_load_minutes: float | None = None,
     ) -> list[plan_lint.Issue]:
         """Structural problems in the drafted weeks, judged against the plan's earlier weeks and the
         tier's own caps; a new block (not an adapt) is also judged on the race-readiness path."""
@@ -1185,6 +1195,7 @@ class PlanGenerator:
             mountain_day=bool(venues.mountain_days),
             # same dose rule as the generator's ultra_gated: two Zone 3 sessions a week are for elites only
             quality_gated=get_profile(tier).key != "elite",
+            start_load_minutes=start_load_minutes,
             me_first_weeks=(
                 ultra_rules.me_first_weeks(
                     total_weeks,
@@ -1242,6 +1253,7 @@ class PlanGenerator:
         block_context: str | None,
         target_week: int | None,
         flat_pace_min_km: float | None = None,
+        start_load_minutes: float | None = None,
     ) -> tuple[list[dict[str, Any]], str]:
         """Lint the draft; when it breaks a rule, regenerate once with the problems spelled out and
         keep whichever draft has fewer. Never raises: a failure here must not lose a good draft."""
@@ -1252,6 +1264,7 @@ class PlanGenerator:
             cutoff_time_hours=cutoff_time_hours,
             target_week=target_week,
             flat_pace_min_km=flat_pace_min_km,
+            start_load_minutes=start_load_minutes,
         )
         try:
             issues = PlanGenerator._lint_issues(workouts, tier, **kwargs)
@@ -1668,32 +1681,106 @@ class PlanGenerator:
                         "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được.",
                     )
 
+        def _fit_week(wos: list[dict[str, Any]], rows: list[dict[str, Any]], limit: float, floor: float) -> None:
+            """Bring a week's run time down to `limit`: easy runs shorten to `floor` min, longest first; when every
+            one is at its floor and the week is still over (seven 60-min weekday runs for a 49 km runner), whole
+            runs go, a double's second run first, then a run on a day that keeps its ME, then the shortest. The
+            long run, ME and quality sessions stay, and so do at least _MIN_RUN_DAYS run days (or the athlete's own
+            fewer): a low-volume runner whose mountain long run fills the week keeps their days (R-V1: their choice)."""
+            excess = plan_lint.week_minutes(rows) - limit
+            easy = [
+                r
+                for r in rows
+                if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")
+                and float(r.get("duration_minutes") or 0) > floor
+                and not r.get("mountain_mode")
+            ]
+            for r in sorted(easy, key=lambda r: -float(r["duration_minutes"])):
+                if excess <= 0:
+                    break
+                cut = min(excess, float(r["duration_minutes"]) - floor)
+                new = int((float(r["duration_minutes"]) - cut) // 5 * 5)  # down: a cut rounded away is no cut
+                excess -= float(r["duration_minutes"]) - new
+                _resize(r, new)
+            runs_on = Counter(
+                r["day_of_week"] for r in rows if r.get("type") not in ("Rest", "Strength", "Muscular Endurance")
+            )
+            other_on = Counter(r["day_of_week"] for r in rows if r.get("type") in ("Strength", "Muscular Endurance"))
+            spare = [
+                r
+                for r in rows
+                if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery") and not r.get("mountain_mode")
+            ]
+            keep_days = min(int(days_per_week or 7), _MIN_RUN_DAYS)
+
+            def droppable(r: dict[str, Any]) -> bool:  # a double's second run always; a day's only run above the floor
+                return runs_on[r["day_of_week"]] > 1 or sum(1 for n in runs_on.values() if n) > keep_days
+
+            # shortcut: a run goes only when the week is over by at least half of it; a smaller overshoot stays
+            while (spare := [r for r in spare if droppable(r)]) and excess >= 0.5 * min(
+                float(r["duration_minutes"]) for r in spare
+            ):
+                drop = min(
+                    spare,
+                    key=lambda r: (
+                        runs_on[r["day_of_week"]] < 2,
+                        not other_on[r["day_of_week"]],
+                        float(r["duration_minutes"]),
+                    ),
+                )
+                spare.remove(drop)
+                excess -= float(drop["duration_minutes"])
+                runs_on[drop["day_of_week"]] -= 1
+                if runs_on[drop["day_of_week"]] or other_on[drop["day_of_week"]]:
+                    wos.remove(drop)  # the day keeps its other session
+                    rows.remove(drop)
+                else:
+                    _make_rest(drop)
+
         def _cap_start_load(wos: list[dict[str, Any]], weeks: tuple[int, ...] = (1,), floor: int = 30) -> None:
-            """The first weeks may not exceed what the athlete runs now by more than RECENT_LOAD_GROWTH. The excess
-            comes off the easy runs (`floor` min minimum); the long run, ME and quality sessions stay."""
+            """The first weeks may not exceed what the athlete runs now by more than RECENT_LOAD_GROWTH (R-V1)."""
             recent = recent_weekly_minutes(
                 current_weekly_km, PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier)
             )
             by_week = _week_rows(wos)
             for week_no in weeks:
-                rows = by_week.get(week_no)
-                if not recent or not rows:
+                if recent and (rows := by_week.get(week_no)):
+                    _fit_week(wos, rows, recent * RECENT_LOAD_GROWTH, floor)
+
+        def _cap_growth(wos: list[dict[str, Any]], floor: float) -> None:
+            """R-V2 after the ultra week shape, which lifts weekday runs back to their minimum: outside the long run
+            (its ladder step is R-U1's), a build week grows at most the tier's step on the week before (the week
+            before a deload when that was one); a deload week is at most 80% of the week before (R-P2)."""
+            try:
+                prior = get_plan_workouts(plan_id) if plan_id else []
+            except Exception:  # noqa: BLE001
+                prior = []
+            batch = _week_rows(wos)
+            built = _week_rows([w for w in prior if w.get("week_number") not in batch])
+            weeks = {**built, **batch}
+
+            def longest(ws: list[dict[str, Any]]) -> float:
+                return max(
+                    (float(w.get("duration_minutes") or 0) for w in ws if w.get("type") == "Long Run"), default=0.0
+                )
+
+            for week_no, rows in sorted(batch.items()):
+                if week_no <= 2 or rows[0].get("phase") not in ("Base", "Build", "Peak"):
                     continue
-                excess = plan_lint.week_minutes(rows) - recent * RECENT_LOAD_GROWTH
-                easy = [
-                    r
-                    for r in rows
-                    if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")
-                    and float(r.get("duration_minutes") or 0) > floor
-                    and not r.get("mountain_mode")
-                ]
-                for r in sorted(easy, key=lambda r: -float(r["duration_minutes"])):
-                    if excess <= 0:
-                        break
-                    cut = min(excess, float(r["duration_minutes"]) - floor)
-                    new = int(round((float(r["duration_minutes"]) - cut) / 5) * 5)
-                    excess -= float(r["duration_minutes"]) - new
-                    _resize(r, new)
+                if PlanGenerator.is_deload_week(week_no, total_weeks):
+                    # R-P2 again on the week before as it now stands (the cap above may have shortened it)
+                    if before := weeks.get(week_no - 1):
+                        _fit_week(wos, rows, 0.8 * plan_lint.week_minutes(before), _DELOAD_FLOOR_MIN)
+                    continue
+                ref = week_no - 2 if PlanGenerator.is_deload_week(week_no - 1, total_weeks) else week_no - 1
+                before = weeks.get(ref) or []
+                if not plan_lint.week_minutes(before):
+                    continue
+                # the lint's measure (plan_lint VOLUME_JUMP): the rest of the week grows by the tier's step, the
+                # long run by its own ladder step
+                rest_before = plan_lint.week_minutes(before) - longest(before)
+                limit = longest(rows) + rest_before * (1 + tier_profile.max_weekly_progression)
+                _fit_week(wos, rows, limit, floor)
 
         def _cap_week_vert(wos: list[dict[str, Any]]) -> None:
             """No week carries more than 80% of the race's climbing: that is the race, not training for it. The excess
@@ -2981,6 +3068,7 @@ class PlanGenerator:
                 _ultra_week_shape(wos)
                 _add_tempo(wos)  # weekday runs are clamped now (no 2 h+ "hard" days): top up the window's quality
                 _cap_start_load(wos, weeks=(1, 2), floor=ultra_rules.weekday_minutes(ultra, ultra_advanced)[0])
+                _cap_growth(wos, floor=ultra_rules.weekday_minutes(ultra, ultra_advanced)[0])
             # The long run (often a mountain day) is the whole day: no second run beside it, only strength.
             long_days = {(w.get("week_number"), w.get("day_of_week")) for w in wos if w.get("type") == "Long Run"}
             wos[:] = [

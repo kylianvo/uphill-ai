@@ -151,6 +151,7 @@ def run(s: Scenario) -> Result:
         total_weeks=s.weeks,
         mountain_day=mountain,
         quality_gated=True,  # PROFILE's thresholds are estimates (no threshold_source): the AeT gate is on
+        start_load_minutes=float(km) * (PlanGenerator.flat_zone2_pace(profile, race_info["goal_type"], tier) or 6.0),
     )
     found = plan_lint.lint_weeks(workouts, {w["week_number"] for w in workouts}, prof, prefs)
     codes = {i.code for i in found}

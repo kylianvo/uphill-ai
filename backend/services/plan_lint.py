@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from services import ultra_rules
 from services.athlete_tier import (
     LONG_SHARE_SOFT,
+    RECENT_LOAD_GROWTH,
     TierProfile,
     session_cap_minutes,
     taper_shift,
@@ -22,6 +23,7 @@ if TYPE_CHECKING:  # goal_demands imports race_readiness, which imports this mod
     from services.goal_demands import Demands
 
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+_WEEKDAY_RUN_MIN = 60  # a weekday run on a 100 km+ mountain-day plan (R-U2)
 DOWN_PHASES = {"Recovery", "Taper", "Race Week"}
 HARD_TYPES = {"Tempo", "Threshold", "Interval"}
 HARD_ZONES = {"Zone 3", "Zone 4", "Zone 5"}
@@ -54,6 +56,8 @@ class Prefs:
     mountain_day: bool = False  # a weekly mountain day: an ultra follows Quang's ladder (services/ultra_rules.py)
     me_first_weeks: frozenset[int] = frozenset()  # short ultra plans: ME weeks before the Zone 3 weeks
     quality_gated: bool = False  # AeT gate on (gap > 10% or estimated thresholds): one quality session at most
+    # minutes the athlete runs in a week now: weeks 1-2 held there may use fewer days than chosen (R-V1, R-U2)
+    start_load_minutes: float | None = None
 
 
 @dataclass(frozen=True)
@@ -399,7 +403,24 @@ def lint_week(
     in_down_phase = any(
         (w.get("phase") or "") in DOWN_PHASES for w in ws
     )  # race/taper/recovery weeks are short on purpose
-    if prefs and prefs.days_per_week and len(training_days) < prefs.days_per_week and not in_down_phase:
+    # A week at its volume limit (R-V1 start load in weeks 1-2; on a mountain-day ultra, R-V2 growth on the rest of
+    # the week) has no room for another weekday run, so it may train on fewer days than the athlete chose.
+    lr_now_d = max((_min(w) for w in ws if is_long(w)), default=0.0) if ultra else 0.0
+    lr_prev_d = max((_min(w) for w in _active(prev_ws) if is_long(w)), default=0.0) if ultra else 0.0
+    if prefs and prefs.start_load_minutes and week <= 2:
+        room = prefs.start_load_minutes * RECENT_LOAD_GROWTH - total
+    elif ultra and prev_total and not _is_down(weeks, week - 1):  # only ladder plans drop runs for growth
+        room = (prev_total - lr_prev_d) * (1 + profile.max_weekly_progression) - (total - lr_now_d)
+    else:
+        room = float("inf")
+    at_volume_limit = room < _WEEKDAY_RUN_MIN
+    if (
+        prefs
+        and prefs.days_per_week
+        and len(training_days) < prefs.days_per_week
+        and not in_down_phase
+        and not at_volume_limit
+    ):
         issues.append(
             Issue(
                 "DAYS_SHORT",
