@@ -12,6 +12,8 @@ struct Endpoint<Response: Decodable & Sendable>: Sendable {
     var requiresAuth = true
     /// Seconds without a byte before URLSession gives up; model-backed endpoints need longer.
     var timeout: TimeInterval = 30
+    /// Content type of `body`; a multipart upload sets its own with the boundary.
+    var contentType = "application/json"
 
     static func delete(_ path: String, query: [URLQueryItem] = [], requiresAuth: Bool = true) -> Endpoint {
         Endpoint(method: .delete, path: path, query: query, requiresAuth: requiresAuth)

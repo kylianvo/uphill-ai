@@ -3,6 +3,8 @@ import SwiftUI
 public struct CorosPushButton: View {
     public let service: any DeviceConnectionServicing
     public var onReconnect: (() -> Void)? = nil
+    /// `.garmin` sends the same runs to the Garmin calendar.
+    public var provider: CorosOAuthCoordinator.Provider = .coros
 
     @State private var status: CorosPushStatus?
     @State private var isSending: Bool = false
@@ -18,10 +20,12 @@ public struct CorosPushButton: View {
     public init(
         service: any DeviceConnectionServicing,
         initialStatus: CorosPushStatus? = nil,
-        onReconnect: (() -> Void)? = nil
+        onReconnect: (() -> Void)? = nil,
+        provider: CorosOAuthCoordinator.Provider = .coros
     ) {
         self.service = service
         self.onReconnect = onReconnect
+        self.provider = provider
         _status = State(initialValue: initialStatus)
     }
 
@@ -44,7 +48,7 @@ public struct CorosPushButton: View {
                     Task { await sendPush() }
                 } label: {
                     HStack(spacing: 6) {
-                        if UIImage(named: "coros_mark") != nil {
+                        if provider == .coros, UIImage(named: "coros_mark") != nil {
                             Image("coros_mark")
                                 .resizable()
                                 .scaledToFit()
@@ -60,7 +64,7 @@ public struct CorosPushButton: View {
                             Text("Sending…")
                                 .font(.system(size: 12, weight: .semibold))
                         } else {
-                            Text("Send to COROS")
+                            Text(provider == .coros ? L("Send to COROS") : L("Send to Garmin"))
                                 .font(.system(size: 12, weight: .semibold))
                         }
                     }
@@ -72,7 +76,7 @@ public struct CorosPushButton: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(isSending)
-                .accessibilityIdentifier("coros.pushButton")
+                .accessibilityIdentifier("\(provider.rawValue).pushButton")
 
                 // Status Indicator
                 if status.partial == true {
@@ -84,7 +88,7 @@ public struct CorosPushButton: View {
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(UH.Palette.warningInk)
                 } else if let when = formattedWhen(status.lastPushedAt) {
-                    Text("Sent to COROS · \(when)")
+                    Text(provider == .coros ? L("Sent to COROS · %@", when) : L("Sent to Garmin · %@", when))
                         .font(.system(size: 11))
                         .foregroundStyle(UH.Palette.secondary)
                 }
@@ -129,7 +133,10 @@ public struct CorosPushButton: View {
 
     private func refreshPushStatus() async {
         let today = Self.dateFormatter.string(from: Date())
-        if let s = try? await service.fetchPushStatus(clientToday: today) {
+        let fetched = provider == .coros
+            ? try? await service.fetchPushStatus(clientToday: today)
+            : try? await service.fetchGarminPushStatus(clientToday: today)
+        if let s = fetched {
             withAnimation(UH.Motion.standard) {
                 self.status = s
             }
@@ -144,19 +151,24 @@ public struct CorosPushButton: View {
 
         let today = Self.dateFormatter.string(from: Date())
         do {
-            let outcome = try await service.pushToCoros(clientToday: today, lang: AppLanguage.code)
+            let outcome = provider == .coros
+                ? try await service.pushToCoros(clientToday: today, lang: AppLanguage.code)
+                : try await service.pushToGarmin(clientToday: today, lang: AppLanguage.code)
             if outcome.isSuccess {
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 let workouts = outcome.summary?.workoutsSent ?? 0
                 let end = outcome.summary?.windowEnd ?? L("the upcoming weeks")
                 withAnimation(UH.Motion.standard) {
-                    self.outcomeMessage = L("Sent %lld workouts to COROS through %@.", workouts, end)
+                    self.outcomeMessage = provider == .coros
+                        ? L("Sent %lld workouts to COROS through %@.", workouts, end)
+                        : L("Sent %lld workouts to Garmin through %@.", workouts, end)
                 }
                 await refreshPushStatus()
             } else {
                 UINotificationFeedbackGenerator().notificationOccurred(.error)
                 withAnimation(UH.Motion.standard) {
-                    self.errorMessage = outcome.errorMessage ?? L("Could not send to COROS.")
+                    self.errorMessage = outcome.errorMessage
+                        ?? (provider == .coros ? L("Could not send to COROS.") : L("Could not send to Garmin."))
                 }
             }
         } catch {

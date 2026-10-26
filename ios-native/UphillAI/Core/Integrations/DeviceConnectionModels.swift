@@ -12,14 +12,49 @@ public struct CorosConnectionStatus: Codable, Sendable, Equatable {
     }
 }
 
+/// Display name of a backend `source_provider`, for "Source:" lines. Brand names, never translated.
+public func deviceSourceName(_ provider: String) -> String {
+    switch provider {
+    case "apple_health": "Apple Health"
+    case "garmin": "Garmin"
+    case "coros": "COROS"
+    default: provider
+    }
+}
+
+/// A race course created on the athlete's Garmin account from their GPX.
+public struct GarminCourseResult: Codable, Sendable, Equatable {
+    public let status: String
+    public let courseId: String?
+    public let distanceKm: Double
+    public let points: Int
+}
+
+/// Garmin delivers data by push after the athlete's next watch sync, so there is no
+/// "Sync now"; `lastSyncAt` is when data last arrived.
+public struct GarminConnectionStatus: Codable, Sendable, Equatable {
+    /// Off until Garmin's production review passes (backend GARMIN_ENABLED).
+    public let enabled: Bool
+    public let connected: Bool
+    public let lastSyncAt: String?
+    public var permissions: [String]? = nil
+}
+
 public struct DeviceConnectionStatus: Codable, Sendable, Equatable {
     public let coros: CorosConnectionStatus?
     /// Absent on backends older than the Apple Health release.
     public let appleHealth: AppleHealthConnectionStatus?
+    /// Absent on backends older than the Garmin release.
+    public let garmin: GarminConnectionStatus?
 
-    public init(coros: CorosConnectionStatus? = nil, appleHealth: AppleHealthConnectionStatus? = nil) {
+    public init(
+        coros: CorosConnectionStatus? = nil,
+        appleHealth: AppleHealthConnectionStatus? = nil,
+        garmin: GarminConnectionStatus? = nil
+    ) {
         self.coros = coros
         self.appleHealth = appleHealth
+        self.garmin = garmin
     }
 
     public var isCorosConnected: Bool {

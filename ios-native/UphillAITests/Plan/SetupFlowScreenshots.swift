@@ -44,7 +44,8 @@ struct SetupFlowScreenshots {
                     VStack(alignment: .leading, spacing: UH.Space.section) {
                         Text("Connect your watch").font(UH.TextStyle.screenTitle)
                         WatchChannelsList(connected: connected, available: true, healthConnected: false, healthAvailable: true,
-                                          connect: { nil }, connectHealth: { nil })
+                                          connect: { nil }, connectHealth: { nil },
+                                          garminConnected: connected, garminAvailable: true, connectGarmin: { nil })
                     }
                     .padding(UH.Space.section)
                 }

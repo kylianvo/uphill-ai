@@ -81,7 +81,7 @@ final class APIClient: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let body = endpoint.body {
             request.httpBody = body
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(endpoint.contentType, forHTTPHeaderField: "Content-Type")
         }
         if endpoint.requiresAuth, let token = tokenStore.read() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

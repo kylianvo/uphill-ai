@@ -86,4 +86,51 @@ struct DeviceConnectionServiceTests {
         await #expect(throws: APIError.self) { _ = try await service.completeCoros(state: "s", token: "t") }
         #expect(posts.withLock { $0 } == 1)
     }
+
+    @Test func connectGarminAlwaysSendsAIConsentAndNativePlatform() async throws {
+        let service = DeviceConnectionService(client: makeStubClient { request in
+            #expect(request.url?.path() == "/api/integrations/garmin/connect")
+            let query = request.url?.query() ?? ""
+            #expect(query.contains("ai_consent=true") && query.contains("platform=native"))
+            return (200, json(["authorize_url": "https://connect.garmin.com/oauth2Confirm?state=abc"]))
+        })
+        let url = try await service.connectGarminURL()
+        #expect(url.host() == "connect.garmin.com")
+    }
+
+    @Test func pushToGarminPostsToGarminAndExplainsMissingPermission() async throws {
+        let service = DeviceConnectionService(client: makeStubClient { request in
+            #expect(request.url?.path() == "/api/integrations/garmin/push")
+            return (409, json(["detail": ["code": "GARMIN_no_workout_permission", "params": [:]]]))
+        })
+        let outcome = try await service.pushToGarmin(clientToday: "2026-10-26", lang: "en")
+        #expect(outcome.isSuccess == false)
+        #expect(outcome.errorCode == "GARMIN_no_workout_permission")
+        #expect(outcome.errorMessage?.contains("Garmin Connect") == true)
+    }
+
+    @Test func sendGarminCourseUploadsTheGpxAsMultipart() async throws {
+        let seen = Mutex<(String, String, String)>(("", "", ""))
+        let service = DeviceConnectionService(client: makeStubClient { request in
+            let body = String(decoding: StubURLProtocol.bodyData(request) ?? Data(), as: UTF8.self)
+            seen.withLock { $0 = (request.url?.path() ?? "", request.value(forHTTPHeaderField: "Content-Type") ?? "", body) }
+            return (200, json(["status": "sent", "course_id": "77", "distance_km": 50.2, "points": 2400]))
+        })
+        let result = try await service.sendGarminCourse(gpx: Data("<gpx/>".utf8), fileName: "utmb.gpx", name: "UTMB 50K")
+        let (path, contentType, body) = seen.withLock { $0 }
+        #expect(path == "/api/integrations/garmin/course")
+        #expect(contentType.hasPrefix("multipart/form-data; boundary="))
+        #expect(body.contains("name=\"name\"\r\n\r\nUTMB 50K") && body.contains("filename=\"utmb.gpx\"") && body.contains("<gpx/>"))
+        #expect(result.distanceKm == 50.2 && result.courseId == "77")
+    }
+
+    @Test func disconnectGarminDeletesTheGarminConnection() async throws {
+        let seen = Mutex<(String, String)>(("", ""))
+        let service = DeviceConnectionService(client: makeStubClient { request in
+            seen.withLock { $0 = (request.httpMethod ?? "", request.url?.path() ?? "") }
+            return (200, json(["status": "disconnected"]))
+        })
+        try await service.disconnectGarmin()
+        #expect(seen.withLock { $0 } == ("DELETE", "/api/integrations/garmin"))
+    }
 }

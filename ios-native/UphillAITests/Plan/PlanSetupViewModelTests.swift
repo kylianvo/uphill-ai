@@ -169,6 +169,22 @@ struct PlanSetupViewModelTests {
         #expect(model.draft.currentWeeklyKm == 50)
     }
 
+    @Test func watchStepOffersGarminOnceTheBackendEnablesIt() async {
+        let session = SessionStore(tokenStore: InMemoryTokenStore())
+        let service = FakeGenerationService()
+        let center = GenerationCenter(service: service, defaults: UserDefaults(suiteName: UUID().uuidString)!,
+                                      makePoller: { JobPoller(service: $0, interval: .seconds(60), timeout: .seconds(120)) })
+        let now = self.now
+        let model = PlanSetupViewModel(mode: .onboarding, user: nil, service: service, generation: center,
+                                       session: session, now: { now }, calendar: cal,
+                                       deviceService: GarminStatusDevices())
+        #expect(!model.garminAvailable)
+        await model.refreshWatch()
+        #expect(model.garminAvailable && model.garminConnected)
+        model.jump(to: .watch)
+        #expect(model.primaryTitle != L("Skip for now"))
+    }
+
     @Test func onboardingAsksForWatchBeforeTheWeek() {
         let (model, _, _, _) = make(.onboarding)
         model.selectGoal(.startRunning)
@@ -338,4 +354,20 @@ struct PlanSetupViewModelTests {
         #expect(!model.isSubmitting)
     }
 
+}
+
+/// Status says Garmin is on and connected; nothing else is called.
+private struct GarminStatusDevices: DeviceConnectionServicing {
+    struct Unused: Error {}
+    func fetchStatus() async throws -> DeviceConnectionStatus {
+        DeviceConnectionStatus(coros: CorosConnectionStatus(connected: false),
+                               garmin: GarminConnectionStatus(enabled: true, connected: true, lastSyncAt: nil))
+    }
+    func connectCorosURL() async throws -> URL { throw Unused() }
+    func completeCoros(state: String, token: String) async throws -> Bool { false }
+    func syncNow(days: Int) async throws -> DeviceSyncResult { throw Unused() }
+    func syncFitness() async throws -> FitnessSyncResult { throw Unused() }
+    func disconnectCoros() async throws {}
+    func fetchPushStatus(clientToday: String) async throws -> CorosPushStatus { throw Unused() }
+    func pushToCoros(clientToday: String, lang: String) async throws -> CorosPushOutcome { throw Unused() }
 }

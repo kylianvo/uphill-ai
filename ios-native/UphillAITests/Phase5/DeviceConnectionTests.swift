@@ -129,4 +129,33 @@ struct DeviceConnectionTests {
         let invalidScheme = URL(string: "https://example.com/callback?state=st1")!
         #expect(CorosOAuthCoordinator.parseCallbackURL(invalidScheme) == nil)
     }
+
+    @Test func garminCallbackURLIsToldApartFromCoros() throws {
+        let garmin = CorosOAuthCoordinator.parseCallbackURL(URL(string: "uphillai://garmin/callback?state=s&token=t")!)
+        #expect(garmin?.provider == .garmin)
+        #expect(garmin?.state == "s" && garmin?.token == "t" && garmin?.isError == false)
+        #expect(CorosOAuthCoordinator.parseCallbackURL(URL(string: "uphillai://coros/callback?state=s&token=t")!)?.provider == .coros)
+        #expect(CorosOAuthCoordinator.parseCallbackURL(URL(string: "uphillai://strava/callback?state=s")!) == nil)
+    }
+
+    @Test func garminStatusDecodesAndIsOptional() throws {
+        let json = """
+        {"coros": {"connected": false}, "garmin": {"enabled": true, "connected": true,
+         "last_sync_at": "2026-10-24T05:00:00Z", "permissions": ["ACTIVITY_EXPORT"]}}
+        """.data(using: .utf8)!
+        let status = try JSONCoding.decoder.decode(DeviceConnectionStatus.self, from: json)
+        #expect(status.garmin?.enabled == true && status.garmin?.connected == true)
+        #expect(status.garmin?.permissions == ["ACTIVITY_EXPORT"])
+
+        let old = try JSONCoding.decoder.decode(DeviceConnectionStatus.self, from: #"{"coros": {"connected": true}}"#.data(using: .utf8)!)
+        #expect(old.garmin == nil)
+    }
+}
+
+struct DeviceSourceNameTests {
+    @Test func everyProviderIsNamedForItsOwnBrand() {
+        #expect(deviceSourceName("garmin") == "Garmin")
+        #expect(deviceSourceName("apple_health") == "Apple Health")
+        #expect(deviceSourceName("coros") == "COROS")
+    }
 }

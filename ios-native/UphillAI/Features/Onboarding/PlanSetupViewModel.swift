@@ -41,6 +41,9 @@ final class PlanSetupViewModel {
     /// True only after this phone connected (or was already syncing). The server's own "connected" flag
     /// is ignored: it can outlive a reinstall or new phone while nothing syncs.
     private(set) var appleHealthConnected: Bool
+    private(set) var garminConnected = false
+    /// The backend has Garmin turned on (GARMIN_ENABLED); until then the watch step lists it as coming soon.
+    private(set) var garminAvailable = false
     var canConnectAppleHealth: Bool { appleHealthConnect != nil }
 
     init(mode: Mode, user: User?, service: any GenerationServicing, generation: GenerationCenter,
@@ -72,6 +75,8 @@ final class PlanSetupViewModel {
     func refreshWatch() async {
         if let deviceService, let status = try? await deviceService.fetchStatus() {
             corosConnected = status.isCorosConnected
+            garminAvailable = status.garmin?.enabled ?? false
+            garminConnected = status.garmin?.connected ?? false
         }
         await prefillWatchVolume()
     }
@@ -120,6 +125,22 @@ final class PlanSetupViewModel {
             return message
         }
     }
+
+    /// Connects Garmin after the athlete ticked AI consent. No sync to run: Starter access
+    /// has no history, so runs arrive after the next watch sync and mileage stays typed.
+    func connectGarmin() async -> String? {
+        guard let deviceService else { return nil }
+        switch await CorosOAuthCoordinator.shared.connect(via: deviceService, provider: .garmin) {
+        case .success:
+            garminConnected = true
+            return nil
+        case .cancelled:
+            return nil
+        case .failed(let message):
+            return message
+        }
+    }
+
     var earliestRaceDate: Date { calendar.date(byAdding: .day, value: 14, to: today)! }
 
     func reopenAtReview() {
@@ -140,7 +161,7 @@ final class PlanSetupViewModel {
     var isFirstStep: Bool { stepIndex == 0 }
     var isLastStep: Bool { step == .review }
     var primaryTitle: String {
-        if step == .watch, !corosConnected, !appleHealthConnected { return L("Skip for now") }
+        if step == .watch, !corosConnected, !appleHealthConnected, !garminConnected { return L("Skip for now") }
         if isLastStep { return L("Build my plan") }
         if step == .trainingZones, !draft.hasTrainingZones { return L("Skip for now") }
         if step == .raceHistory, !linkedRaceHistory { return L("Skip for now") }

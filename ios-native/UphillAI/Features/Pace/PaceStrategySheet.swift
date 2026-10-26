@@ -21,6 +21,11 @@ struct PaceStrategySheet: View {
     @State private var gpxData: Data? = nil
     @State private var showGpxImporter: Bool = false
     @State private var gpxErrorMessage: String? = nil
+    /// Set when Garmin is connected, so the loaded GPX can be sent to the watch as a course.
+    var deviceService: (any DeviceConnectionServicing)? = nil
+    @State private var garminReady = false
+    @State private var garminSending = false
+    @State private var garminMessage: (ok: Bool, text: String)? = nil
 
     // Pacing parameters
     @State private var targetTimeMins: Double = 330.0 // 5h 30m
@@ -48,10 +53,13 @@ struct PaceStrategySheet: View {
         user: User? = nil,
         initialTargetMins: Double? = nil,
         initialGpxResult: GpxCourseResult? = nil,
+        initialGpxData: Data? = nil,
         isPresentedInSheet: Bool = false,
         onOpenNutrition: (() -> Void)? = nil,
-        onOpenGear: (() -> Void)? = nil
+        onOpenGear: (() -> Void)? = nil,
+        deviceService: (any DeviceConnectionServicing)? = nil
     ) {
+        self.deviceService = deviceService
         self.service = service
         self.activePlan = activePlan
         self.user = user
@@ -60,6 +68,7 @@ struct PaceStrategySheet: View {
         self.onOpenNutrition = onOpenNutrition
         self.onOpenGear = onOpenGear
         _gpxResult = State(initialValue: initialGpxResult)
+        _gpxData = State(initialValue: initialGpxData)
         if let gpx = initialGpxResult {
             _distanceKm = State(initialValue: gpx.totalDistanceKm)
             _elevationGainM = State(initialValue: gpx.totalElevationGainM)
@@ -414,6 +423,70 @@ struct PaceStrategySheet: View {
                 }
                 .padding(.top, 2)
             }
+
+            if garminReady, let gpx = gpxResult, let data = gpxData {
+                Button {
+                    Task { await sendCourseToGarmin(gpx: gpx, data: data) }
+                } label: {
+                    HStack(spacing: 6) {
+                        if garminSending { ProgressView().controlSize(.small) }
+                        Text(garminSending
+                             ? (isVietnamese ? "Đang gửi…" : "Sending…")
+                             : (isVietnamese ? "Gửi course sang Garmin" : "Send course to Garmin"))
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(UH.Palette.ink)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(UH.Palette.card, in: Capsule())
+                    .overlay(Capsule().stroke(UH.Palette.line))
+                }
+                .buttonStyle(.plain)
+                .disabled(garminSending)
+                .accessibilityIdentifier("pace.sendCourseToGarmin")
+            }
+
+            if let garminMessage {
+                Text(garminMessage.text)
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(garminMessage.ok ? UH.Palette.secondary : UH.Palette.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .task {
+            guard let deviceService, let status = try? await deviceService.fetchStatus() else { return }
+            garminReady = status.garmin?.enabled == true && status.garmin?.connected == true
+        }
+    }
+
+    private func sendCourseToGarmin(gpx: GpxCourseResult, data: Data) async {
+        guard let deviceService else { return }
+        garminSending = true
+        garminMessage = nil
+        let name = raceName.isEmpty ? gpx.fileName.replacingOccurrences(of: ".gpx", with: "", options: .caseInsensitive) : raceName
+        do {
+            let result = try await deviceService.sendGarminCourse(gpx: data, fileName: gpx.fileName, name: name)
+            garminMessage = (true, isVietnamese
+                ? String(format: "Đã gửi course %.1f km sang Garmin. Course sẽ vào đồng hồ ở lần đồng bộ tới.", result.distanceKm)
+                : String(format: "Sent a %.1f km course to Garmin. It reaches your watch at its next sync.", result.distanceKm))
+        } catch let APIError.http(_, _, code?) {
+            garminMessage = (false, Self.garminCourseError(code, vi: isVietnamese))
+        } catch {
+            garminMessage = (false, Self.garminCourseError("GARMIN_unavailable", vi: isVietnamese))
+        }
+        garminSending = false
+    }
+
+    static func garminCourseError(_ code: String, vi: Bool) -> String {
+        switch code {
+        case "GARMIN_no_course_permission":
+            vi ? "Garmin chưa cho Uphill AI gửi course. Hãy bật quyền nhập course cho Uphill AI trong Garmin Connect rồi gửi lại."
+               : "Garmin isn't accepting courses from Uphill AI. Allow course import for Uphill AI in Garmin Connect, then send again."
+        case "PUSH_limit":
+            vi ? "Hôm nay bạn đã hết lượt gửi sang Garmin. Hãy thử lại vào ngày mai." : "You've reached today's sends to Garmin. Try again tomorrow."
+        case "GPX_invalid": vi ? "Tệp này không có tuyến đường Garmin dùng được." : "That file has no route Garmin can use."
+        case "GPX_too_large": vi ? "Tệp GPX lớn hơn 15 MB." : "That GPX is over 15 MB."
+        default: vi ? "Không kết nối được Garmin. Hãy thử lại sau." : "Couldn't reach Garmin. Try again shortly."
         }
     }
 

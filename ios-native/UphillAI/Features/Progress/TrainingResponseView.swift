@@ -146,7 +146,7 @@ struct TrainingResponseDetailView: View {
                     Text(L("What this means")).font(UH.TextStyle.sectionTitle)
                     Text(ProgressText.explanation(card.key)).foregroundStyle(UH.Palette.secondary)
                     if let source = card.source {
-                        Text(L("Source: %@", source == "apple_health" ? "Apple Health" : "COROS"))
+                        Text(L("Source: %@", deviceSourceName(source)))
                             .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.muted)
                     }
                 }
