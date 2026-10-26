@@ -120,6 +120,13 @@ export default function ConnectedAccounts() {
   };
 
   const handleDisconnect = async () => {
+    // Disconnect deletes the athlete's COROS data (agreement); an expired login only needs Reconnect.
+    const ok = window.confirm(
+      lang === "vi"
+        ? "Ngắt kết nối sẽ xóa các buổi tập và dữ liệu sức khỏe từ COROS khỏi Uphill. Nếu chỉ không đồng bộ được, hãy dùng Kết nối lại để giữ dữ liệu."
+        : "Disconnecting deletes your COROS workouts and health data from Uphill. If sync just stopped working, use Reconnect instead: it keeps your data."
+    );
+    if (!ok) return;
     await disconnectCoros();
     setNotice("");
   };
@@ -203,6 +210,9 @@ export default function ConnectedAccounts() {
                       ? "Đồng bộ ngay"
                       : "Sync now"}
                 </button>
+                <button type="button" className="device-btn" onClick={handleConnect} disabled={loading || syncingFitness}>
+                  {lang === "vi" ? "Kết nối lại" : "Reconnect"}
+                </button>
                 <button
                   type="button"
                   className="device-btn device-btn-danger"
@@ -242,8 +252,8 @@ export default function ConnectedAccounts() {
 
       <p className="device-help">
         {lang === "vi"
-          ? "Khi ngắt kết nối, dữ liệu chúng tôi nhận được từ COROS sẽ được xóa trong vòng 24 giờ."
-          : "Disconnecting deletes the data we received from COROS within 24 hours."}
+          ? "Khi ngắt kết nối, dữ liệu chúng tôi nhận được từ COROS sẽ được xóa trong vòng 24 giờ. Nếu đăng nhập COROS hết hạn, hãy dùng Kết nối lại."
+          : "Disconnecting deletes the data we received from COROS within 24 hours. If your COROS login expired, use Reconnect instead."}
       </p>
     </div>
   );
