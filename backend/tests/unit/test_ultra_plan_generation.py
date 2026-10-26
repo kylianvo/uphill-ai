@@ -437,3 +437,13 @@ def test_week_3_grows_by_the_tier_step_plus_the_ladder_step(monkeypatch):
     # R-V2 on the week before, plus the long run's ladder step (R-U1: ladder steps are exempt)
     assert plan_lint.week_minutes(week_3) <= plan_lint.week_minutes(week_2) * 1.10 + (long_3 - long_2) + 1
     assert sum(w["type"] == "Muscular Endurance" for w in week_3) == 2
+
+
+def test_deload_week_keeps_its_easy_runs_as_real_runs(rule_based_plan):
+    # Plan 131's shape: a 49 km runner, 100K, 13 weeks. The 4 h recovery long run (R-U1) left 17-19 min for each
+    # weekday run, which the clean-up then turned into rest: a deload week of the long run and one other run.
+    wos = rule_based_plan(km=104.2, weeks=13, mountain_days=["Saturday"], tier="recreational", weekly_km=49)
+    week_4 = [w for w in wos if w["week_number"] == 4]
+    runs = [w for w in week_4 if w["type"] in ("Easy", "Aerobic Capacity", "Recovery", "Long Run")]
+    assert ultra_rules.is_deload(4, 13) and len({w["day_of_week"] for w in runs}) >= 4
+    assert all(w["duration_minutes"] >= 30 for w in runs)

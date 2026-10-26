@@ -2175,6 +2175,26 @@ class PlanGenerator:
                         if new < minutes:
                             excess -= minutes - new
                             _resize(r, new)
+                if deload:
+                    # The 4 h recovery long run (R-U1) leaves little for the rest of the week: spread it over runs
+                    # of at least _DELOAD_FLOOR_MIN, not five 18-min ones the clean-up turns into rest.
+                    easy = sorted(
+                        (
+                            r
+                            for r in rows
+                            if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")
+                            and float(r.get("duration_minutes") or 0) > 0
+                            and not r.get("mountain_mode")
+                        ),
+                        key=lambda r: -float(r["duration_minutes"]),
+                    )
+                    total = sum(float(r["duration_minutes"]) for r in easy)
+                    keep = max(1, min(len(easy), int(total // _DELOAD_FLOOR_MIN)))
+                    if easy and float(easy[-1]["duration_minutes"]) < _DELOAD_FLOOR_MIN:
+                        for r in easy[keep:]:
+                            _make_rest(r)
+                        for r in easy[:keep]:
+                            _resize(r, int(total / keep // 5 * 5))
 
         def _make_rest(wo: dict[str, Any]) -> None:
             wo.update(
