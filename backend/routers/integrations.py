@@ -24,7 +24,19 @@ from typing import Any, Literal
 from urllib.parse import urlencode, urlparse
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Header, HTTPException, Request, Response
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Cookie,
+    Depends,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field, ValidationError
 
@@ -36,6 +48,7 @@ from services import (
     coros_oauth,
     coros_push,
     coros_sync,
+    garmin_course,
     garmin_ingest,
     garmin_oauth,
     garmin_push,
@@ -986,6 +999,26 @@ async def garmin_push_now(body: CorosPushRequest, user: dict[str, Any] = Depends
     try:
         return await garmin_push.push(user["id"], today, body.lang)
     except garmin_push.PushError as exc:
+        raise HTTPException(status_code=exc.status, detail={"code": exc.code, "params": exc.params}) from exc
+
+
+MAX_GPX_BYTES = 15 * 1024 * 1024
+
+
+@router.post("/garmin/course")
+async def garmin_send_course(
+    file: UploadFile = File(...),
+    name: str = Form(""),
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Send the athlete's race GPX to their Garmin device as a course."""
+    _require_garmin(user)
+    gpx = await file.read(MAX_GPX_BYTES + 1)
+    if len(gpx) > MAX_GPX_BYTES:
+        raise HTTPException(status_code=413, detail={"code": "GPX_too_large", "params": {}})
+    try:
+        return await garmin_course.send(user["id"], gpx, name or (file.filename or "").rsplit(".", 1)[0])
+    except garmin_course.CourseError as exc:
         raise HTTPException(status_code=exc.status, detail={"code": exc.code, "params": exc.params}) from exc
 
 
