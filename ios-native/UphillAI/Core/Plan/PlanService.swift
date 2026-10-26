@@ -33,6 +33,13 @@ protocol PlanServicing: Sendable {
     func markMilestone(planID: Int, key: String) async throws -> PlanMilestones
     func undoMilestone(planID: Int, key: String) async throws -> PlanMilestones
     func upgradeMilestoneTarget(planID: Int, clearEvent: Bool) async throws -> Plan
+    /// B-races: athlete-only routes.
+    func assessRace(planID: Int, input: BRaceInput) async throws -> BRaceAssessment
+    func addRace(planID: Int, input: BRaceInput) async throws -> BRaceChange
+    func updateRace(planID: Int, raceID: Int, input: BRaceInput) async throws -> BRaceChange
+    func cancelRace(planID: Int, raceID: Int) async throws -> BRaceChange
+    func submitRaceResult(planID: Int, raceID: Int, seconds: Int) async throws
+    func submitRaceDebrief(planID: Int, raceID: Int, answers: BRaceDebriefAnswers) async throws -> BRaceDebriefResult
     /// The same service, reading and writing a coached athlete's plan (nil = the signed-in user's own).
     func scoped(toAthlete athleteId: Int?) -> any PlanServicing
 }
@@ -47,6 +54,12 @@ extension PlanServicing {
     func markMilestone(planID: Int, key: String) async throws -> PlanMilestones { throw APIError.http(status: 404, message: nil, code: nil) }
     func undoMilestone(planID: Int, key: String) async throws -> PlanMilestones { throw APIError.http(status: 404, message: nil, code: nil) }
     func upgradeMilestoneTarget(planID: Int, clearEvent: Bool) async throws -> Plan { throw APIError.http(status: 404, message: nil, code: nil) }
+    func assessRace(planID: Int, input: BRaceInput) async throws -> BRaceAssessment { throw APIError.http(status: 404, message: nil, code: nil) }
+    func addRace(planID: Int, input: BRaceInput) async throws -> BRaceChange { throw APIError.http(status: 404, message: nil, code: nil) }
+    func updateRace(planID: Int, raceID: Int, input: BRaceInput) async throws -> BRaceChange { throw APIError.http(status: 404, message: nil, code: nil) }
+    func cancelRace(planID: Int, raceID: Int) async throws -> BRaceChange { throw APIError.http(status: 404, message: nil, code: nil) }
+    func submitRaceResult(planID: Int, raceID: Int, seconds: Int) async throws { throw APIError.http(status: 404, message: nil, code: nil) }
+    func submitRaceDebrief(planID: Int, raceID: Int, answers: BRaceDebriefAnswers) async throws -> BRaceDebriefResult { throw APIError.http(status: 404, message: nil, code: nil) }
 }
 
 /// One row of GET /api/integrations/matching.
@@ -266,6 +279,32 @@ struct PlanService: PlanServicing {
         let body = UpgradeBody(target: "10k", clearEvent: clearEvent)
         let response: UpgradeResponse = try await client.send(.send(.patch, "/api/plans/\(planID)/milestone-target", body: body))
         return response.plan
+    }
+
+    private struct RaceResultBody: Encodable { let finishTimeSec: Int }
+
+    func assessRace(planID: Int, input: BRaceInput) async throws -> BRaceAssessment {
+        try await client.send(.send(.post, "/api/plans/\(planID)/races/assess", body: input))
+    }
+
+    func addRace(planID: Int, input: BRaceInput) async throws -> BRaceChange {
+        try await client.send(.send(.post, "/api/plans/\(planID)/races", body: input))
+    }
+
+    func updateRace(planID: Int, raceID: Int, input: BRaceInput) async throws -> BRaceChange {
+        try await client.send(.send(.patch, "/api/plans/\(planID)/races/\(raceID)", body: input))
+    }
+
+    func cancelRace(planID: Int, raceID: Int) async throws -> BRaceChange {
+        try await client.send(.delete("/api/plans/\(planID)/races/\(raceID)"))
+    }
+
+    func submitRaceResult(planID: Int, raceID: Int, seconds: Int) async throws {
+        let _: EmptyResponse = try await client.send(.send(.post, "/api/plans/\(planID)/races/\(raceID)/result", body: RaceResultBody(finishTimeSec: seconds)))
+    }
+
+    func submitRaceDebrief(planID: Int, raceID: Int, answers: BRaceDebriefAnswers) async throws -> BRaceDebriefResult {
+        try await client.send(.send(.post, "/api/plans/\(planID)/races/\(raceID)/debrief", body: answers))
     }
 
     func journey(planID: Int) async throws -> PlanJourney {

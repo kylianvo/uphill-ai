@@ -22,6 +22,9 @@ final class FakePlanService: PlanServicing {
     let watchActivitiesResult = Mutex<Result<[WatchActivity], APIError>>(.success([]))
     let evaluationResult = Mutex<Result<BlockEvaluation, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
     let milestoneResult = Mutex<Result<PlanMilestones, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
+    let assessResult = Mutex<Result<BRaceAssessment, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
+    let raceChangeResult = Mutex<Result<BRaceChange, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
+    let debriefResult = Mutex<Result<BRaceDebriefResult, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
     let calls = Mutex<[String]>([])
 
     private func record(_ call: String) { calls.withLock { $0.append(call) } }
@@ -56,6 +59,35 @@ final class FakePlanService: PlanServicing {
     func undoMilestone(planID: Int, key: String) async throws -> PlanMilestones {
         record("milestone undo \(key)")
         return try milestoneResult.withLock { $0 }.get()
+    }
+
+    func assessRace(planID: Int, input: BRaceInput) async throws -> BRaceAssessment {
+        record("race assess \(input.raceName) \(input.distanceKm.map { String($0) } ?? "-") \(input.effort.rawValue)")
+        return try assessResult.withLock { $0 }.get()
+    }
+
+    func addRace(planID: Int, input: BRaceInput) async throws -> BRaceChange {
+        record("race add \(input.raceName) \(input.distanceKm.map { String($0) } ?? "-") \(input.effort.rawValue)")
+        return try raceChangeResult.withLock { $0 }.get()
+    }
+
+    func updateRace(planID: Int, raceID: Int, input: BRaceInput) async throws -> BRaceChange {
+        record("race update \(raceID) \(input.effort.rawValue)")
+        return try raceChangeResult.withLock { $0 }.get()
+    }
+
+    func cancelRace(planID: Int, raceID: Int) async throws -> BRaceChange {
+        record("race cancel \(raceID)")
+        return try raceChangeResult.withLock { $0 }.get()
+    }
+
+    func submitRaceResult(planID: Int, raceID: Int, seconds: Int) async throws {
+        record("race result \(raceID) \(seconds)")
+    }
+
+    func submitRaceDebrief(planID: Int, raceID: Int, answers: BRaceDebriefAnswers) async throws -> BRaceDebriefResult {
+        record("race debrief \(raceID) \(answers.fuel ?? "-") \(answers.pacing ?? "-") \(answers.gear ?? "-")")
+        return try debriefResult.withLock { $0 }.get()
     }
 
     func deletePlan(id: Int) async throws {
