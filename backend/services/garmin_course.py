@@ -98,6 +98,9 @@ async def send(user_id: int, gpx_bytes: bytes, name: str, transport=None) -> dic
     }
     try:
         token = await garmin_oauth.access_token(connection)
+    except garmin_oauth.GarminAuthError as exc:
+        raise CourseError("GARMIN_not_connected", 409) from exc
+    try:
         created = await garmin_push._call("POST", "/training-api/courses/v1/course", token, course, transport)
     except garmin_oauth.GarminAuthError as exc:
         if exc.status == 412:

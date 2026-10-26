@@ -127,6 +127,16 @@ async def delete_registration(access_token: str, transport: httpx.BaseTransport 
     await _gateway("DELETE", "registration", access_token, transport)
 
 
+def _decrypt(value: str | None) -> str:
+    """A stored token in plain text; a missing or unreadable one (key rotated) means reconnect."""
+    if not value:
+        raise GarminAuthError("No Garmin token on file; the athlete must reconnect.")
+    try:
+        return token_crypto.decrypt_token(value)
+    except (token_crypto.TokenDecryptionError, token_crypto.TokenEncryptionUnconfigured) as exc:
+        raise GarminAuthError("Stored Garmin token is unreadable; the athlete must reconnect.") from exc
+
+
 def _fresh(connection: dict) -> bool:
     expires_at = connection.get("token_expires_at")
     return not expires_at or expires_at > datetime.now(UTC) + REFRESH_MARGIN
@@ -142,19 +152,19 @@ async def access_token(connection: dict, transport: httpx.BaseTransport | None =
     refresh token) when it is near expiry. Refreshes are serialised per athlete: the refresh
     token rotates, so two concurrent refreshes would make the second one fail."""
     if _fresh(connection):
-        return token_crypto.decrypt_token(connection["access_token_enc"])
+        return _decrypt(connection.get("access_token_enc"))
     async with _refresh_locks[connection["user_id"]]:
         # Another task may have refreshed while this one waited.
         connection = db.get_connection(connection["user_id"], PROVIDER) or connection
         if _fresh(connection):
-            return token_crypto.decrypt_token(connection["access_token_enc"])
+            return _decrypt(connection.get("access_token_enc"))
         return await _refresh_and_store(connection, transport)
 
 
 async def _refresh_and_store(connection: dict, transport: httpx.BaseTransport | None) -> str:
     if not connection.get("refresh_token_enc"):
         raise GarminAuthError("No Garmin refresh token on file; the athlete must reconnect.")
-    tokens = await refresh(token_crypto.decrypt_token(connection["refresh_token_enc"]), transport)
+    tokens = await refresh(_decrypt(connection.get("refresh_token_enc")), transport)
     db.save_connection(
         user_id=connection["user_id"],
         provider=PROVIDER,

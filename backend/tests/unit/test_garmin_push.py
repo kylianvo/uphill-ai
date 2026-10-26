@@ -11,6 +11,7 @@ from services import garmin_oauth, garmin_push, garmin_workouts
 from services.coros_plan_window import DayPush, PushWindow
 from services.coros_workouts import SECTION_COOLDOWN, SECTION_RECOVERY, SECTION_TRAINING, SECTION_WARMUP
 
+_real_access_token = garmin_oauth.access_token
 TODAY = dt.date(2026, 10, 26)
 
 
@@ -166,3 +167,16 @@ def test_the_daily_send_cap_counts_on_the_server_date(world, monkeypatch):
     world["window"] = _window(TODAY + dt.timedelta(days=1))
     asyncio.run(garmin_push.push(42, dt.date(2030, 1, 1), "en", transport=httpx.MockTransport(FakeGarmin())))
     assert seen == [dt.datetime.now(dt.UTC).date()]
+
+
+def test_an_unreadable_stored_token_asks_to_reconnect_instead_of_failing(world, monkeypatch):
+    monkeypatch.setattr(garmin_oauth, "access_token", _real_access_token)
+    monkeypatch.setattr(
+        garmin_push.db,
+        "get_connection",
+        lambda u, p: {"user_id": u, "status": "active", "scopes": "WORKOUT_IMPORT", "access_token_enc": None},
+    )
+    world["window"] = _window(TODAY + dt.timedelta(days=1))
+    with pytest.raises(garmin_push.PushError) as exc:
+        _push(FakeGarmin())
+    assert exc.value.code == "GARMIN_not_connected"
