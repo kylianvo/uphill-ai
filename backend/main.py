@@ -13,6 +13,7 @@ from google import genai
 from google.genai import types as genai_types
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator
+from sqlalchemy import text
 
 import db
 from config import settings
@@ -39,6 +40,8 @@ from db import (
     delete_plan,
     delete_session,
     delete_source,
+    engine,
+    generated_block,
     get_active_coach_link_for_athlete,
     get_active_plan,
     get_all_knowledge_cards,
@@ -74,13 +77,15 @@ from db import (
     list_sources,
     make_rest_day,
     mark_onboarding_complete,
+    mark_plan_reviewed,
     mark_profile_fields_athlete_set,
     mark_profile_fields_estimated,
+    publish_plan,
     query_nutrition_catalog,
     remove_coach_athlete_link,
     replace_shoe_rotation,
     save_block_review,
-    save_workouts,
+    set_coach_athlete_plan_type,
     set_max_continuous_jog_min,
     set_plan_active,
     set_plan_athlete_tier,
@@ -107,14 +112,20 @@ from routers.analytics import router as analytics_router
 from routers.coach_chat import ChatMessage
 from routers.coach_chat import router as coach_chat_router
 from routers.integrations import router as integrations_router
+from routers.notifications import router as notifications_router
+from routers.progress import router as progress_router
 from services import (
     apple_auth,
     beginner_milestones,
     calendar_ops,
+    claude_llm,
     coros_sync,
     fitness_snapshot,
+    goal_service,
+    notification_store,
     observability,
     plan_adequacy,
+    plan_lint,
     race_history,
     race_readiness,
     race_review,
@@ -152,8 +163,11 @@ app = FastAPI(
     openapi_url=None if _is_prod else "/openapi.json",
 )
 
+
+app.include_router(notifications_router)
 app.include_router(analytics_router, prefix="/api")
 app.include_router(integrations_router, prefix="/api")
+app.include_router(progress_router, prefix="/api")
 app.include_router(coach_chat_router)
 
 # Set up CORS
@@ -175,6 +189,7 @@ Instrumentator().add(
 
 # Initialize the database schema and LLM observability on startup
 _race_worker_stop = None
+_notification_worker_stop = None
 
 
 @app.on_event("startup")
@@ -183,7 +198,12 @@ def startup_event():
     observability.init()
     from threading import Event, Thread
 
-    global _race_worker_stop
+    global _race_worker_stop, _notification_worker_stop
+    if settings.NOTIFICATION_WORKER_ENABLED:
+        from services.notifications import run_worker
+
+        _notification_worker_stop = Event()
+        Thread(target=run_worker, args=(_notification_worker_stop,), daemon=True, name="notification-worker").start()
     if not settings.RACE_HISTORY_WORKER_ENABLED:
         return
     _race_worker_stop = Event()
@@ -195,6 +215,8 @@ def startup_event():
 def shutdown_event():
     if _race_worker_stop:
         _race_worker_stop.set()
+    if _notification_worker_stop:
+        _notification_worker_stop.set()
     observability.flush()
 
 
@@ -1398,6 +1420,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "error": None,
     }
 
+    notification_store.register_generation(job_id, plan_jobs[job_id])
+
     async def _run_plan_gen():
         _t0 = time.monotonic()
         try:
@@ -1411,7 +1435,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
                 block_number=1,
                 weeks_per_block=settings.WEEKS_PER_BLOCK,
             )
-            save_workouts(plan_id, workouts)
+            notification_store.save_generated_workouts(job_id, plan_id, workouts)
             set_plan_athlete_tier(plan_id, resolved_tier)
             _store_plan_snapshot(plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts
@@ -1419,6 +1443,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
             plan_job_duration_seconds.labels(kind="onboarding", status="done").observe(time.monotonic() - _t0)
             print(f"[PlanJob][{job_id}] Onboarding plan generation complete — {len(workouts)} workouts saved.")
         except Exception as ex:
+            notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"
             plan_job_duration_seconds.labels(kind="onboarding", status="error").observe(time.monotonic() - _t0)
             plan_jobs[job_id]["error"] = str(ex)
@@ -1632,6 +1657,18 @@ def remove_from_roster(link_id: int, user: dict[str, Any] = Depends(get_current_
     return updated
 
 
+class PlanTypeRequest(BaseModel):
+    plan_type: Literal["review", "coached"]
+
+
+@app.patch("/api/coaching/roster/{link_id}")
+def set_roster_plan_type(link_id: int, request: PlanTypeRequest, coach: dict[str, Any] = Depends(require_coach)):
+    updated = set_coach_athlete_plan_type(link_id, coach["id"], request.plan_type)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Roster link not found.")
+    return updated
+
+
 @app.get("/api/coaching/roster")
 def get_roster(coach: dict[str, Any] = Depends(require_coach)):
     return get_roster_for_coach(coach["id"])
@@ -1711,6 +1748,71 @@ def get_athlete_draft_plan(athlete_id: int, acting_user: dict[str, Any] = Depend
     if not plan:
         return {"draft": False}
     return {"draft": True, "plan": plan, "workouts": get_plan_workouts(plan["id"])}
+
+
+class PlanReviewRequest(BaseModel):
+    note: str | None = None
+
+
+def _review_state(plan: dict[str, Any]) -> dict[str, Any]:
+    """What a coach needs to review a runner's plan: weeks generated vs reviewed, the plan checker's
+    findings on the stored weeks, and whether the goal fits the runner's week."""
+    workouts = get_plan_workouts(plan["id"])
+    weeks = {w["week_number"] for w in workouts}
+    try:
+        issues = [
+            {"code": i.code, "week": i.week, "message": i.message}
+            for i in plan_lint.lint_weeks(workouts, weeks, get_profile(plan.get("athlete_tier")))
+        ]
+    except Exception:
+        _goal_logger.exception("plan review lint failed", extra={"fields": {"plan_id": plan["id"]}})
+        issues = []
+    feasibility = goal_service.feasibility_for(plan)
+    return {
+        "generated_block": generated_block(plan["id"]),
+        "reviewed_block": plan.get("coach_reviewed_block"),
+        "reviewed_at": plan.get("coach_reviewed_at"),
+        "reviewed_by": plan.get("coach_reviewed_by"),
+        "issues": issues,
+        "feasibility": feasibility["verdict"] if feasibility else None,
+        "levers": feasibility["levers"] if feasibility else [],
+    }
+
+
+def _require_coach_of(athlete_id: int, acting_user: dict[str, Any]) -> None:
+    """Review and publish are the coach's sign-off: the runner can't stamp their own plan."""
+    if acting_user["id"] == athlete_id:
+        raise HTTPException(status_code=403, detail="Only the runner's coach can do this.")
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/review")
+def get_plan_review(athlete_id: int, plan_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    _verify_plan_ownership(plan_id, athlete_id)
+    return _review_state(get_plan_by_id(plan_id))
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/review")
+def post_plan_review(
+    athlete_id: int,
+    plan_id: int,
+    request: PlanReviewRequest,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    _require_coach_of(athlete_id, acting_user)
+    _verify_plan_ownership(plan_id, athlete_id)
+    mark_plan_reviewed(plan_id, athlete_id, acting_user["id"])
+    if request.note and request.note.strip():
+        create_coach_note(acting_user["id"], athlete_id, "plan", plan_id, request.note.strip())
+    return _review_state(get_plan_by_id(plan_id))
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/publish")
+def post_plan_publish(athlete_id: int, plan_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    _require_coach_of(athlete_id, acting_user)
+    result = publish_plan(plan_id, athlete_id, acting_user["id"])
+    if result is None:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    return result
 
 
 @app.put("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{workout_id}")
@@ -1971,7 +2073,19 @@ async def coach_chat_copilot(
         f"{kb_context}"
     )
 
-    if model_api_key:
+    if claude_llm.is_claude(settings.COACH_COPILOT_LLM_PROVIDER) and settings.ANTHROPIC_API_KEY:
+        try:
+            import asyncio
+
+            message = await asyncio.to_thread(
+                claude_llm.generate,
+                [{"role": m.role if m.role == "user" else "assistant", "content": m.content} for m in request.messages],
+                system=full_system_prompt,
+            )
+            return {"role": "assistant", "content": claude_llm.text(message)}
+        except Exception as e:
+            print(f"[CoachCopilot][Claude] FAILED: {e}")
+    elif model_api_key:
         try:
             formatted_contents = []
             for msg in request.messages:
@@ -2328,6 +2442,8 @@ async def _generate_plan_for_athlete(
         "error": None,
     }
 
+    notification_store.register_generation(job_id, plan_jobs[job_id])
+
     async def _run_gen():
         _t0 = time.monotonic()
         try:
@@ -2344,7 +2460,7 @@ async def _generate_plan_for_athlete(
                 block_number=1,
                 weeks_per_block=settings.WEEKS_PER_BLOCK,
             )
-            save_workouts(plan_id, workouts, auto_approve=(plan_status != "draft"))
+            notification_store.save_generated_workouts(job_id, plan_id, workouts, auto_approve=(plan_status != "draft"))
             set_plan_athlete_tier(plan_id, resolved_tier)
             _store_plan_snapshot(plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts
@@ -2352,6 +2468,7 @@ async def _generate_plan_for_athlete(
             plan_job_duration_seconds.labels(kind="generate", status="done").observe(time.monotonic() - _t0)
             print(f"[PlanJob][{job_id}] generate-plan complete — {len(workouts)} workouts saved.")
         except Exception as ex:
+            notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"
             plan_job_duration_seconds.labels(kind="generate", status="error").observe(time.monotonic() - _t0)
             plan_jobs[job_id]["error"] = str(ex)
@@ -2757,6 +2874,16 @@ async def _generate_next_block_for_athlete(
     if readiness and readiness.message:
         context_lines.append(f"  RACE READINESS: {readiness.message}")
         brief_decision_log.append(readiness.message)
+    # Choosing A doesn't make a week harder by itself: until the A gate opens, the generator trains for B.
+    gate = None
+    training_target = plan.get("target_time_hours")
+    try:
+        from services import goal_service
+
+        gate = goal_service.a_gate_for({**plan, "user_id": athlete_id}, all_workouts, block_start)
+        training_target = goal_service.training_target_hours(plan, gate.open)
+    except Exception:
+        _goal_logger.exception("A-goal gate failed", extra={"fields": {"plan_id": request.plan_id}})
     # The generator works in minutes, the benchmark is in km: say what the path means for this week in minutes
     # and how long the long run should be, so a flat or shrinking build is asked for, not just linted.
     try:
@@ -2772,7 +2899,7 @@ async def _generate_next_block_for_athlete(
                 f"  WEEK TARGET: build this week to about {readiness.floor_km * flat:.0f}+ minutes of running "
                 f"(at most {readiness.cap_km * flat:.0f}); a build week must not total less than the last build week."
             )
-        goal_demand = goal_service.demands_for(plan, None)
+        goal_demand = goal_service.demands_for({**plan, "target_time_hours": training_target}, None)
         if goal_demand:
             line = goal_demands.long_run_line(
                 all_workouts,
@@ -2805,21 +2932,11 @@ async def _generate_next_block_for_athlete(
         brief_decision_log.extend(plan_adequacy.summary_lines(goal_service.plan_adequacy_for(plan)))
     except Exception:
         _goal_logger.exception("plan support for brief failed", extra={"fields": {"plan_id": request.plan_id}})
-    try:
-        from services import a_gate, fitness_tracking, goal_service
+    if gate is not None:
+        from services import a_gate
 
-        adequacy = goal_service.plan_adequacy_for(plan)
-        gate = a_gate.evaluate(
-            fitness_tracking.refresh(plan, get_user_by_id(athlete_id)),
-            readiness_flag=get_recent_readiness_summary(athlete_id).get("readiness_flag"),
-            workouts=all_workouts,
-            before_week=block_start,
-            plan_supported=adequacy.a_supported if adequacy else True,
-        )
         context_lines.append(f"  {a_gate.prompt_line(gate)}")
         brief_decision_log.append(a_gate.log_line(gate))
-    except Exception:
-        _goal_logger.exception("A-goal gate failed", extra={"fields": {"plan_id": request.plan_id}})
     if context_lines:
         block_context = "\n".join(context_lines)
 
@@ -2857,7 +2974,7 @@ async def _generate_next_block_for_athlete(
         "date": plan.get("race_date"),
         "terrain": fresh_user.get("terrain", "trail"),
         "goal_type": plan.get("goal_type"),
-        "target_time_hours": plan.get("target_time_hours"),
+        "target_time_hours": training_target,
         "course_distance_km": plan.get("course_distance_km"),
         "course_elevation_gain_m": plan.get("course_elevation_gain_m"),
         "course_context": course_context,
@@ -2906,6 +3023,8 @@ async def _generate_next_block_for_athlete(
         "error": None,
     }
 
+    notification_store.register_generation(job_id, plan_jobs[job_id])
+
     async def _run_next_block():
         _t0 = time.monotonic()
         try:
@@ -2920,7 +3039,9 @@ async def _generate_next_block_for_athlete(
                 weeks_per_block=settings.WEEKS_PER_BLOCK,
                 block_context=block_context,
             )
-            save_workouts(request.plan_id, workouts)
+            notification_store.save_generated_workouts(job_id, request.plan_id, workouts)
+            if job_owner_user_id != athlete_id:  # the coach built this week, so there's nothing left to review
+                mark_plan_reviewed(request.plan_id, athlete_id, job_owner_user_id)
             set_plan_athlete_tier(request.plan_id, resolved_tier)
             _store_plan_snapshot(request.plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts
@@ -2961,6 +3082,7 @@ async def _generate_next_block_for_athlete(
             except Exception as ex:
                 print(f"[NextBlock][{job_id}] Week brief FAILED (non-fatal): {ex}")
         except Exception as ex:
+            notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"
             plan_job_duration_seconds.labels(kind="next_block", status="error").observe(time.monotonic() - _t0)
             plan_jobs[job_id]["error"] = str(ex)
@@ -3074,17 +3196,19 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         "error": None,
     }
 
+    notification_store.register_generation(job_id, plan_jobs[job_id])
+
     async def _run_adapt_week():
         _t0 = time.monotonic()
         try:
             draft = await week_rebuild.generate_week_draft(inputs, rng)
-            week_rebuild.write_draft(plan, request.week_number, today, draft)
+            week_rebuild.write_draft(plan, request.week_number, today, draft, notification_request_id=job_id)
             plan_jobs[job_id]["workouts"] = draft.workouts
-            plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="adapt_week", status="done").observe(time.monotonic() - _t0)
             print(f"[AdaptWeek][{job_id}] Week {request.week_number} complete — {len(draft.workouts)} workouts saved.")
             # The block's "This week" text was written for the pre-adapt sessions; rewrite it
-            # for the new ones. Best-effort -- the week is already saved and marked done.
+            # for the new ones. Best-effort -- the week is already saved; the job reads "done" only
+            # after the brief, so the app doesn't fetch the old week's brief.
             try:
                 _, this_week_description = await PlanGenerator.generate_week_narrative(
                     race_info=inputs.race_info,
@@ -3113,7 +3237,9 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
                     upsert_week_brief(request.plan_id, request.week_number, brief)
             except Exception as ex:
                 print(f"[AdaptWeek][{job_id}] Week brief FAILED (non-fatal): {ex}")
+            plan_jobs[job_id]["status"] = "done"
         except Exception as ex:
+            notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"
             plan_job_duration_seconds.labels(kind="adapt_week", status="error").observe(time.monotonic() - _t0)
             plan_jobs[job_id]["error"] = str(ex)
@@ -3332,6 +3458,7 @@ def log_workout(request: WorkoutLogRequest, user: dict[str, Any] = Depends(get_c
         request.notes,
         request.is_missed,
         request.missed_reason,
+        missed_origin="athlete",
     )
     if not ok:
         raise HTTPException(status_code=404, detail="Workout not found.")
@@ -3587,6 +3714,26 @@ def get_random_cards(n: int = 3, lang: str = "en"):
     """Return n random knowledge cards for the Daily Knowledge widget. Public: same content for every user, logged in or not."""
     cards = get_random_knowledge_cards(n=n, lang=lang)
     return {"cards": cards}
+
+
+@app.get("/api/knowledge/cards/{card_id}")
+def exact_knowledge_card(card_id: int, lang: str = "en", user=Depends(get_current_user)):
+    card = next((c for c in get_all_knowledge_cards(lang=lang) if c["id"] == card_id), None)
+    if card is None:
+        raise HTTPException(404, "Knowledge card unavailable")
+    return card
+
+
+@app.post("/api/knowledge/cards/{card_id}/opened")
+def open_knowledge_card(card_id: int, lang: str = "en", user=Depends(get_current_user)):
+    exact_knowledge_card(card_id, lang, user)
+    with engine.begin() as conn:
+        conn.execute(
+            text("""INSERT INTO notification_knowledge_opens(user_id,card_id,lang)
+            VALUES(:user,:card,:lang) ON CONFLICT(user_id,card_id,lang) DO NOTHING"""),
+            {"user": user["id"], "card": card_id, "lang": lang},
+        )
+    return {}
 
 
 @app.get("/api/knowledge/topics")
@@ -4572,15 +4719,13 @@ def coach_get_plan_journey(
     return _plan_journey(plan_id, athlete_id)
 
 
-async def _plan_nudge(plan_id: int, owner_id: int, lang: str) -> dict[str, Any]:
-    from datetime import date
-
+async def _plan_nudge(plan_id: int, owner_id: int, lang: str, client_today: str | None = None) -> dict[str, Any]:
     import db
     from services import coach_nudge, goal_service
 
     lang = "vi" if lang == "vi" else "en"
     plan = _goal_plan(plan_id, owner_id)
-    today = date.today()
+    today = resolve_today(client_today, calendar_ops.server_today())  # the athlete's Monday, not the server's
     workouts = get_plan_workouts(plan_id)
     latest = db.get_latest_goal_assessment(plan_id)
     shown = goal_service.with_plan_support(goal_service._present(latest), plan) if latest else None
@@ -4611,8 +4756,10 @@ async def _plan_nudge(plan_id: int, owner_id: int, lang: str) -> dict[str, Any]:
 
 
 @app.get("/api/plans/{plan_id}/coach-nudge")
-async def get_plan_coach_nudge(plan_id: int, lang: str = "en", user: dict[str, Any] = Depends(get_current_user)):
-    return await _plan_nudge(plan_id, user["id"], lang)
+async def get_plan_coach_nudge(
+    plan_id: int, lang: str = "en", client_today: str | None = None, user: dict[str, Any] = Depends(get_current_user)
+):
+    return await _plan_nudge(plan_id, user["id"], lang, client_today)
 
 
 @app.post("/api/plans/{plan_id}/goal/reassess")

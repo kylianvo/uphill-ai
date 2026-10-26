@@ -50,3 +50,29 @@ def test_too_small_a_result_falls_back_to_the_full_catalog():
     small = [_chunk(f"road{i}", ["Road"]) for i in range(5)] + [_chunk(f"trail{i}", ["Trail"]) for i in range(20)]
     assert len(filter_catalog(small, "road", None)) == len(small)
     assert MIN_ENTRIES == 12
+
+
+def test_ground_recommendations_fixes_brand_fills_blanks_and_drops_invented_shoes():
+    from services.gear_catalog import ground_recommendations
+
+    altra = {
+        "title": "Altra Experience Wild 3 & Experience Wild 3+",
+        "payload": {
+            "brand": "Altra",
+            "model": "Experience Wild 3 & Experience Wild 3+",
+            "drop": "4 mm",
+            "pros": "Natural toe splay",
+            "terrain": ["Light-duty trails", "gravel"],
+        },
+    }
+    hoka = {"title": "Speedgoat 7", "payload": {"brand": "Hoka", "drop": "4mm"}}
+    recs = [
+        {"model": "Experience Wild 3", "brand": "X", "drop": "", "pros": "", "cons": ""},
+        {"model": "Hoka Speedgoat 7", "brand": "Hoka", "drop": "5mm"},
+        {"model": "Made Up Racer", "brand": "Nike", "drop": "8mm"},
+    ]
+    out = ground_recommendations(recs, [altra, hoka])
+    assert [r["brand"] for r in out] == ["Altra", "Hoka"]
+    assert out[0]["drop"] == "4 mm" and out[0]["pros"] == "Natural toe splay"
+    assert out[0]["cons"] == ""  # nothing in the catalog to fill it with
+    assert out[1]["drop"] == "5mm"  # the model's own value is kept

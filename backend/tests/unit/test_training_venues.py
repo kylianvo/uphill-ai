@@ -144,3 +144,13 @@ def test_mountain_prompt_uses_custom_minimum():
         allows_intensity=True, allows_me=True
     )
     assert "210 min" in block
+
+
+def test_long_run_day_moves_to_the_nearest_mountain_day():
+    from services.training_venues import long_run_day
+
+    assert long_run_day("Saturday", '["Sunday"]') == "Sunday"
+    assert long_run_day("Saturday", ["Saturday", "Sunday"]) == "Saturday"
+    assert long_run_day("Monday", ["Wednesday", "Sunday"]) == "Sunday"
+    assert long_run_day("Saturday", None) == "Saturday"
+    assert long_run_day(None, ["Sunday"]) == "Sunday"

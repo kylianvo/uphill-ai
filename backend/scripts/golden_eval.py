@@ -88,6 +88,10 @@ def _scheduler_counters() -> dict:
         "retry_ok": _sample(
             "rag_attempts_total", {"service": "plan_generator", "engine": "gemini_retry", "status": "used"}
         ),
+        "claude_ok": _sample("rag_attempts_total", {"service": "plan_generator", "engine": "claude", "status": "used"}),
+        "claude_retry_ok": _sample(
+            "rag_attempts_total", {"service": "plan_generator", "engine": "claude_retry", "status": "used"}
+        ),
     }
 
 
@@ -97,6 +101,10 @@ def _scheduler_engine_used(before: dict, after: dict) -> str:
         return "gemini"
     if after["retry_ok"] > before["retry_ok"]:
         return "gemini_retry"
+    if after.get("claude_ok", 0) > before.get("claude_ok", 0):
+        return "claude"
+    if after.get("claude_retry_ok", 0) > before.get("claude_retry_ok", 0):
+        return "claude_retry"
     return "rule-based-or-unknown"
 
 
@@ -178,7 +186,10 @@ async def _run_chat(fixture: dict) -> tuple[dict, str]:
     question = fixture.get("question", "")
     api_key = settings.GEMINI_API_KEY
     tools = build_tools(user_id=0, kb_api_key=api_key)
-    model = coach_model.GeminiCoachModel(api_key=api_key, model=settings.GEMINI_MODEL, tools=tools)
+    if settings.COACH_CHAT_LLM_PROVIDER == "claude":
+        model = coach_model.ClaudeCoachModel(tools=tools)
+    else:
+        model = coach_model.GeminiCoachModel(api_key=api_key, model=settings.GEMINI_MODEL, tools=tools)
     graph = build_graph(
         model=model,
         retrieve_fn=lambda q: kb_retrieval.search_principles(query=q, api_key=api_key),
@@ -624,7 +635,7 @@ def compare(
             scores=scores,
             synthetic=True,
             description=f"Synthetic golden evaluation run for {service}",
-            metadata={"prompt_label": settings.COACH_CHAT_PROMPT_LABEL, "model": settings.GEMINI_MODEL},
+            metadata={"prompt_label": settings.COACH_CHAT_PROMPT_LABEL, "model": _eval_model(service)},
         )
         from services.observability import flush
 
@@ -654,9 +665,15 @@ def gate_failures(service: str, items: list[dict], scores: list[dict]) -> list[s
     for item, s in zip(items, scores):
         # The reduced-prompt retry is a designed LLM tier (reported, not failed); falling
         # through to the rule-based tier means the model could not produce an answer at all.
-        if service in ("scheduler", "goal_judge") and s.get("engine") not in (None, "gemini", "gemini_retry"):
+        if service in ("scheduler", "goal_judge") and s.get("engine") not in (
+            None,
+            "gemini",
+            "gemini_retry",
+            "claude",
+            "claude_retry",
+        ):
             failures.append(f"{item['id']}: fell through to the {s.get('engine')} tier")
-        elif service in ("scheduler", "goal_judge") and s.get("engine") == "gemini_retry":
+        elif service in ("scheduler", "goal_judge") and s.get("engine") in ("gemini_retry", "claude_retry"):
             print(f"[gate] warn {item['id']}: needed the reduced-prompt retry")
         if service == "scheduler" and s.get("tier_match") is False:
             failures.append(f"{item['id']}: tier {s.get('tier')} differs from the expected tier")
@@ -685,6 +702,23 @@ def gate_failures(service: str, items: list[dict], scores: list[dict]) -> list[s
         if safe and sum(safe) / len(safe) < CHAT_MIN_JUDGE_SAFE:
             failures.append(f"chat: mean judge_safe below {CHAT_MIN_JUDGE_SAFE}")
     return failures
+
+
+# The per-feature provider flag each service's --provider switches (docs/superpowers/specs/2026-10-23-claude-text-generation-design.md).
+PROVIDER_FLAGS = {
+    "gear": "GEAR_LLM_PROVIDER",
+    "nutrition": "NUTRITION_LLM_PROVIDER",
+    "goal": "GOAL_JUDGE_LLM_PROVIDER",
+    "goal_judge": "GOAL_JUDGE_LLM_PROVIDER",
+    "chat": "COACH_CHAT_LLM_PROVIDER",
+}
+
+
+def _eval_model(service: str) -> str:
+    flag = PROVIDER_FLAGS.get(service)
+    if not (flag and getattr(settings, flag) == "claude"):
+        return settings.GEMINI_MODEL
+    return settings.CLAUDE_COACH_MODEL if service == "chat" else settings.CLAUDE_TEXT_MODEL
 
 
 def main():
@@ -721,16 +755,25 @@ def main():
         default=False,
         help="Publish precomputed experiment results to Langfuse (requires synthetic fixtures)",
     )
+    parser.add_argument(
+        "--provider", choices=["gemini", "claude"], default=None, help="Run the service on this provider's flag"
+    )
     parser.add_argument("--only", default=None, help="Comma-separated substrings; run only matching fixture files")
     args = parser.parse_args()
     global ONLY
     ONLY = args.only
+    if args.provider and args.service not in PROVIDER_FLAGS:
+        sys.exit(f"--provider is not wired for {args.service}")
     variant_parts = []
     if args.prompt_label:
         settings.COACH_CHAT_PROMPT_LABEL = args.prompt_label
         variant_parts.append(args.prompt_label)
+    if args.provider:
+        setattr(settings, PROVIDER_FLAGS[args.service], args.provider)
+        variant_parts.append(args.provider)
     if args.model:
-        settings.GEMINI_MODEL = args.model
+        claude_model = "CLAUDE_COACH_MODEL" if args.service == "chat" else "CLAUDE_TEXT_MODEL"
+        setattr(settings, claude_model if args.provider == "claude" else "GEMINI_MODEL", args.model)
         variant_parts.append(args.model)
     # Always start Langfuse when configured: prompts are served from it, so without the
     # client an eval would silently test the in-code fallbacks instead of the live versions.

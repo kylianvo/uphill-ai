@@ -42,3 +42,9 @@ func L(_ english: String) -> String {
 func L(_ english: String, _ args: CVarArg...) -> String {
     String(format: L(english), arguments: args)
 }
+
+/// `L` in a given language rather than the current one (coach copy previews and tests).
+func L(_ english: String, in lang: AppLanguage, _ args: CVarArg...) -> String {
+    let format = lang.bundle.localizedString(forKey: english, value: english, table: nil)
+    return args.isEmpty ? format : String(format: format, arguments: args)
+}

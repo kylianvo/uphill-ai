@@ -64,6 +64,35 @@ struct DayStatus: Equatable, Sendable {
 
 /// Port of frontend/src/utils/planSummary.ts.
 enum PlanSummary {
+    /// "Week 6 · Build · 7.5 h · 52 km"; parts with no data are left out.
+    /// "50 km · 3,200 m D+", or nil without a distance.
+    static func courseLine(km: Double?, gainM: Double?) -> String? {
+        guard let km, km > 0 else { return nil }
+        let kmText = km.formatted(.number.precision(.fractionLength(0...1)).locale(AppLanguage.current.locale))
+        guard let gain = gainM, gain > 0 else { return L("%@ km", kmText) }
+        return L("%@ km · %@ m D+", kmText, Int(gain).formatted(.number.locale(AppLanguage.current.locale)))
+    }
+
+    /// Weeks that get an axis label on the trend chart: the selected week first, then week 1, the last week and
+    /// every 4th, skipping any that would sit too close to one already kept (13 "W12"-wide labels don't fit).
+    static func trendLabelWeeks(total: Int, selected: Int) -> Set<Int> {
+        guard total > 0 else { return [] }
+        let gap = max(2, Int((Double(total) / 8).rounded(.up)))
+        var keep = [selected]
+        for w in [1, total] + Array(stride(from: 4, to: total, by: 4)) where keep.allSatisfy({ abs($0 - w) >= gap }) {
+            keep.append(w)
+        }
+        return Set(keep)
+    }
+
+    static func weekLine(_ v: WeekVolume) -> String {
+        var parts = [L("Week %lld", v.week)]
+        if let phase = v.phase, !phase.isEmpty { parts.append(L(phase)) }
+        if v.hours > 0 { parts.append("\(v.hours.formatted(.number.precision(.fractionLength(0...1)).locale(Locale(identifier: "en_US")))) h") }
+        if v.km >= 0.5 { parts.append("\(Int(v.km.rounded())) km") }
+        return parts.joined(separator: " · ")
+    }
+
     static func volume(week: Int, workouts: [Workout]) -> WeekVolume {
         let items = workouts.filter { $0.weekNumber == week }
         let actualKm = items.filter(\.isDone).reduce(0.0) { $0 + ($1.distanceKm ?? 0) }

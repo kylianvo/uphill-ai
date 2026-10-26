@@ -1,0 +1,13 @@
+{
+  "latency_s": 6.1,
+  "engine_used": "gemini",
+  "output": {
+    "id": "chat_vi_01_normal_zone2",
+    "category": "normal_explanation",
+    "lang": "vi",
+    "question": "Tại sao các bài chạy Zone 2 lại là nền tảng tối quan trọng cho vận động viên chạy trail 50K?",
+    "reply_text": "Với cự ly 50K, bạn sẽ phải vận động liên tục từ 5 đến 9 tiếng trên địa hình đồi dốc. Khoảng 80% thời gian thi đấu ultra diễn ra ở cường độ hiếu khí dưới ngưỡng AeT, vì vậy năng lực chạy bền bỉ phụ thuộc gần như hoàn toàn vào việc bạn tối ưu nguồn năng lượng chất béo [1]. Chạy Zone 2 xây dựng hệ thống ty thể dày đặc, tăng mật độ mao mạch và huấn luyện cơ bắp đốt mỡ hiệu quả ở Pace cao hơn mà không làm cạn kiệt nguồn Glycogen dự trữ vốn rất hạn chế [1, 2].\n\nNgoài ra, Zone 2 mang lại khối lượng tích lũy lớn nhưng hạn chế gây quá tải hệ thần kinh và cơ xương khớp [1, 4]. Lợi ích cốt lõi bạn cần nhớ:\n- **Tăng tốc độ ở ngưỡng hiếu khí (AeT):** Giúp bạn duy trì Pace tốt trên đường trường và leo dốc thoải mái mà không bị tích tụ Lactate sớm [1].\n- **Tiết kiệm năng lượng:** Hạn chế phụ thuộc hoàn toàn vào Gel/Carbs, giảm tải áp lực cho dạ dày trong suốt chặng đua dài [1, 6].\n- **Hồi phục bền vững:** Giữ nhịp tim và áp lực vận động vừa phải, cho phép cơ thể hấp thụ khối lượng tuần 50–80 km cần thiết cho cự ly 50K mà không dẫn đến Overtraining [1, 4].",
+    "tools_called": [],
+    "status": "success"
+  }
+}

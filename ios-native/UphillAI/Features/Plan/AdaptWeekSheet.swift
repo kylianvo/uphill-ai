@@ -5,13 +5,13 @@ struct AdaptWeekSheet: View {
     let week: Int
     @Environment(\.dismiss) private var dismiss
     @State private var fatigue = FatigueLevel.medium
-    @State private var rpe: Int?
     @State private var notes = ""
     @State private var healthIssue: String?
     @State private var isSubmitting = false
     @State private var error: String?
     @State private var schedule: ScheduleDraft
     @State private var scheduleExpanded = false
+    @State private var noteExpanded = false
 
     init(model: PlanViewModel, week: Int) {
         self.model = model
@@ -19,9 +19,9 @@ struct AdaptWeekSheet: View {
         _schedule = State(initialValue: ScheduleDraft(plan: model.snapshot?.plan))
     }
 
-    /// Last week's sessions marked missed, so the athlete can say why before the week is rebuilt.
+    /// Last week's sessions marked missed or never logged, so the athlete can say why before the week is rebuilt.
     private var missedLastWeek: [Workout] {
-        (model.snapshot?.workouts ?? []).filter { $0.weekNumber == week - 1 && $0.isMissedFlag && !$0.isRest }
+        (model.snapshot?.workouts ?? []).filter { $0.weekNumber == week - 1 && !$0.isRest && model.needsMissedReason($0) }
     }
 
     var body: some View {
@@ -131,35 +131,19 @@ struct AdaptWeekSheet: View {
                     }
                     .trainingCard()
 
-                    // Effort & Context Card
-                    VStack(alignment: .leading, spacing: UH.Space.regular) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Effort & Context")
-                                .font(UH.TextStyle.sectionTitle)
-                                .foregroundStyle(UH.Palette.ink)
-                            Text("Rate your recent perceived exertion and note any soreness or schedule conflicts.")
-                                .font(UH.TextStyle.caption)
-                                .foregroundStyle(UH.Palette.secondary)
-                        }
-
-                        VStack(alignment: .leading, spacing: UH.Space.small) {
-                            Text("Effort").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
-                            EffortSelector(selection: $rpe, identifier: "adapt.rpe")
-                            Text("Choose the effort that best matches how it felt.")
-                                .font(UH.TextStyle.caption)
-                                .foregroundStyle(UH.Palette.secondary)
-                        }
-
-                        Divider()
-
-                        VStack(alignment: .leading, spacing: UH.Space.compact) {
-                            Text("What's going on?").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
-                            TextField("e.g. Travel, illness, race postponed, sore calf...", text: $notes, axis: .vertical)
-                                .lineLimit(2...5)
-                                .padding(UH.Space.small)
-                                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
-                                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line, lineWidth: 1))
-                        }
+                    // Optional note; how the week felt is already asked above
+                    DisclosureGroup(isExpanded: $noteExpanded) {
+                        TextField("e.g. Travel, illness, race postponed, sore calf...", text: $notes, axis: .vertical)
+                            .lineLimit(2...5)
+                            .padding(UH.Space.small)
+                            .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                            .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line, lineWidth: 1))
+                            .padding(.top, UH.Space.compact)
+                    } label: {
+                        Text("Add a note for the coach (optional)")
+                            .font(UH.TextStyle.label)
+                            .foregroundStyle(UH.Palette.ink)
+                            .frame(minHeight: 44)
                     }
                     .trainingCard()
 
@@ -239,7 +223,7 @@ struct AdaptWeekSheet: View {
         isSubmitting = true
         error = nil
         defer { isSubmitting = false }
-        if let message = await model.adaptWeek(week, fatigue: fatigue, rpe: rpe, notes: notes, healthIssue: healthIssue, schedule: schedule) {
+        if let message = await model.adaptWeek(week, fatigue: fatigue, rpe: nil, notes: notes, healthIssue: healthIssue, schedule: schedule) {
             error = message
         } else {
             dismiss()

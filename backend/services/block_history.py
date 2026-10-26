@@ -11,7 +11,7 @@ from db import (
     get_resting_hr_elevation,
     get_week_planned_volume,
 )
-from services.calendar_rules import is_upcoming, start_monday, upcoming_note
+from services.calendar_rules import is_unlogged_past, is_upcoming, start_monday, upcoming_note
 from services.matching.block_evaluator import evaluate_block_performance
 from services.plan_rules import missed_reason_rules, repeated_miss_days, weeks_off
 
@@ -219,8 +219,13 @@ def missed_rules_for_week(
     current_issue: str | None = None,
 ) -> tuple[list[str], float | None]:
     """missed_reason_rules for the week before target_week, with its inputs gathered."""
-    prev_wos = [w for w in all_workouts if w.get("week_number") == target_week - 1 and w.get("type") != "Rest"]
     plan_monday = start_monday(plan.get("start_date"))
+    # Unlogged past sessions count as missed with no known reason; most athletes never mark a miss.
+    prev_wos = [
+        {**w, "is_missed": 1, "missed_reason": "unknown"} if today and is_unlogged_past(w, plan_monday, today) else w
+        for w in all_workouts
+        if w.get("week_number") == target_week - 1 and w.get("type") != "Rest"
+    ]
     days_to_race = None
     race_date = plan.get("race_date")
     if race_date and today:

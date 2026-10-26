@@ -15,7 +15,8 @@ struct WorkoutRowTests {
         isPriority: Bool = false,
         isCompleted: Int? = 0,
         isMissed: Int? = 0,
-        slot: String? = "main"
+        slot: String? = "main",
+        matchedId: Int? = nil
     ) -> Workout {
         let json = """
         {
@@ -33,7 +34,8 @@ struct WorkoutRowTests {
             "is_completed": \(isCompleted != nil ? String(isCompleted!) : "null"),
             "is_missed": \(isMissed != nil ? String(isMissed!) : "null"),
             "is_priority": \(isPriority),
-            "session_slot": \(slot != nil ? "\"\(slot!)\"" : "null")
+            "session_slot": \(slot != nil ? "\"\(slot!)\"" : "null"),
+            "matched_activity_id": \(matchedId.map(String.init) ?? "null")
         }
         """.data(using: .utf8)!
         return try! JSONCoding.decoder.decode(Workout.self, from: json)
@@ -49,6 +51,14 @@ struct WorkoutRowTests {
         #expect(WorkoutTypePresentation.chipLabel(for: makeWorkout(type: "Tempo")) == "Tempo")
     }
 
+    @Test func rowStatus() {
+        #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout(isCompleted: 1, matchedId: 9)) == .matched)
+        #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout(isCompleted: 1)) == .done)
+        #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout(isCompleted: 0, matchedId: 9)) == .matched)
+        #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout(isMissed: 1)) == .missed)
+        #expect(WorkoutTypePresentation.rowStatus(for: makeWorkout()) == .none)
+    }
+
     @Test func formatMetrics() {
         let w1 = makeWorkout(duration: 45, km: 7.5, pace: "6:00 /km")
         #expect(WorkoutTypePresentation.formatMetrics(for: w1) == "45 min · 7.5 km · 6:00 /km")
@@ -61,5 +71,17 @@ struct WorkoutRowTests {
         let easyColor = WorkoutTypePresentation.zoneColor(for: makeWorkout(type: "Easy Run", zone: "Z2"))
         let intervalColor = WorkoutTypePresentation.zoneColor(for: makeWorkout(type: "Hill Repeats", zone: "Z4"))
         #expect(easyColor != intervalColor)
+    }
+
+    @Test func unloggedPastWaitsOneDayAndIgnoresDoneMissedAndRest() {
+        let cal = PlanCalendar.calendar
+        let sat = cal.date(from: DateComponents(year: 2026, month: 10, day: 17))!
+        let sun = cal.date(byAdding: .day, value: 1, to: sat)!
+        let mon = cal.date(byAdding: .day, value: 2, to: sat)!
+        #expect(!PlanCalendar.isUnloggedPast(makeWorkout(), on: sat, now: sun))
+        #expect(PlanCalendar.isUnloggedPast(makeWorkout(), on: sat, now: mon))
+        #expect(!PlanCalendar.isUnloggedPast(makeWorkout(isCompleted: 1), on: sat, now: mon))
+        #expect(!PlanCalendar.isUnloggedPast(makeWorkout(isMissed: 1), on: sat, now: mon))
+        #expect(!PlanCalendar.isUnloggedPast(makeWorkout(type: "Rest", duration: 0), on: sat, now: mon))
     }
 }

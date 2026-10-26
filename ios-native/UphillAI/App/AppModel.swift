@@ -4,6 +4,7 @@ import Observation
 @Observable
 @MainActor
 final class AppModel {
+    let notifications: NotificationCoordinator
     let session: SessionStore
     let client: APIClient
     let auth: any AuthServicing
@@ -155,10 +156,19 @@ final class AppModel {
         }
     }
     var actingAsAthlete: CoachedAthleteRow? = nil
+    /// The action a coach tapped on the Athletes tab, picked up once by the runner's Plan tab.
+    var pendingCoachAction: CoachAction? = nil
+
+    /// Hands the pending Athletes-tab action to the Plan tab exactly once.
+    func takePendingCoachAction() -> CoachAction? {
+        defer { pendingCoachAction = nil }
+        return pendingCoachAction
+    }
     var coachedAthleteProfile: User? = nil
     var pendingInvites: [CoachingInvite] = []
     let generation: GenerationCenter
     let plan: PlanViewModel
+    let progress: ProgressViewModel
     let chat: ChatService
     let cache: OfflineCache
     var onboardingDeferred = false
@@ -170,7 +180,9 @@ final class AppModel {
     /// The setup behind the last generation, so "Try again" re-submits the same answers.
     private(set) var lastSetup: PlanSetupViewModel?
 
-    func makeSetup(mode: PlanSetupViewModel.Mode) -> PlanSetupViewModel {
+    /// With `athlete`, a coach builds a plan for that runner: their profile prefills the setup and the
+    /// request goes to the runner's coaching route (a draft the coach then publishes).
+    func makeSetup(mode: PlanSetupViewModel.Mode, athlete: User? = nil) -> PlanSetupViewModel {
         // Onboarding treats "nothing found" as success; only a failed connect returns a message.
         var connectHealth: (@MainActor () async -> String?)?
         if appleHealthEnabled {
@@ -180,7 +192,8 @@ final class AppModel {
                 return self.appleHealthConnected ? nil : self.appleHealthMessage
             }
         }
-        let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session, raceService: RaceMatchService(client: client),
+        let setup = PlanSetupViewModel(mode: mode, user: athlete ?? session.user,
+                                       service: generationService.scoped(toAthlete: athlete?.id), generation: generation, session: session, raceService: RaceMatchService(client: client),
                                        goalEstimateService: goalEstimateService, raceHistoryService: raceHistoryService,
                                        deviceService: deviceConnectionService,
                                        loadWatchVolume: { [client] in
@@ -219,6 +232,7 @@ final class AppModel {
             session: urlSession,
             onUnauthorized: { await session.signOut() }
         )
+        notifications = NotificationCoordinator(service: NotificationService(client: client))
         auth = makeAuth(client)
         planService = PlanService(client: client)
         generationService = GenerationService(client: client)
@@ -244,8 +258,10 @@ final class AppModel {
         plan = PlanViewModel(service: planService, cache: cache, isSignedIn: { [session] in session.user != nil },
                              generation: generation, generationService: generationService)
         planIdBox.model = plan
+        progress = ProgressViewModel(service: ProgressService(client: client))
         chat = ChatService(client: client)
         signOutHook.run = { [weak self] in
+            self?.notifications.reset()
             self?.lastAutoWatchSync = nil
             self?.lastAppleHealthSync = nil
             self?.appleHealthConnected = false
@@ -255,6 +271,7 @@ final class AppModel {
             Task { [weak self] in await self?.appleHealth.stopObservingForSignOut() }
             self?.generation.reset()
             self?.plan.reset()
+            self?.progress.reset()
             self?.onboardingDeferred = false
             self?.lastSetup = nil
             self?.raceHistory = nil
@@ -330,6 +347,7 @@ final class AppModel {
     }
 
     func enterAthleteView(athlete: CoachedAthleteRow) {
+        pendingCoachAction = nil // an action tapped for an earlier runner must not fire on this one
         actingAsAthlete = athlete
         Task {
             async let p = try? coachingService.fetchAthleteProfile(athleteId: athlete.athleteId)
@@ -340,10 +358,10 @@ final class AppModel {
         }
     }
 
-    func exitAthleteView() {
+    func exitAthleteView() async {
         actingAsAthlete = nil
         coachedAthleteProfile = nil
-        Task { await plan.setAthleteScope(nil) }
+        await plan.setAthleteScope(nil)
     }
 
     func acknowledgeCoachProfileChanges() async {
@@ -399,6 +417,7 @@ final class AppModel {
     }
 
     func signOut() async {
+        await notifications.unregister()
         lastAutoWatchSync = nil
         actingAsAthlete = nil
         coachedAthleteProfile = nil

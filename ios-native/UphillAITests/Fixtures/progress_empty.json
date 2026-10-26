@@ -1,0 +1,14 @@
+{
+ "section": "health",
+ "connected": false,
+ "has_plan": false,
+ "plan_id": null,
+ "cards": [],
+ "pending": [
+  {
+   "key": "sleep",
+   "needs": 7,
+   "have": 0
+  }
+ ]
+}

@@ -54,44 +54,66 @@ struct Phase6CoachScreenshots {
 
     private var athlete: CoachedAthleteRow { roster.first { $0.isActive }! }
 
-    @Test func renderCoachDashboardOverview() throws {
-        let app = try makeApp()
-        let view = NavigationStack {
-            CoachDashboardView(
-                app: app,
-                initialSection: .overview,
-                initialOverview: overview,
-                initialRoster: roster
-            )
-        }
-        save(view, name: "phase6-coach-dashboard-overview")
+    private func athletes(_ filter: RosterFilter = RosterFilter(), overview: CoachOverview? = nil) throws -> some View {
+        AthletesView(app: try makeApp(), initialOverview: overview ?? self.overview, initialRoster: roster, initialFilter: filter)
     }
 
-    /// The whole Overview scroll content (adherence badges, charts) in one tall frame.
-    @Test func renderCoachDashboardOverviewFull() throws {
-        let app = try makeApp()
-        let view = NavigationStack {
-            CoachDashboardView(
-                app: app,
-                initialSection: .overview,
-                initialOverview: overview,
-                initialRoster: roster
-            )
-        }
-        save(view, name: "phase6-coach-dashboard-overview-full", size: CGSize(width: 402, height: 1780))
+    @Test func renderAthletesTop() throws {
+        save(try athletes(), name: "athletes-top")
     }
 
-    @Test func renderCoachDashboardRoster() throws {
-        let app = try makeApp()
-        let view = NavigationStack {
-            CoachDashboardView(
-                app: app,
-                initialSection: .roster,
-                initialOverview: overview,
-                initialRoster: roster
-            )
+    /// The whole Athletes scroll in one tall frame: filters, this week, highlights, inbox, on track, invited.
+    @Test func renderAthletesFull() throws {
+        save(try athletes(), name: "athletes-full", size: CGSize(width: 402, height: 2100))
+    }
+
+    @Test func renderAthletesCoachedFilter() throws {
+        save(try athletes(RosterFilter(planType: "coached")), name: "athletes-filter-coached", size: CGSize(width: 402, height: 1400))
+    }
+
+    @Test func renderAthletesVietnamese() throws {
+        let previous = UserDefaults.standard.string(forKey: AppLanguage.storageKey)
+        UserDefaults.standard.set("vi", forKey: AppLanguage.storageKey)
+        defer { UserDefaults.standard.set(previous, forKey: AppLanguage.storageKey) }
+        save(try athletes().environment(\.locale, AppLanguage.vi.locale), name: "athletes-vi", size: CGSize(width: 402, height: 2100))
+    }
+
+    /// The coach card on a runner's Plan tab, served by a stub backend.
+    private func focusCard(_ name: String, review: String) throws -> some View {
+        let notes = try Fixture.data("coaching_notes.json")
+        let base = StubURLProtocol.register { request in
+            let path = request.url?.path ?? ""
+            if path.hasSuffix("/review") { return (200, Data(review.utf8)) }
+            if path.hasSuffix("/notes") { return (200, notes) }
+            return (200, json([:]))
         }
-        save(view, name: "phase6-coach-dashboard-roster")
+        let app = AppModel(tokenStore: InMemoryTokenStore("tok"), baseURL: { base }, session: StubURLProtocol.session(), cache: .inMemory())
+        app.coachDashboard = CoachDashboardData(overview: overview, roster: roster, invites: [])
+        let athlete = try #require(overview.athletes.first { $0.name == name })
+        let plan = try #require(athletePlan.plan)
+        let decodedReview = try JSONCoding.decoder.decode(PlanReview.self, from: Data(review.utf8))
+        let note = try Fixture.decode(CoachNotesResponse.self, "coaching_notes.json").notes.first
+        return ScrollView {
+            CoachFocusCard(app: app, athleteId: athlete.athleteId, athleteName: athlete.name, plan: plan,
+                           onAdapt: {}, onBuildPlan: {}, onBuildNextWeek: {}, onChanged: {},
+                           review: decodedReview, latestNote: note)
+                .padding(16)
+        }
+        .background(UH.Palette.surface)
+    }
+
+    @Test func renderCoachFocusActNow() async throws {
+        let view = try focusCard("Minh Tran", review: #"{"generated_block":6,"reviewed_block":6,"issues":[],"levers":[]}"#)
+        save(view, name: "coach-card-act-now", size: CGSize(width: 402, height: 520))
+    }
+
+    @Test func renderCoachFocusReview() async throws {
+        let review = #"{"generated_block":1,"reviewed_block":null,"issues":[{"code":"VOLUME_JUMP","week":1,"message":"m"},{"code":"LONG_RUN_GRADIENT","week":1,"message":"m"}],"feasibility":"stretch","levers":[]}"#
+        save(try focusCard("Huy Le", review: review), name: "coach-card-review", size: CGSize(width: 402, height: 620))
+    }
+
+    @Test func renderAthletesNoMatch() throws {
+        save(try athletes(RosterFilter(race: "Nowhere 10K")), name: "athletes-no-match")
     }
 
     @Test func renderCoachedAthleteProfile() throws {

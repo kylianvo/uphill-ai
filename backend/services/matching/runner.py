@@ -245,7 +245,7 @@ async def match_user(
                         and w_id not in matched_workout_ids
                         and w.get("is_missed") != 1
                     ):
-                        db.update_workout_log(w_id, is_missed=1)
+                        db.update_workout_log(w_id, is_missed=1, missed_origin="matching")
 
     if not settings.MATCHING_SHADOW_MODE:  # only live matching marks workouts complete
         beginner_milestones.safe_refresh_milestones(user_id)

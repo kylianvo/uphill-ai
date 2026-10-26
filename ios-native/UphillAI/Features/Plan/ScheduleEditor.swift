@@ -33,17 +33,7 @@ struct ScheduleEditor: View {
             Divider()
 
             // Long run day
-            HStack {
-                Text("Long-run day").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
-                Spacer()
-                Picker("Long-run day", selection: $draft.longRunDay) {
-                    if draft.longRunDay == nil { Text("Not set").tag(Weekday?.none) }
-                    ForEach(draft.orderedDays) { Text(L($0.rawValue)).tag(Weekday?($0)) }
-                }
-                .pickerStyle(.menu)
-                .tint(UH.Palette.accentInk)
-            }
-            .frame(minHeight: 44)
+            LongRunDayRow(title: "Long-run day", day: $draft.longRunDay, runDays: draft.orderedDays, trailDays: draft.mountainDays)
 
             Divider()
 
@@ -90,7 +80,9 @@ struct ScheduleEditor: View {
                 mountainMinMinutes: $draft.mountainMinMinutes,
                 stairAccess: $draft.stairAccess,
                 useTreadmill: $draft.useTreadmill,
-                treadmillMaxIncline: draft.useTreadmill ? $draft.treadmillMaxIncline : nil
+                treadmillMaxIncline: draft.useTreadmill ? $draft.treadmillMaxIncline : nil,
+                longRunDay: $draft.longRunDay,
+                runDays: draft.preferredDays
             )
 
             if draft.isGettingStarted && includeBeginnerProgress {

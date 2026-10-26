@@ -13,9 +13,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+import db
 from config import settings
 from log_utils import get_logger
-from services import observability
+from services import claude_llm, observability
 from services.coach_prompts import COACH_VI_LANGUAGE_INSTRUCTION
 
 logger = get_logger(__name__)
@@ -69,7 +70,9 @@ def _clip(value: Any) -> str:
 
 
 def build_prompt(question: str, reply: str, evidence: Any, lang: str) -> tuple[observability.PromptTemplate, str]:
-    tpl = observability.load_prompt("llm_judge", JUDGE_PROMPT)
+    tpl = observability.load_prompt(
+        "llm_judge", JUDGE_PROMPT, label=claude_llm.prompt_label(settings.LLM_JUDGE_PROVIDER)
+    )
     language_rules = COACH_VI_LANGUAGE_INSTRUCTION.strip() if lang == "vi" else _EN_LANGUAGE_RULES
     text = observability.compile_prompt(
         tpl,
@@ -84,16 +87,22 @@ def build_prompt(question: str, reply: str, evidence: Any, lang: str) -> tuple[o
 
 
 async def judge_reply(*, question: str, reply: str, evidence: Any, lang: str, api_key: str) -> dict[str, float]:
-    """Grade one reply against the rubric. Raises on any Gemini or parse failure."""
+    """Grade one reply against the rubric. Raises on any model or parse failure."""
     from google import genai
     from google.genai import types
 
+    provider = settings.LLM_JUDGE_PROVIDER
     tpl, prompt = build_prompt(question, reply, evidence, lang)
-    client = genai.Client(api_key=api_key)
     with observability.trace("llm_judge", feature="evaluation"):
         with observability.generation(
-            "generation", feature="evaluation", model=settings.GEMINI_MODEL, prompt=tpl
+            "generation", feature="evaluation", model=claude_llm.model_for(provider), prompt=tpl
         ) as generation:
+            if claude_llm.is_claude(provider):
+                answer = await asyncio.to_thread(
+                    claude_llm.call, prompt, generation, schema=JudgeScores, thinking=False
+                )
+                return JudgeScores.model_validate_json(answer).model_dump()
+            client = genai.Client(api_key=api_key)
             response = await asyncio.to_thread(
                 client.models.generate_content,
                 model=settings.GEMINI_MODEL,
@@ -130,6 +139,7 @@ async def _judge_and_score(trace_id: str, message_id: int, **kwargs: Any) -> Non
 
 def maybe_judge_turn(
     *,
+    user_id: int,
     trace_id: str | None,
     message_id: int,
     question: str,
@@ -139,12 +149,15 @@ def maybe_judge_turn(
     api_key: str | None,
 ) -> None:
     """Sample a finished turn for background judging. Never blocks or raises into the turn."""
+    api_key = claude_llm.key_for(settings.LLM_JUDGE_PROVIDER, api_key)
     if (
         not trace_id
         or not api_key
         or not reply.strip()
         or not observability.enabled()
         or random.random() >= settings.LLM_JUDGE_SAMPLE_RATE
+        # Garmin Agreement §15.11: a turn built on Garmin data may not evaluate any AI.
+        or db.is_ai_eval_excluded(user_id)
     ):
         return
     try:

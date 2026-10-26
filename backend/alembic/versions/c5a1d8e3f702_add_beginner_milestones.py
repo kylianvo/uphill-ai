@@ -1,7 +1,7 @@
 """add beginner milestones
 
 Revision ID: c5a1d8e3f702
-Revises: a9d4c7e1f2b6
+Revises: c4e8b2a7d915, c4d8e2f1a9b7
 Create Date: 2026-10-21
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "c5a1d8e3f702"
-down_revision: str | Sequence[str] | None = "a9d4c7e1f2b6"
+down_revision: str | Sequence[str] | None = ("c4e8b2a7d915", "c4d8e2f1a9b7")  # also merges the two heads on main
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

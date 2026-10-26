@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { translations } from "../app/translations";
-import { parseDayList, TrainingVenueFields, type TrainingVenueValue } from "./TrainingVenueFields";
+import { LongRunDaySelect, parseDayList, trailLongRunDay, TrainingVenueFields, type TrainingVenueValue } from "./TrainingVenueFields";
 
 describe("parseDayList", () => {
   it("reads the JSON text stored on plans, in weekday order", () => {
@@ -135,5 +135,35 @@ describe("climb venue prompt", () => {
   it("is silent for a flat course or an unknown one", () => {
     renderSteep({ courseSteepness: 8 });
     expect(screen.queryByTestId("climb-venue-needed")).toBeNull();
+  });
+});
+
+describe("trailLongRunDay", () => {
+  it("moves the long run to the nearest trail day", () => {
+    expect(trailLongRunDay("Saturday", ["Sunday"])).toBe("Sunday");
+    expect(trailLongRunDay("Saturday", ["Saturday", "Sunday"])).toBe("Saturday");
+    expect(trailLongRunDay("Monday", ["Wednesday", "Sunday"])).toBe("Sunday");
+    expect(trailLongRunDay("Saturday", [])).toBe("Saturday");
+  });
+});
+
+describe("LongRunDaySelect", () => {
+  const t = (key: keyof typeof translations.en) => translations.en[key];
+  it("shows the one trail day as fixed instead of a picker the plan would ignore", () => {
+    render(<LongRunDaySelect lang="en" t={t} value="Sunday" trailDays={["Saturday"]} onChange={() => {}} />);
+    expect(screen.getByTestId("long-run-fixed").textContent).toBe("Saturday");
+    expect(screen.queryByRole("combobox")).toBeNull();
+  });
+
+  it("offers only the trail days when there are several", () => {
+    render(<LongRunDaySelect lang="en" t={t} value="Monday" trailDays={["Saturday", "Sunday"]} onChange={() => {}} />);
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    expect([...select.options].map(o => o.value)).toEqual(["Saturday", "Sunday"]);
+    expect(select.value).toBe("Sunday");
+  });
+
+  it("offers every day when there is no trail day", () => {
+    render(<LongRunDaySelect lang="en" t={t} value="Saturday" trailDays={[]} onChange={() => {}} />);
+    expect((screen.getByRole("combobox") as HTMLSelectElement).options).toHaveLength(7);
   });
 });

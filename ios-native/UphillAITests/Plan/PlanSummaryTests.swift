@@ -79,4 +79,37 @@ struct PlanSummaryTests {
         #expect(PlanSummary.phase(week: 2, workouts: week2) == "Base")
         #expect(PlanSummary.phase(week: 5, workouts: week2) == nil)
     }
+
+    @Test func weekLineFull() {
+        let v = WeekVolume(week: 6, km: 52, minutes: 450, gainM: 0, generated: true, phase: "Build")
+        #expect(PlanSummary.weekLine(v) == "Week 6 · Build · 7.5 h · 52 km")
+    }
+
+    @Test func weekLineNoKm() {
+        let v = WeekVolume(week: 3, km: 0, minutes: 240, gainM: 0, generated: true, phase: "Base")
+        #expect(PlanSummary.weekLine(v) == "Week 3 · Base · 4 h")
+    }
+
+    @Test func weekLineNoPhase() {
+        let v = WeekVolume(week: 1, km: 40, minutes: 330, gainM: 0, generated: true)
+        #expect(PlanSummary.weekLine(v) == "Week 1 · 5.5 h · 40 km")
+    }
+
+    @Test func weekLineEmptyWeekHasNoZeroHours() {
+        let v = WeekVolume(week: 12, km: 0, minutes: 0, gainM: 0, generated: true, phase: "Taper")
+        #expect(PlanSummary.weekLine(v) == "Week 12 · Taper")
+    }
+
+    @Test func trendLabelsKeepSelectedAndSpaceTheRest() {
+        #expect(PlanSummary.trendLabelWeeks(total: 13, selected: 1) == [1, 4, 8, 13])
+        #expect(PlanSummary.trendLabelWeeks(total: 13, selected: 7) == [1, 4, 7, 13])
+        #expect(PlanSummary.trendLabelWeeks(total: 24, selected: 10) == [1, 4, 10, 16, 20, 24])
+        #expect(PlanSummary.trendLabelWeeks(total: 0, selected: 1) == [])
+    }
+
+    @Test func courseLineShowsDistanceAndGain() {
+        #expect(PlanSummary.courseLine(km: 100, gainM: 5533) == "100 km · 5,533 m D+")
+        #expect(PlanSummary.courseLine(km: 42.2, gainM: nil) == "42.2 km")
+        #expect(PlanSummary.courseLine(km: nil, gainM: 800) == nil)
+    }
 }

@@ -12,11 +12,12 @@ from typing import Any
 import db
 from config import settings
 from log_utils import get_logger
-from services import beginner_milestones, coros_oauth, token_crypto
+from services import aerobic_speed, beginner_milestones, coros_oauth, token_crypto
 from services.mcp_client import McpClient
-from services.providers.coros import PROVIDER, CorosAdapter
+from services.providers.coros import PROVIDER, SPORT_TYPE_NAMES, CorosAdapter
 
 logger = get_logger(__name__)
+METRICS_HISTORY_DAYS = 90  # sleep and HRV accept explicit dates; resting HR and load cap themselves
 
 FITNESS_REFRESH_TIMEOUT_SECONDS = 15
 
@@ -102,7 +103,7 @@ async def persist(user_id: int, adapter, days: int) -> dict[str, int]:
     known_ids = db.get_activity_external_ids(user_id, PROVIDER)
     activities, metrics = await asyncio.gather(
         adapter.fetch_activities(since, until, exclude_ids=known_ids),
-        adapter.fetch_daily_metrics(days=min(days, 30)),
+        adapter.fetch_daily_metrics(days=min(days, METRICS_HISTORY_DAYS)),
         return_exceptions=True,
     )
     if isinstance(activities, BaseException):
@@ -149,6 +150,11 @@ async def persist(user_id: int, adapter, days: int) -> dict[str, int]:
     if metrics and not stored_metrics:
         raise CorosSyncPersistError(f"all {len(metrics)} daily metrics failed to persist for user {user_id}")
 
+    try:
+        await update_hr_drift(user_id, adapter)
+    except Exception:
+        logger.exception("hr drift update failed", extra={"fields": {"service": "coros_sync", "event": "drift_failed"}})
+
     db.mark_connection_synced(user_id, PROVIDER)
     if stored_activities:
         try:
@@ -187,7 +193,11 @@ async def _access_token(connection: dict) -> str:
                 f"Stored COROS refresh token for user {connection.get('user_id')} could not be decrypted; "
                 "the athlete must reconnect their COROS account."
             ) from exc
-        refreshed = await coros_oauth.refresh(refresh_token)
+        try:
+            refreshed = await coros_oauth.refresh(refresh_token)
+        except coros_oauth.CorosAuthError as exc:
+            # invalid_grant: COROS revoked or expired the refresh token; only a fresh login fixes it.
+            raise CorosReconnectRequired("Your COROS login has expired. Reconnect COROS in your profile.") from exc
         db.save_connection(
             user_id=connection["user_id"],
             provider=PROVIDER,
@@ -208,6 +218,24 @@ async def _access_token(connection: dict) -> str:
             f"Stored COROS access token for user {connection.get('user_id')} could not be decrypted; "
             "the athlete must reconnect their COROS account."
         ) from exc
+
+
+DRIFT_LOOKBACK_DAYS = 90
+_SPORT_CODES = {name: code for code, name in SPORT_TYPE_NAMES.items()}
+_DRIFT_TYPES = {"outdoor_run", "trail_run", "track_run"}  # hikes and treadmill runs don't measure running durability
+
+
+async def update_hr_drift(user_id: int, adapter, today: date | None = None) -> int:
+    """Fill heart-rate drift for long runs not yet checked (a few per sync). Structured hard sessions
+    are marked checked with no value: drift only means durability on a steady run."""
+    today = today or date.today()
+    since = datetime.combine(today - timedelta(days=DRIFT_LOOKBACK_DAYS), datetime.min.time(), tzinfo=UTC)
+    rows = db.get_activities_needing_drift(user_id, PROVIDER, since)
+    for row in rows:
+        steady = row.get("workout_type") not in aerobic_speed._HARD_WORKOUTS and row["activity_type"] in _DRIFT_TYPES
+        pct = await adapter.fetch_hr_drift(row["external_id"], _SPORT_CODES[row["activity_type"]]) if steady else None
+        db.set_activity_hr_drift(row["id"], pct)
+    return len(rows)
 
 
 async def sync_user(user_id: int, days: int = 30) -> dict[str, int]:

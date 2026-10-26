@@ -319,4 +319,11 @@ struct PlanSetupDraftTests {
         #expect(d.planBody(calendar: cal).raceName == "21 km goal")
     }
 
+    @Test func longRunOnlyOffersTrailDaysWhenThereAreAny() {
+        let run: [Weekday] = [.tuesday, .thursday, .saturday, .sunday]
+        #expect(Weekday.longRunChoices(runDays: run, trailDays: [.saturday]) == [.saturday])
+        #expect(Weekday.longRunChoices(runDays: run, trailDays: [.saturday, .sunday]) == [.saturday, .sunday])
+        #expect(Weekday.longRunChoices(runDays: run, trailDays: [.monday]) == run)
+        #expect(Weekday.longRunChoices(runDays: run, trailDays: []) == run)
+    }
 }

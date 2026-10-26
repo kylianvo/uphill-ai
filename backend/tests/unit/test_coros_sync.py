@@ -13,6 +13,18 @@ def _no_stored_activities(monkeypatch):
     monkeypatch.setattr(coros_sync.db, "get_activity_external_ids", lambda uid, provider: set())
 
 
+@pytest.fixture(autouse=True)
+def _no_drift_update(monkeypatch, request):
+    """persist() fills long-run drift from the database; these tests stub the database, so skip it."""
+    if "update_hr_drift" in request.node.name:
+        return
+
+    async def nothing(*a, **k):
+        return 0
+
+    monkeypatch.setattr(coros_sync, "update_hr_drift", nothing)
+
+
 class StubAdapter:
     def __init__(self):
         self.activities = [
@@ -311,3 +323,38 @@ async def test_activities_are_saved_before_a_daily_metrics_failure_is_raised(mon
     with pytest.raises(CorosDailyMetricsUnavailableError):
         await coros_sync.persist(user_id=7, adapter=MetricsDown(), days=30)
     assert len(saved) == 1
+
+
+@pytest.mark.asyncio
+async def test_long_sync_asks_for_90_days_of_metrics(monkeypatch):
+    monkeypatch.setattr(coros_sync.db, "mark_connection_synced", lambda uid, p: None)
+    asked = {}
+
+    class Recording(EmptyAdapter):
+        async def fetch_daily_metrics(self, days=7):
+            asked["days"] = days
+            return []
+
+    await coros_sync.persist(user_id=7, adapter=Recording(), days=365)
+    assert asked["days"] == 90
+
+
+@pytest.mark.asyncio
+async def test_access_token_requires_reconnect_when_coros_rejects_the_refresh(monkeypatch):
+    """COROS answering invalid_grant (revoked/expired refresh token) must ask for a reconnect, not 500."""
+    connection = {
+        "user_id": 7,
+        "token_expires_at": datetime.now(UTC) - timedelta(minutes=1),
+        "refresh_token_enc": "ciphertext",
+        "access_token_enc": "irrelevant",
+        "scopes": "openid mcp.tools offline_access",
+        "provider_user_id": None,
+    }
+    monkeypatch.setattr(coros_sync.token_crypto, "decrypt_token", lambda c, key=None: "refresh")
+
+    async def rejected(_token):
+        raise coros_sync.coros_oauth.CorosAuthError("COROS token endpoint returned HTTP 400: invalid_grant")
+
+    monkeypatch.setattr(coros_sync.coros_oauth, "refresh", rejected)
+    with pytest.raises(coros_sync.CorosReconnectRequired):
+        await coros_sync._access_token(connection)

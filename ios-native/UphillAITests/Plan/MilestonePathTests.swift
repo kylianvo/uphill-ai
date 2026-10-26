@@ -35,7 +35,6 @@ struct MilestonePathTests {
         let (model, _) = makeModel(milestones())
         await model.load()
         #expect(model.beginnerHeaderText == "First 5K · 2 of 4 milestones")
-        #expect(model.beginnerNextText?.hasPrefix("10 min unbroken jog") == true)
     }
 
     @Test func legacyPlanHasNoMilestoneHeader() async {

@@ -7,14 +7,13 @@ struct PlanView: View {
     let onViewProgress: () -> Void
     var user: User? = nil
     var onSharpen: (TrainingDestination) -> Void = { _ in }
-    var initialCoachExpanded: Bool = false
     var initialVolumeMode: VolumeChartMode = .weekDays
     var app: AppModel? = nil
     @State private var viewMode: PlanViewMode = .list
 
     init(model: PlanViewModel, generation: GenerationCenter, onBuildPlan: @escaping () -> Void,
          onViewProgress: @escaping () -> Void, user: User? = nil, onSharpen: @escaping (TrainingDestination) -> Void = { _ in },
-         initialViewMode: PlanViewMode = .list, initialCoachExpanded: Bool = false,
+         initialViewMode: PlanViewMode = .list,
          initialVolumeMode: VolumeChartMode = .weekDays,
          app: AppModel? = nil) {
         self.model = model
@@ -23,7 +22,6 @@ struct PlanView: View {
         self.onViewProgress = onViewProgress
         self.user = user
         self.onSharpen = onSharpen
-        self.initialCoachExpanded = initialCoachExpanded
         self.initialVolumeMode = initialVolumeMode
         self.app = app
         _viewMode = State(initialValue: initialViewMode)
@@ -40,6 +38,7 @@ struct PlanView: View {
     @State private var showSchedule = false
     @State private var showNextWeek = false
     @State private var showAdapt = false
+    @State private var adaptAfterManage = false
     @State private var showReview = false
     @State private var showGoal = false
     @State private var showAddWorkout = false
@@ -57,6 +56,16 @@ struct PlanView: View {
         NavigationStack {
             content
                 .background(UH.Palette.surface.ignoresSafeArea())
+                .onChange(of: model.notificationRoute, initial: true) { _, route in
+                    guard let route else { return }
+                    if let week = route.weekNumber { openWeekInList(week) }
+                    if let id = route.workoutId { selectedWorkout = model.snapshot?.workouts.first { $0.id == id } }
+                    if route.kind == "review" { showReview = true }
+                    if route.intent == "adapt", route.weekNumber != nil, model.canAdaptWeek(model.selectedWeek) { showAdapt = true }
+                    if route.kind == "plan", route.intent == "planning", model.nextWeekOffer != nil { showNextWeek = true }
+                    app?.notifications.visibleRoute = route
+                    model.notificationRoute = nil
+                }
                 .navigationTitle("Plan")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -74,7 +83,7 @@ struct PlanView: View {
                             .accessibilityIdentifier("plan.manageButton")
                     }
                 }
-                .sheet(item: $selectedWorkout) { workout in
+                .sheet(item: $selectedWorkout, onDismiss: { app?.notifications.visibleRoute = nil }) { workout in
                     WorkoutDetailSheet(
                         model: model,
                         workoutID: workout.id,
@@ -125,6 +134,7 @@ struct PlanView: View {
                 .sheet(isPresented: $showManage, onDismiss: {
                     if startNewAfterManage { startNewAfterManage = false; onBuildPlan() }
                     if scheduleAfterManage { scheduleAfterManage = false; showSchedule = true }
+                    if adaptAfterManage { adaptAfterManage = false; showAdapt = true }
                     if let tool = toolAfterManage {
                         toolAfterManage = nil
                         onSharpen(tool)
@@ -134,6 +144,7 @@ struct PlanView: View {
                                     deviceService: app?.deviceConnectionService,
                                     onStartNew: { startNewAfterManage = true },
                                     onSchedule: { scheduleAfterManage = true },
+                                    onAdapt: model.canAdaptWeek(model.selectedWeek) ? { adaptAfterManage = true } : nil,
                                     onTool: { dest in toolAfterManage = dest })
                 }
         }
@@ -163,7 +174,7 @@ struct PlanView: View {
             VStack(spacing: UH.Space.section) {
                 if generation.running?.kind == .newPlan { buildingBanner }
                 VStack(spacing: UH.Space.compact) {
-                    Image(systemName: "mountain.2").font(.system(size: 48)).foregroundStyle(UH.Palette.accentInk)
+                    Image(systemName: "mountain.2").font(Font.largeTitle).foregroundStyle(UH.Palette.accentInk)
                         .accessibilityHidden(true)
                     Text("No plan yet").font(UH.TextStyle.screenTitle).foregroundStyle(UH.Palette.ink)
                     Text("Your weekly workouts show up here once Coach Uphill builds your plan.")
@@ -217,33 +228,32 @@ struct PlanView: View {
                         // 1. Race and goal header
                         raceGoalHeader
 
-                        // 2. Today, journey and the coach message
-                        TodayCard(focus: model.todayFocus, onOpen: { selectedWorkout = $0 })
-                            .padding(.horizontal, UH.Space.regular)
-                        if let journey = model.journey {
-                            JourneyStrip(journey: journey, beginnerNext: model.beginnerNextText).padding(.horizontal, UH.Space.regular)
-                        }
-                        if let nudge = model.coachNudge {
-                            CoachNudgeCard(nudge: nudge).padding(.horizontal, UH.Space.regular)
+                        if let app, let athlete = app.actingAsAthlete {
+                            CoachFocusCard(app: app, athleteId: athlete.athleteId, athleteName: athlete.displayName,
+                                           plan: model.snapshot?.plan,
+                                           onAdapt: { showAdapt = true },
+                                           onBuildPlan: onBuildPlan,
+                                           onBuildNextWeek: { showNextWeek = model.nextWeekOffer != nil },
+                                           onChanged: { await model.load() })
+                                .padding(.horizontal, UH.Space.regular)
                         }
 
                         // 3. Summary carousel
                         SummaryCarousel(model: model,
-                                        adapting: generation.running?.kind == .adaptWeek ? model.selectedWeek : nil,
-                                        onReview: { showReview = true }, onAdapt: { showAdapt = true },
                                         onGoal: { showGoal = true },
                                         initialVolumeMode: initialVolumeMode)
 
                         // 4. Coach review card
-                        CoachReviewCard(model: model, onOpenReview: { showReview = true }, initialExpanded: initialCoachExpanded)
+                        CoachReviewCard(model: model, onOpenReview: { showReview = true })
                             .padding(.horizontal, UH.Space.regular)
+                            .task(id: briefTaskID) { await model.loadWeekBrief() }
 
                         if let app, let user, app.actingAsAthlete == nil {
                             SharpenChecklistCard(
                                 user: user,
                                 corosConnected: app.corosConnected || app.appleHealthConnected,
                                 raceHistoryLinked: !(app.raceHistory?.claims.isEmpty ?? true),
-                                onOpen: onSharpen
+                                onOpen: onSharpen, notifications: app.notifications
                             )
                             .padding(.horizontal, UH.Space.regular)
                             .task {
@@ -253,39 +263,9 @@ struct PlanView: View {
                             }
                         }
 
-                        // Adapt week button
-                        if model.canAdaptWeek(model.selectedWeek) {
-                            HStack {
-                                Spacer()
-                                Button {
-                                    showAdapt = true
-                                } label: {
-                                    HStack(spacing: 5) {
-                                        Image(systemName: "sparkles")
-                                            .font(.system(size: 11, weight: .bold))
-                                        Text("Adapt Week \(model.selectedWeek)")
-                                            .font(.system(size: 12, weight: .semibold))
-                                    }
-                                    .foregroundStyle(UH.Palette.accentInk)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(UH.Palette.activeFill, in: Capsule())
-                                    .overlay(Capsule().stroke(UH.Palette.accentInk.opacity(0.3), lineWidth: 1))
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("plan.adaptWeek")
-                            }
-                            .padding(.horizontal, UH.Space.regular)
-                        }
-
                         // 4. Week switcher with List / Calendar toggle
                         WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek, viewMode: $viewMode)
                             .padding(.horizontal, UH.Space.regular)
-
-                        // Why this week looks the way it does
-                        WeekBriefView(chips: model.weekDiffChips, brief: model.weekBrief)
-                            .padding(.horizontal, UH.Space.regular)
-                            .task(id: briefTaskID) { await model.loadWeekBrief() }
 
                         // 5. Day list, Month Calendar grid, or Ungenerated Week CTA
                         if model.isWeekUngenerated(model.selectedWeek) {
@@ -308,28 +288,13 @@ struct PlanView: View {
                             .padding(.horizontal, UH.Space.regular)
                         }
 
-                        // 6. Coach's pick this week (contextual knowledge card)
-                        if let card = model.contextKnowledgeCard {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(verbatim: L("COACH'S PICK THIS WEEK"))
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                    .tracking(0.5)
-                                    .foregroundStyle(UH.Palette.muted)
-                                    .padding(.horizontal, 2)
-
-                                KnowledgeCardView(card: card)
-                            }
-                            .padding(.horizontal, UH.Space.regular)
-                            .padding(.top, 4)
-                        }
-
                         // 7. Next week card
                         nextWeekCard
                     }
                     .padding(.vertical, UH.Space.regular)
                 }
                 .refreshable { await model.load() }
-                .onChange(of: model.selectedWeek) { Task { await model.refreshNextWeekOffer(); await model.loadKnowledgeCard() } }
+                .onChange(of: model.selectedWeek) { Task { await model.refreshNextWeekOffer() } }
                 .onChange(of: generation.lastOutcome) { _, outcome in
                     guard let outcome, outcome.kind == .nextWeek || outcome.kind == .adaptWeek else { return }
                     generation.clearOutcome()
@@ -337,6 +302,11 @@ struct PlanView: View {
                         readyBanner = outcome.kind == .adaptWeek ? L("Week updated") : L("New week is ready")
                         Task { try? await Task.sleep(for: .seconds(3)); readyBanner = nil }
                     }
+                }
+                .onChange(of: model.lastCompletedID) { _, id in
+                    guard let id, let line = model.doneLine(for: id) else { return }
+                    readyBanner = line
+                    Task { try? await Task.sleep(for: .seconds(3)); if readyBanner == line { readyBanner = nil } }
                 }
                 .onChange(of: model.autoSyncSummary) { _, summary in
                     guard let summary else { return }
@@ -358,7 +328,8 @@ struct PlanView: View {
                 }
                 .animation(reduceMotion ? nil : UH.Motion.standard, value: readyBanner)
                 .task(id: "\(model.selectedWeek)-\(model.days.count)") {
-                    guard model.selectedWeek == model.currentWeek else { return }
+                    // A coach lands on the coach card at the top, not on today's session.
+                    guard model.selectedWeek == model.currentWeek, app?.actingAsAthlete == nil else { return }
                     // Let the lazy list lay out its rows before scrolling.
                     await Task.yield()
                     try? await Task.sleep(for: .milliseconds(150))
@@ -389,8 +360,6 @@ struct PlanView: View {
             if offer.unlocked {
                 VStack(alignment: .leading, spacing: UH.Space.small) {
                     HStack(spacing: UH.Space.compact) {
-                        Image(systemName: "sparkles")
-                            .foregroundStyle(UH.Palette.accentInk)
                         Text(offer.title).font(UH.TextStyle.sectionTitle)
                     }
                     Text("Coach Uphill uses how this block went to shape the next one.").foregroundStyle(UH.Palette.secondary)
@@ -405,25 +374,17 @@ struct PlanView: View {
             } else {
                 VStack(alignment: .leading, spacing: UH.Space.small) {
                     HStack(spacing: UH.Space.compact) {
-                        Image(systemName: "lock.fill")
-                            .foregroundStyle(UH.Palette.secondary)
-                        Text("Complete the current block to unlock")
+                        Text(verbatim: offer.sessionsToUnlock.map { L("%lld more sessions to shape Block %lld", $0, offer.blockNumber) }
+                             ?? L("Keep going to shape Block %lld", offer.blockNumber))
                             .font(UH.TextStyle.sectionTitle)
                     }
+                    Text("Coach Uphill builds the next block from how this one goes.")
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
                     if let pct = offer.previousCompletionPct {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text("Block progress")
-                                    .font(UH.TextStyle.caption)
-                                    .foregroundStyle(UH.Palette.muted)
-                                Spacer()
-                                Text("\(Int(pct))% / 70% required")
-                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(pct >= 70 ? UH.Palette.accentInk : UH.Palette.secondary)
-                            }
-                            ProgressView(value: min(100, max(0, pct)), total: 100)
-                                .tint(pct >= 70 ? UH.Palette.accentInk : UH.Palette.secondary)
-                        }
+                        ProgressView(value: min(70, max(0, pct)), total: 70)
+                            .tint(UH.Palette.accentInk)
+                            .accessibilityLabel(L("Block progress"))
                     }
                     Button("Generate anyway") { showNextWeek = true }
                         .buttonStyle(.uhSecondary)
@@ -492,14 +453,14 @@ struct PlanView: View {
                     .fill(UH.Palette.activeFill)
                     .frame(width: 56, height: 56)
                 Image(systemName: "sparkles")
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(UH.TextStyle.metric)
                     .foregroundStyle(UH.Palette.accentInk)
             }
             .padding(.top, 8)
 
             VStack(spacing: 4) {
                 Text("Week \(week) is ready to generate")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(UH.TextStyle.sectionTitle)
                     .foregroundStyle(UH.Palette.ink)
 
                 Text("Coach Uphill will generate your personalized workouts based on your recent training consistency and progress.")
@@ -518,11 +479,10 @@ struct PlanView: View {
                         ProgressView().tint(UH.Palette.onSolid)
                         Text("Building the next block…")
                     } else {
-                        Image(systemName: "sparkles")
                         Text("Generate Week \(week)")
                     }
                 }
-                .font(.system(size: 14, weight: .bold))
+                .font(UH.TextStyle.label)
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
                 .foregroundStyle(UH.Palette.onSolid)
@@ -548,13 +508,26 @@ struct PlanView: View {
         return "\(model.selectedWeek):" + ids.joined(separator: ",")
     }
 
+    private func raceFacts(_ plan: Plan) -> Text {
+        let date = PlanCalendar.day(from: plan.raceDate)?.formatted(.dateTime.month(.abbreviated).day().year())
+        let facts = [date, PlanSummary.courseLine(km: plan.courseDistanceKm, gainM: plan.courseElevationGainM)].compactMap { $0 }
+        var text = Text(verbatim: facts.joined(separator: " · ")).foregroundStyle(UH.Palette.secondary)
+        if let days = model.daysToRace {
+            let countdown = days == 0 ? "· " + L("Race day")
+                : days < 7 ? "· " + L("Race week")
+                : L("· %lld weeks to go", Int((Double(days) / 7).rounded(.up)))
+            text = text + Text(verbatim: (facts.isEmpty ? "" : " ") + countdown).foregroundStyle(UH.Palette.accentInk)
+        }
+        return text
+    }
+
     private var raceGoalHeader: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let plan = model.snapshot?.plan {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(plan.raceName)
-                            .font(.system(size: 19, weight: .bold))
+                            .font(UH.TextStyle.sectionTitle)
                             .foregroundStyle(UH.Palette.ink)
                             .lineLimit(1)
 
@@ -564,75 +537,24 @@ struct PlanView: View {
                                 .foregroundStyle(UH.Palette.accentInk)
                                 .accessibilityIdentifier("plan.milestones.header")
                         } else {
-                        HStack(spacing: 6) {
-                            if let date = PlanCalendar.day(from: plan.raceDate) {
-                                Text(date, format: .dateTime.month(.abbreviated).day().year())
-                                    .font(UH.TextStyle.caption)
-                                    .foregroundStyle(UH.Palette.secondary)
-                            }
-                            if let days = model.daysToRace {
-                                Text(verbatim: days == 0 ? "· " + L("Race day")
-                                        : days < 7 ? "· " + L("Race week")
-                                        : L("· %lld weeks to go", Int((Double(days) / 7).rounded(.up))))
-                                    .font(UH.TextStyle.caption)
-                                    .foregroundStyle(UH.Palette.accentInk)
-                            }
-                        }
+                            // Race date and course, so the week's km below isn't read as the race distance; one Text so it wraps.
+                            raceFacts(plan)
+                                .font(UH.TextStyle.caption)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("plan.raceFacts")
                         }
                     }
 
-                    Spacer()
+                }
 
-                    if let pill = model.goalPillText {
-                        Button { showGoal = true } label: {
-                            Text(pill)
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                .foregroundStyle(model.goal?.status.kind == .behind ? UH.Palette.danger : UH.Palette.accentInk)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(UH.Palette.hover, in: Capsule())
-                                .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 1))
-                        }
-                        .accessibilityIdentifier("plan.goalpill")
-                    }
-                }
-                if let journey = model.journey, !journey.builtAroundYou.isEmpty {
-                    Button { showSchedule = true } label: {
-                        Label {
-                            Text(verbatim: journey.followsSchedule ? journey.builtAroundYou : L("Some upcoming weeks don't follow your schedule."))
-                        } icon: {
-                            Image(systemName: journey.followsSchedule ? "slider.horizontal.3" : "exclamationmark.circle")
-                        }
-                        .font(UH.TextStyle.caption)
-                        .foregroundStyle(journey.followsSchedule ? UH.Palette.secondary : UH.Palette.warningInk)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("plan.builtAroundYou")
-                }
+                Text(verbatim: PlanSummary.weekLine(PlanSummary.volume(week: model.selectedWeek, workouts: model.snapshot?.workouts ?? [])))
+                    .font(UH.TextStyle.label)
+                    .foregroundStyle(UH.Palette.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("plan.weekLine")
             }
         }
         .padding(.horizontal, UH.Space.regular)
-    }
-
-    private func comingSoonBadge(_ text: String) -> some View {
-        HStack(spacing: 4) {
-            Text(text)
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(UH.Palette.muted)
-            Text("Soon")
-                .font(.system(size: 8.5, weight: .bold, design: .monospaced))
-                .foregroundStyle(UH.Palette.muted)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 1)
-                .background(UH.Palette.line.opacity(0.6), in: Capsule())
-        }
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3.5)
-        .background(UH.Palette.surface, in: Capsule())
-        .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 0.8))
-        .opacity(0.85)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(text) Coming soon")
     }
 
 }

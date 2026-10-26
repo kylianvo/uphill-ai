@@ -5,11 +5,12 @@ python-dotenv>=1.0.0
 fitparse>=1.2.0
 gpxpy>=1.6.2
 google-genai>=2.0.0
+anthropic==1.17.0
 python-multipart
 pypdf
 beautifulsoup4
 youtube-transcript-api
-httpx
+httpx[http2]
 # PostgreSQL + SQLAlchemy
 psycopg2-binary>=2.9.0
 # <2.1: SQLAlchemy 2.1 maps plain postgresql:// URLs to psycopg 3, which isn't installed

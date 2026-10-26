@@ -8,6 +8,7 @@ are kept (past days, completed, GPS-matched), the diff and the warnings."""
 
 import asyncio
 import datetime as dt
+import logging
 import threading
 from collections.abc import Callable, Coroutine
 from dataclasses import asdict, dataclass, field
@@ -650,12 +651,22 @@ def build_rebuild_inputs(
         else (plan.get("training_environment") or "flat")
     )
 
+    # B is the contract: an A target only reaches the week once the A gate is open (goal_service).
+    try:
+        from services import goal_service
+
+        gate = goal_service.a_gate_for({**plan, "user_id": athlete_id}, all_workouts, rng.week)
+        training_target = goal_service.training_target_hours(plan, gate.open)
+    except Exception:
+        logging.getLogger(__name__).exception("A-goal gate failed; training for the stored target")
+        training_target = plan.get("target_time_hours")
+
     race_info = {
         "name": plan.get("race_name", "Training Plan"),
         "date": plan.get("race_date"),
         "terrain": fresh_user.get("terrain", "trail"),
         "goal_type": plan.get("goal_type"),
-        "target_time_hours": plan.get("target_time_hours"),
+        "target_time_hours": training_target,
         "course_distance_km": plan.get("course_distance_km"),
         "course_elevation_gain_m": plan.get("course_elevation_gain_m"),
         "course_context": course_context,
@@ -750,7 +761,9 @@ async def generate_week_draft(inputs: RebuildInputs, rng: RebuildRange) -> WeekD
     )
 
 
-def write_draft(plan: dict[str, Any], week: int, today: dt.date, draft: WeekDraft) -> None:
+def write_draft(
+    plan: dict[str, Any], week: int, today: dt.date, draft: WeekDraft, *, notification_request_id: str | None = None
+) -> None:
     """Scheduler adapt-week's direct write. The range is recomputed under row
     locks, so a workout completed or matched during generation is kept."""
     with db.engine.begin() as conn:
@@ -761,6 +774,15 @@ def write_draft(plan: dict[str, Any], week: int, today: dt.date, draft: WeekDraf
             # Writing an empty draft would delete every replaceable workout.
             raise ValueError("Generated week was empty; nothing was changed.")
         db.replace_week_workouts(conn, plan["id"], rng.replaceable_ids, filtered)
+        if notification_request_id:
+            from services.notification_store import finish_generation
+
+            finish_generation(
+                conn,
+                notification_request_id,
+                {"kind": "plan", "plan_id": plan["id"], "week_number": week},
+                dt.datetime.now(dt.UTC),
+            )
     db.set_plan_athlete_tier(plan["id"], draft.resolved_tier)
     if draft.fitness_snapshot:
         db.set_plan_fitness_snapshot(plan["id"], draft.fitness_snapshot)

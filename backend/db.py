@@ -10,7 +10,7 @@ import json
 import math
 import unicodedata
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import Any
 
 from sqlalchemy import bindparam, create_engine, text
@@ -999,6 +999,11 @@ def init_db():
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS is_missed INTEGER DEFAULT 0",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS missed_reason TEXT",
+            # Coach workbench: which subscription the runner is on, and the last plan week the coach reviewed.
+            "ALTER TABLE coach_athletes ADD COLUMN IF NOT EXISTS plan_type TEXT NOT NULL DEFAULT 'review'",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS coach_reviewed_block INTEGER",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS coach_reviewed_at TIMESTAMPTZ",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS coach_reviewed_by INTEGER REFERENCES users(id)",
             # Backfill: workouts that predate per-workout approval, on plans already
             # active, are implicitly approved -- only draft-plan workouts (and any
             # newly-inserted coach workout going forward) should read as pending.
@@ -1029,6 +1034,9 @@ def init_db():
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS generation_traced_at TIMESTAMPTZ",
             "ALTER TABLE goal_assessments ADD COLUMN IF NOT EXISTS trace_id TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
+            # Garmin Agreement §15.11: once set (first Garmin connect), never cleared -- chats built on that
+            # data stay Garmin data even after disconnect, so the user never feeds AI evaluation.
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_eval_excluded BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_last_week_review TEXT",
             "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_this_week_description TEXT",
             # Coach Chat 4b (week rebuild) -- see the chat_proposals / chat_daily_usage CREATE TABLEs.
@@ -1037,6 +1045,15 @@ def init_db():
             "ALTER TABLE chat_proposals ADD COLUMN IF NOT EXISTS draft JSONB",
             # Apple Health recovery metrics: asleep minutes for the night ending on metric_date.
             "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS sleep_minutes INTEGER",
+            "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS sleep_start TIME",
+            "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS sleep_end TIME",
+            "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS hrv_range_low REAL",
+            "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS hrv_range_high REAL",
+            "ALTER TABLE activities ADD COLUMN IF NOT EXISTS hr_drift_pct REAL",
+            "ALTER TABLE activities ADD COLUMN IF NOT EXISTS hr_drift_checked BOOLEAN NOT NULL DEFAULT FALSE",
+            # the coach's weekly review: three short messages and the session to nail (coach_nudge.review)
+            "ALTER TABLE coach_nudges ADD COLUMN IF NOT EXISTS messages JSONB",
+            "ALTER TABLE coach_nudges ADD COLUMN IF NOT EXISTS nail TEXT",
             "ALTER TABLE chat_proposals DROP CONSTRAINT IF EXISTS chk_chat_proposals_kind",
             "ALTER TABLE chat_proposals ADD CONSTRAINT chk_chat_proposals_kind CHECK (kind IN ('schedule', 'rebuild'))",
             "ALTER TABLE chat_proposals DROP CONSTRAINT IF EXISTS chk_chat_proposals_status",
@@ -1070,6 +1087,10 @@ def init_db():
         except Exception:
             conn.rollback()
 
+    from services.notification_store import init_schema
+
+    with engine.begin() as conn:
+        init_schema(conn)
     seed_data()
     print("PostgreSQL database tables initialized successfully.")
 
@@ -1373,6 +1394,8 @@ def save_workouts(
     workouts: list[dict[str, Any]],
     auto_approve: bool = True,
     preserve_completed: bool = False,
+    *,
+    conn=None,
 ):
     """`auto_approve=False` for coach-drafted plans: workouts start pending
     (approved_at NULL) until the coach reviews each one. Self-serve plans
@@ -1384,7 +1407,8 @@ def save_workouts(
         return
     week_numbers = [wo["week_number"] for wo in workouts]
     week_start, week_end = min(week_numbers), max(week_numbers)
-    with engine.connect() as conn:
+    owns_transaction = conn is None
+    with engine.connect() if owns_transaction else nullcontext(conn) as conn:
         existing_completed_slots = set()
         if preserve_completed:
             # Query existing completed workout slots (week_number, day_of_week, session_slot)
@@ -1433,7 +1457,8 @@ def save_workouts(
             if preserve_completed and (wn_val, day_val, slot_val) in existing_completed_slots:
                 continue
             conn.execute(text(_WORKOUT_INSERT_SQL), _workout_insert_params(plan_id, wo, auto_approve))
-        conn.commit()
+        if owns_transaction:
+            conn.commit()
 
 
 def get_active_plan(user_id: int) -> dict[str, Any] | None:
@@ -1768,6 +1793,53 @@ def approve_workout(workout_id: int, plan_id: int, athlete_id: int, coach_id: in
     return _row_to_dict(updated)
 
 
+def generated_block(plan_id: int) -> int:
+    """The block holding the plan's latest generated week; 0 before any week exists."""
+    with engine.connect() as conn:
+        top = conn.execute(text("SELECT MAX(week_number) FROM workouts WHERE plan_id = :p"), {"p": plan_id}).scalar()
+    return (top - 1) // settings.WEEKS_PER_BLOCK + 1 if top else 0
+
+
+def mark_plan_reviewed(plan_id: int, athlete_id: int, coach_id: int) -> dict[str, Any] | None:
+    """Records that the coach has reviewed every week generated so far. None if the plan isn't this athlete's."""
+    block = generated_block(plan_id)
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                UPDATE plans SET coach_reviewed_block = :b, coach_reviewed_at = NOW(), coach_reviewed_by = :c
+                WHERE id = :p AND user_id = :a
+                RETURNING id, coach_reviewed_block, coach_reviewed_at, coach_reviewed_by
+            """),
+            {"b": block, "c": coach_id, "p": plan_id, "a": athlete_id},
+        ).fetchone()
+        conn.commit()
+    return _row_to_dict(row) if row else None
+
+
+def publish_plan(plan_id: int, athlete_id: int, coach_id: int) -> dict[str, Any] | None:
+    """Approves every pending workout on the plan and, for a draft, makes it the athlete's active plan,
+    in one transaction. None if the plan isn't this athlete's."""
+    with engine.connect() as conn:
+        status = conn.execute(
+            text("SELECT plan_status FROM plans WHERE id = :p AND user_id = :a"), {"p": plan_id, "a": athlete_id}
+        ).scalar()
+        if status is None:
+            return None
+        approved = conn.execute(
+            text("UPDATE workouts SET approved_at = NOW() WHERE plan_id = :p AND approved_at IS NULL"), {"p": plan_id}
+        ).rowcount
+        if status == "draft":
+            conn.execute(
+                text("""
+                    UPDATE plans SET plan_status = 'active', approved_by_user_id = :c, approved_at = NOW()
+                    WHERE id = :p
+                """),
+                {"c": coach_id, "p": plan_id},
+            )
+        conn.commit()
+    return {"plan_id": plan_id, "plan_status": "active" if status == "draft" else status, "approved_count": approved}
+
+
 def make_rest_day(workout_id: int, editor_user_id: int) -> dict[str, Any] | None:
     """'Removes' a workout by converting it to a rest day in place, rather
     than deleting the row -- keeps the week's day structure intact. Fully
@@ -1864,6 +1936,8 @@ def update_workout_log(
     notes: str | None = None,
     is_missed: int | None = None,
     missed_reason: str | None = None,
+    *,
+    missed_origin: str | None = None,
 ) -> bool:
     """Update is_completed, is_missed, rpe, and/or notes for a workout.
 
@@ -1878,14 +1952,25 @@ def update_workout_log(
             return False
         if is_completed is not None:
             conn.execute(
-                text("UPDATE workouts SET is_completed = :v WHERE id = :id"), {"v": is_completed, "id": workout_id}
+                text(
+                    "UPDATE workouts SET first_completed_at=CASE WHEN :v=1 AND is_completed IS DISTINCT FROM 1 THEN COALESCE(first_completed_at,NOW()) ELSE first_completed_at END, is_completed = :v WHERE id = :id"
+                ),
+                {"v": is_completed, "id": workout_id},
             )
             if is_completed == 1:
                 conn.execute(
-                    text("UPDATE workouts SET is_missed = 0, missed_reason = NULL WHERE id = :id"), {"id": workout_id}
+                    text(
+                        "UPDATE workouts SET is_missed = 0, missed_reason = NULL, missed_origin = NULL WHERE id = :id"
+                    ),
+                    {"id": workout_id},
                 )
         if is_missed is not None:
-            conn.execute(text("UPDATE workouts SET is_missed = :v WHERE id = :id"), {"v": is_missed, "id": workout_id})
+            conn.execute(
+                text(
+                    "UPDATE workouts SET is_missed = :v, missed_origin=CASE WHEN :v=1 THEN :origin ELSE NULL END WHERE id = :id"
+                ),
+                {"v": is_missed, "id": workout_id, "origin": missed_origin},
+            )
             if is_missed == 1:
                 conn.execute(text("UPDATE workouts SET is_completed = 0 WHERE id = :id"), {"id": workout_id})
             else:
@@ -2745,7 +2830,7 @@ def get_roster_for_coach(coach_id: int) -> list[dict[str, Any]]:
     with engine.connect() as conn:
         rows = conn.execute(
             text("""
-                SELECT ca.id, ca.athlete_id, ca.status, ca.invited_at, ca.responded_at,
+                SELECT ca.id, ca.athlete_id, ca.status, ca.plan_type, ca.invited_at, ca.responded_at,
                        u.email AS athlete_email, u.name AS athlete_name
                 FROM coach_athletes ca
                 JOIN users u ON u.id = ca.athlete_id
@@ -2805,6 +2890,161 @@ def compute_current_week(start_date: str | None, total_weeks: int | None) -> int
     return max(1, min(week, total_weeks))
 
 
+def _attach_coach_fields(
+    athlete_rows: list[dict[str, Any]],
+    workouts_by_plan: dict[int, list[dict[str, Any]]],
+    athletes: list[dict[str, Any]],
+) -> None:
+    """Adds the coach-workbench fields (week stats, signals, recovery) to each
+    overview athlete in place. Every input is fetched roster-wide, so the query
+    count doesn't grow with the roster."""
+    from services import coach_signals, plan_lint
+    from services.workout_calendar import plan_start_monday, workout_date
+
+    ids = [r["athlete_id"] for r in athlete_rows]
+    if not ids:
+        return
+    plan_ids = [pid for pid in workouts_by_plan]
+    now = datetime.datetime.now().astimezone()  # server-local, like compute_current_week's date.today()
+    with engine.connect() as conn:
+
+        def q(sql: str, **params: Any) -> list[dict[str, Any]]:
+            stmt = text(sql).bindparams(*(bindparam(k, expanding=True) for k in params if isinstance(params[k], list)))
+            return [_row_to_dict(r) for r in conn.execute(stmt, params).fetchall()]
+
+        drafts = q(
+            "SELECT user_id, MAX(id) AS plan_id FROM plans WHERE user_id IN :ids AND plan_status = 'draft' GROUP BY user_id",
+            ids=ids,
+        )
+        last_sync = q(
+            "SELECT user_id, MAX(start_time) AS at FROM activities WHERE user_id IN :ids GROUP BY user_id", ids=ids
+        )
+        actual = (
+            q(
+                "SELECT matched_workout_id AS wid, SUM(duration_seconds) / 60.0 AS minutes FROM activities "
+                "WHERE matched_workout_id IN (SELECT id FROM workouts WHERE plan_id IN :pids) GROUP BY matched_workout_id",
+                pids=plan_ids,
+            )
+            if plan_ids
+            else []
+        )
+        metrics = q(
+            "SELECT user_id, metric_date, source_provider, hrv_status, resting_hr, sleep_minutes FROM daily_metrics "
+            "WHERE user_id IN :ids AND metric_date >= CURRENT_DATE - 6 ORDER BY metric_date DESC",
+            ids=ids,
+        )
+        results = q(
+            "SELECT DISTINCT ON (user_id) user_id, race_name, finish_time_sec FROM race_results "
+            "WHERE user_id IN :ids AND created_at >= NOW() - INTERVAL '7 days' AND NOT hidden "
+            "ORDER BY user_id, created_at DESC",
+            ids=ids,
+        )
+
+    draft_by = {r["user_id"]: r["plan_id"] for r in drafts}
+    sync_by = {r["user_id"]: r["at"] for r in last_sync}
+    actual_by = {r["wid"]: float(r["minutes"]) for r in actual}
+    result_by = {r["user_id"]: r for r in results}
+    metrics_by: dict[int, list[dict[str, Any]]] = {}
+    for m in metrics:
+        metrics_by.setdefault(m["user_id"], []).append(m)
+
+    for row, a in zip(athlete_rows, athletes, strict=True):
+        uid, plan_id = row["athlete_id"], row["plan_id"]
+        # Readiness rule: one provider at a time, newest wins, COROS on a tie.
+        ms = metrics_by.get(uid, [])
+        if ms:
+            newest = max(ms, key=lambda m: (m["metric_date"], m["source_provider"] == "coros"))["source_provider"]
+            ms = [m for m in ms if m["source_provider"] == newest]
+        sleeps = [m["sleep_minutes"] for m in ms if m["sleep_minutes"]]
+        a["recovery"] = (
+            {
+                "hrv_status": ms[0]["hrv_status"],
+                "resting_hr": ms[0]["resting_hr"],
+                "sleep_avg_7d_min": round(sum(sleeps) / len(sleeps)) if sleeps else None,
+            }
+            if ms
+            else None
+        )
+        a["plan_type"] = row["plan_type"]
+        a["last_sync_at"] = sync_by[uid].isoformat() if sync_by.get(uid) else None
+
+        wos: list[dict[str, Any]] = []
+        plan = None
+        current_week = 1
+        if plan_id is not None:
+            plan = {
+                "id": plan_id,
+                "user_id": uid,
+                "created_by_user_id": row["created_by_user_id"],
+                "race_name": row["race_name"],
+                "race_date": row["race_date"],
+                "start_date": row["start_date"],
+                "total_weeks": row["total_weeks"],
+                "coach_reviewed_block": row["coach_reviewed_block"],
+                "created_at": row["plan_created_at"],
+            }
+            current_week = compute_current_week(row["start_date"], row["total_weeks"])
+            raw = workouts_by_plan.get(plan_id, [])
+            race_date = datetime.date.fromisoformat(str(row["race_date"])[:10]) if row["race_date"] else now.date()
+            monday = plan_start_monday(str(row["start_date"])[:10] if row["start_date"] else None, raw, race_date)
+            wos = [
+                {
+                    **w,
+                    "date": workout_date(monday, w["week_number"], w["day_of_week"]),
+                    "actual_minutes": actual_by.get(w["id"]),
+                }
+                for w in raw
+            ]
+
+        facts = coach_signals.AthleteFacts(
+            plan_type=row["plan_type"],
+            plan=plan,
+            draft_plan_id=draft_by.get(uid),
+            workouts=wos,
+            current_week=current_week,
+            pending_active_count=sum(1 for w in wos if w["approved_at"] is None),
+            last_activity_at=sync_by.get(uid),
+            hrv_last3=[m["hrv_status"] for m in ms if (now.date() - m["metric_date"]).days < 3],
+            new_result=result_by.get(uid),
+            now=now,
+        )
+        signals = coach_signals.signals_for(facts)
+        a["signals"] = [{"code": s.code, "severity": s.severity, "params": s.params} for s in signals]
+        a["status"] = coach_signals.status_of(signals)
+
+        if plan is None:
+            a.update(
+                phase=None,
+                race_date=None,
+                days_to_race=None,
+                week=None,
+                prev_weeks=[],
+                load_4w_minutes=[],
+                adherence_14d=None,
+                mix_minutes=None,
+            )
+            continue
+        cur = [w for w in wos if w["week_number"] == current_week and w["type"] != "Rest" and w["is_completed"]]
+        mins = coach_signals._done_minutes
+        recent = [w for w in wos if now.date() - datetime.timedelta(days=13) <= w["date"] <= now.date()]
+        resolved = [w for w in recent if w["is_completed"] or w["is_missed"]]
+        race_day = datetime.date.fromisoformat(str(row["race_date"])[:10]) if row["race_date"] else None
+        a.update(
+            phase=next((w["phase"] for w in wos if w["week_number"] == current_week and w["phase"]), None),
+            race_date=str(row["race_date"])[:10] if row["race_date"] else None,
+            days_to_race=(race_day - now.date()).days if race_day else None,
+            week=coach_signals.week_stats(wos, current_week),
+            prev_weeks=[coach_signals.week_stats(wos, current_week - i) for i in (1, 2, 3)],
+            load_4w_minutes=[coach_signals.week_stats(wos, current_week - i)["minutes_done"] for i in (3, 2, 1, 0)],
+            adherence_14d=round(sum(1 for w in resolved if w["is_completed"]) / len(resolved), 3) if resolved else None,
+            mix_minutes={
+                "easy": round(sum(mins(w) for w in cur if not plan_lint.is_long(w) and not plan_lint.is_quality(w))),
+                "long": round(sum(mins(w) for w in cur if plan_lint.is_long(w))),
+                "quality": round(sum(mins(w) for w in cur if plan_lint.is_quality(w))),
+            },
+        )
+
+
 def get_roster_overview_data(
     coach_id: int,
     days: int = 14,
@@ -2824,9 +3064,10 @@ def get_roster_overview_data(
     with engine.connect() as conn:
         athlete_rows = conn.execute(
             text("""
-                SELECT ca.athlete_id, u.name AS athlete_name, u.email AS athlete_email,
+                SELECT ca.athlete_id, ca.plan_type, u.name AS athlete_name, u.email AS athlete_email,
                        u.current_weekly_km,
-                       p.id AS plan_id, p.race_name, p.race_date, p.start_date, p.current_week, p.total_weeks
+                       p.id AS plan_id, p.race_name, p.race_date, p.start_date, p.current_week, p.total_weeks,
+                       p.created_by_user_id, p.coach_reviewed_block, p.created_at AS plan_created_at
                 FROM coach_athletes ca
                 JOIN users u ON u.id = ca.athlete_id
                 LEFT JOIN LATERAL (
@@ -2851,8 +3092,8 @@ def get_roster_overview_data(
         workouts_by_plan: dict[int, list[dict[str, Any]]] = {pid: [] for pid in plan_ids}
         if plan_ids:
             stmt = text("""
-                SELECT plan_id, week_number, day_of_week, phase, type, is_completed, is_missed,
-                       distance_km, duration_minutes, elevation_gain_m
+                SELECT id, plan_id, week_number, day_of_week, phase, type, title, target_zone, is_completed,
+                       is_missed, missed_reason, rpe, approved_at, distance_km, duration_minutes, elevation_gain_m
                 FROM workouts
                 WHERE plan_id IN :plan_ids
             """).bindparams(bindparam("plan_ids", expanding=True))
@@ -2879,7 +3120,7 @@ def get_roster_overview_data(
                 JOIN plans p ON p.id = w.plan_id
                 JOIN coach_athletes ca ON ca.athlete_id = p.user_id AND ca.coach_id = :cid AND ca.status = 'active'
                 JOIN users u ON u.id = p.user_id
-                WHERE w.approved_at IS NULL
+                WHERE w.approved_at IS NULL AND p.plan_status <> 'draft'
                 ORDER BY w.id
             """),
             {"cid": coach_id},
@@ -3088,7 +3329,10 @@ def get_roster_overview_data(
         for a in sorted(eligible, key=lambda a: (-a["adherence_pct"], a["name"]))[:3]
     ]
 
+    _attach_coach_fields(athlete_rows, workouts_by_plan, athletes)
+
     return {
+        "generated_at": datetime.datetime.now(datetime.UTC).isoformat(),
         "athletes": athletes,
         "action_items": {
             "draft_plans": draft_plans,
@@ -3124,6 +3368,21 @@ def remove_coach_athlete_link(link_id: int, actor_user_id: int) -> dict[str, Any
             return None
         row = conn.execute(text("SELECT * FROM coach_athletes WHERE id = :id"), {"id": link_id}).fetchone()
     return _row_to_dict(row)
+
+
+def set_coach_athlete_plan_type(link_id: int, coach_id: int, plan_type: str) -> dict[str, Any] | None:
+    """Sets review | coached on one of this coach's non-removed links. None if the link isn't theirs."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                UPDATE coach_athletes SET plan_type = :pt
+                WHERE id = :id AND coach_id = :cid AND status != 'removed'
+                RETURNING *
+            """),
+            {"pt": plan_type, "id": link_id, "cid": coach_id},
+        ).fetchone()
+        conn.commit()
+    return _row_to_dict(row) if row else None
 
 
 def create_coach_note(
@@ -3829,11 +4088,13 @@ def upsert_daily_metric(user_id: int, metric) -> int:
             INSERT INTO daily_metrics (
                 user_id, metric_date, source_provider, resting_hr, hrv_ms,
                 hrv_baseline_ms, hrv_status, training_load_short,
-                training_load_long, load_ratio, recovery_percent, sleep_minutes
+                training_load_long, load_ratio, recovery_percent, sleep_minutes,
+                sleep_start, sleep_end, hrv_range_low, hrv_range_high
             ) VALUES (
                 :user_id, :metric_date, :provider, :resting_hr, :hrv_ms,
                 :hrv_baseline_ms, :hrv_status, :load_short, :load_long,
-                :load_ratio, :recovery_percent, :sleep_minutes
+                :load_ratio, :recovery_percent, :sleep_minutes,
+                :sleep_start, :sleep_end, :hrv_range_low, :hrv_range_high
             )
             ON CONFLICT (user_id, metric_date, source_provider) DO UPDATE SET
                 resting_hr = COALESCE(EXCLUDED.resting_hr, daily_metrics.resting_hr),
@@ -3844,7 +4105,11 @@ def upsert_daily_metric(user_id: int, metric) -> int:
                 training_load_long = COALESCE(EXCLUDED.training_load_long, daily_metrics.training_load_long),
                 load_ratio = COALESCE(EXCLUDED.load_ratio, daily_metrics.load_ratio),
                 recovery_percent = COALESCE(EXCLUDED.recovery_percent, daily_metrics.recovery_percent),
-                sleep_minutes = COALESCE(EXCLUDED.sleep_minutes, daily_metrics.sleep_minutes)
+                sleep_minutes = COALESCE(EXCLUDED.sleep_minutes, daily_metrics.sleep_minutes),
+                sleep_start = COALESCE(EXCLUDED.sleep_start, daily_metrics.sleep_start),
+                sleep_end = COALESCE(EXCLUDED.sleep_end, daily_metrics.sleep_end),
+                hrv_range_low = COALESCE(EXCLUDED.hrv_range_low, daily_metrics.hrv_range_low),
+                hrv_range_high = COALESCE(EXCLUDED.hrv_range_high, daily_metrics.hrv_range_high)
             RETURNING id
             """),
             {
@@ -3860,10 +4125,24 @@ def upsert_daily_metric(user_id: int, metric) -> int:
                 "load_ratio": metric.load_ratio,
                 "recovery_percent": metric.recovery_percent,
                 "sleep_minutes": metric.sleep_minutes,
+                "sleep_start": metric.sleep_start,
+                "sleep_end": metric.sleep_end,
+                "hrv_range_low": metric.hrv_range_low,
+                "hrv_range_high": metric.hrv_range_high,
             },
         ).fetchone()
         conn.commit()
         return row[0]
+
+
+def mark_ai_eval_excluded(user_id: int) -> None:
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE users SET ai_eval_excluded = TRUE WHERE id = :u"), {"u": user_id})
+
+
+def is_ai_eval_excluded(user_id: int) -> bool:
+    with engine.connect() as conn:
+        return bool(conn.execute(text("SELECT ai_eval_excluded FROM users WHERE id = :u"), {"u": user_id}).scalar())
 
 
 def get_connection(user_id: int, provider: str) -> dict[str, Any] | None:
@@ -4109,7 +4388,7 @@ def get_activities_for_pace(user_id: int, since, until) -> list[dict[str, Any]]:
         rows = conn.execute(
             text("""
             SELECT a.start_time, a.duration_seconds, a.distance_km, a.elevation_gain_m, a.avg_hr, a.activity_type,
-                   a.avg_pace_sec_per_km, a.adjusted_pace_sec_per_km, w.type AS workout_type
+                   a.avg_pace_sec_per_km, a.adjusted_pace_sec_per_km, a.hr_drift_pct, w.type AS workout_type
             FROM activities a
             LEFT JOIN workouts w ON w.id = a.matched_workout_id
             WHERE a.user_id = :u AND a.duplicate_of IS NULL AND a.start_time >= :since AND a.start_time < :until
@@ -4118,6 +4397,47 @@ def get_activities_for_pace(user_id: int, since, until) -> list[dict[str, Any]]:
             {"u": user_id, "since": since, "until": until},
         ).fetchall()
     return [_row_to_dict(row) for row in rows]
+
+
+def get_daily_metrics(user_id: int, since) -> list[dict[str, Any]]:
+    """Every provider's daily rows from `since`; callers pick one provider per metric."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT * FROM daily_metrics WHERE user_id = :u AND metric_date >= :since ORDER BY metric_date"),
+            {"u": user_id, "since": since},
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
+
+
+def get_activities_needing_drift(
+    user_id: int, provider: str, since, min_seconds: int = 5400, limit: int = 10
+) -> list[dict[str, Any]]:
+    """Long runs from `provider` whose heart-rate drift was never checked, newest first."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT a.id, a.external_ids ->> a.source_provider AS external_id, a.activity_type,
+                   w.type AS workout_type
+            FROM activities a
+            LEFT JOIN workouts w ON w.id = a.matched_workout_id
+            WHERE a.user_id = :u AND a.source_provider = :p AND a.duplicate_of IS NULL
+              AND NOT a.hr_drift_checked AND a.duration_seconds >= :min_s AND a.start_time >= :since
+            ORDER BY a.start_time DESC
+            LIMIT :limit
+            """),
+            {"u": user_id, "p": provider, "min_s": min_seconds, "since": since, "limit": limit},
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
+
+
+def set_activity_hr_drift(activity_id: int, pct: float | None) -> None:
+    """Store the drift (None = not computable) and mark the activity checked so it is never re-fetched."""
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE activities SET hr_drift_pct = :pct, hr_drift_checked = TRUE WHERE id = :id"),
+            {"pct": pct, "id": activity_id},
+        )
+        conn.commit()
 
 
 def upsert_fitness_checkpoint(plan_id: int, week_number: int, pace_min_km: float, n_runs: int) -> None:
@@ -4468,16 +4788,19 @@ def upsert_coach_nudge(plan_id: int, day: Any, lang: str, nudge: dict[str, Any])
     with engine.connect() as conn:
         conn.execute(
             text("""
-                INSERT INTO coach_nudges (plan_id, day, lang, facts_hash, tone, text, source)
-                VALUES (:plan_id, :day, :lang, :facts_hash, :tone, :text, :source)
+                INSERT INTO coach_nudges (plan_id, day, lang, facts_hash, tone, text, source, messages, nail)
+                VALUES (:plan_id, :day, :lang, :facts_hash, :tone, :text, :source, CAST(:messages AS JSONB), :nail)
                 ON CONFLICT (plan_id, day, lang) DO UPDATE SET facts_hash = EXCLUDED.facts_hash,
-                    tone = EXCLUDED.tone, text = EXCLUDED.text, source = EXCLUDED.source, created_at = NOW()
+                    tone = EXCLUDED.tone, text = EXCLUDED.text, source = EXCLUDED.source,
+                    messages = EXCLUDED.messages, nail = EXCLUDED.nail, created_at = NOW()
             """),
             {
                 "plan_id": plan_id,
                 "day": day,
                 "lang": lang,
                 **{k: nudge[k] for k in ("facts_hash", "tone", "text", "source")},
+                "messages": json.dumps(nudge["messages"]) if nudge.get("messages") else None,
+                "nail": nudge.get("nail"),
             },
         )
         conn.commit()
@@ -4487,7 +4810,8 @@ def get_coach_nudge(plan_id: int, day: Any, lang: str) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(
             text(
-                "SELECT facts_hash, tone, text, source FROM coach_nudges WHERE plan_id = :p AND day = :d AND lang = :l"
+                "SELECT facts_hash, tone, text, source, messages, nail FROM coach_nudges "
+                "WHERE plan_id = :p AND day = :d AND lang = :l"
             ),
             {"p": plan_id, "d": day, "l": lang},
         ).fetchone()
@@ -5529,7 +5853,7 @@ def apply_workout_moves(conn, moves: list[dict[str, Any]]) -> None:
     for m in moves:
         conn.execute(
             text(
-                "UPDATE workouts SET week_number = :wk, day_of_week = :day, is_missed = 0, missed_reason = NULL WHERE id = :id"
+                "UPDATE workouts SET week_number = :wk, day_of_week = :day, is_missed = 0, missed_reason = NULL, missed_origin = NULL WHERE id = :id"
             ),
             {"wk": m["to_week"], "day": m["to_day"], "id": m["workout_id"]},
         )

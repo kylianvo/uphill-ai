@@ -191,19 +191,19 @@ Rushing through reps without full range of motion.
         let gen = GenerationCenter(service: genService, defaults: UserDefaults(suiteName: UUID().uuidString)!)
 
         // 1. plan-tab-top-collapsed.png
-        let planTopCollapsed = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: false)
+        let planTopCollapsed = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list)
         save(planTopCollapsed, name: "plan-tab-top-collapsed")
 
         // 2. plan-tab-top-expanded.png (with Week Days Volume Chart)
-        let planTopExpanded = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: true, initialVolumeMode: .weekDays)
+        let planTopExpanded = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialVolumeMode: .weekDays)
         save(planTopExpanded, name: "plan-tab-top-expanded")
 
         // 2b. plan-tab-volume-trend.png (with Every Week Trend Volume Chart)
-        let planTopTrend = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: true, initialVolumeMode: .weekTrend)
+        let planTopTrend = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialVolumeMode: .weekTrend)
         save(planTopTrend, name: "plan-tab-volume-trend")
 
         // 3. calendar-month.png
-        let planCalendar = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .calendar, initialCoachExpanded: false)
+        let planCalendar = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .calendar)
         save(planCalendar, name: "calendar-month")
 
         // 4. double-session-day.png & workout-cards-colored.png
@@ -266,6 +266,7 @@ Rushing through reps without full range of motion.
             model: model,
             onStartNew: {},
             onSchedule: {},
+            onAdapt: {},
             initialPlans: [
                 model.snapshot!.plan,
                 TestData.plan(["id": 99, "race_name": "UTMB OCC 55K", "race_date": "2026-08-28", "total_weeks": 16, "plan_status": "archived"])
@@ -313,7 +314,7 @@ Rushing through reps without full range of motion.
         save(missedDetail, name: "workout-detail-missed")
 
         // 16. plan-tab-xxxl.png
-        let planTopXxxl = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: false)
+        let planTopXxxl = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list)
             .dynamicTypeSize(.accessibility3)
         save(planTopXxxl, name: "plan-tab-xxxl")
 

@@ -102,7 +102,7 @@ struct PlanCalendarScreenshots {
         for (mode, name) in [(PlanViewMode.list, "plan-list"), (.calendar, "plan-calendar")] {
             for dark in [false, true] {
                 let v = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil,
-                                 initialViewMode: mode, initialCoachExpanded: true)
+                                 initialViewMode: mode)
                 save(v, name: "\(name)-\(dark ? "dark" : "light")", height: 874, dark: dark)
             }
         }

@@ -28,6 +28,8 @@ struct NextWeekOffer: Equatable {
     let weekEnd: Int
     let previousCompletionPct: Double?
     let unlocked: Bool
+    /// Sessions still to do before the 70% unlock; nil when the block's sessions can't be counted.
+    var sessionsToUnlock: Int? = nil
 
     var title: String { weekStart == weekEnd ? L("Build week %lld", weekStart) : L("Build weeks %lld–%lld", weekStart, weekEnd) }
 }
@@ -61,6 +63,8 @@ enum FatigueLevel: String, CaseIterable, Identifiable {
 @Observable
 @MainActor
 final class PlanViewModel {
+    var notificationRoute: NotificationRoute?
+
     enum LoadState: Equatable { case loading, empty, loaded, failed(String) }
 
     static var offlineMessage: String { L("You're offline. Changes need a connection.") }
@@ -82,7 +86,6 @@ final class PlanViewModel {
     private(set) var coachNudge: CoachNudge?
     private(set) var isSyncingWatch = false
     private(set) var watchSyncNotice: String?
-    private(set) var contextKnowledgeCard: KnowledgeCardModel?
     /// The coach's brief for `weekBriefWeek`; cleared while another week's is loading.
     private(set) var weekBrief: WeekBrief?
     private var weekBriefWeek: Int?
@@ -138,7 +141,7 @@ final class PlanViewModel {
                 if isSignedIn() && usesCache { cache.save(fresh, as: .plan) }
                 await loadBlockCompletion()
                 await loadGoal()
-                await loadKnowledgeCard()
+                await loadJourney()
             } else {
                 snapshot = nil
                 cachedAt = nil
@@ -252,7 +255,7 @@ final class PlanViewModel {
         cachedAt = nil
         actionError = nil
         if isSignedIn() && usesCache { cache.save(snapshot, as: .plan) }
-        Task { await loadBlockCompletion(); await loadGoal(); await loadJourney(); await loadKnowledgeCard() }
+        Task { await loadBlockCompletion(); await loadGoal(); await loadJourney() }
     }
 
     /// Switches between the signed-in user's plan and a coached athlete's, then reloads.
@@ -310,13 +313,19 @@ final class PlanViewModel {
                 week: week,
                 weekday: weekday,
                 date: date,
-                workouts: snapshot.workouts.filter { $0.weekNumber == week && $0.weekday == weekday },
+                workouts: snapshot.workouts.filter { $0.weekNumber == week && $0.weekday == weekday }
+                    .sorted { Self.slotOrder($0.sessionSlot) < Self.slotOrder($1.sessionSlot) },
                 eyebrow: PlanCalendar.eyebrow(for: date, now: today, calendar: calendar)
             )
         }
     }
 
     var days: [PlanDay] { days(for: selectedWeek) }
+
+    /// Morning before afternoon before evening; unslotted sessions keep their place at the end.
+    static func slotOrder(_ slot: String?) -> Int {
+        ["morning", "afternoon", "evening"].firstIndex(of: slot?.lowercased() ?? "") ?? 3
+    }
 
     func calendarMonth(_ month: Date) -> CalendarMonth {
         CalendarMonth.make(month: month, plan: snapshot?.plan, workouts: snapshot?.workouts ?? [], now: now(), calendar: calendar)
@@ -408,9 +417,25 @@ final class PlanViewModel {
 
     func setDone(_ workout: Workout, _ done: Bool) async {
         let update = done ? WorkoutLogUpdate(isCompleted: 1) : WorkoutLogUpdate(isCompleted: 0, isMissed: 0)
-        if await write({ try await self.service.log(workoutID: workout.id, update) }), done {
-            lastCompletedID = workout.id
+        if await write({ try await self.service.log(workoutID: workout.id, update) }) {
+            lastCompletedID = done ? workout.id : nil
         }
+    }
+
+    /// "Done · 2 of 5 this week" for the week holding `workoutID`, counting sessions that aren't rest.
+    func doneLine(for workoutID: Int) -> String? {
+        guard let workouts = snapshot?.workouts,
+              let week = workouts.first(where: { $0.id == workoutID })?.weekNumber else { return nil }
+        let sessions = workouts.filter { $0.weekNumber == week && !$0.isRest }
+        return L("Done · %lld of %lld this week", sessions.filter(\.isDone).count, sessions.count)
+    }
+
+    /// Marked missed, or past with no outcome: either way the athlete can still say why.
+    func needsMissedReason(_ w: Workout) -> Bool {
+        guard !w.isMissedFlag else { return true }
+        guard let snapshot else { return false }
+        let date = PlanCalendar.date(week: w.weekNumber, weekday: w.weekday, plan: snapshot.plan, workouts: snapshot.workouts)
+        return PlanCalendar.isUnloggedPast(w, on: date)
     }
 
     func setMissed(_ workout: Workout, reason: String? = nil) async {
@@ -566,8 +591,17 @@ final class PlanViewModel {
             weekStart: start,
             weekEnd: min(start + (last.weekEnd - last.weekStart), snapshot.plan.totalWeeks),
             previousCompletionPct: last.completionPct,
-            unlocked: last.unlocked
+            unlocked: last.unlocked,
+            sessionsToUnlock: Self.sessionsToUnlock(
+                sessions: snapshot.workouts.filter { (last.weekStart...last.weekEnd) ~= $0.weekNumber && !$0.isRest }.count,
+                completionPct: last.completionPct)
         )
+    }
+
+    nonisolated static func sessionsToUnlock(sessions: Int, completionPct: Double?) -> Int? {
+        guard sessions > 0, let pct = completionPct else { return nil }
+        let needed = Int((Double(sessions) * 0.7).rounded(.up))
+        return max(needed - Int((Double(sessions) * pct / 100).rounded()), 0)
     }
 
     /// How the block before `offer` went; nil when it can't be read.
@@ -650,12 +684,6 @@ final class PlanViewModel {
         weekBrief = brief
     }
 
-    var weekDiffChips: [WeekDiffChip] {
-        guard selectedWeek > 1, let workouts = snapshot?.workouts else { return [] }
-        return WeekDiff.chips(prev: workouts.filter { $0.weekNumber == selectedWeek - 1 },
-                              cur: workouts.filter { $0.weekNumber == selectedWeek })
-    }
-
     /// Position of the selected week inside its phase, e.g. week 2 of 4 in Base.
     var weekInPhase: (index: Int, total: Int)? {
         guard let phase, let workouts = snapshot?.workouts else { return nil }
@@ -694,35 +722,14 @@ final class PlanViewModel {
     var goalPillText: String? {
         guard let goal, snapshot?.plan.courseDistanceKm != nil else { return nil }
         switch goal.status.kind {
-        case .onTrack: return L("On track")
+        case .onTrack: return goal.targetTimeHours.map { L("Goal %@", Self.formatMinutes($0 * 60)) } ?? L("On track")
         case .ahead: return L("Ahead of target")
-        case .behind: return L("Behind target")
+        case .behind: return goalIsOutOfReach ? L("Behind target") : L("Building")
         case .noTarget: return goal.status.suggestedMins.map { L("Suggested %@", Self.formatMinutes($0)) } ?? L("Not assessed yet")
         case .notAssessed: return L("Not assessed yet")
         }
     }
 
-
-    func loadKnowledgeCard() async {
-        guard snapshot?.plan != nil, cachedAt == nil else { return }
-        let phase = (self.phase ?? "").lowercased()
-        let days = daysToRace
-
-        let topic: String
-        if let days, days <= 21 {
-            topic = "Pacing"
-        } else if phase.contains("taper") || phase.contains("peak") {
-            topic = "Pacing"
-        } else if phase.contains("recovery") {
-            topic = "Recovery"
-        } else if phase.contains("strength") || phase.contains("me") {
-            topic = "Training"
-        } else {
-            topic = "Training"
-        }
-
-        contextKnowledgeCard = await service.knowledgeCard(topic: topic, lang: AppLanguage.code)
-    }
 
     /// Best effort: the Today card works without them, so a failure just leaves the strip and message out.
     func loadJourney() async {
@@ -732,10 +739,6 @@ final class PlanViewModel {
         if let nudge = try? await service.coachNudge(planID: plan.id), revision == scopeRevision { coachNudge = nudge }
     }
 
-    var todayFocus: TodayFocus {
-        let week = currentWeek
-        return TodayFocus.make(days: days(for: week), nextWeek: days(for: week + 1))
-    }
 
     func loadGoal() async {
         let revision = scopeRevision
@@ -762,9 +765,22 @@ final class PlanViewModel {
         }
     }
 
+    var goalProgress: GoalProgress? {
+        guard let goal, let workouts = snapshot?.workouts else { return nil }
+        return GoalProgress.make(workouts: workouts, targets: goal.targets, path: goal.path)
+    }
+
+    /// Behind only reads as a warning when the week truly can't carry the target; otherwise the athlete is building.
+    var goalIsOutOfReach: Bool { goal?.status.kind == .behind && goal?.feasibility?.verdict == "unsupported" }
+
     func applySuggestedGoal() async -> String? {
+        guard let minutes = suggestedMinutes else { return nil }
+        return await applyGoal(minutes: minutes)
+    }
+
+    func applyGoal(minutes: Double) async -> String? {
         let revision = scopeRevision
-        guard let planID = snapshot?.plan.id, let minutes = suggestedMinutes else { return nil }
+        guard let planID = snapshot?.plan.id else { return nil }
         guard cachedAt == nil else { return Self.offlineMessage }
         do {
             let fresh = try await service.applyGoal(planID: planID, targetMinutes: minutes)
@@ -849,7 +865,7 @@ final class PlanViewModel {
                 if isSignedIn() && usesCache { cache.save(snapshot, as: .plan) }
                 await loadBlockCompletion()
                 await loadGoal()
-                await loadKnowledgeCard()
+                await loadJourney()
             }
         } catch let error as APIError {
             actionError = error.userMessage
@@ -870,12 +886,6 @@ final class PlanViewModel {
         guard let milestones = beginnerMilestones, let plan = snapshot?.plan else { return nil }
         let weeks = plan.hasTargetEvent == true ? daysToRace.map { Int((Double($0) / 7).rounded(.up)) } : nil
         return milestones.headerText(weeksToEvent: weeks)
-    }
-
-    /// "5 min unbroken jog · usually around week 3–5", for the journey strip.
-    var beginnerNextText: String? {
-        guard let next = beginnerMilestones?.next else { return nil }
-        return "\(next.title) · \(next.typicalWeeksText)"
     }
 
     private func seenMilestoneKeys(planID: Int) -> Set<String> {

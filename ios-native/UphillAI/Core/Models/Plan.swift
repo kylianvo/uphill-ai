@@ -8,6 +8,20 @@ enum Weekday: String, CaseIterable, Codable, Sendable, Identifiable {
     /// Days after Monday: Monday 0 … Sunday 6.
     var offset: Int { Weekday.allCases.firstIndex(of: self)! }
     var short: String { String(rawValue.prefix(3)) }
+
+    /// The trail day nearest `chosen` (mirrors training_venues.long_run_day); nil when none of `trailDays` is usable.
+    static func nearestTrailDay(to chosen: Weekday?, among trailDays: Set<Weekday>) -> Weekday? {
+        if let chosen, trailDays.contains(chosen) { return chosen }
+        guard let chosen else { return Weekday.allCases.last(where: trailDays.contains) }
+        func gap(_ d: Weekday) -> Int { let g = abs(d.offset - chosen.offset); return min(g, 7 - g) }
+        return Weekday.allCases.filter(trailDays.contains).min { gap($0) < gap($1) }
+    }
+
+    /// Days the long run can go on: the trail days among the run days, else every run day (training_venues.long_run_day).
+    static func longRunChoices(runDays: [Weekday], trailDays: Set<Weekday>) -> [Weekday] {
+        let trail = runDays.filter(trailDays.contains)
+        return trail.isEmpty ? runDays : trail
+    }
 }
 
 /// Mirrors a `plans` row. Unused columns (prediction JSONB, athlete notes…) are not decoded.

@@ -14,7 +14,7 @@ from pydantic import BaseModel, ValidationError
 
 from config import settings
 from log_utils import get_logger
-from services import observability
+from services import claude_llm, observability
 from services.race_estimator import AMBITIOUS_FACTOR, IMPROVEMENT_CAP, IMPROVEMENT_PER_WEEK, SAFE_FACTOR, RaceEstimator
 
 _logger = get_logger(__name__)
@@ -104,7 +104,9 @@ def build_prompt(
         race.pop("key_climbs", None)
         payload["race"] = race
     retry_note = f"\nYour previous answer was rejected: {previous_error}. Fix exactly that.\n" if previous_error else ""
-    _prompt_tpl = observability.load_prompt("goal_judge", GOAL_JUDGE_PROMPT)
+    _prompt_tpl = observability.load_prompt(
+        "goal_judge", GOAL_JUDGE_PROMPT, label=claude_llm.prompt_label(settings.GOAL_JUDGE_LLM_PROVIDER)
+    )
     return observability.compile_prompt(
         _prompt_tpl,
         {
@@ -114,6 +116,22 @@ def build_prompt(
             "anchors_json": json.dumps(anchors, ensure_ascii=False, default=str),
         },
     )
+
+
+def _call_claude(prompt: str) -> str:
+    with observability.generation(
+        "generation",
+        feature="goal_estimate",
+        model=settings.CLAUDE_GOAL_MODEL,
+        prompt=observability.load_prompt(
+            "goal_judge", GOAL_JUDGE_PROMPT, label=claude_llm.prompt_label(settings.GOAL_JUDGE_LLM_PROVIDER)
+        ),
+    ) as generation:
+        model = settings.CLAUDE_GOAL_MODEL
+        # Sonnet 5.5 rejects thinking disabled; Haiku keeps it off.
+        message = claude_llm.generate(prompt, schema=GoalOutput, model=model, thinking="haiku" not in model)
+        claude_llm.record(generation, message)
+    return claude_llm.text(message)
 
 
 def _call_gemini(prompt: str, api_key: str) -> str:
@@ -160,8 +178,10 @@ def validate(
         errors.append(f"c exceeds the cutoff ({cutoff_mins:.0f} min)")
 
     if anchors:
-        low = min(x["minutes"] for x in anchors) * (1 - ANCHOR_SLACK)
-        high = max(x["minutes"] for x in anchors) * (1 + ANCHOR_SLACK)
+        # Real race results outrank the volume/pace priors: a prior far off must not widen the range B may land in.
+        ranged = [x for x in anchors if x.get("source_result_id") is not None] or anchors
+        low = min(x["minutes"] for x in ranged) * (1 - ANCHOR_SLACK)
+        high = max(x["minutes"] for x in ranged) * (1 + ANCHOR_SLACK)
         if not low <= b <= high:
             errors.append(f"b must be between {low:.0f} and {high:.0f} min (the anchors' range)")
     elif field.get("curve"):
@@ -218,13 +238,18 @@ def assess(
     """A/B/C goals with reasoning. Returns None only when neither the model nor
     the rules tier can produce a number (no anchors and the model failed)."""
     race = context.get("race") or {}
+    claude = claude_llm.is_claude(settings.GOAL_JUDGE_LLM_PROVIDER)
+    if claude:
+        api_key = settings.ANTHROPIC_API_KEY  # Claude bills the server key, never the athlete's Gemini key
     if llm_enabled and api_key:
         error: str | None = None
         with observability.trace("goal_estimate", feature="goal_estimate", metadata={"lang": lang}):
-            for engine, reduced in (("gemini", False), ("gemini_retry", True)):
+            name = "claude" if claude else "gemini"
+            for engine, reduced in ((name, False), (f"{name}_retry", True)):
                 try:
                     with observability.span(engine, metadata={"engine": engine}):
-                        raw = _call_gemini(build_prompt(context, anchors, lang, reduced, error), api_key)
+                        prompt = build_prompt(context, anchors, lang, reduced, error)
+                        raw = _call_claude(prompt) if claude else _call_gemini(prompt, api_key)
                     output = GoalOutput.model_validate_json(raw)
                     errors = validate(output, anchors, race, cutoff_mins)
                 except ValidationError as exc:

@@ -1,6 +1,7 @@
 import functools
 import re
 import time
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from types import SimpleNamespace
@@ -12,11 +13,14 @@ from db import block_number_for_week, get_plan_by_id, get_plan_workouts, week_ra
 from log_utils import get_logger
 from services import (
     beginner_milestones,
+    claude_llm,
     goal_demands,
     observability,
     plan_lint,
     race_readiness,
     recovery_baseline,
+    training_venues,
+    ultra_rules,
     week_layout,
 )
 from services.athlete_tier import (
@@ -90,6 +94,7 @@ You MUST return ONLY a JSON array of workout objects. NEVER wrap it in markdown 
    - `elevation_gain_m` and `grade_percent` (numbers, ONLY for `type` Easy/Tempo/Interval/Long Run AND only when the athlete's terrain is trail/mountain — omit or use 0 otherwise): give this specific run a plausible amount of climbing, using the race's overall course_elevation_gain_m/course_distance_km (given below in the athlete/race profile) as context for what's typical, and this run's own distance/phase/role to vary it — a Base-phase Easy run climbs less than a Peak-phase Long Run. `grade_percent` should be consistent with `elevation_gain_m` and this run's own `distance_km` (grade ≈ elevation_gain_m / (distance_km × 10)), not just the race's average. NEVER invent a figure wildly inconsistent with the race's overall elevation profile.
    - `description` (string: highly detailed description containing specific sections, each introduced by its keyword — Process, Overall, Reason, Benefit, Warning — appearing in that order and each appearing EXACTLY ONCE: Process (step-by-step execution using → to separate segments — EVERY exercise or effort chunk MUST be its own → segment; NEVER chain multiple exercises together with semicolons or commas inside a single segment, and NEVER wrap them in a label like 'Main Circuit: ...'. The warm-up, main, and cool-down minutes stated MUST sum exactly to duration_minutes.
      * Easy/Tempo/Interval/Long Run, e.g. 'Warm up 10 min easy → 4 x 6min @ Zone 4, 2min jog recovery → cool down 10 min'.
+     * Easy or Long Run with strides / hill sprints: the strides are their OWN → segment after the steady running, e.g. 'Warm up 10 min easy → 30 min steady Zone 2 → 6 x 15s strides with easy jog back between → cool down 5 min'. Leave the interval_* fields empty on these runs.
      * Strength (general/max-strength): straight sets — one → segment per exercise, each naming the exercise plus sets x reps and a 60-180s rest interval BETWEEN SETS OF THAT SAME EXERCISE (appropriate for near-maximal loads), e.g. 'Warm up 5 min mobility → Bodyweight Squats: 3x10, 90s rest → Walking Lunges: 3x10 each leg, 90s rest → Cool down 5 min stretching'.
 {{me_format_spec}}     * Interval: state exact rep count, distance or duration per rep, and recovery between reps.
 NEVER substitute a placeholder segment like 'Perform the bodyweight strength circuit for 20 minutes' for the actual named-exercise segments, and NEVER place the exercise breakdown anywhere outside this Process → chain (in particular, never append it after Warning or any other section) — every exercise MUST live inside Process and nowhere else), Overall (2-3 sentence summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (ONLY injury risks or execution precautions — NEVER exercise prescriptions, sets, or reps; those belong exclusively in Process). Provide extensive context.)
@@ -114,6 +119,56 @@ _NEVER_PRIORITY_TYPES = {"Rest", "Recovery", "Easy"}
 _PRIORITY_DAY_ORDER = {
     d: i for i, d in enumerate(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 }
+
+
+def _claude_generate(prompt: str) -> Any:
+    """One plan-generation call to Claude. Streamed so a long block cannot hit the HTTP timeout; Haiku 5.5 rejects
+    temperature, a thinking budget and prefill, so effort is the only knob."""
+    import anthropic
+
+    # A stalled stream used to hang until the SDK's 10-minute default; 60 s without a byte (the API pings
+    # while it thinks) means stalled, so fail and let the reduced-prompt retry take over.
+    client = anthropic.Anthropic(
+        api_key=settings.ANTHROPIC_API_KEY,
+        timeout=anthropic.Timeout(600.0, connect=10.0, read=60.0),
+        max_retries=1,
+    )
+    kwargs: dict[str, Any] = {}
+    # Haiku 5.5 rejects disabled thinking above effort high.
+    if settings.PLAN_LLM_THINKING == "disabled" and settings.PLAN_LLM_EFFORT in ("low", "medium", "high"):
+        kwargs["thinking"] = {"type": "disabled"}
+    with client.messages.stream(
+        model=settings.CLAUDE_PLAN_MODEL,
+        max_tokens=32000,
+        output_config={"effort": settings.PLAN_LLM_EFFORT},
+        messages=[{"role": "user", "content": prompt}],
+        **kwargs,
+    ) as stream:
+        return stream.get_final_message()
+
+
+def _claude_text(message: Any) -> str | None:
+    """The answer text, or None when Claude refused or ran out of tokens (both handled like unparseable JSON)."""
+    if message.stop_reason in ("refusal", "max_tokens"):
+        return None
+    return "".join(block.text for block in message.content if block.type == "text")
+
+
+def rows_after_race(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The sessions planned after the goal race in its week: the day after a race is rest, never a recovery run.
+    Only the last race counts, so a mid-plan tune-up race keeps the rest of its week."""
+    races = [w for w in workouts if w.get("type") == "Race"]
+    if not races:
+        return []
+    goal = max(races, key=lambda w: (w.get("week_number") or 0, _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), 7)))
+    after = _PRIORITY_DAY_ORDER.get(goal.get("day_of_week"), 7)
+    return [
+        w
+        for w in workouts
+        if w.get("type") not in ("Race", "Rest")
+        and w.get("week_number") == goal.get("week_number")
+        and _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), -1) > after
+    ]
 
 
 def apply_priority_guard(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1113,20 +1168,31 @@ class PlanGenerator:
             profile = graduated_profile(
                 profile, max((race_readiness.weekly_km(ws, flat_pace_min_km) for ws in built.values()), default=0)
             )
-        profile = for_race(profile, race_info.get("course_distance_km"))
+        venues = Venues.from_race_info(race_info)
+        profile = for_race(profile, race_info.get("course_distance_km"), bool(venues.mountain_days))
         combined = prior + workouts
         try:
             days_per_week = int(race_info.get("days_per_week") or 0) or None
         except (TypeError, ValueError):
             days_per_week = None
-        venues = Venues.from_race_info(race_info)
         prefs = plan_lint.Prefs(
-            long_run_day=race_info.get("long_run_day"),
+            long_run_day=training_venues.long_run_day(race_info.get("long_run_day"), race_info.get("mountain_days")),
             days_per_week=days_per_week,
             # an adapted week is the athlete's own call: never ask it to build toward the peak long run
             demands=None if target_week is not None else PlanGenerator.goal_demands_for(race_info, cutoff_time_hours),
             flat_only=not venues.local_hills and not venues.training_mountain and not venues.mountain_days,
             total_weeks=total_weeks,
+            mountain_day=bool(venues.mountain_days),
+            # same dose rule as the generator's ultra_gated: two Zone 3 sessions a week are for elites only
+            quality_gated=get_profile(tier).key != "elite",
+            me_first_weeks=(
+                ultra_rules.me_first_weeks(
+                    total_weeks,
+                    ultra_rules.legs_loaded(getattr(race_info.get("fitness_snapshot"), "weekly_vert_m", None)),
+                )
+                if get_profile(tier).allows_me_blocks
+                else frozenset()
+            ),
         )
         issues = plan_lint.lint_weeks(combined, weeks, profile, prefs)
         first = min(weeks) if weeks else 1
@@ -1283,7 +1349,9 @@ class PlanGenerator:
         double_session_days = _parse_days(
             race_info.get("double_session_days") or user_profile.get("double_session_days")
         )
-        long_run_day = race_info.get("long_run_day") or user_profile.get("long_run_day")
+        long_run_day = training_venues.long_run_day(
+            race_info.get("long_run_day") or user_profile.get("long_run_day"), race_info.get("mountain_days")
+        )
         days_per_week = race_info.get("days_per_week") or user_profile.get("days_per_week") or 4
         injury_history = user_profile.get("injury_history")
 
@@ -1386,8 +1454,24 @@ class PlanGenerator:
             )
         # Session caps follow the volume the athlete trains (like the lint), not only the level resolved at the start.
         tier_profile = for_race(
-            graduated_profile(get_profile(athlete_tier), current_weekly_km), race_info.get("course_distance_km")
+            graduated_profile(get_profile(athlete_tier), current_weekly_km),
+            race_info.get("course_distance_km"),
+            bool(venues.mountain_days),
         )
+        # An ultra trained on a weekly mountain day follows Quang's ladder (services/ultra_rules.py).
+        ultra = ultra_rules.applies(course_distance_km, venues.mountain_days)
+        ultra_advanced = ultra_rules.is_advanced(tier_profile.key)
+        ultra_window = ultra_rules.quality_weeks(total_weeks) if ultra else frozenset()
+        _snap = race_info.get("fitness_snapshot")
+        ultra_me_weeks = (
+            ultra_rules.me_first_weeks(total_weeks, ultra_rules.legs_loaded(_snap.weekly_vert_m if _snap else None))
+            if ultra and tier_profile.allows_me_blocks
+            else frozenset()
+        )
+        ultra_quality_weeks = ultra_window - ultra_me_weeks
+        # One 20-30 min Zone 3 session a week in the window unless elite: the 2 x 40-60 min dose needs an elite
+        # engine and 15-20+ h weeks, not just a cured AeT gap (book, confirmed with the KB 2026-10-25).
+        ultra_gated = bool(hard_banned) or tier_profile.key != "elite"
 
         # Extract Zone 2 bounds and calculate personalized pacing zone ranges.
         # goal_type comes from the PLAN, not the user: the same athlete can hold a
@@ -1438,8 +1522,9 @@ class PlanGenerator:
             for wo in wos:
                 minutes = float(wo.get("duration_minutes") or 0)
                 zone = wo.get("target_zone")
+                z3_cap = ultra_rules.QUALITY_MAX_MIN if wo.get("week_number") in ultra_quality_weeks else 75
                 if wo.get("type") == "Race" or not (
-                    (zone == "Zone 3" and minutes > 75) or (zone in ("Zone 4", "Zone 5") and minutes > 70)
+                    (zone == "Zone 3" and minutes > z3_cap) or (zone in ("Zone 4", "Zone 5") and minutes > 70)
                 ):
                     continue
                 _to_easy(
@@ -1534,6 +1619,35 @@ class PlanGenerator:
         def _gate_hard(wos: list[dict[str, Any]]) -> None:
             """Book: with a measured AeT-AnT gap above 10% (or, while the thresholds are only estimates, in the Base
             phase) every run stays in Zones 1-2. Zone 3-5 sessions become easy runs; hill sprints and strides stay."""
+            if ultra:  # ladder plans: Zone 3 only, only in the quality window, at most the week's count
+                kept: dict[int, int] = {}
+                for wo in sorted(
+                    wos, key=lambda w: (w.get("week_number") or 0, _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), 7))
+                ):
+                    title = (wo.get("title") or "").lower()
+                    if (
+                        wo.get("target_zone") not in ("Zone 3", "Zone 4", "Zone 5")
+                        or wo.get("type") in ("Race", "Muscular Endurance", "Strength", "Rest")
+                        or any(kw in title for kw in plan_lint.NEUROMUSCULAR_KEYWORDS)
+                    ):
+                        continue
+                    week_no = wo.get("week_number") or 0
+                    allowed = (
+                        ultra_rules.quality_per_week(ultra_advanced, ultra_gated)
+                        if week_no in ultra_quality_weeks
+                        else 0
+                    )
+                    if wo.get("target_zone") == "Zone 3" and kept.get(week_no, 0) < allowed:
+                        kept[week_no] = kept.get(week_no, 0) + 1
+                        continue
+                    _to_easy(
+                        wo,
+                        "Easy Aerobic Run",
+                        "Easy Run nhẹ",
+                        "Easy aerobic run, Zone 2, conversational pace.",
+                        "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được.",
+                    )
+                return
             if not hard_banned:
                 return
             for wo in wos:
@@ -1554,94 +1668,32 @@ class PlanGenerator:
                         "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được.",
                     )
 
-        def _add_drift_test(wos: list[dict[str, Any]]) -> None:
-            """Book: the heart-rate drift test finds the real AeT. Week 1 and every sixth week after it (Base and
-            Build, never a deload) one easy run of 45+ min becomes a flat test; the athlete enters the result in
-            Profile -> Thresholds, so the gate above works from a measured gap."""
-            placed: set[int] = set()  # 6-week cycles tested; a week with no fitting run passes it on
-            for week_no, rows in sorted(_week_rows(wos).items()):
-                due = (week_no - 1) % 6 <= 2 and (week_no - 1) // 6 not in placed  # first fitting week of each 6
-                if (
-                    not due
-                    or rows[0].get("phase") not in ("Base", "Build")
-                    or PlanGenerator.is_deload_week(week_no, total_weeks)
-                ):
-                    continue
-                long_day = next((r["day_of_week"] for r in rows if r.get("type") == "Long Run"), None)
-                days = list(_PRIORITY_DAY_ORDER)
-                eve = days[(days.index(long_day) - 1) % 7] if long_day in days else None
-                after_hard = {
-                    days[(days.index(r["day_of_week"]) + 1) % 7]
-                    for r in rows
-                    if r.get("day_of_week") in days
-                    and (
-                        r.get("type") in ("Interval", "Tempo")
-                        or any(kw in (r.get("title") or "").lower() for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
-                    )
-                }
-                pool = [
-                    r
-                    for r in rows
-                    if r.get("type") == "Easy"
-                    and r.get("day_of_week") != eve
-                    and r.get("day_of_week") not in after_hard
-                    and float(r.get("duration_minutes") or 0) >= 45
-                    and not r.get("mountain_mode")
-                ]
-                if not pool:
-                    continue
-                placed.add((week_no - 1) // 6)
-                wo = min(  # a flat run closest to an hour: a hilly one is flattened below
-                    pool,
-                    key=lambda r: (
-                        float(r.get("elevation_gain_m") or 0) >= 15 * max(float(r.get("distance_km") or 0), 1.0),
-                        abs(float(r["duration_minutes"]) - 60),
-                    ),
-                )
-                main = int(float(wo["duration_minutes"])) - 20
-                wo["target_zone"], wo["target_hr_range"] = "Zone 2", z2_range
-                wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
-                    "Zone 2", float(wo["duration_minutes"]), est_zones
-                )
-                wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0
-                wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
-                wo["title"] = "AeT Drift Test (Zone 2)" if lang != "vi" else "Kiểm tra AeT bằng HR drift (Zone 2)"
-                wo["description"] = (
-                    f"Warm-up 10 min easy → {main} min steady at the top of Zone 2 on flat ground, same effort "
-                    f"throughout; note your average HR for the first and second half → Cool-down 10 min easy. If the "
-                    f"second-half HR is under 5% above the first at the same pace, your Zone 2 ceiling is at or below "
-                    f"your AeT. Over 5%: lower the ceiling and repeat in 6 weeks. Enter the result in Profile → Thresholds."
-                    if lang != "vi"
-                    else f"Warm-up 10 phút nhẹ → {main} phút chạy đều ở mức cao của Zone 2 trên đường phẳng, giữ cùng "
-                    f"một mức nỗ lực; ghi HR trung bình nửa đầu và nửa sau → Cool-down 10 phút nhẹ. Nếu HR nửa sau cao "
-                    f"hơn nửa đầu dưới 5% ở cùng tốc độ, ngưỡng Zone 2 của bạn đang ở mức AeT hoặc thấp hơn. Cao hơn "
-                    f"5% thì hạ ngưỡng Zone 2 xuống và test lại sau 6 tuần. Nhập kết quả vào Hồ sơ → Ngưỡng."
-                )
-
-        def _cap_start_load(wos: list[dict[str, Any]]) -> None:
-            """Week 1 may not exceed what the athlete runs now by more than RECENT_LOAD_GROWTH. The excess comes off
-            the easy runs (30 min minimum); the long run, ME and quality sessions stay."""
+        def _cap_start_load(wos: list[dict[str, Any]], weeks: tuple[int, ...] = (1,), floor: int = 30) -> None:
+            """The first weeks may not exceed what the athlete runs now by more than RECENT_LOAD_GROWTH. The excess
+            comes off the easy runs (`floor` min minimum); the long run, ME and quality sessions stay."""
             recent = recent_weekly_minutes(
                 current_weekly_km, PlanGenerator.flat_zone2_pace(user_profile, race_info.get("goal_type"), athlete_tier)
             )
-            rows = _week_rows(wos).get(1)
-            if not recent or not rows:
-                return
-            excess = plan_lint.week_minutes(rows) - recent * RECENT_LOAD_GROWTH
-            easy = [
-                r
-                for r in rows
-                if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")
-                and float(r.get("duration_minutes") or 0) > 30
-                and not r.get("mountain_mode")
-            ]
-            for r in sorted(easy, key=lambda r: -float(r["duration_minutes"])):
-                if excess <= 0:
-                    break
-                cut = min(excess, float(r["duration_minutes"]) - 30)
-                new = int(round((float(r["duration_minutes"]) - cut) / 5) * 5)
-                excess -= float(r["duration_minutes"]) - new
-                _resize(r, new)
+            by_week = _week_rows(wos)
+            for week_no in weeks:
+                rows = by_week.get(week_no)
+                if not recent or not rows:
+                    continue
+                excess = plan_lint.week_minutes(rows) - recent * RECENT_LOAD_GROWTH
+                easy = [
+                    r
+                    for r in rows
+                    if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")
+                    and float(r.get("duration_minutes") or 0) > floor
+                    and not r.get("mountain_mode")
+                ]
+                for r in sorted(easy, key=lambda r: -float(r["duration_minutes"])):
+                    if excess <= 0:
+                        break
+                    cut = min(excess, float(r["duration_minutes"]) - floor)
+                    new = int(round((float(r["duration_minutes"]) - cut) / 5) * 5)
+                    excess -= float(r["duration_minutes"]) - new
+                    _resize(r, new)
 
         def _cap_week_vert(wos: list[dict[str, Any]]) -> None:
             """No week carries more than 80% of the race's climbing: that is the race, not training for it. The excess
@@ -1676,9 +1728,11 @@ class PlanGenerator:
                     r["grade_percent"] = r["elevation_gain_m"] / (r["distance_km"] * 10) if r["distance_km"] else 0.0
 
         def _fit_taper_long_share(wos: list[dict[str, Any]]) -> None:
-            """A taper week whose short runs became rest keeps the long run within the athlete's long-run share."""
+            """A taper week whose short runs became rest keeps the long run within the athlete's long-run share, and
+            is lighter than the week before (the lint's TAPER_MAX_SHARE): the long run gives up the difference."""
             share = tier_profile.long_run_share_cap + LONG_SHARE_SOFT
-            for rows in _week_rows(wos).values():
+            by_week = _week_rows(wos)
+            for week_no, rows in sorted(by_week.items()):
                 long = next((r for r in rows if r.get("type") == "Long Run"), None)
                 if not long or rows[0].get("phase") != "Taper":
                     continue
@@ -1686,6 +1740,17 @@ class PlanGenerator:
                     float(r.get("duration_minutes") or 0) for r in rows if r is not long and r.get("type") != "Rest"
                 )
                 cap = max(others * share / (1 - share), 30.0)
+                before = plan_lint.week_minutes(by_week.get(week_no - 1) or [])
+                if before:
+                    cap = min(
+                        cap,
+                        max(
+                            before * plan_lint.TAPER_MAX_SHARE
+                            - plan_lint.week_minutes(rows)
+                            + float(long["duration_minutes"]),
+                            30.0,
+                        ),
+                    )
                 if float(long["duration_minutes"]) > cap:
                     _resize(long, int(cap // 5 * 5) or 30)
 
@@ -1842,7 +1907,7 @@ class PlanGenerator:
                 prior = get_plan_workouts(plan_id) if plan_id else []
             except Exception:  # noqa: BLE001
                 prior = []
-            cap_min = float(session_cap_minutes(tier_profile, course_distance_km))
+            cap_min = float(session_cap_minutes(tier_profile, course_distance_km, bool(venues.mountain_days)))
             by_week: dict[int, list[dict[str, Any]]] = {}
             for wo in wos:
                 if isinstance(wo.get("week_number"), int):
@@ -1864,6 +1929,20 @@ class PlanGenerator:
                     cap = peak_long * (0.6 if week_no == first_taper else 0.4)
                     if long and cap and float(long["duration_minutes"]) > cap * 1.05:
                         _resize(long, int(round(cap / 5) * 5))  # taper long run: about 60% then 40% of the peak
+                    continue
+                if ultra:  # Quang's ladder replaces the growth ask and the back-to-back weekend
+                    long = next((r for r in rows if r.get("type") == "Long Run"), None)
+                    recent = max(
+                        (
+                            float(w.get("duration_minutes") or 0)
+                            for w in prior + wos
+                            if w.get("type") == "Long Run" and week_no - 2 <= (w.get("week_number") or 0) < week_no
+                        ),
+                        default=0.0,
+                    )
+                    target = ultra_rules.long_run_target(ultra, ultra_advanced, week_no, total_weeks, recent or None)
+                    if long and target:
+                        _resize(long, target)
                     continue
                 if rows[0].get("phase") not in ("Base", "Build", "Peak") or PlanGenerator.is_deload_week(
                     week_no, total_weeks
@@ -1942,6 +2021,74 @@ class PlanGenerator:
                         )
                         eve["grade_percent"] = long.get("grade_percent") or 0
 
+        def _ultra_week_shape(wos: list[dict[str, Any]]) -> None:
+            """Quang's week around the mountain day: weekday easy runs in the band's range (the extra volume goes
+            here), the other weekend day shorter after a longer mountain day, and no ME in a week with a 6 h+ run."""
+            lo, hi = ultra_rules.weekday_minutes(ultra, ultra_advanced)
+            by_week = _week_rows(wos)
+            for week_no, rows in sorted(by_week.items()):
+                if rows[0].get("phase") not in ("Base", "Build", "Peak"):
+                    continue
+                long = next((r for r in rows if r.get("type") == "Long Run"), None)
+                long_min = float(long["duration_minutes"]) if long else 0.0
+                deload = ultra_rules.is_deload(week_no, total_weeks)
+                for wo in rows:
+                    day, kind = wo.get("day_of_week"), wo.get("type")
+                    minutes = float(wo.get("duration_minutes") or 0)
+                    if kind == "Muscular Endurance" and long_min >= ultra_rules.ME_FREE_LONG_RUN_MIN:
+                        _to_easy(
+                            wo,
+                            "Easy Aerobic Run",
+                            "Easy Run nhẹ",
+                            "Easy aerobic run, Zone 2, conversational pace. No ME this week: the long mountain day "
+                            "is the leg work.",
+                            "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được. Tuần này không tập ME: buổi leo núi dài "
+                            "đã đủ cho chân.",
+                        )
+                        _resize(wo, lo)
+                    elif (
+                        kind not in ("Easy", "Aerobic Capacity", "Recovery") or minutes <= 0 or wo.get("mountain_mode")
+                    ):
+                        continue
+                    elif long and day in ("Saturday", "Sunday") and day != long.get("day_of_week"):
+                        other = ultra_rules.other_day_minutes(long_min)
+                        if other != minutes:
+                            _resize(wo, other)
+                    elif day not in ("Saturday", "Sunday"):
+                        want = min(minutes if deload else max(minutes, lo), hi)
+                        if want != minutes:
+                            _resize(wo, int(want))
+                before = by_week.get(week_no - 1)
+                if not deload and before and not ultra_rules.is_deload(week_no - 1, total_weeks) and week_no > 1:
+                    # the ladder step is Quang's; the rest of the week still grows by the tier's weekly cap
+                    def rest_of(ws: list[dict[str, Any]]) -> float:
+                        return plan_lint.week_minutes([r for r in ws if r.get("type") != "Long Run"])
+
+                    excess = rest_of(rows) - rest_of(before) * (1 + tier_profile.max_weekly_progression)
+                    easy = [r for r in rows if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")]
+                    for r in sorted(easy, key=lambda r: -float(r.get("duration_minutes") or 0)):
+                        if excess <= 0:
+                            break
+                        minutes = float(r.get("duration_minutes") or 0)
+                        new = max(
+                            lo if r.get("day_of_week") not in ("Saturday", "Sunday") else 45,
+                            int((minutes - excess) // 5 * 5),
+                        )
+                        if new < minutes:
+                            excess -= minutes - new
+                            _resize(r, new)
+                if deload and before:  # a recovery week is one: at most 80% of the week before, off the easy runs
+                    excess = plan_lint.week_minutes(rows) - 0.8 * plan_lint.week_minutes(before)
+                    easy = [r for r in rows if r.get("type") in ("Easy", "Aerobic Capacity", "Recovery")]
+                    for r in sorted(easy, key=lambda r: -float(r.get("duration_minutes") or 0)):
+                        if excess <= 0:
+                            break
+                        minutes = float(r.get("duration_minutes") or 0)
+                        new = max(30, int((minutes - excess) // 5 * 5))
+                        if new < minutes:
+                            excess -= minutes - new
+                            _resize(r, new)
+
         def _make_rest(wo: dict[str, Any]) -> None:
             wo.update(
                 type="Rest",
@@ -1981,6 +2128,28 @@ class PlanGenerator:
                     _make_rest(drop)
                     active.remove(drop)
 
+        def _pair_strength_with_run(wos: list[dict[str, Any]]) -> None:
+            """Claude puts Strength/ME on a training day of its own, so that day carries no run and the volume ramp
+            has nowhere to add the week's minutes. Each such day gets an afternoon easy run, copied from the week."""
+            if settings.PLAN_LLM_PROVIDER != "claude":
+                return
+            by_day: dict[tuple[int, str], list[dict[str, Any]]] = {}
+            for wo in wos:
+                if isinstance(wo.get("week_number"), int):
+                    by_day.setdefault((wo["week_number"], wo.get("day_of_week")), []).append(wo)
+            for (week_no, day), rows in list(by_day.items()):
+                if not all(r.get("type") in ("Strength", "Muscular Endurance") for r in rows):
+                    continue
+                easy = [w for (wk, _), rs in by_day.items() if wk == week_no for w in rs if w.get("type") == "Easy"]
+                if not easy:
+                    continue
+                run = {**min(easy, key=lambda r: float(r.get("duration_minutes") or 0)), "day_of_week": day}
+                run["session_slot"] = "afternoon"
+                for r in rows:
+                    r["session_slot"] = "morning"
+                _resize(run, int(tier_profile.weekday_minutes[0]))
+                wos.append(run)
+
         def _fuel_text(minutes: int) -> str:
             if lang == "vi":
                 if minutes < 60:
@@ -2007,10 +2176,13 @@ class PlanGenerator:
         def _me_text() -> str:
             if lang == "vi":
                 return (
-                    "Warm-up 10 phút nhẹ → 3-4 vòng step-up, squat, lunge và plank, nghỉ 2-3 phút giữa các vòng "
-                    "→ Cool-down 5 phút nhẹ."
+                    "Warm-up 10 phút nhẹ → Step-ups 3 x 12/chân → Squats 3 x 15 → Lunges 3 x 10/chân "
+                    "→ Planks 3 x 45 giây → Cool-down 5 phút nhẹ. Overall: tập theo vòng, nghỉ 2-3 phút giữa các vòng."
                 )
-            return "Warm-up 10 min easy → 3-4 rounds of step-ups, squats, lunges and planks, 2-3 min rest between rounds → Cool-down 5 min easy."
+            return (
+                "Warm-up 10 min easy → Step-ups 3 x 12/leg → Squats 3 x 15 → Lunges 3 x 10/leg "
+                "→ Planks 3 x 45 s → Cool-down 5 min easy. Overall: work in rounds, 2-3 min rest between rounds."
+            )
 
         def _easy_text(minutes: int, zone: str | None, incline: float, climbing: bool) -> str:
             warm = 10 if minutes >= 45 else (5 if minutes >= 20 else 0)
@@ -2076,6 +2248,63 @@ class PlanGenerator:
             from services.plan_quality import _STEP_MIN
 
             pace_token = re.compile(r"\s*@?\s*\d{1,2}:\d{2}(?:\s*[-–]\s*\d{1,2}:\d{2})?\s*/\s*km")
+
+            def _reps_into_text(wo: dict[str, Any]) -> None:
+                """Only an Interval / Walk-Run session carries rep fields (the app shows them as the main set). On
+                any other run the strides or hill sprints become their own step before the cool-down, and the
+                fields go."""
+                reps, value, unit = wo.get("interval_reps"), wo.get("interval_rep_value"), wo.get("interval_rep_unit")
+                if wo.get("type") in ("Interval", "Walk/Run") or not reps:
+                    return
+                wo["interval_reps"] = wo["interval_rep_value"] = wo["interval_rep_unit"] = None
+                title = (wo.get("title") or "").lower()
+                kind = "hill sprints" if "sprint" in title else "strides" if "stride" in title else None
+                desc = wo.get("description") or ""
+                if not (kind and value and unit) or kind.split()[-1] in desc.lower():
+                    return
+                block = f"{reps} × {float(value):g} {unit} {kind}"
+                step = f"{block}, chạy nhẹ về giữa các lần" if lang == "vi" else f"{block} with easy jog back between"
+                wo["description"] = _insert_before_cooldown(desc, step)
+
+            def _insert_before_cooldown(desc: str, step: str) -> str:
+                body, notes = _split_notes(desc)
+                steps = body.rstrip(". ").split(" → ")
+                at = len(steps) - 1 if len(steps) > 1 and _is_cooldown(steps[-1]) else len(steps)
+                steps.insert(at, step)
+                return " → ".join(steps) + "." + notes
+
+            def _is_cooldown(step: str) -> bool:
+                low = step.strip().lower()
+                return "cool" in low or low.startswith(("thả lỏng", "hạ nhiệt"))
+
+            def _split_notes(desc: str) -> tuple[str, str]:
+                """'steps. Overall: note' -> ('steps.', ' Overall: note'); the app shows labelled notes apart."""
+                m = re.search(r"\s(?=(?:Overall|Reason|Benefit|Why|Warning|Tổng quan|Lý do|Lợi ích|Lưu ý)\s*:)", desc)
+                return (desc[: m.start()], desc[m.start() :]) if m else (desc, "")
+
+            def _strength_steps(wo: dict[str, Any]) -> None:
+                """A gym / ME session always reads warm-up → one exercise per step → cool-down."""
+                desc = (wo.get("description") or "").strip()
+                if not desc:
+                    return
+                body, notes = _split_notes(desc)
+                head = re.match(r"\s*(?:Process|Cách làm)\s*:\s*", body)
+                prefix, body = (body[: head.end()], body[head.end() :]) if head else ("", body)
+                steps = [s.strip() for s in body.rstrip(". ").split(" → ") if s.strip()]
+                if not steps:
+                    return
+                low = steps[0].lower()
+                if not ("warm" in low or low.startswith("khởi động")):
+                    steps.insert(
+                        0,
+                        "Warm-up 10 phút nhẹ (chạy chậm hoặc xoay khớp)"
+                        if lang == "vi"
+                        else "Warm-up 10 min easy (jog or mobility)",
+                    )
+                if not _is_cooldown(steps[-1]):
+                    steps.append("Cool-down 5 phút giãn cơ nhẹ" if lang == "vi" else "Cool-down 5 min easy stretching")
+                wo["description"] = prefix + " → ".join(steps) + "." + notes
+
             for wo in wos:
                 typ = wo.get("type")
                 minutes = int(round(float(wo.get("duration_minutes") or 0)))
@@ -2125,7 +2354,9 @@ class PlanGenerator:
                     wo["description"] = desc
                 if typ in ("Easy", "Aerobic Capacity", "Recovery", "Long Run", "Tempo"):
                     nums = [int(n) for n in _STEP_MIN.findall(desc)]
-                    if len(nums) >= 2 and abs(sum(nums) - minutes) / minutes > 0.15:
+                    # a step with no minutes is an exercise or drill (run + strength), not padding to rebuild
+                    untimed = any(not _STEP_MIN.search(s) for s in _split_notes(desc)[0].split("→") if s.strip())
+                    if len(nums) >= 2 and not untimed and abs(sum(nums) - minutes) / minutes > 0.15:
                         wo["description"] = (
                             _long_text(minutes, climbing)
                             if typ == "Long Run"
@@ -2134,6 +2365,14 @@ class PlanGenerator:
                         note = VN_MOUNTAIN_NOTE_VI if lang == "vi" else VN_MOUNTAIN_NOTE_EN
                         keep_note = f" {note}" if note in (wo.get("fueling_tip") or "") else ""
                         wo["fueling_tip"] = _fuel_text(minutes) + keep_note
+
+            for wo in wos:
+                # Strides / hill sprints typed "Interval" at an easy zone: the app shows Interval as hard work
+                if wo.get("type") == "Interval" and wo.get("target_zone") in ("Zone 1", "Zone 2"):
+                    wo["type"] = "Easy"
+                _reps_into_text(wo)
+                if wo.get("type") in ("Muscular Endurance", "Strength"):
+                    _strength_steps(wo)
 
         def _week_rows(wos: list[dict[str, Any]]) -> dict[int, list[dict[str, Any]]]:
             by_week: dict[int, list[dict[str, Any]]] = {}
@@ -2146,10 +2385,58 @@ class PlanGenerator:
             """Book: a sub-elite ultra runner gets Zone 3 work in the build and peak weeks. When a build week has no
             Zone 3 or 4 session, one weekday easy run becomes a 30-40 min Zone 3 tempo, two days clear of the long
             run, ME and the back-to-back."""
-            if tier_profile.key != "sub_elite":
+            if tier_profile.key != "sub_elite" and not ultra:
                 return
             days = list(_PRIORITY_DAY_ORDER)
+            first_taper_week = next(
+                (w for w in range(1, total_weeks + 1) if PlanGenerator.phase_for_week(w, total_weeks) == "Taper"), None
+            )
             for week_no, rows in _week_rows(wos).items():
+                if ultra:  # Quang's quality sessions: uphill/rolling Zone 3 intervals, only in the final 8 weeks
+                    if (
+                        week_no == first_taper_week
+                        and "Taper" not in hard_banned
+                        and not any(r.get("target_zone") == "Zone 3" for r in rows)
+                    ):
+                        # Book: the taper keeps a small Zone 3 dose to stay sharp, never a new or bigger one.
+                        _add_uphill_intervals(rows, days, 2, 8)
+                        continue
+                    if week_no in ultra_me_weeks:  # short plan: ME weeks first, Zone 3 after (KB)
+                        _me_week(rows, days)
+                        continue
+                    if week_no not in ultra_quality_weeks:
+                        continue
+                    quality = [
+                        r
+                        for r in rows
+                        if r.get("target_zone") in ("Zone 3", "Zone 4", "Zone 5")
+                        and r.get("type") not in ("Race", "Muscular Endurance", "Strength")
+                        and not any(k in (r.get("title") or "").lower() for k in plan_lint.NEUROMUSCULAR_KEYWORDS)
+                    ]
+                    want, reps, rep = ultra_rules.quality_dose(
+                        ultra_advanced, ultra_gated, plan_lint.week_minutes(rows)
+                    )
+                    for r in [q for q in quality if q.get("target_zone") != "Zone 3"][
+                        : max(0, want - sum(1 for q in quality if q.get("target_zone") == "Zone 3"))
+                    ]:
+                        _make_uphill_intervals(r, reps, rep)  # no Zone 4 for an ultra: the interval day becomes Zone 3
+                    for q in quality:
+                        if q.get("target_zone") == "Zone 3":  # the model's own Zone 3 takes the same dose
+                            _make_uphill_intervals(q, reps, rep)
+                    for _ in range(want - len(quality)):
+                        _add_uphill_intervals(rows, days, reps, rep)
+                    for r in rows:
+                        if _is_me(r):  # Zone 3 replaces ME in these weeks (KB); the day stays an easy run
+                            minutes = float(r.get("duration_minutes") or 45)
+                            _to_easy(
+                                r,
+                                "Easy Aerobic Run",
+                                "Easy Run nhẹ",
+                                "Easy aerobic run, Zone 2, conversational pace.",
+                                "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được.",
+                            )
+                            _resize(r, int(minutes))
+                    continue
                 if (
                     rows[0].get("phase") not in ("Build", "Peak")
                     or rows[0].get("phase") in hard_banned
@@ -2202,6 +2489,156 @@ class PlanGenerator:
                 )
                 wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0
                 wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
+
+        def _add_uphill_intervals(rows: list[dict[str, Any]], days: list[str], reps: int, rep: int) -> None:
+            """One weekday session becomes Zone 3 uphill or rolling intervals, two days clear of the long run, ME and
+            other hard sessions, at `reps` x `rep` min (ultra_rules.quality_dose; 2 x 8 in the first taper week). An ME
+            day goes first: in the final 8 weeks mountain runners swap ME for uphill intervals (book)."""
+            if (wo := _pick_weekday(rows, days)) is not None:
+                _make_uphill_intervals(wo, reps, rep)
+
+        def _pick_weekday(rows: list[dict[str, Any]], days: list[str]) -> dict[str, Any] | None:
+            """A weekday session two days clear of the long run, ME and hard work: an ME day first, else the longest."""
+            anchors = [
+                r
+                for r in rows
+                if r.get("day_of_week") in days
+                and (
+                    r.get("type") in ("Long Run", "Muscular Endurance")
+                    or plan_lint.is_hard(r)
+                    or float(r.get("duration_minutes") or 0) >= 120
+                )
+            ]
+            pool = [
+                r
+                for r in rows
+                if r.get("type") in ("Muscular Endurance", "Easy", "Aerobic Capacity")
+                and r.get("day_of_week") in days[:5]
+                and all(
+                    abs(days.index(r["day_of_week"]) - days.index(a["day_of_week"])) > 1 for a in anchors if a is not r
+                )
+            ]
+            if not pool:
+                return None
+            return max(
+                pool,
+                key=lambda r: (r.get("type") == "Muscular Endurance", float(r.get("duration_minutes") or 0)),
+            )
+
+        def _me_week(rows: list[dict[str, Any]], days: list[str]) -> None:
+            """Two ME sessions on weekdays 48 h apart and 48 h from the long run and hard work (e.g. Tue + Thu
+            around a Saturday long run); existing ME days are kept when they fit, others become easy runs."""
+            idx = {d: i for i, d in enumerate(days)}
+            fixed = [
+                idx[r["day_of_week"]]
+                for r in rows
+                if r.get("day_of_week") in idx
+                and (r.get("type") == "Long Run" or (plan_lint.is_hard(r) and not _is_me(r)))
+            ]
+            pool = [
+                r
+                for r in rows
+                if r.get("type") in ("Muscular Endurance", "Easy", "Aerobic Capacity")
+                and r.get("day_of_week") in days[:5]
+                and all(abs(idx[r["day_of_week"]] - f) > 1 for f in fixed)
+            ]
+            pairs = [
+                (a, b) for i, a in enumerate(pool) for b in pool[i + 1 :]
+                if abs(idx[a["day_of_week"]] - idx[b["day_of_week"]]) > 1
+            ]  # fmt: skip
+            if not pairs:
+                return
+            chosen = max(
+                pairs, key=lambda p: (sum(_is_me(r) for r in p), sum(float(r.get("duration_minutes") or 0) for r in p))
+            )
+            for r in rows:
+                if _is_me(r) and r not in chosen:
+                    minutes = float(r.get("duration_minutes") or 45)
+                    _to_easy(
+                        r,
+                        "Easy Aerobic Run",
+                        "Easy Run nhẹ",
+                        "Easy aerobic run, Zone 2, conversational pace.",
+                        "Buổi chạy aerobic nhẹ, Zone 2, nói chuyện được.",
+                    )
+                    _resize(r, int(minutes))
+            for r in chosen:
+                if not _is_me(r):
+                    _make_me(r)
+
+        def _is_me(r: dict[str, Any]) -> bool:
+            return r.get("type") == "Muscular Endurance"
+
+        def _make_me(wo: dict[str, Any]) -> None:
+            wo.update(
+                type="Muscular Endurance",
+                target_zone="Zone 1",
+                duration_minutes=50.0,
+                distance_km=0.0,
+                title="Muscular Endurance (ME)" if lang != "vi" else "Buổi ME",
+                description=_me_text(),
+                fueling_tip="Drink amino acids post-workout for protein synthesis.",
+                target_pace=None,
+            )
+            wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0
+            wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
+
+        def _make_uphill_intervals(wo: dict[str, Any], reps: int, rep: int) -> None:
+            total = 15 + reps * rep + (reps - 1) * 3 + 10
+            # Only the venues this athlete has; with none, the same Zone 3 work runs flat (an overpass if handy).
+            hills = venues.hills_on(wo.get("day_of_week", ""))
+            where_en = [
+                v
+                for v, have in (
+                    ("a hill", hills),
+                    ("8-12% treadmill", venues.use_treadmill),
+                    ("stairs", venues.stair_access),
+                )
+                if have
+            ]
+            where_vi = [
+                v
+                for v, have in (
+                    ("dốc", hills),
+                    ("máy chạy 8-12%", venues.use_treadmill),
+                    ("cầu thang", venues.stair_access),
+                )
+                if have
+            ]
+            climbing = bool(where_en)
+            wo.update(
+                type="Interval",
+                target_zone="Zone 3",
+                target_hr_range=z3_range,
+                duration_minutes=float(total),
+                title=(
+                    ("Uphill Intervals (Zone 3)" if climbing else "Zone 3 Intervals")
+                    if lang != "vi"
+                    else ("Interval leo dốc (Zone 3)" if climbing else "Interval Zone 3")
+                ),
+                description=(
+                    (
+                        f"Warm-up 15 min easy → {reps} x {rep} min Zone 3 uphill ({' or '.join(where_en)}), "
+                        if climbing
+                        else f"Warm-up 15 min easy → {reps} x {rep} min Zone 3 on flat or rolling road "
+                        "(use an overpass or bridge if one is on your route), "
+                    )
+                    + "breathing-limited, 3 min easy jog or walk between → Cool-down 10 min easy."
+                    if lang != "vi"
+                    else (
+                        f"Warm-up 15 phút nhẹ → {reps} x {rep} phút Zone 3 leo dốc ({' hoặc '.join(where_vi)}), "
+                        if climbing
+                        else f"Warm-up 15 phút nhẹ → {reps} x {rep} phút Zone 3 trên đường bằng hoặc lên xuống nhẹ "
+                        "(tận dụng cầu vượt nếu có trên đường chạy), "
+                    )
+                    + "giới hạn bởi hơi thở, nghỉ 3 phút chạy nhẹ hoặc đi bộ → Cool-down 10 phút nhẹ."
+                ),
+                fueling_tip=_fuel_text(total),
+            )
+            wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                "Zone 3", float(total), est_zones
+            )
+            wo["treadmill_incline"], wo["treadmill_speed"] = "0", "0"
 
         def _space_hard_days(wos: list[dict[str, Any]]) -> None:
             """ME and the long run stay 48 h clear of hard sessions (book). A hard session on the day before or after
@@ -2524,8 +2961,12 @@ class PlanGenerator:
             for wo in wos:
                 if isinstance(wo.get("week_number"), int):
                     wo["phase"] = PlanGenerator.phase_for_week(wo["week_number"], total_weeks)
+                    # A short ultra plan protects the final 8 weeks before the taper as the Specific block (book).
+                    if wo["phase"] == "Base" and wo["week_number"] in ultra_window:
+                        wo["phase"] = "Build"
             _cap_hard_dose(wos)
             _respect_days(wos)
+            _pair_strength_with_run(wos)
             _ramp_volume(wos)
             _cap_start_load(wos)
             _progress_long_runs(wos)
@@ -2534,9 +2975,24 @@ class PlanGenerator:
             _add_climb_session(wos)
             _incline_long_run(wos)  # after the climb sessions: it fills the week up to the 80% cap, never past it
             _cap_week_vert(wos)
-            _add_drift_test(wos)
             _soften_recovery_weeks(wos)
             _gate_hard(wos)
+            if ultra:
+                _ultra_week_shape(wos)
+                _add_tempo(wos)  # weekday runs are clamped now (no 2 h+ "hard" days): top up the window's quality
+                _cap_start_load(wos, weeks=(1, 2), floor=ultra_rules.weekday_minutes(ultra, ultra_advanced)[0])
+            # The long run (often a mountain day) is the whole day: no second run beside it, only strength.
+            long_days = {(w.get("week_number"), w.get("day_of_week")) for w in wos if w.get("type") == "Long Run"}
+            wos[:] = [
+                w
+                for w in wos
+                if w.get("type") in ("Long Run", "Strength", "Muscular Endurance")
+                or (w.get("week_number"), w.get("day_of_week")) not in long_days
+            ]
+            per_day = Counter((w.get("week_number"), w.get("day_of_week")) for w in wos)
+            for w in wos:
+                if w.get("type") == "Long Run" and per_day[(w.get("week_number"), w.get("day_of_week"))] == 1:
+                    w["session_slot"] = "main"
             for wo in wos:  # a recovery run is short; a longer one is an easy Zone 1 aerobic run, same length
                 if wo.get("type") == "Recovery" and float(wo.get("duration_minutes") or 0) > 60:
                     minutes = float(wo["duration_minutes"])
@@ -2553,6 +3009,8 @@ class PlanGenerator:
                     )
             _normalise_sessions(wos)
             _fit_taper_long_share(wos)
+            for wo in rows_after_race(wos):
+                _make_rest(wo)
             _fix_labels(wos)
             for wo in wos:
                 for field in ("title", "description", "fueling_tip"):
@@ -2686,7 +3144,7 @@ class PlanGenerator:
             else:
                 ads_status = (
                     "\nAerobic Efficiency: AeT and AnT are estimates, not measured, so ADS cannot be assessed. Keep easy "
-                    "runs conservative and suggest a heart-rate drift test to establish the real AeT.\n"
+                    "runs conservative.\n"
                 )
 
             user_summary = (
@@ -2801,6 +3259,17 @@ class PlanGenerator:
 
             if demands and is_event_goal:
                 goal_description += "\n" + goal_demands.prompt_block(demands, lang)
+            if ultra:  # Quang's ladder for this block's weeks (services/ultra_rules.py)
+                block_ladder = ultra_rules.ladder(ultra, ultra_advanced, total_weeks)
+                goal_description += "\n" + ultra_rules.prompt_block(
+                    ultra,
+                    ultra_advanced,
+                    {w: block_ladder[w] for w in range(block_start_week, block_end_week + 1) if w in block_ladder},
+                    total_weeks,
+                    ultra_gated,
+                    lang,
+                    ultra_me_weeks,
+                )
 
             if is_event_goal:
                 program_summary = (
@@ -3018,7 +3487,12 @@ class PlanGenerator:
                 else ""
             )
 
-            _plan_prompt_tpl = observability.load_prompt("plan_generation", PLAN_GENERATION_PROMPT)
+            _plan_prompt_tpl = observability.load_prompt(
+                "plan_generation",
+                PLAN_GENERATION_PROMPT,
+                # The Claude variant lives under its own labels; none yet -> the in-code prompt.
+                label=f"claude-{settings.COACH_CHAT_PROMPT_LABEL}" if settings.PLAN_LLM_PROVIDER == "claude" else None,
+            )
             _ai_prompt = observability.compile_prompt(
                 _plan_prompt_tpl,
                 {
@@ -3051,11 +3525,13 @@ class PlanGenerator:
             exists to recover from — a truncated or unparseable response — is driven by
             output length. Telemetry labels it as a separate engine so the retry's own
             hit rate is visible rather than folded into the first attempt's."""
-            if not (_ai_prompt and api_key):
+            _claude = settings.PLAN_LLM_PROVIDER == "claude"
+            # Claude runs on the server key only; the Gemini key (per-user or server) still feeds KB retrieval.
+            if not (_ai_prompt and (settings.ANTHROPIC_API_KEY if _claude else api_key)):
                 return None
             import asyncio
 
-            _engine = "gemini_retry" if reduced else "gemini"
+            _engine = ("claude" if _claude else "gemini") + ("_retry" if reduced else "")
             _tier = "retry" if reduced else "primary"
             _tier_context = observability.span(_engine, metadata={"engine": _engine, "tier": _tier})
             _tier_observation = _tier_context.__enter__()
@@ -3063,7 +3539,7 @@ class PlanGenerator:
             _kb_context = ""
             # Ground the plan in distilled Uphill Athlete philosophy. Retrieval failure
             # is non-fatal — the prompt already carries the core rules inline.
-            if not reduced:
+            if not reduced and api_key:
                 try:
                     import functools
 
@@ -3116,7 +3592,7 @@ class PlanGenerator:
 
                 from telemetry import rag_attempts_total, rag_latency_seconds
 
-                _client = _genai.Client(api_key=api_key)
+                _client = None if _claude else _genai.Client(api_key=api_key)
                 _logger.info(
                     "gemini prompt sent",
                     extra={
@@ -3129,29 +3605,47 @@ class PlanGenerator:
                     },
                 )
 
+                async def _gemini_text() -> str:
+                    _response = await asyncio.to_thread(
+                        _client.models.generate_content,
+                        model=settings.GEMINI_MODEL,
+                        contents=_gemini_prompt,
+                        config=_genai_types.GenerateContentConfig(
+                            thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                        )
+                        if hasattr(_genai_types, "ThinkingConfig")
+                        else None,
+                    )
+                    generation.set_usage(observability.Usage.from_genai(_response.usage_metadata))
+                    return _response.text
+
                 rag_attempts_total.labels(service="plan_generator", engine=_engine, status="attempt").inc()
                 _start = time.time()
                 try:
                     with observability.generation(
                         "generation",
                         feature="plan_generation",
-                        model=settings.GEMINI_MODEL,
+                        model=settings.CLAUDE_PLAN_MODEL if _claude else settings.GEMINI_MODEL,
                         metadata={"engine": _engine, "tier": _tier},
                         prompt=_plan_prompt_tpl,
                     ) as generation:
-                        _response = await asyncio.to_thread(
-                            _client.models.generate_content,
-                            model=settings.GEMINI_MODEL,
-                            contents=_gemini_prompt,
-                            config=_genai_types.GenerateContentConfig(
-                                thinking_config=_genai_types.ThinkingConfig(
-                                    thinking_level=settings.GEMINI_THINKING_LEVEL
+                        if _claude:
+                            _message = await asyncio.to_thread(_claude_generate, _gemini_prompt)
+                            claude_llm.record(generation, _message)
+                            _text = _claude_text(_message)
+                            if _text is None:
+                                _logger.warning(
+                                    "claude response refused or truncated",
+                                    extra={
+                                        "fields": {
+                                            "service": "plan_generator",
+                                            "engine": _engine,
+                                            "event": "refusal" if _message.stop_reason == "refusal" else "truncated",
+                                        }
+                                    },
                                 )
-                            )
-                            if hasattr(_genai_types, "ThinkingConfig")
-                            else None,
-                        )
-                        generation.set_usage(observability.Usage.from_genai(_response.usage_metadata))
+                        else:
+                            _text = await _gemini_text()
                     _latency = time.time() - _start
                     rag_latency_seconds.labels(service="plan_generator", engine=_engine).observe(_latency)
                     rag_attempts_total.labels(service="plan_generator", engine=_engine, status="success").inc()
@@ -3162,7 +3656,7 @@ class PlanGenerator:
                                 "service": "plan_generator",
                                 "engine": _engine,
                                 "event": "response_received",
-                                "chars_received": len(_response.text),
+                                "chars_received": len(_text or ""),
                                 "latency_ms": round(_latency * 1000),
                             }
                         },
@@ -3182,7 +3676,7 @@ class PlanGenerator:
                         exc_info=True,
                     )
                     raise
-                clean_text = _extract_json_array(_response.text)
+                clean_text = _extract_json_array(_text or "")
                 _parse_error = None
                 try:
                     ai_workouts = _json.loads(clean_text)
@@ -3268,7 +3762,9 @@ class PlanGenerator:
             _result = await _try_gemini(reduced=_reduced)
             if _result:
                 if _trace_id:
-                    _engine_used = "gemini_retry" if _reduced else "gemini"
+                    _engine_used = ("claude" if settings.PLAN_LLM_PROVIDER == "claude" else "gemini") + (
+                        "_retry" if _reduced else ""
+                    )
                     observability.score(trace_id=_trace_id, name="plan_engine", value=_engine_used)
                 return _result
 
@@ -3518,7 +4014,9 @@ class PlanGenerator:
             if course_distance_km and course_distance_km > 0:
                 scale_factor = min(1.5, max(1.0, course_distance_km / 42.2))
                 sat_dur = sat_dur * scale_factor
-            sat_dur = min(float(session_cap_minutes(tier_profile, course_distance_km)), sat_dur)
+            sat_dur = min(
+                float(session_cap_minutes(tier_profile, course_distance_km, bool(venues.mountain_days))), sat_dur
+            )
 
             if phase == "Recovery":
                 workouts.append(
@@ -3622,10 +4120,11 @@ class PlanGenerator:
                         sets = 4 if me_seen < 2 else 6
                         me_seen += 1
                         desc = (
-                            f"Straight sets: finish every set of one exercise before the next. Split Jump Squats "
-                            f"{sets}x10, 60s rest between sets → Squat Jumps {sets}x10, 60s rest between sets → Box "
-                            f"Step-Ups at 75% kneecap height {sets}x10/leg, 30s rest between sets → Front Lunges "
-                            f"{sets}x10/leg, 30s rest between sets. 60s between exercises. Aim for a low-grade burn "
+                            f"Warm-up 10 min easy (jog or mobility) → Split Jump Squats {sets}x10, 60s rest between "
+                            f"sets → Squat Jumps {sets}x10, 60s rest between sets → Box Step-Ups at 75% kneecap "
+                            f"height {sets}x10/leg, 30s rest between sets → Front Lunges {sets}x10/leg, 30s rest "
+                            f"between sets → Cool-down 5 min easy stretching. Overall: Straight sets, finish every "
+                            f"set of one exercise before the next, 60s between exercises. Aim for a low-grade burn "
                             f"in the quads and glutes; ignore heart rate. Keep the next two days easy."
                         )
                         fuel_tip = "Drink amino acids post-workout for protein synthesis."
@@ -3738,7 +4237,7 @@ class PlanGenerator:
                     week_minutes=week_minutes,
                     long_run_share_cap=week_caps.long_run_share_cap + LONG_SHARE_SOFT,
                     weekday_max_minutes=week_caps.weekday_minutes[1],
-                    max_long_minutes=session_cap_minutes(tier_profile, course_distance_km),
+                    max_long_minutes=session_cap_minutes(tier_profile, course_distance_km, bool(venues.mountain_days)),
                     recovery=is_recovery_week,
                 )
 
@@ -3861,14 +4360,16 @@ class PlanGenerator:
                         "lượt bước lên bục cao 30cm, không cần tạ.",
                     )
                 s = _re.sub(
-                    r"Straight sets: finish every set of one exercise before the next\. Split Jump Squats (\d+)x10, "
-                    r"60s rest between sets → Squat Jumps \1x10, 60s rest between sets → Box Step-Ups at 75% kneecap "
-                    r"height \1x10/leg, 30s rest between sets → Front Lunges \1x10/leg, 30s rest between sets\. 60s "
+                    r"Warm-up 10 min easy \(jog or mobility\) → Split Jump Squats (\d+)x10, 60s rest between sets → "
+                    r"Squat Jumps \1x10, 60s rest between sets → Box Step-Ups at 75% kneecap height \1x10/leg, 30s "
+                    r"rest between sets → Front Lunges \1x10/leg, 30s rest between sets → Cool-down 5 min easy "
+                    r"stretching\. Overall: Straight sets, finish every set of one exercise before the next, 60s "
                     r"between exercises\. Aim for a low-grade burn in the quads and glutes; ignore heart rate\. Keep "
                     r"the next two days easy\.",
-                    r"Straight sets: tập xong mọi hiệp của một bài rồi mới sang bài tiếp. Split Jump Squats \1x10, "
-                    r"nghỉ 60s giữa các hiệp → Squat Jumps \1x10, nghỉ 60s giữa các hiệp → Box Step-Ups cao 75% đầu "
-                    r"gối \1x10/chân, nghỉ 30s giữa các hiệp → Front Lunges \1x10/chân, nghỉ 30s giữa các hiệp. Nghỉ "
+                    r"Warm-up 10 phút nhẹ (chạy chậm hoặc xoay khớp) → Split Jump Squats \1x10, nghỉ 60s giữa các "
+                    r"hiệp → Squat Jumps \1x10, nghỉ 60s giữa các hiệp → Box Step-Ups cao 75% đầu gối \1x10/chân, "
+                    r"nghỉ 30s giữa các hiệp → Front Lunges \1x10/chân, nghỉ 30s giữa các hiệp → Cool-down 5 phút "
+                    r"giãn cơ nhẹ. Overall: Straight sets, tập xong mọi hiệp của một bài rồi mới sang bài tiếp, nghỉ "
                     r"60s giữa các bài. Cơ đùi trước và mông chỉ cần hơi rát; bỏ qua HR. Hai ngày sau chỉ tập nhẹ.",
                     s,
                 )

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct KnowledgeCardModel: Decodable, Sendable, Identifiable, Equatable {
+    var isServerCard = true
     let id: Int
     let chapterTitle: String
     let summary: String
@@ -10,6 +11,7 @@ struct KnowledgeCardModel: Decodable, Sendable, Identifiable, Equatable {
     let sourceLabel: String?
 
     init(id: Int, chapterTitle: String, summary: String, keyPoints: [String] = [], tags: [String] = [], topic: String = "Training", sourceLabel: String? = nil) {
+        self.isServerCard = false
         self.id = id
         self.chapterTitle = chapterTitle
         self.summary = summary
@@ -41,6 +43,7 @@ struct KnowledgeCardsResponse: Decodable, Sendable {
 
 struct KnowledgeCardView: View {
     let card: KnowledgeCardModel
+    var onOpen: () -> Void = {}
     @State private var isExpanded = false
 
     private var topicColor: Color {
@@ -73,9 +76,9 @@ struct KnowledgeCardView: View {
             HStack {
                 HStack(spacing: 5) {
                     Image(systemName: topicIcon)
-                        .font(.system(size: 10, weight: .bold))
+                        .font(UH.TextStyle.eyebrow)
                     Text(L(card.topic).uppercased())
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(UH.TextStyle.eyebrow.monospacedDigit())
                         .tracking(0.5)
                 }
                 .foregroundStyle(topicColor)
@@ -86,7 +89,7 @@ struct KnowledgeCardView: View {
                 Spacer()
 
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(UH.TextStyle.disclosure)
                     .foregroundStyle(UH.Palette.muted)
             }
 
@@ -127,7 +130,7 @@ struct KnowledgeCardView: View {
                 HStack(spacing: 5) {
                     ForEach(card.tags, id: \.self) { tag in
                         Text("#\(tag)")
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .font(UH.TextStyle.caption.monospacedDigit())
                             .foregroundStyle(UH.Palette.muted)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -143,6 +146,7 @@ struct KnowledgeCardView: View {
         .onTapGesture {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 isExpanded.toggle()
+                if isExpanded { onOpen() }
             }
         }
         .accessibilityIdentifier("plan.knowledgeCard")

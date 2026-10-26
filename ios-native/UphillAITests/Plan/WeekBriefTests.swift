@@ -3,24 +3,6 @@ import Testing
 @testable import UphillAI
 
 struct WeekBriefTests {
-    private func wo(_ id: Int, _ week: Int, _ type: String, _ mins: Double) -> Workout {
-        TestData.workout(["id": id, "week_number": week, "type": type, "duration_minutes": mins])
-    }
-
-    @Test func chipsReportTimeLongRunAndSessionTypeChanges() {
-        let prev = [wo(1, 1, "Easy Run", 45), wo(2, 1, "Long Run", 90), wo(3, 1, "Tempo", 40)]
-        let cur = [wo(4, 2, "Easy Run", 45), wo(5, 2, "Long Run", 120), wo(6, 2, "Intervals", 50)]
-        let chips = WeekDiff.chips(prev: prev, cur: cur)
-        #expect(chips == [.time(delta: 40), .long(from: 90, to: 120), .added(type: "Intervals", count: 1), .removed(type: "Tempo", count: 1)])
-        #expect(WeekBriefView.text(chips[0]) == "+40 min")
-        #expect(WeekBriefView.text(chips[3]) == "−1 Tempo")
-    }
-
-    @Test func noChipsWithoutBothWeeksOrWithRestOnly() {
-        #expect(WeekDiff.chips(prev: [], cur: [wo(1, 2, "Easy Run", 30)]).isEmpty)
-        #expect(WeekDiff.chips(prev: [wo(1, 1, "Rest", 0)], cur: [wo(2, 2, "Easy Run", 30)]).isEmpty)
-    }
-
     @Test func decodesBriefAndMissedReasonAndWeekContext() throws {
         let review = try JSONCoding.decoder.decode(WeekReview.self, from: json([
             "week_number": 2, "completion_pct": 50.0,
@@ -38,5 +20,28 @@ struct WeekBriefTests {
         ]))
         #expect(ctx.nextKey?.dayOfWeek == "Saturday")
         #expect(WorkoutDetailSheet.weekSoFarNote(ctx).hasPrefix("Week so far: 120 of 300 min."))
+    }
+}
+
+struct SessionsToUnlockTests {
+    @Test func countsSessionsLeftToSeventyPercent() {
+        #expect(PlanViewModel.sessionsToUnlock(sessions: 10, completionPct: 50) == 2)
+        #expect(PlanViewModel.sessionsToUnlock(sessions: 10, completionPct: 90) == 0)
+        #expect(PlanViewModel.sessionsToUnlock(sessions: 0, completionPct: 50) == nil)
+    }
+}
+
+struct GoalProgressTests {
+    @Test func barsComeFromCompletedWorkoutsAndOnlyFill() throws {
+        let workouts = [
+            TestData.workout(["id": 1, "week_number": 1, "type": "Long Run", "duration_minutes": 100.0, "distance_km": 15.0, "is_completed": 1]),
+            TestData.workout(["id": 2, "week_number": 1, "type": "Easy Run", "duration_minutes": 50.0, "distance_km": 8.0, "is_completed": 1]),
+            TestData.workout(["id": 3, "week_number": 2, "type": "Long Run", "duration_minutes": 140.0, "distance_km": 20.0]),
+        ]
+        let p = try #require(GoalProgress.make(workouts: workouts, targets: GoalTargets(longRunMin: 300, peakWeekKm: 70), path: nil))
+        #expect(p.longRun == .init(done: 100, target: 300))
+        #expect(p.weekKm?.done == 23)
+        #expect(GoalProgress.Bar(done: 9, target: 5).fraction == 1)
+        #expect(GoalProgress.make(workouts: workouts, targets: nil, path: nil) == nil)
     }
 }

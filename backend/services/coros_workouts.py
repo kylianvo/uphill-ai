@@ -29,6 +29,7 @@ INTENSITY_HR = 1
 MAX_REPEATS = 20
 MAX_NAME = 100
 MAX_DESCRIPTION = 1000
+MAX_DISTANCE_M = 80_000  # COROS rejects the whole update for a longer distance target
 HR_MIN, HR_MAX = 30, 240
 WARMUP_SECONDS = 600
 COOLDOWN_SECONDS = 300
@@ -336,12 +337,12 @@ def _interval_group(w: dict[str, Any], main: dict[str, int]) -> dict[str, Any] |
 
 def race_day_course(race_name: str | None, distance_km: Any, lang: str) -> dict[str, Any]:
     """Race-day placeholder until Uphill generates the real race-day workout: the
-    race distance as a distance target (free mode when unknown) and deliberately
+    race distance as a distance target (free mode when unknown or over COROS's 80 km) and deliberately
     no heart-rate target -- a placeholder shouldn't guess race effort."""
     t = _t(lang)
     meters = int(round(_float(distance_km) * 1000))
     section: dict[str, Any] = {"sectionType": SECTION_TRAINING, "targetType": TARGET_FREE}
-    if meters > 0:
+    if 0 < meters <= MAX_DISTANCE_M:
         section = _section(SECTION_TRAINING, TARGET_DISTANCE, meters, {})
     return {
         "sportType": SPORT_RUNNING,
@@ -367,7 +368,7 @@ def build_course(
         w.get("source") in ("coach_edited", "coach_created")
         and w.get("type") in ("Easy", "Long Run")
         and _float(w.get("elevation_gain_m")) > 0
-        and _float(w.get("distance_km")) > 0
+        and 0 < _float(w.get("distance_km")) * 1000 <= MAX_DISTANCE_M
     ):
         sections = [_section(SECTION_TRAINING, TARGET_DISTANCE, round(_float(w["distance_km"]) * 1000), main)]
     return {

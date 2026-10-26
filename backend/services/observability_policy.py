@@ -49,6 +49,7 @@ METADATA_KEYS = frozenset(
         "prompt_name",
         "prompt_version",
         "prompt_source",
+        "request_id",
     }
 )
 
@@ -76,6 +77,8 @@ _SPAN_NAMES = frozenset(
         "RunnableLambda",
         "_tools_condition",
         "block_narrative",
+        "claude",
+        "claude_retry",
         "week_brief",
         "coach_nudge",
         "chat_summary",
@@ -140,9 +143,9 @@ _RESOURCE_VALUES = {
     "deployment.environment.name": frozenset({"development", "staging", "production", "test"}),
 }
 _SPAN_KINDS = frozenset({"LLM", "CHAIN", "AGENT", "TOOL", "RETRIEVER", "EMBEDDING", "RERANKER"})
-_PROVIDERS = frozenset({"google"})
-_SYSTEMS = frozenset({"google", "gemini"})
-_MODELS = frozenset({"gemini-3.8-flash"})
+_PROVIDERS = frozenset({"google", "anthropic"})
+_SYSTEMS = frozenset({"google", "gemini", "anthropic"})
+_MODELS = frozenset({"gemini-3.8-flash", "claude-haiku-5-5", "claude-sonnet-5-5"})
 _ENVIRONMENTS = frozenset({"development", "staging", "production", "test"})
 _OBSERVATION_TYPES = frozenset({"span", "generation", "agent", "tool", "chain", "retriever", "evaluator"})
 _OBSERVATION_LEVELS = frozenset({"DEFAULT", "DEBUG", "WARNING", "ERROR"})
@@ -186,12 +189,13 @@ _ERROR_TYPES = frozenset(
         "ValueError",
     }
 )
-_ENGINES = frozenset({"gemini", "gemini_retry", "rule_based", "mock"})
+_ENGINES = frozenset({"gemini", "gemini_retry", "claude", "claude_retry", "rule_based", "mock"})
 _TIERS = frozenset({"primary", "retry", "fallback"})
 _GENERATION_STATUSES = frozenset({"ok", "error", "attempt", "success", "used", "fallback"})
 _LANGUAGES = frozenset({"en", "vi"})
 _COLLECTIONS = frozenset({"uphill_kb_scheduler", "uphill_kb_nutrition_principles"})
 _CHUNK_REF_RE = re.compile(r"^[0-9a-f]{12}$")
+_REQUEST_ID_RE = re.compile(r"req_[A-Za-z0-9]{1,64}")
 _PROMPT_NAMES = frozenset(
     {
         "coach_chat",
@@ -284,6 +288,8 @@ def _sanitize_metadata_value(key: str, value: Any) -> Any | None:
         if isinstance(value, list | tuple) and len(value) <= _MAX_LIST_ITEMS and all(v in _COLLECTIONS for v in value):
             return list(value)
         return None
+    if key == "request_id":
+        return value if isinstance(value, str) and _REQUEST_ID_RE.fullmatch(value) else None
     if key == "chunk_refs":
         if (
             isinstance(value, list | tuple)

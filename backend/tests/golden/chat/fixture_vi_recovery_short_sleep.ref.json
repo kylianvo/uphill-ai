@@ -1,0 +1,13 @@
+{
+  "latency_s": 4.8,
+  "engine_used": "gemini",
+  "output": {
+    "id": "chat_vi_recovery_short_sleep",
+    "category": "recovery_readiness",
+    "lang": "vi",
+    "question": "Hôm nay mình có bài interval. Mình có nên chạy không?",
+    "reply_text": "Nhìn vào dữ liệu phục hồi gần đây, cơ thể bạn đang ở trạng thái mệt mỏi rõ rệt: HRV thấp (38 ms), giấc ngủ trung bình chỉ đạt khoảng 5h18 mỗi đêm. Bài Interval đòi hỏi hệ thần kinh giao cảm và cơ bắp phải chịu tải rất lớn, nếu cố ép chạy cường độ cao lúc này sẽ dễ dẫn đến quá tải hoặc tăng nguy cơ chấn thương [1, 4].\n\nHôm nay bạn **không nên** chạy bài Interval. Thay vào đó, hãy chọn một trong hai phương án:\n- Hoặc nghỉ ngơi hoàn toàn (Rest Day) để cơ thể và giấc ngủ hồi phục.\n- Hoặc chuyển thành một buổi Easy Run thật nhẹ nhàng (hoặc Recovery Run) trong Zone 1–Zone 2 từ 20–30 phút, nếu chân thấy nặng hoặc không có nhịp thì dừng ngay [1, 3].\n\nKhi thể chất và giấc ngủ ổn định trở lại, chúng ta sẽ đưa bài Interval vào lịch tập sau nhé.",
+    "tools_called": [],
+    "status": "success"
+  }
+}

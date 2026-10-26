@@ -6,7 +6,8 @@ struct GoalSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var busy = false
     @State private var error: String?
-    @State private var confirming = false
+    /// A goal the athlete tapped to make their target; A goes through its own check first.
+    @State private var choosing: GoalChoice?
     @State private var isContextExpanded = true
 
     private var targetText: String {
@@ -49,15 +50,18 @@ struct GoalSheet: View {
                             .foregroundStyle(UH.Palette.secondary)
                     }
 
-                    // Tiers card
+                    // One goal with two backups: B is what the plan is built for
                     if let tiers = model.goal?.assessment?.goals {
                         VStack(spacing: 0) {
-                            tier(L("Stretch"), tiers.a, emphasised: false)
-                            tier(L("Realistic"), tiers.b, emphasised: true)
-                            tier(L("Safe"), tiers.c, emphasised: false)
+                            tier(.a, tiers.a)
+                            Divider()
+                            tier(.b, tiers.b)
+                            Divider()
+                            tier(.c, tiers.c)
                         }
                         .padding(.horizontal, UH.Space.regular)
                         .trainingCard(padding: 0)
+                        .accessibilityIdentifier("goal.ladder")
                     } else {
                         Text("We can't estimate a finish time yet.")
                             .foregroundStyle(UH.Palette.secondary)
@@ -154,11 +158,6 @@ struct GoalSheet: View {
                         Text(error).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.danger)
                     }
 
-                    if let suggestion = model.suggestedMinutes {
-                        Button("Set \(PlanViewModel.formatMinutes(suggestion)) as my target") { confirming = true }
-                            .buttonStyle(.uhPrimary).disabled(busy)
-                    }
-
                     Button {
                         Task { await check() }
                     } label: {
@@ -177,9 +176,16 @@ struct GoalSheet: View {
             .navigationTitle("Goal Assessment")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { Button("Done") { dismiss() } }
-            .confirmationDialog("Change your target time to \(model.suggestedMinutes.map(PlanViewModel.formatMinutes) ?? "")?",
-                                isPresented: $confirming, titleVisibility: .visible) {
-                Button("Change target") { Task { await apply() } }
+            .sheet(item: $choosing.filtered { $0.tier == .a }) { choice in
+                ChooseAGoalSheet(minutes: choice.minutes, feasibility: model.goal?.aFeasibility) {
+                    choosing = nil
+                    Task { await apply(choice.minutes) }
+                }
+            }
+            .confirmationDialog(L("Change your target time to %@?", choosing.map { PlanViewModel.formatMinutes($0.minutes) } ?? ""),
+                                isPresented: Binding(get: { choosing != nil && choosing?.tier != .a }, set: { if !$0 { choosing = nil } }),
+                                titleVisibility: .visible) {
+                Button("Change target") { if let choice = choosing { Task { await apply(choice.minutes) } } }
                 Button("Keep \(model.goal?.targetTimeHours.map { PlanViewModel.formatMinutes($0 * 60) } ?? "current")", role: .cancel) {}
             } message: { Text("Your training paces won't change until your next week is built.") }
         }
@@ -187,15 +193,36 @@ struct GoalSheet: View {
         .presentationBackground(UH.Palette.surface)
     }
 
-    private func tier(_ title: String, _ minutes: Double, emphasised: Bool) -> some View {
-        HStack {
-            Text(title).font(emphasised ? UH.TextStyle.sectionTitle : UH.TextStyle.body)
-            Spacer()
-            Text(PlanViewModel.formatMinutes(minutes)).font(UH.TextStyle.metric)
+    private func tier(_ tier: GoalChoice.Tier, _ minutes: Double) -> some View {
+        let target = model.goal?.targetTimeHours.map { abs($0 * 60 - minutes) / minutes <= 0.03 } ?? false
+        return Button {
+            if !target { choosing = GoalChoice(tier: tier, minutes: minutes) }
+        } label: {
+            HStack(spacing: UH.Space.small) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: tier.title)
+                        .font(tier == .b ? UH.TextStyle.sectionTitle : UH.TextStyle.body)
+                        .foregroundStyle(UH.Palette.ink)
+                    Text(verbatim: target ? L("Your target") : tier.line)
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(target ? UH.Palette.accentInk : UH.Palette.secondary)
+                }
+                Spacer()
+                Text(PlanViewModel.formatMinutes(minutes))
+                    .font(tier == .b ? UH.TextStyle.metric : UH.TextStyle.body.monospacedDigit())
+                    .foregroundStyle(UH.Palette.ink)
+                Image(systemName: target ? "checkmark.circle.fill" : "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(target ? UH.Palette.accentInk : UH.Palette.muted)
+                    .accessibilityHidden(true)
+            }
+            .frame(minHeight: 56)
+            .contentShape(Rectangle())
         }
-        .frame(minHeight: 52)
-        .overlay(alignment: .bottom) { if title != L("Safe") { Divider() } }
+        .buttonStyle(.plain)
+        .disabled(busy)
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("goal.tier.\(tier.rawValue)")
     }
 
     private func footer(_ assessment: GoalAssessment) -> String {
@@ -210,9 +237,97 @@ struct GoalSheet: View {
         busy = false
     }
 
-    private func apply() async {
+    private func apply(_ minutes: Double) async {
         busy = true; error = nil
-        error = await model.applySuggestedGoal()
+        error = await model.applyGoal(minutes: minutes)
+        choosing = nil
         busy = false
+    }
+}
+
+struct GoalChoice: Identifiable, Equatable {
+    enum Tier: String { case a, b, c
+        var title: String {
+            switch self {
+            case .a: L("If everything clicks")
+            case .b: L("Your goal")
+            case .c: L("Safety net")
+            }
+        }
+        var line: String {
+            switch self {
+            case .a: L("Your best day")
+            case .b: L("What your plan is built for")
+            case .c: L("Still a good race on a rough day")
+            }
+        }
+    }
+    let tier: Tier
+    let minutes: Double
+    var id: String { tier.rawValue }
+}
+
+private extension Binding where Value == GoalChoice? {
+    /// The same choice, seen only when it passes `include`; clearing it clears the source.
+    func filtered(_ include: @escaping (GoalChoice) -> Bool) -> Binding<GoalChoice?> {
+        Binding(get: { wrappedValue.flatMap { include($0) ? $0 : nil } }, set: { if $0 == nil { wrappedValue = nil } })
+    }
+}
+
+/// Choosing A: what A asks of the week first, so the athlete commits knowing it. B stays the fallback.
+struct ChooseAGoalSheet: View {
+    let minutes: Double
+    let feasibility: GoalFeasibility?
+    let onConfirm: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    private var unsupported: Bool { feasibility?.verdict == "unsupported" }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: UH.Space.section) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(PlanViewModel.formatMinutes(minutes)).font(UH.TextStyle.metric).foregroundStyle(UH.Palette.ink)
+                        Text("If everything clicks").font(UH.TextStyle.label).foregroundStyle(UH.Palette.secondary)
+                    }
+                    if let check = feasibility?.check {
+                        VStack(alignment: .leading, spacing: UH.Space.compact) {
+                            Label(check.title, systemImage: check.tone == .short ? "exclamationmark.triangle.fill" : "exclamationmark.circle")
+                                .font(UH.TextStyle.label).foregroundStyle(UH.Palette.warningInk)
+                            Text(check.line).font(UH.TextStyle.body).foregroundStyle(UH.Palette.ink)
+                            ForEach(check.levers, id: \.self) { Text($0).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary) }
+                        }
+                        .padding(UH.Space.regular)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(UH.Palette.warningFill, in: RoundedRectangle(cornerRadius: UH.Radius.panel))
+                    } else if feasibility != nil {
+                        Label("Your week can carry this.", systemImage: "checkmark.circle.fill")
+                            .font(UH.TextStyle.label).foregroundStyle(UH.Palette.accentInk)
+                    }
+                    Text("Coach Uphill adds the harder A sessions only in weeks when your progress and recovery say you're ready. Your goal stays as the fallback.")
+                        .font(UH.TextStyle.body).foregroundStyle(UH.Palette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Your training paces won't change until your next week is built.")
+                        .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.muted)
+                    VStack(spacing: UH.Space.small) {
+                        if unsupported {
+                            Button("Keep my current target") { dismiss() }.buttonStyle(.uhPrimary)
+                            Button("Train for A anyway", action: onConfirm).buttonStyle(.uhSecondary)
+                        } else {
+                            Button("Train for A", action: onConfirm).buttonStyle(.uhPrimary)
+                            Button("Keep my current target") { dismiss() }.buttonStyle(.uhSecondary)
+                        }
+                    }
+                    .accessibilityIdentifier("goal.chooseA.actions")
+                }
+                .padding(UH.Space.section)
+            }
+            .background(UH.Palette.surface)
+            .navigationTitle(L("Chase A?"))
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationBackground(UH.Palette.surface)
     }
 }

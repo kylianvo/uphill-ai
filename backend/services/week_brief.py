@@ -12,7 +12,7 @@ from typing import Any
 
 from config import settings
 from log_utils import get_logger
-from services import observability
+from services import claude_llm, observability
 from services.calendar_rules import _is_long_run
 from services.plan_generator import narrative_lang_instruction
 
@@ -96,7 +96,9 @@ async def _generate_week_brief(
             f"({w.get('duration_minutes', 0)} min, {w.get('target_zone', '')})"
             for w in _active(workouts)
         )
-        tpl = observability.load_prompt("week_brief", WEEK_BRIEF_PROMPT)
+        tpl = observability.load_prompt(
+            "week_brief", WEEK_BRIEF_PROMPT, label=claude_llm.prompt_label(settings.WEEK_BRIEF_LLM_PROVIDER)
+        )
         prompt = observability.compile_prompt(
             tpl,
             {
@@ -107,32 +109,36 @@ async def _generate_week_brief(
                 "lang_instruction": narrative_lang_instruction(race_info, block_context),
             },
         )
-        client = _genai.Client(api_key=api_key)
+        provider = settings.WEEK_BRIEF_LLM_PROVIDER
         with observability.generation(
             "generation",
             feature="week_brief",
-            model=settings.GEMINI_MODEL,
+            model=claude_llm.model_for(provider),
             metadata={"tier": "primary"},
             prompt=tpl,
         ) as generation:
-            response = await asyncio.to_thread(
-                client.models.generate_content,
-                model=settings.GEMINI_MODEL,
-                contents=prompt,
-                config=_genai_types.GenerateContentConfig(
-                    thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+            if claude_llm.is_claude(provider):
+                answer = await asyncio.to_thread(claude_llm.call, prompt, generation, thinking=False)
+            else:
+                response = await asyncio.to_thread(
+                    _genai.Client(api_key=api_key).models.generate_content,
+                    model=settings.GEMINI_MODEL,
+                    contents=prompt,
+                    config=_genai_types.GenerateContentConfig(
+                        thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                    )
+                    if hasattr(_genai_types, "ThinkingConfig")
+                    else None,
                 )
-                if hasattr(_genai_types, "ThinkingConfig")
-                else None,
-            )
-            generation.set_usage(observability.Usage.from_genai(response.usage_metadata))
-        text = response.text.strip()
+                generation.set_usage(observability.Usage.from_genai(response.usage_metadata))
+                answer = response.text
+        text = answer.strip()
         start, end = text.find("{"), text.rfind("}")
         if start == -1 or end == -1:
             return None
         return _clean(json.loads(text[start : end + 1]))
     except Exception as ex:  # noqa: BLE001
-        _logger.warning(f"[WeekBrief] Gemini FAILED: {type(ex).__name__}: {ex}")
+        _logger.warning(f"[WeekBrief] model FAILED: {type(ex).__name__}: {ex}")
         return None
 
 
@@ -147,6 +153,7 @@ async def generate_week_brief(
     api_key: str | None,
 ) -> dict[str, Any] | None:
     """{why, benefits[], watch} for this week, or None (no key, bad output, any failure)."""
+    api_key = claude_llm.key_for(settings.WEEK_BRIEF_LLM_PROVIDER, api_key)
     if not api_key or not decision_log:
         return None
     with observability.trace("week_brief", feature="week_brief"):

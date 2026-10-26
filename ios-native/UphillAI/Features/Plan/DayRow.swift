@@ -34,32 +34,18 @@ struct DayRow: View {
         return WorkoutTypePresentation.zoneColor(for: w)
     }
 
-    private var hasPriority: Bool {
-        day.workouts.contains(where: \.isPriority)
-    }
-
-    private var dayBorderColor: Color {
-        if day.isToday { return UH.Palette.accentInk }
-        if hasPriority { return primaryColor.opacity(0.85) }
-        return primaryColor.opacity(0.25)
+    /// The date, or "Today" in the accent colour; the only place a row says it is today.
+    private func dayLabel(font: Font, color: Color) -> some View {
+        Text(day.isToday ? L("Today") : dateText)
+            .font(day.isToday ? UH.TextStyle.eyebrow : font)
+            .foregroundStyle(day.isToday ? UH.Palette.accentInk : color)
     }
 
     // MARK: - Rest Row (Collapsed)
 
     private var restRow: some View {
         HStack(spacing: UH.Space.compact) {
-            if day.isToday {
-                Text("TODAY")
-                    .font(.system(size: 10, weight: .bold))
-                    .tracking(0.5)
-                    .foregroundStyle(UH.Palette.accentInk)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(UH.Palette.activeFill, in: Capsule())
-            }
-            Text(dateText)
-                .font(UH.TextStyle.label)
-                .foregroundStyle(UH.Palette.secondary)
+            dayLabel(font: UH.TextStyle.label, color: UH.Palette.secondary)
             Spacer()
             Label("Rest", systemImage: "moon.zzz")
                 .font(UH.TextStyle.caption)
@@ -99,32 +85,17 @@ struct DayRow: View {
                     Divider().overlay(UH.Palette.line.opacity(0.6))
                 }
                 workoutRow(workout, isDouble: day.workouts.count > 1)
-                if workout.isMatched {
-                    matchedActivityBadge(workout)
                 }
-            }
         }
         .padding(.vertical, UH.Space.regular)
         .padding(.trailing, UH.Space.regular)
         .padding(.leading, UH.Space.regular + 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            // Subtle Gradient Background Wash in workout type color
-            LinearGradient(
-                colors: [
-                    primaryColor.opacity(day.isToday ? 0.16 : 0.09),
-                    primaryColor.opacity(0.02),
-                    day.isToday ? UH.Palette.activeFill.opacity(0.45) : UH.Palette.card
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
-            ),
-            in: RoundedRectangle(cornerRadius: UH.Radius.landing)
-        )
+        .background(day.isToday ? UH.Palette.activeFill : UH.Palette.card,
+                    in: RoundedRectangle(cornerRadius: UH.Radius.panel))
         .overlay(
-            // Border tinted with type color
-            RoundedRectangle(cornerRadius: UH.Radius.landing)
-                .stroke(dayBorderColor, lineWidth: day.isToday || hasPriority ? 1.5 : 1)
+            RoundedRectangle(cornerRadius: UH.Radius.panel)
+                .stroke(day.isToday ? UH.Palette.accentInk.opacity(0.4) : UH.Palette.line, lineWidth: 1)
         )
         .overlay(alignment: .leading) {
             // Prominent Left Accent Stripe matching workout type
@@ -150,44 +121,11 @@ struct DayRow: View {
     // Header when 2+ workouts exist in a single day
     private var doubleDayHeader: some View {
         HStack(spacing: UH.Space.compact) {
-            Text(dateText)
-                .font(UH.TextStyle.label)
-                .foregroundStyle(UH.Palette.ink)
-            if day.isToday {
-                Text("TODAY")
-                    .font(.system(size: 10, weight: .bold))
-                    .tracking(0.5)
-                    .foregroundStyle(UH.Palette.accentInk)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(UH.Palette.activeFill, in: Capsule())
-            }
+            dayLabel(font: UH.TextStyle.label, color: UH.Palette.ink)
+            Text(verbatim: "· " + L("%lld sessions", day.workouts.count))
+                .font(UH.TextStyle.caption)
+                .foregroundStyle(UH.Palette.secondary)
             Spacer()
-            Text("2 SESSIONS")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .foregroundStyle(primaryColor)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(primaryColor.opacity(0.12), in: Capsule())
-
-            if let onMoveOrSwap {
-                Button {
-                    onMoveOrSwap(day)
-                } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: "arrow.left.arrow.right")
-                            .font(.system(size: 10, weight: .bold))
-                        Text("SWAP")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    }
-                    .foregroundStyle(UH.Palette.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(UH.Palette.hover, in: Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("day.\(day.weekday.rawValue).moveswap")
-            }
         }
     }
 
@@ -211,10 +149,18 @@ struct DayRow: View {
                     line1(workout, isDouble: isDouble)
 
                     // Line 2: Title
-                    Text(workout.title)
-                        .font(UH.TextStyle.label)
-                        .foregroundStyle(UH.Palette.ink)
-                        .lineLimit(1)
+                    HStack(spacing: 4) {
+                        if workout.isPriority {
+                            Image(systemName: "star.fill")
+                                .font(UH.TextStyle.caption)
+                                .foregroundStyle(UH.Palette.accentInk)
+                                .accessibilityHidden(true)
+                        }
+                        Text(workout.title)
+                            .font(UH.TextStyle.label)
+                            .foregroundStyle(UH.Palette.ink)
+                            .lineLimit(1)
+                    }
 
                     // Line 3: Zone Dot + SF Mono numbers (Duration · Est. distance · Pace)
                     line3(workout)
@@ -232,56 +178,43 @@ struct DayRow: View {
         .padding(.vertical, 2)
     }
 
-    // Line 1: Date + Markers + Type Chip in Zone Colour
+    // Line 1: date (or session slot), type chip, and at most one status pill
     private func line1(_ workout: Workout, isDouble: Bool) -> some View {
         let zoneColor = WorkoutTypePresentation.zoneColor(for: workout)
         let chipLabel = WorkoutTypePresentation.chipLabel(for: workout)
 
         return HStack(spacing: 6) {
             if !isDouble {
-                Text(dateText)
-                    .font(UH.TextStyle.caption)
-                    .foregroundStyle(UH.Palette.secondary)
-
-                if day.isToday {
-                    Text("TODAY")
-                        .font(.system(size: 9, weight: .bold))
-                        .tracking(0.5)
-                        .foregroundStyle(UH.Palette.accentInk)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1.5)
-                        .background(UH.Palette.activeFill, in: Capsule())
-                }
+                dayLabel(font: UH.TextStyle.caption, color: UH.Palette.secondary)
             } else {
-                let slot = L(workout.sessionSlot?.capitalized ?? "Session")
-                Text(slot)
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                Text(L(workout.sessionSlot?.capitalized ?? "Session"))
+                    .font(UH.TextStyle.eyebrow)
                     .foregroundStyle(zoneColor)
             }
 
-            if workout.isPriority {
-                Text("PRIORITY")
-                    .font(.system(size: 9, weight: .bold))
-                    .tracking(0.5)
-                    .foregroundStyle(UH.Palette.accentInk)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 1.5)
-                    .background(UH.Palette.activeFill, in: Capsule())
-            }
+            Text(chipLabel)
+                .font(UH.TextStyle.eyebrow)
+                .foregroundStyle(zoneColor)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(zoneColor.opacity(0.14), in: RoundedRectangle(cornerRadius: UH.Radius.topic))
 
-            // Type Chip in Zone Colour with inner colored indicator dot
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(zoneColor)
-                    .frame(width: 5, height: 5)
-                Text(chipLabel)
-                    .font(.system(size: 11, weight: .bold))
+            if WorkoutTypePresentation.rowStatus(for: workout) == .matched {
+                Label {
+                    Text("Matched")
+                } icon: {
+                    Image(systemName: workout.matchedFromAppleHealth ? "heart.fill" : "applewatch")
+                        .foregroundStyle(workout.matchedFromAppleHealth ? UH.Palette.healthPink : UH.Palette.accentInk)
+                }
+                .labelStyle(.titleAndIcon)
+                .font(UH.TextStyle.eyebrow)
+                .foregroundStyle(UH.Palette.accentInk)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(UH.Palette.activeFill, in: Capsule())
+                .accessibilityLabel(L("Matched with %@", workout.matchedSourceName))
+                .accessibilityIdentifier("workout.\(workout.id).matched")
             }
-            .foregroundStyle(zoneColor)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 2)
-            .background(zoneColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(zoneColor.opacity(0.35), lineWidth: 0.9))
         }
     }
 
@@ -296,7 +229,7 @@ struct DayRow: View {
                 .frame(width: 7, height: 7)
 
             Text(metrics)
-                .font(.system(size: 12.5, weight: .medium, design: .monospaced))
+                .font(UH.TextStyle.caption.monospacedDigit())
                 .foregroundStyle(UH.Palette.secondary)
                 .lineLimit(1)
         }
@@ -311,22 +244,21 @@ struct DayRow: View {
             ZStack {
                 if workout.isDone {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 24))
+                        .font(.title2)
                         .foregroundStyle(UH.Palette.accentInk)
-                } else if workout.isMissedFlag {
+                } else if workout.isMissedFlag || PlanCalendar.isUnloggedPast(workout, on: day.date) {
                     HStack(spacing: 3) {
                         Image(systemName: "xmark.circle")
-                            .font(.system(size: 13))
-                        Text("Missed")
-                            .font(.system(size: 11, weight: .medium))
+                        Text(workout.isMissedFlag ? "Missed" : "Not logged")
                     }
+                    .font(UH.TextStyle.caption)
                     .foregroundStyle(UH.Palette.muted)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 4)
                     .background(UH.Palette.hover, in: Capsule())
                 } else {
                     Image(systemName: "circle")
-                        .font(.system(size: 24))
+                        .font(.title2)
                         .foregroundStyle(UH.Palette.line)
                 }
             }
@@ -342,71 +274,9 @@ struct DayRow: View {
     private func accessibility(_ w: Workout) -> String {
         var parts = [w.title, L("%lld minutes", Int(w.durationMinutes))]
         if let km = w.distanceKm, km > 0 { parts.append(L("%@ kilometres", km.formatted(.number.precision(.fractionLength(0...1))))) }
-        if w.isPriority { parts.append("priority") }
+        if w.isPriority { parts.append(L("Coach's pick")) }
+        if w.isMatched { parts.append(L("Matched with %@", w.matchedSourceName)) }
         if w.isDone { parts.append("done") } else if w.isMissedFlag { parts.append("missed") }
         return parts.joined(separator: ", ")
-    }
-
-    // MARK: - Compact Synced Watch Badge
-
-    private func matchedMetrics(_ workout: Workout, leadingDot: Bool = true) -> some View {
-        let parts = [
-            workout.matchedDistanceKm.map { "\(String(format: "%.1f", $0)) km" },
-            workout.matchedDurationSeconds.map { "\(Int($0 / 60))m" },
-            workout.matchedAvgHr.map { "\($0) bpm" },
-        ].compactMap { $0 }
-        return Text(verbatim: (leadingDot && !parts.isEmpty ? "· " : "") + parts.joined(separator: " · "))
-            .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-            .foregroundStyle(UH.Palette.secondary)
-    }
-
-    private func matchedActivityBadge(_ workout: Workout) -> some View {
-        return Button {
-            onSelect(workout)
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: workout.matchedFromAppleHealth ? "heart.fill" : "applewatch")
-                    .font(.system(size: 10.5, weight: .semibold))
-                    .foregroundStyle(workout.matchedFromAppleHealth ? UH.Palette.healthPink : UH.Palette.accentInk)
-                    .accessibilityLabel(Text(verbatim: workout.matchedSourceName))
-                // The name drops before the metrics wrap ("Apple Health" is too long on narrow phones).
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 5) {
-                        Text(verbatim: workout.matchedSourceName)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(UH.Palette.ink)
-                            .accessibilityHidden(true)
-                        matchedMetrics(workout)
-                    }
-                    .fixedSize()
-                    matchedMetrics(workout, leadingDot: false).fixedSize()
-                }
-
-                Spacer()
-
-                HStack(spacing: 3) {
-                    Circle()
-                        .fill(UH.Palette.accentInk)
-                        .frame(width: 4, height: 4)
-                    Text("Matched")
-                        .font(.system(size: 9.5, weight: .bold))
-                        .foregroundStyle(UH.Palette.accentInk)
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(UH.Palette.activeFill, in: Capsule())
-                .fixedSize()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 8.5, weight: .bold))
-                    .foregroundStyle(UH.Palette.muted)
-            }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(UH.Palette.surface.opacity(0.85), in: RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(UH.Palette.line.opacity(0.6), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("workout.\(workout.id).matched")
     }
 }

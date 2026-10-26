@@ -378,3 +378,93 @@ async def test_detail_calls_run_concurrently_up_to_the_limit():
     assert len(activities) == 2
     assert CountingMcp.peak == min(2, coros_module.DETAIL_CONCURRENCY)
     assert all(a.training_load == 161.0 for a in activities)
+
+
+SLEEP_OVERVIEW_TEXT = (
+    "Sleep Overview\n========================\n\n2026-09-04\nSleep Score: 88\n"
+    "Daily Sleep: 6h 58min (incl. naps)\nMain Sleep (asleep): 6h 58min\n"
+    "Main Sleep Window: 2026-09-04 00:48 - 2026-09-04 07:51\nNaps Total: 0 min"
+)
+
+
+@pytest.mark.asyncio
+async def test_sleep_fills_sleep_minutes_and_window():
+    from datetime import time
+
+    stub = StubMcp({"queryRestingHeartRate": RESTING_HR_TEXT, "querySleepOverview": SLEEP_OVERVIEW_TEXT})
+    metrics = await CorosAdapter(stub).fetch_daily_metrics(days=1)
+    assert metrics[0].sleep_minutes == 418
+    assert (metrics[0].sleep_start, metrics[0].sleep_end) == (time(0, 48), time(7, 51))
+
+
+@pytest.mark.asyncio
+async def test_long_window_fetches_hrv_in_7_day_chunks():
+    stub = StubMcp({"queryRestingHeartRate": RESTING_HR_TEXT})
+    today = date(2026, 10, 23)
+    await CorosAdapter(stub).fetch_daily_metrics(days=30, today=today)
+
+    hrv = sorted((a["startDate"], a["endDate"]) for name, a in stub.calls if name == "querySleepHrv")
+    assert len(hrv) == 5
+    assert hrv[0][0] == "20260924" and hrv[-1][1] == "20261023"
+    covered = set()
+    for start, end in hrv:
+        s, e = date(int(start[:4]), int(start[4:6]), int(start[6:])), date(int(end[:4]), int(end[4:6]), int(end[6:]))
+        assert (e - s).days < 7
+        days = {s.toordinal() + i for i in range((e - s).days + 1)}
+        assert not covered & days
+        covered |= days
+    assert len(covered) == 30
+
+    sleep = [a for name, a in stub.calls if name == "querySleepOverview"]
+    assert sleep and all(
+        (
+            date.fromisoformat(f"{a['endDate'][:4]}-{a['endDate'][4:6]}-{a['endDate'][6:]}")
+            - date.fromisoformat(f"{a['startDate'][:4]}-{a['startDate'][4:6]}-{a['startDate'][6:]}")
+        ).days
+        < 30
+        for a in sleep
+    )
+
+
+@pytest.mark.asyncio
+async def test_short_window_keeps_single_recent_days_call():
+    stub = StubMcp({"queryRestingHeartRate": RESTING_HR_TEXT})
+    await CorosAdapter(stub).fetch_daily_metrics(days=7)
+    hrv = [a for name, a in stub.calls if name == "querySleepHrv"]
+    assert hrv == [{"startDate": None, "endDate": None, "days": 7}]
+
+
+@pytest.mark.asyncio
+async def test_all_four_sources_failing_raises():
+    err = McpError("down")
+    stub = RaisingMcp(
+        {},
+        raising={
+            n: err
+            for n in ("queryRestingHeartRate", "querySleepHrv", "queryTrainingLoadAssessment", "querySleepOverview")
+        },
+    )
+    with pytest.raises(CorosDailyMetricsUnavailableError):
+        await CorosAdapter(stub).fetch_daily_metrics(days=1)
+
+
+@pytest.mark.asyncio
+async def test_three_failing_still_returns_the_fourth():
+    err = McpError("down")
+    stub = RaisingMcp(
+        {"querySleepOverview": SLEEP_OVERVIEW_TEXT},
+        raising={n: err for n in ("queryRestingHeartRate", "querySleepHrv", "queryTrainingLoadAssessment")},
+    )
+    metrics = await CorosAdapter(stub).fetch_daily_metrics(days=1)
+    assert [m.sleep_minutes for m in metrics] == [418]
+
+
+@pytest.mark.asyncio
+async def test_default_window_reaches_one_day_past_the_server_date():
+    # Athletes ahead of UTC wake up "tomorrow" in server terms; that night must be fetched.
+    from datetime import timedelta
+
+    stub = StubMcp({"queryRestingHeartRate": RESTING_HR_TEXT})
+    await CorosAdapter(stub).fetch_daily_metrics(days=30)
+    ends = [a["endDate"] for name, a in stub.calls if name == "querySleepHrv"]
+    assert max(ends) == (date.today() + timedelta(days=1)).strftime("%Y%m%d")

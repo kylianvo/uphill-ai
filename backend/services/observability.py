@@ -55,7 +55,7 @@ FEATURES = frozenset(
         "goal_estimate",
     }
 )
-METRIC_MODELS = frozenset({"gemini-3.8-flash"})
+METRIC_MODELS = frozenset({"gemini-3.8-flash", "claude-haiku-5-5"})
 METRIC_STATUSES = frozenset({"ok", "error", "attempt", "success", "used", "fallback"})
 
 _warned: set[str] = set()
@@ -67,7 +67,7 @@ _UNIT_INTERVAL = "unit_interval"
 _SCORE_SPECS: dict[str, Any] = {
     "thumbs": frozenset({-1, 1}),
     "proposal_applied": frozenset({0, 1}),
-    "plan_engine": frozenset({"gemini", "gemini_retry", "rules"}),
+    "plan_engine": frozenset({"gemini", "gemini_retry", "claude", "claude_retry", "rules"}),
     "judge_grounded": _UNIT_INTERVAL,
     "judge_safe": _UNIT_INTERVAL,
     "judge_actionable": _UNIT_INTERVAL,
@@ -143,6 +143,31 @@ class Usage:
             output_tokens=getattr(usage_metadata, "candidates_token_count", None) or 0,
             thinking_tokens=getattr(usage_metadata, "thoughts_token_count", None) or 0,
             cached_tokens=getattr(usage_metadata, "cached_content_token_count", None) or 0,
+        )
+
+    @classmethod
+    def from_anthropic(cls, usage: Any, content: list[Any] | None = None) -> "Usage":
+        """Anthropic input_tokens exclude cache reads/writes and output_tokens already include thinking.
+
+        With the reply's `content`, a reply that thought is split into the visible answer and thinking;
+        output + thinking stays Anthropic's output_tokens, so cost is unchanged."""
+        if usage is None:
+            return cls()
+        cached = getattr(usage, "cache_read_input_tokens", None) or 0
+        output = getattr(usage, "output_tokens", None) or 0
+        thinking = 0
+        if content and any(getattr(b, "type", None) == "thinking" for b in content):
+            text = "".join(getattr(b, "text", "") for b in content if getattr(b, "type", None) == "text")
+            # shortcut: chars/3 approximates Haiku 5.5's tokenizer; replace with count_tokens if the split needs to be exact
+            answer = min(math.ceil(len(text) / 3), output)
+            thinking, output = output - answer, answer
+        return cls(
+            input_tokens=(getattr(usage, "input_tokens", None) or 0)
+            + cached
+            + (getattr(usage, "cache_creation_input_tokens", None) or 0),
+            output_tokens=output,
+            thinking_tokens=thinking,
+            cached_tokens=cached,
         )
 
 
@@ -1205,7 +1230,7 @@ def get_prompt_template(
 _PROMPT_VARIABLE_RE = re.compile(r"\{\{(\w+)\}\}")
 
 
-def load_prompt(name: str, fallback: str) -> PromptTemplate:
+def load_prompt(name: str, fallback: str, label: str | None = None) -> PromptTemplate:
     """Fetch a service prompt at the configured label, falling back to the in-code template.
 
     A Langfuse version that drops any {{variable}} the fallback uses is rejected, so an
@@ -1213,7 +1238,7 @@ def load_prompt(name: str, fallback: str) -> PromptTemplate:
     """
     tpl = get_prompt_template(
         name,
-        label=settings.COACH_CHAT_PROMPT_LABEL,
+        label=label or settings.COACH_CHAT_PROMPT_LABEL,
         fallback=fallback,
         cache_ttl_seconds=settings.COACH_CHAT_PROMPT_CACHE_TTL_SECONDS,
     )

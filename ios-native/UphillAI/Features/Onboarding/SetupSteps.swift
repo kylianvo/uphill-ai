@@ -497,16 +497,9 @@ struct SetupSteps: View {
                 SetupError(model: model, field: .preferredDays)
             }
 
-            HStack {
-                Text("Long run").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
-                Spacer()
-                Picker("Long run", selection: $model.draft.longRunDay) {
-                    ForEach(model.draft.orderedDays) { Text(L($0.rawValue)).tag($0) }
-                }
-                .pickerStyle(.menu)
-                .tint(UH.Palette.accentInk)
-            }
-            .frame(minHeight: 44)
+            LongRunDayRow(title: "Long run",
+                          day: Binding(get: { model.draft.longRunDay }, set: { if let day = $0 { model.draft.longRunDay = day } }),
+                          runDays: model.draft.orderedDays, trailDays: model.draft.mountainDays)
         }
         .trainingCard()
 
@@ -585,7 +578,9 @@ struct SetupSteps: View {
                 stairAccess: $model.draft.stairAccess,
                 useTreadmill: $model.draft.useTreadmill,
                 treadmillMaxIncline: model.draft.useTreadmill ? $model.draft.treadmillMaxIncline : nil,
-                courseSteepness: model.draft.courseSteepness
+                courseSteepness: model.draft.courseSteepness,
+                longRunDay: Binding(get: { model.draft.longRunDay }, set: { if let day = $0 { model.draft.longRunDay = day } }),
+                runDays: model.draft.preferredDays
             )
         }
         .trainingCard()

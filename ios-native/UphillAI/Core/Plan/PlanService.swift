@@ -24,7 +24,6 @@ protocol PlanServicing: Sendable {
     func reassessGoal(planID: Int) async throws -> PlanGoal
     func applyGoal(planID: Int, targetMinutes: Double) async throws -> PlanGoal
     func syncWatch(planID: Int) async throws -> String
-    func knowledgeCard(topic: String, lang: String) async -> KnowledgeCardModel?
     func blockEvaluation(planID: Int, block: Int) async throws -> BlockEvaluation
     /// Watch activities in the plan's window with their current match, for fixing a wrong match.
     func watchActivities(planID: Int) async throws -> [WatchActivity]
@@ -139,7 +138,12 @@ struct PlanService: PlanServicing {
 
     func activePlan() async throws -> PlanSnapshot? {
         let response: ActivePlanResponse = try await client.send(.get(coachPrefix.map { "\($0)/active-plan" } ?? "/api/coach/active-plan"))
-        guard var snapshot = response.snapshot else { return nil }
+        guard var snapshot = response.snapshot else {
+            // A coach sees a runner's unpublished draft when there's no active plan to show.
+            guard let coachPrefix else { return nil }
+            let draft: DraftPlanResponse = try await client.send(.get("\(coachPrefix)/plans/draft"))
+            return draft.snapshot
+        }
         // Watch matches are read for the signed-in user only.
         guard athleteId == nil else { return snapshot }
         snapshot.workouts = await withWatchMatches(snapshot.workouts, planID: snapshot.plan.id)
@@ -272,7 +276,11 @@ struct PlanService: PlanServicing {
     func coachNudge(planID: Int) async throws -> CoachNudge? {
         guard coachPrefix == nil else { return nil }
         let response: CoachNudgeResponse = try await client.send(
-            .get("/api/plans/\(planID)/coach-nudge", query: [URLQueryItem(name: "lang", value: AppLanguage.code)]))
+            .get("/api/plans/\(planID)/coach-nudge", query: [
+                URLQueryItem(name: "lang", value: AppLanguage.code),
+                // the athlete's local date: the server runs on UTC, so a Vietnamese Monday morning is still Sunday there
+                URLQueryItem(name: "client_today", value: Date().formatted(Date.ISO8601FormatStyle(timeZone: .current).year().month().day())),
+            ]))
         return response.nudge
     }
 
@@ -305,16 +313,5 @@ struct PlanService: PlanServicing {
         ]))
         let count = resp.activities ?? 0
         return count > 0 ? L("Synced %lld activities from watch", count) : L("Watch synced · Up to date")
-    }
-    func knowledgeCard(topic: String, lang: String = AppLanguage.code) async -> KnowledgeCardModel? {
-        do {
-            let resp: KnowledgeCardsResponse = try await client.send(.get("/api/knowledge/cards", query: [
-                URLQueryItem(name: "topic", value: topic),
-                URLQueryItem(name: "lang", value: lang)
-            ]))
-            return resp.cards.first
-        } catch {
-            return nil
-        }
     }
 }

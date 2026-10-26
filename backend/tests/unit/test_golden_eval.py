@@ -454,3 +454,12 @@ def test_scheduler_golden_fixtures_start_on_a_fixed_monday():
     for path in golden_eval._fixtures("scheduler"):
         fixture = json.load(open(path, encoding="utf-8"))
         assert date.fromisoformat(fixture["race_info"]["plan_start_date"]).weekday() == 0
+
+
+def test_claude_engines_count_as_model_made_plans():
+    item = [{"id": "c1"}]
+    assert golden_eval.gate_failures("scheduler", item, [{"engine": "claude"}]) == []
+    assert golden_eval.gate_failures("scheduler", item, [{"engine": "claude_retry"}]) == []
+    before = {"gemini_ok": 0, "retry_ok": 0, "claude_ok": 0, "claude_retry_ok": 0}
+    assert golden_eval._scheduler_engine_used(before, {**before, "claude_ok": 1}) == "claude"
+    assert golden_eval._scheduler_engine_used(before, {**before, "claude_retry_ok": 1}) == "claude_retry"

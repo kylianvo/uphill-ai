@@ -176,7 +176,7 @@ async def _update_thread_summary(
             call_id=summary_call_id,
             request_id=request_id,
             feature="chat_summary",
-            model_name="gemini-3.8-flash",
+            model_name=getattr(model, "model", settings.GEMINI_MODEL),
             model_adapter=model,
             model_request=model_req,
         ):
@@ -290,6 +290,11 @@ async def run_turn(
             )
             db.update_chat_turn_status(request_id=req_uuid, status="active", result_message_id=assistant_msg_id)
 
+            if model is None and settings.COACH_CHAT_LLM_PROVIDER == "claude" and settings.ANTHROPIC_API_KEY:
+                from services.coach_model import ClaudeCoachModel
+
+                # Claude bills the server key; the Gemini key above still feeds KB search tools.
+                model = ClaudeCoachModel(tools=tools or None)
             if model is None:
                 from services.coach_model import GeminiCoachModel
 
@@ -442,6 +447,7 @@ async def run_turn(
 
             # Background quality grading for a sampled share of turns (scores only leave the process).
             llm_judge.maybe_judge_turn(
+                user_id=user_id,
                 trace_id=trace_id,
                 message_id=assistant_msg_id,
                 question=question,

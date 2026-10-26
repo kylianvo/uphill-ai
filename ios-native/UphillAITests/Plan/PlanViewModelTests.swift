@@ -50,6 +50,15 @@ struct PlanViewModelTests {
         #expect(cache.load(PlanSnapshot.self, .plan) != nil)
     }
 
+    @Test func loadFetchesTheCoachReview() async throws {
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snapshot()) }
+        service.nudgeResult.withLock { $0 = CoachNudge(tone: "steady", text: "a b c", messages: ["a", "b", "c"]) }
+        let model = make(service)
+        await model.load()
+        #expect(model.coachNudge?.messages == ["a", "b", "c"])
+    }
+
     @Test func daysForSelectedWeek() async {
         let service = FakePlanService()
         service.activeResult.withLock { $0 = .success(snapshot()) }
@@ -230,7 +239,7 @@ struct PlanViewModelTests {
         let target = try #require(model.moveTargets(for: workout).first)
         #expect(await model.move(workout, to: target) == false)
         await model.select(snap.plan)
-        #expect(service.calls.withLock { $0 } == ["active", "completion \(snap.plan.id)", "active"])
+        #expect(service.calls.withLock { $0 } == ["active", "completion \(snap.plan.id)", "journey \(snap.plan.id)", "nudge \(snap.plan.id)", "active"])
         #expect(model.actionError == PlanViewModel.offlineMessage)
     }
 
@@ -299,7 +308,7 @@ struct PlanViewModelTests {
         await model.load()
         model.selectedWeek = 3
         await model.refreshNextWeekOffer()
-        #expect(model.nextWeekOffer == NextWeekOffer(blockNumber: 4, weekStart: 4, weekEnd: 4, previousCompletionPct: 80, unlocked: true))
+        #expect(model.nextWeekOffer == NextWeekOffer(blockNumber: 4, weekStart: 4, weekEnd: 4, previousCompletionPct: 80, unlocked: true, sessionsToUnlock: 0))
         #expect(model.nextWeekOffer?.title == "Build week 4")
         model.selectedWeek = 2
         await model.refreshNextWeekOffer()
@@ -428,7 +437,22 @@ struct PlanViewModelTests {
         let model = make(service)
         await model.load()
         await model.loadGoal()
-        #expect(model.goalPillText == "Behind target")
+        #expect(model.goalPillText == "Building")  // behind, but the week can still carry it
+
+        var outOfReach = behind
+        outOfReach.feasibility = try JSONCoding.decoder.decode(GoalFeasibility.self, from: json([
+            "verdict": "unsupported", "capacity_h": 6, "needed_h": 9, "levers": [], "confidence": "measured"]))
+        service.goalResult.withLock { $0 = .success(outOfReach) }
+        await model.loadGoal()
+        #expect(model.goalPillText == "Behind target" && model.goalIsOutOfReach)
+
+        let onA = try JSONCoding.decoder.decode(PlanGoal.self, from: json([
+            "assessment": ["id": 1, "goals": ["a": 360, "b": 385, "c": 410], "reasoning": [], "missing": [], "engine": "rules"],
+            "status": ["state": "on_track", "suggested_mins": NSNull(), "tier": "a"], "target_time_hours": 6.0,
+        ]))
+        #expect(onA.status.tier == "a")
+        service.goalResult.withLock { $0 = .success(behind) }
+        await model.loadGoal()
         #expect(PlanViewModel.formatMinutes(385) == "6:25")
         _ = await model.applySuggestedGoal()
         #expect(service.calls.withLock { $0 }.contains("apply 7 385"))

@@ -10,7 +10,7 @@ import { RaceNameField } from "../components/RaceNameField";
 import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 import WatchZonesGuideModal from "../components/WatchZonesGuideModal";
 import RaceHistoryPanel from "../components/RaceHistoryPanel";
-import { TrainingVenueFields } from "../components/TrainingVenueFields";
+import { LongRunDaySelect, TrainingVenueFields } from "../components/TrainingVenueFields";
 
 export default function OnboardingWizard() {
   const ctx = useAppContext();
@@ -1520,11 +1520,8 @@ export default function OnboardingWizard() {
 
                 <label style={labelS}>Long run day</label>
 
-                <select className="chat-input" style={inputS} value={onboardingAnswers.long_run_day} onChange={e => setAns("long_run_day", e.target.value)}>
-
-                  {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-
-                </select>
+                <LongRunDaySelect lang={lang} t={t} className="chat-input" style={inputS} value={onboardingAnswers.long_run_day || "Saturday"}
+                  trailDays={onboardingAnswers.mountain_days || []} onChange={day => setAns("long_run_day", day)} />
 
               </div>
 
@@ -1592,6 +1589,8 @@ export default function OnboardingWizard() {
                     (parseFloat(onboardingAnswers.course_distance_km) || Infinity)
                   }
                   onChange={(patch) => Object.entries(patch).forEach(([k, v]) => setAns(k, v))}
+                  longRunDay={onboardingAnswers.long_run_day || "Saturday"}
+                  onLongRunDayChange={day => setAns("long_run_day", day)}
                 />
 
               </div>

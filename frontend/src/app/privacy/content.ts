@@ -13,7 +13,7 @@ const CONTACT = "vvviet123@gmail.com";
 
 export const privacyEn: LegalContent = {
   title: "Privacy Notice",
-  updated: "Last updated: 2 September 2026",
+  updated: "Last updated: 24 October 2026",
   intro: [
     "Uphill AI Vietnam (“Uphill AI”, “we”, “us”) provides an AI-assisted training platform for trail and mountain runners. This notice explains what personal data we collect, why we collect it, how long we keep it, how we use artificial intelligence, and how you can revoke access or have your data deleted.",
     `If you have any question about this notice or about your data, contact our privacy contact at ${CONTACT}.`,
@@ -26,7 +26,7 @@ export const privacyEn: LegalContent = {
         "Account data — your email address, name, and the account identifier provided by Google or Facebook if you sign in with them. We never receive or store your password for those services.",
         "Profile and physiology — date of birth or age, gender, height, weight, maximum and resting heart rate, aerobic and anaerobic threshold heart rate, training pace zones, weekly training volume, and any injury history you choose to enter.",
         "Training plans and workouts — the plans we generate for you, your scheduled and completed sessions, session notes, and perceived-effort ratings.",
-        "Connected device data — if you connect a device account such as COROS, we receive the data you authorise: completed activity records (time, distance, pace, heart rate, elevation, route), and daily health metrics such as sleep, heart-rate variability and resting heart rate. We receive this only after you explicitly authorise it, and only for your own account.",
+        "Connected device data — if you connect a device account such as COROS or Garmin, we receive the data you authorise: completed activity records (time, distance, pace, heart rate, elevation, route), and daily health metrics such as sleep, heart-rate variability and resting heart rate. We receive this only after you explicitly authorise it, and only for your own account.",
         "Files you upload — activity files (.FIT) and route files (.GPX) you choose to upload.",
         "Usage data — pages viewed, actions taken in the app, session identifier, browser user agent, and timestamps, used to understand how the product is used and to diagnose faults.",
         "Optional credentials — if you supply your own AI provider API key, we store it to run your requests under your key rather than ours.",
@@ -47,6 +47,8 @@ export const privacyEn: LegalContent = {
       heading: "3. Artificial intelligence and automated processing",
       body: [
         "Coaching guidance in Uphill AI is generated with a large language model. When you request a plan, ask the coach a question, or receive a recommendation, relevant parts of your profile, training history and connected-device data are sent to our AI provider (Google, via the Gemini API) to produce a response for you.",
+        "Garmin and AI consent — if you connect a Garmin account, we ask for your explicit consent before any of your Garmin data is processed by our AI provider, and we do not connect Garmin without it. You can withdraw this consent at any time from your Uphill AI profile settings. Withdrawing it disconnects Garmin, and we delete your Garmin data within 24 hours. You can reconnect later.",
+        "We never use Garmin data, or conversations, summaries and other outputs that contain it, to train, test, evaluate or benchmark any AI model.",
         "We use your data to generate output for you and only for you. We do not use your personal data, or data from a connected device account, to train general-purpose or foundation AI models. We do not use it for advertising, data brokerage, or profiling across customers, and we never sell or licence it.",
         "Access to this data is limited to authorised personnel, and we review model outputs periodically for privacy risk.",
         "All guidance produced by Uphill AI is for fitness and performance purposes only. It is not medical advice, a clinical diagnosis, or a health assessment, and it must not be relied on as such. Consult a qualified medical professional before starting or changing a training programme.",
@@ -68,7 +70,7 @@ export const privacyEn: LegalContent = {
       body: [
         "Connecting a device account is entirely optional, and you choose which categories of data to authorise at the point of connection.",
         "We use connected-device data solely to provide coaching features back to you. We do not disclose one athlete's device data to another user of Uphill AI, except where you expressly enable coach sharing (see below).",
-        "Where we display data that originated from a COROS device, we identify COROS as the source and the device model it came from.",
+        "Where we display data that originated from a COROS or Garmin device, we identify COROS or Garmin as the source and, where available, the device model it came from.",
       ],
     },
     {
@@ -139,7 +141,7 @@ export const privacyEn: LegalContent = {
 
 export const privacyVi: LegalContent = {
   title: "Chính sách quyền riêng tư",
-  updated: "Cập nhật lần cuối: ngày 2 tháng 9 năm 2026",
+  updated: "Cập nhật lần cuối: ngày 24 tháng 10 năm 2026",
   intro: [
     "Uphill AI Vietnam (“Uphill AI”, “chúng tôi”) cung cấp nền tảng huấn luyện có hỗ trợ trí tuệ nhân tạo dành cho vận động viên chạy trail. Chính sách này giải thích chúng tôi thu thập dữ liệu cá nhân nào, vì sao thu thập, lưu trong bao lâu, cách chúng tôi sử dụng trí tuệ nhân tạo, và cách bạn thu hồi quyền truy cập hoặc yêu cầu xóa dữ liệu.",
     `Nếu bạn có bất kỳ câu hỏi nào về chính sách này hoặc về dữ liệu của mình, vui lòng liên hệ ${CONTACT}.`,
@@ -152,7 +154,7 @@ export const privacyVi: LegalContent = {
         "Dữ liệu tài khoản — địa chỉ email, tên, và mã định danh tài khoản từ Google hoặc Facebook nếu bạn đăng nhập bằng các dịch vụ đó. Chúng tôi không bao giờ nhận hay lưu mật khẩu của bạn ở các dịch vụ này.",
         "Hồ sơ và chỉ số sinh lý — ngày sinh hoặc tuổi, giới tính, chiều cao, cân nặng, nhịp tim tối đa và nhịp tim nghỉ, nhịp tim ngưỡng hiếu khí và yếm khí, vùng tốc độ tập luyện, khối lượng tập hàng tuần, và lịch sử chấn thương nếu bạn cung cấp.",
         "Kế hoạch và buổi tập — kế hoạch chúng tôi tạo cho bạn, các buổi tập đã lên lịch và đã hoàn thành, ghi chú và mức độ gắng sức cảm nhận.",
-        "Dữ liệu từ thiết bị đã liên kết — nếu bạn liên kết tài khoản thiết bị như COROS, chúng tôi nhận dữ liệu mà bạn cho phép: bản ghi hoạt động đã hoàn thành (thời gian, quãng đường, tốc độ, nhịp tim, độ cao, lộ trình) và chỉ số sức khỏe hàng ngày như giấc ngủ, biến thiên nhịp tim và nhịp tim nghỉ. Chúng tôi chỉ nhận sau khi bạn cho phép rõ ràng, và chỉ cho riêng tài khoản của bạn.",
+        "Dữ liệu từ thiết bị đã liên kết — nếu bạn liên kết tài khoản thiết bị như COROS hoặc Garmin, chúng tôi nhận dữ liệu mà bạn cho phép: bản ghi hoạt động đã hoàn thành (thời gian, quãng đường, tốc độ, nhịp tim, độ cao, lộ trình) và chỉ số sức khỏe hàng ngày như giấc ngủ, biến thiên nhịp tim và nhịp tim nghỉ. Chúng tôi chỉ nhận sau khi bạn cho phép rõ ràng, và chỉ cho riêng tài khoản của bạn.",
         "Tệp bạn tải lên — tệp hoạt động (.FIT) và tệp lộ trình (.GPX) bạn chọn tải lên.",
         "Dữ liệu sử dụng — trang đã xem, thao tác trong ứng dụng, mã phiên, trình duyệt và dấu thời gian, dùng để hiểu cách sản phẩm được sử dụng và khắc phục sự cố.",
         "Thông tin xác thực tùy chọn — nếu bạn cung cấp khóa API trí tuệ nhân tạo riêng, chúng tôi lưu để chạy yêu cầu bằng khóa của bạn thay vì của chúng tôi.",
@@ -173,6 +175,8 @@ export const privacyVi: LegalContent = {
       heading: "3. Trí tuệ nhân tạo và xử lý tự động",
       body: [
         "Hướng dẫn huấn luyện trong Uphill AI được tạo bằng mô hình ngôn ngữ lớn. Khi bạn yêu cầu một kế hoạch, đặt câu hỏi cho huấn luyện viên, hoặc nhận một đề xuất, các phần liên quan trong hồ sơ, lịch sử tập luyện và dữ liệu thiết bị của bạn được gửi tới nhà cung cấp trí tuệ nhân tạo (Google, qua Gemini API) để tạo câu trả lời cho bạn.",
+        "Garmin và sự đồng ý về AI — nếu bạn liên kết tài khoản Garmin, chúng tôi xin sự đồng ý rõ ràng của bạn trước khi bất kỳ dữ liệu Garmin nào được nhà cung cấp AI xử lý, và không liên kết Garmin nếu bạn chưa đồng ý. Bạn có thể rút lại sự đồng ý bất kỳ lúc nào trong phần cài đặt hồ sơ Uphill AI. Rút lại sẽ hủy liên kết Garmin, và chúng tôi xóa dữ liệu Garmin của bạn trong vòng 24 giờ. Bạn có thể liên kết lại sau.",
+        "Chúng tôi không bao giờ dùng dữ liệu Garmin, hay các cuộc trò chuyện, bản tóm tắt và kết quả khác có chứa dữ liệu đó, để huấn luyện, kiểm thử, đánh giá hay so sánh bất kỳ mô hình AI nào.",
         "Chúng tôi dùng dữ liệu của bạn để tạo kết quả cho riêng bạn. Chúng tôi không dùng dữ liệu cá nhân của bạn, hay dữ liệu từ tài khoản thiết bị đã liên kết, để huấn luyện các mô hình trí tuệ nhân tạo đa dụng hoặc mô hình nền tảng. Chúng tôi không dùng cho quảng cáo, môi giới dữ liệu, hay lập hồ sơ xuyên khách hàng, và không bao giờ bán hay cấp phép dữ liệu đó.",
         "Quyền truy cập dữ liệu này chỉ giới hạn cho nhân sự được ủy quyền, và chúng tôi định kỳ rà soát kết quả của mô hình để phát hiện rủi ro về quyền riêng tư.",
         "Mọi hướng dẫn do Uphill AI tạo ra chỉ nhằm mục đích thể chất và hiệu suất. Đây không phải lời khuyên y tế, chẩn đoán lâm sàng hay đánh giá sức khỏe, và không được sử dụng thay thế. Hãy tham khảo ý kiến bác sĩ trước khi bắt đầu hoặc thay đổi chương trình tập luyện.",
@@ -194,7 +198,7 @@ export const privacyVi: LegalContent = {
       body: [
         "Việc liên kết tài khoản thiết bị là hoàn toàn tùy chọn, và bạn chọn nhóm dữ liệu nào được cho phép ngay tại thời điểm liên kết.",
         "Chúng tôi chỉ dùng dữ liệu thiết bị để cung cấp tính năng huấn luyện cho chính bạn. Chúng tôi không tiết lộ dữ liệu thiết bị của một vận động viên cho người dùng khác của Uphill AI, trừ khi bạn chủ động bật tính năng chia sẻ với huấn luyện viên (xem bên dưới).",
-        "Khi hiển thị dữ liệu có nguồn gốc từ thiết bị COROS, chúng tôi ghi rõ COROS là nguồn dữ liệu và mẫu thiết bị tương ứng.",
+        "Khi hiển thị dữ liệu có nguồn gốc từ thiết bị COROS hoặc Garmin, chúng tôi ghi rõ COROS hoặc Garmin là nguồn dữ liệu và, khi có, mẫu thiết bị tương ứng.",
       ],
     },
     {

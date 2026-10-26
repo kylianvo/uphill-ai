@@ -196,7 +196,8 @@ struct NutritionLabSheet: View {
                                         .multilineTextAlignment(.center)
                                         .font(UH.TextStyle.metric)
                                         .foregroundStyle(UH.Palette.ink)
-                                        .frame(width: 44)
+                                        .frame(minWidth: 44)
+                                        .fixedSize()
                                     Text("h")
                                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
                                         .foregroundStyle(UH.Palette.secondary)
@@ -228,12 +229,17 @@ struct NutritionLabSheet: View {
                                 .font(UH.TextStyle.label)
                                 .foregroundStyle(UH.Palette.ink)
 
+                            // Short segment labels; the selected range sits underneath so nothing truncates.
                             Picker("Temperature", selection: $temperature) {
-                                Text("Cold (<15°C)").tag("cold")
-                                Text("Moderate (15–24°C)").tag("moderate")
-                                Text("Hot (>25°C)").tag("hot")
+                                Text("Cold").tag("cold")
+                                Text("Moderate").tag("moderate")
+                                Text("Hot").tag("hot")
                             }
                             .pickerStyle(.segmented)
+                            Text(temperature == "cold" ? L("Below 15°C") : temperature == "hot" ? L("25°C and above") : L("15–24°C"))
+                                .font(UH.TextStyle.caption)
+                                .foregroundStyle(UH.Palette.secondary)
+                                .monospacedDigit()
                         }
 
                         Divider()
@@ -342,7 +348,8 @@ struct NutritionLabSheet: View {
                                         .multilineTextAlignment(.center)
                                         .font(UH.TextStyle.metric)
                                         .foregroundStyle(UH.Palette.ink)
-                                        .frame(width: 44)
+                                        .frame(minWidth: 44)
+                                        .fixedSize()
                                     Text("g/h")
                                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
                                         .foregroundStyle(UH.Palette.secondary)
@@ -396,7 +403,8 @@ struct NutritionLabSheet: View {
                                         .multilineTextAlignment(.center)
                                         .font(UH.TextStyle.metric)
                                         .foregroundStyle(UH.Palette.ink)
-                                        .frame(width: 48)
+                                        .frame(minWidth: 48)
+                                        .fixedSize()
                                     Text("mg/h")
                                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
                                         .foregroundStyle(UH.Palette.secondary)

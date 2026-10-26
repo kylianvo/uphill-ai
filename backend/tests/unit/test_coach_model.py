@@ -358,3 +358,162 @@ def test_gemini_adapter_explicit_thinking_level_wins():
     with patch("langchain_google_genai.ChatGoogleGenerativeAI") as MockChat:
         adapter._get_chat()
     assert MockChat.call_args.kwargs["thinking_config"].thinking_level.value.lower() == "medium"
+
+
+# --- ClaudeCoachModel -------------------------------------------------------
+
+
+def _claude_model(events, final, tools=None):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock, patch
+
+    from services.coach_model import ClaudeCoachModel
+
+    class _Stream:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        def __aiter__(self):
+            async def gen():
+                for e in events:
+                    yield e
+
+            return gen()
+
+        async def get_final_message(self):
+            return final
+
+    client = MagicMock()
+    client.messages.stream = MagicMock(return_value=_Stream())
+    with patch("anthropic.AsyncAnthropic", return_value=client):
+        model = ClaudeCoachModel(tools=tools)
+    return model, client, SimpleNamespace
+
+
+def test_claude_coach_model_streams_text_then_tool_calls_and_usage():
+    import asyncio
+    from types import SimpleNamespace as NS
+    from uuid import uuid4
+
+    from langchain_core.tools import StructuredTool
+    from pydantic import BaseModel
+
+    from services.coach_model import ChatMessage, ModelRequest
+
+    class WeekArgs(BaseModel):
+        week: int
+
+    tool = StructuredTool.from_function(
+        func=lambda week: {}, name="get_week", description="A week", args_schema=WeekArgs
+    )
+    final = NS(
+        content=[NS(type="text", text="Looking."), NS(type="tool_use", id="tu_1", name="get_week", input={"week": 3})],
+        usage=NS(input_tokens=100, output_tokens=20, cache_read_input_tokens=0, cache_creation_input_tokens=0),
+    )
+    model, client, _ = _claude_model([NS(type="text", text="Looking.")], final, tools=[tool])
+    request = ModelRequest(
+        messages=(ChatMessage("user", "Q"), ChatMessage("assistant", "A"), ChatMessage("system", "ctx")),
+        system="SYS",
+        max_output_tokens=2048,
+        call_id=uuid4(),
+    )
+
+    async def collect():
+        return [e async for e in model.stream(request)]
+
+    events = asyncio.run(collect())
+    assert [e.kind for e in events] == ["text", "tool_call", "usage"]
+    assert events[1].tool_call == {"id": "tu_1", "name": "get_week", "args": {"week": 3}}
+    assert events[2].usage.input_tokens == 100
+    kwargs = client.messages.stream.call_args.kwargs
+    assert kwargs["system"] == "SYS"
+    assert [m["role"] for m in kwargs["messages"]] == ["user", "assistant", "user"]
+    assert kwargs["tools"][0]["name"] == "get_week"
+    assert kwargs["tools"][0]["input_schema"]["properties"]["week"]["type"] == "integer"
+    assert kwargs["max_tokens"] > 2048  # thinking headroom on top of the reply budget
+    assert "temperature" not in kwargs
+
+
+def test_claude_coach_model_unbinds_tools_for_the_forced_final_generation():
+    import asyncio
+    from types import SimpleNamespace as NS
+    from uuid import uuid4
+
+    from services.coach_model import ChatMessage, ModelRequest
+
+    final = NS(content=[NS(type="text", text="Done.")], usage=NS(input_tokens=1, output_tokens=1))
+    model, client, _ = _claude_model([], final, tools=[object()])
+    request = ModelRequest(
+        messages=(ChatMessage("user", "Q"),), system="S", max_output_tokens=64, call_id=uuid4(), tools_enabled=False
+    )
+
+    async def collect():
+        return [e async for e in model.stream(request)]
+
+    asyncio.run(collect())
+    assert "tools" not in client.messages.stream.call_args.kwargs
+
+
+def test_claude_coach_model_wraps_provider_errors():
+    import asyncio
+    from uuid import uuid4
+
+    import pytest
+
+    from services.coach_model import ChatMessage, CoachModelUpstreamError, ModelRequest
+
+    model, client, _ = _claude_model([], None)
+    client.messages.stream.side_effect = RuntimeError("secret athlete text")
+    request = ModelRequest(messages=(ChatMessage("user", "Q"),), system="S", max_output_tokens=64, call_id=uuid4())
+
+    async def collect():
+        return [e async for e in model.stream(request)]
+
+    with pytest.raises(CoachModelUpstreamError) as err:
+        asyncio.run(collect())
+    assert "secret" not in str(err.value)
+
+
+def test_coach_prompts_use_the_claude_label_on_claude(monkeypatch):
+    from unittest.mock import patch
+
+    from config import settings
+    from services import coach_prompts
+
+    monkeypatch.setattr(settings, "COACH_CHAT_PROMPT_LABEL", "production")
+    with patch.object(coach_prompts.observability, "get_prompt_template") as get:
+        coach_prompts.get_coach_prompt_template()
+        assert get.call_args.kwargs["label"] == "production"
+        monkeypatch.setattr(settings, "COACH_CHAT_LLM_PROVIDER", "claude")
+        coach_prompts.get_coach_prompt_template(name="chat_summary")
+        assert get.call_args.kwargs["label"] == "claude-production"
+
+
+def test_claude_coach_model_disables_thinking_when_configured(monkeypatch):
+    import asyncio
+    from types import SimpleNamespace as NS
+    from uuid import uuid4
+
+    from config import settings
+    from services.coach_model import ChatMessage, ModelRequest
+
+    final = NS(content=[NS(type="text", text="Hi.")], usage=NS(input_tokens=10, output_tokens=2))
+    request = ModelRequest(messages=(ChatMessage("user", "Q"),), system="SYS", max_output_tokens=512, call_id=uuid4())
+
+    def sent(thinking: str, effort: str = "low") -> dict:
+        monkeypatch.setattr(settings, "CLAUDE_COACH_THINKING", thinking, raising=False)
+        monkeypatch.setattr(settings, "CLAUDE_COACH_EFFORT", effort)
+        model, client, _ = _claude_model([NS(type="text", text="Hi.")], final)
+
+        async def collect():
+            return [e async for e in model.stream(request)]
+
+        asyncio.run(collect())
+        return client.messages.stream.call_args.kwargs
+
+    assert sent("disabled")["thinking"] == {"type": "disabled"}
+    assert "thinking" not in sent("adaptive")
+    assert "thinking" not in sent("disabled", effort="max")

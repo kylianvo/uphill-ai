@@ -2,100 +2,548 @@
   "action_items": {
     "draft_plans": [
       {
-        "athlete_id": 7,
+        "athlete_id": 3,
         "athlete_name": "Preview Runner",
-        "plan_id": 169,
+        "plan_id": 24,
         "race_name": "Dalat Ultra Trail 50K"
       }
     ],
     "pending_workout_approvals": [
       {
-        "athlete_id": 7,
+        "athlete_id": 3,
         "athlete_name": "Preview Runner",
-        "plan_id": 168,
+        "plan_id": 23,
         "title": "Hill Repeats",
-        "workout_id": 1799
-      },
-      {
-        "athlete_id": 7,
-        "athlete_name": "Preview Runner",
-        "plan_id": 169,
-        "title": "Rest Day",
-        "workout_id": 1805
-      },
-      {
-        "athlete_id": 7,
-        "athlete_name": "Preview Runner",
-        "plan_id": 169,
-        "title": "Hill Repeats",
-        "workout_id": 1806
-      },
-      {
-        "athlete_id": 7,
-        "athlete_name": "Preview Runner",
-        "plan_id": 169,
-        "title": "Easy Run",
-        "workout_id": 1807
-      },
-      {
-        "athlete_id": 7,
-        "athlete_name": "Preview Runner",
-        "plan_id": 169,
-        "title": "Rest Day",
-        "workout_id": 1808
-      },
-      {
-        "athlete_id": 7,
-        "athlete_name": "Preview Runner",
-        "plan_id": 169,
-        "title": "Easy Run + Strides",
-        "workout_id": 1809
-      },
-      {
-        "athlete_id": 7,
-        "athlete_name": "Preview Runner",
-        "plan_id": 169,
-        "title": "Long Run",
-        "workout_id": 1810
-      },
-      {
-        "athlete_id": 7,
-        "athlete_name": "Preview Runner",
-        "plan_id": 169,
-        "title": "Recovery Jog",
-        "workout_id": 1811
+        "workout_id": 590
       }
     ]
   },
   "adherence_trend": [
     {
-      "adherence_pct": 0.8,
+      "adherence_pct": 0.857,
       "week_number": 1
+    },
+    {
+      "adherence_pct": 1.0,
+      "week_number": 2
+    },
+    {
+      "adherence_pct": 1.0,
+      "week_number": 3
+    },
+    {
+      "adherence_pct": 1.0,
+      "week_number": 4
+    },
+    {
+      "adherence_pct": 1.0,
+      "week_number": 5
+    },
+    {
+      "adherence_pct": 0.0,
+      "week_number": 6
+    },
+    {
+      "adherence_pct": 1.0,
+      "week_number": 10
+    },
+    {
+      "adherence_pct": 1.0,
+      "week_number": 11
     }
   ],
   "athletes": [
     {
       "active_plan": {
+        "current_week": 11,
+        "plan_id": 28,
+        "race_date": "2026-11-01",
+        "race_name": "Vietnam Mountain Marathon 42K",
+        "total_weeks": 12
+      },
+      "adherence_14d": 1.0,
+      "adherence_pct": 1.0,
+      "athlete_id": 10,
+      "days_to_race": 9,
+      "last_completed": {
+        "day_of_week": "Wednesday",
+        "week_number": 11
+      },
+      "last_sync_at": "2026-10-21T21:17:38.139904+00:00",
+      "load_4w_minutes": [
+        295,
+        295,
+        295,
+        105
+      ],
+      "missed_streak": 0,
+      "mix_minutes": {
+        "easy": 105,
+        "long": 0,
+        "quality": 0
+      },
+      "name": "Anh Vu",
+      "needs_attention": false,
+      "phase": "Base",
+      "plan_type": "review",
+      "prev_weeks": [
+        {
+          "key_done": 1,
+          "key_planned": 1,
+          "minutes_done": 295,
+          "minutes_planned": 295,
+          "sessions_done": 5,
+          "sessions_planned": 5
+        },
+        {
+          "key_done": 1,
+          "key_planned": 1,
+          "minutes_done": 295,
+          "minutes_planned": 295,
+          "sessions_done": 5,
+          "sessions_planned": 5
+        },
+        {
+          "key_done": 1,
+          "key_planned": 1,
+          "minutes_done": 295,
+          "minutes_planned": 295,
+          "sessions_done": 5,
+          "sessions_planned": 5
+        }
+      ],
+      "race_date": "2026-11-01",
+      "recovery": null,
+      "runner_level": "intermediate",
+      "signals": [
+        {
+          "code": "race_soon",
+          "params": {
+            "days": 9,
+            "race": "Vietnam Mountain Marathon 42K"
+          },
+          "severity": "highlight"
+        }
+      ],
+      "status": "on_track",
+      "week": {
+        "key_done": 0,
+        "key_planned": 1,
+        "minutes_done": 105,
+        "minutes_planned": 295,
+        "sessions_done": 2,
+        "sessions_planned": 5
+      }
+    },
+    {
+      "active_plan": {
+        "current_week": 1,
+        "plan_id": 26,
+        "race_date": "2027-01-09",
+        "race_name": "Dalat Ultra Trail 50K",
+        "total_weeks": 12
+      },
+      "adherence_14d": 1.0,
+      "adherence_pct": 1.0,
+      "athlete_id": 7,
+      "days_to_race": 78,
+      "last_completed": {
+        "day_of_week": "Wednesday",
+        "week_number": 1
+      },
+      "last_sync_at": "2026-10-21T21:17:37.540142+00:00",
+      "load_4w_minutes": [
+        0,
+        0,
+        0,
+        105
+      ],
+      "missed_streak": 0,
+      "mix_minutes": {
+        "easy": 105,
+        "long": 0,
+        "quality": 0
+      },
+      "name": "Huy Le",
+      "needs_attention": false,
+      "phase": "Base",
+      "plan_type": "review",
+      "prev_weeks": [
+        {
+          "key_done": 0,
+          "key_planned": 0,
+          "minutes_done": 0,
+          "minutes_planned": 0,
+          "sessions_done": 0,
+          "sessions_planned": 0
+        },
+        {
+          "key_done": 0,
+          "key_planned": 0,
+          "minutes_done": 0,
+          "minutes_planned": 0,
+          "sessions_done": 0,
+          "sessions_planned": 0
+        },
+        {
+          "key_done": 0,
+          "key_planned": 0,
+          "minutes_done": 0,
+          "minutes_planned": 0,
+          "sessions_done": 0,
+          "sessions_planned": 0
+        }
+      ],
+      "race_date": "2027-01-09",
+      "recovery": null,
+      "runner_level": "intermediate",
+      "signals": [
+        {
+          "code": "plan_to_review",
+          "params": {
+            "waiting_hours": 31,
+            "week": 1
+          },
+          "severity": "review_build"
+        }
+      ],
+      "status": "review_build",
+      "week": {
+        "key_done": 0,
+        "key_planned": 1,
+        "minutes_done": 105,
+        "minutes_planned": 295,
+        "sessions_done": 2,
+        "sessions_planned": 5
+      }
+    },
+    {
+      "active_plan": {
+        "current_week": 6,
+        "plan_id": 25,
+        "race_date": "2026-12-05",
+        "race_name": "Vietnam Mountain Marathon 42K",
+        "total_weeks": 12
+      },
+      "adherence_14d": 0.778,
+      "adherence_pct": 0.714,
+      "athlete_id": 6,
+      "days_to_race": 43,
+      "last_completed": {
+        "day_of_week": "Sunday",
+        "week_number": 5
+      },
+      "last_sync_at": "2026-10-21T21:17:37.323895+00:00",
+      "load_4w_minutes": [
+        295,
+        295,
+        295,
+        0
+      ],
+      "missed_streak": 2,
+      "mix_minutes": {
+        "easy": 0,
+        "long": 0,
+        "quality": 0
+      },
+      "name": "Minh Tran",
+      "needs_attention": true,
+      "phase": "Base",
+      "plan_type": "coached",
+      "prev_weeks": [
+        {
+          "key_done": 1,
+          "key_planned": 1,
+          "minutes_done": 295,
+          "minutes_planned": 295,
+          "sessions_done": 5,
+          "sessions_planned": 5
+        },
+        {
+          "key_done": 1,
+          "key_planned": 1,
+          "minutes_done": 295,
+          "minutes_planned": 295,
+          "sessions_done": 5,
+          "sessions_planned": 5
+        },
+        {
+          "key_done": 1,
+          "key_planned": 1,
+          "minutes_done": 295,
+          "minutes_planned": 295,
+          "sessions_done": 5,
+          "sessions_planned": 5
+        }
+      ],
+      "race_date": "2026-12-05",
+      "recovery": null,
+      "runner_level": "intermediate",
+      "signals": [
+        {
+          "code": "reported_pain",
+          "params": {
+            "day": "Wednesday"
+          },
+          "severity": "act_now"
+        },
+        {
+          "code": "next_block_due",
+          "params": {
+            "days": 2
+          },
+          "severity": "review_build"
+        },
+        {
+          "code": "adherence_drop",
+          "params": {
+            "from_pct": 100,
+            "to_pct": 78
+          },
+          "severity": "check_in"
+        }
+      ],
+      "status": "act_now",
+      "week": {
+        "key_done": 0,
+        "key_planned": 1,
+        "minutes_done": 0,
+        "minutes_planned": 295,
+        "sessions_done": 0,
+        "sessions_planned": 5
+      }
+    },
+    {
+      "active_plan": {
         "current_week": 2,
-        "plan_id": 168,
+        "plan_id": 23,
+        "race_date": "2027-01-02",
+        "race_name": "Vietnam Mountain Marathon 42K",
+        "total_weeks": 12
+      },
+      "adherence_14d": 0.857,
+      "adherence_pct": 0.857,
+      "athlete_id": 3,
+      "days_to_race": 71,
+      "last_completed": {
+        "day_of_week": "Wednesday",
+        "week_number": 2
+      },
+      "last_sync_at": null,
+      "load_4w_minutes": [
+        0,
+        0,
+        255,
+        95
+      ],
+      "missed_streak": 0,
+      "mix_minutes": {
+        "easy": 95,
+        "long": 0,
+        "quality": 0
+      },
+      "name": "Preview Runner",
+      "needs_attention": true,
+      "phase": "Base",
+      "plan_type": "review",
+      "prev_weeks": [
+        {
+          "key_done": 1,
+          "key_planned": 1,
+          "minutes_done": 255,
+          "minutes_planned": 295,
+          "sessions_done": 4,
+          "sessions_planned": 5
+        },
+        {
+          "key_done": 0,
+          "key_planned": 0,
+          "minutes_done": 0,
+          "minutes_planned": 0,
+          "sessions_done": 0,
+          "sessions_planned": 0
+        },
+        {
+          "key_done": 0,
+          "key_planned": 0,
+          "minutes_done": 0,
+          "minutes_planned": 0,
+          "sessions_done": 0,
+          "sessions_planned": 0
+        }
+      ],
+      "race_date": "2027-01-02",
+      "recovery": null,
+      "runner_level": "intermediate",
+      "signals": [
+        {
+          "code": "plan_to_review",
+          "params": {
+            "waiting_hours": null,
+            "week": 3
+          },
+          "severity": "review_build"
+        },
+        {
+          "code": "draft_unpublished",
+          "params": {},
+          "severity": "review_build"
+        },
+        {
+          "code": "changes_to_approve",
+          "params": {
+            "count": 1
+          },
+          "severity": "review_build"
+        },
+        {
+          "code": "no_sync",
+          "params": {
+            "days": 11
+          },
+          "severity": "check_in"
+        },
+        {
+          "code": "new_result",
+          "params": {
+            "finish_time_sec": 13154,
+            "race": "Preview City Marathon 03/12/2023"
+          },
+          "severity": "highlight"
+        }
+      ],
+      "status": "review_build",
+      "week": {
+        "key_done": 0,
+        "key_planned": 1,
+        "minutes_done": 95,
+        "minutes_planned": 285,
+        "sessions_done": 2,
+        "sessions_planned": 5
+      }
+    },
+    {
+      "active_plan": {
+        "current_week": 4,
+        "plan_id": 27,
         "race_date": "2026-12-19",
         "race_name": "Vietnam Mountain Marathon 42K",
         "total_weeks": 12
       },
-      "adherence_pct": 0.8,
-      "athlete_id": 7,
+      "adherence_14d": 1.0,
+      "adherence_pct": 1.0,
+      "athlete_id": 9,
+      "days_to_race": 57,
       "last_completed": {
-        "day_of_week": "Sunday",
-        "week_number": 1
+        "day_of_week": "Wednesday",
+        "week_number": 4
       },
+      "last_sync_at": null,
+      "load_4w_minutes": [
+        295,
+        295,
+        295,
+        105
+      ],
       "missed_streak": 0,
-      "name": "Preview Runner",
-      "needs_attention": true,
-      "runner_level": "intermediate"
+      "mix_minutes": {
+        "easy": 105,
+        "long": 0,
+        "quality": 0
+      },
+      "name": "Quan Do",
+      "needs_attention": false,
+      "phase": "Base",
+      "plan_type": "review",
+      "prev_weeks": [
+        {
+          "key_done": 1,
+          "key_planned": 1,
+          "minutes_done": 295,
+          "minutes_planned": 295,
+          "sessions_done": 5,
+          "sessions_planned": 5
+        },
+        {
+          "key_done": 1,
+          "key_planned": 1,
+          "minutes_done": 295,
+          "minutes_planned": 295,
+          "sessions_done": 5,
+          "sessions_planned": 5
+        },
+        {
+          "key_done": 1,
+          "key_planned": 1,
+          "minutes_done": 295,
+          "minutes_planned": 295,
+          "sessions_done": 5,
+          "sessions_planned": 5
+        }
+      ],
+      "race_date": "2026-12-19",
+      "recovery": null,
+      "runner_level": "intermediate",
+      "signals": [
+        {
+          "code": "no_sync",
+          "params": {
+            "days": 25
+          },
+          "severity": "check_in"
+        }
+      ],
+      "status": "check_in",
+      "week": {
+        "key_done": 0,
+        "key_planned": 1,
+        "minutes_done": 105,
+        "minutes_planned": 295,
+        "sessions_done": 2,
+        "sessions_planned": 5
+      }
+    },
+    {
+      "active_plan": null,
+      "adherence_14d": null,
+      "adherence_pct": null,
+      "athlete_id": 8,
+      "days_to_race": null,
+      "last_completed": null,
+      "last_sync_at": null,
+      "load_4w_minutes": [],
+      "missed_streak": 0,
+      "mix_minutes": null,
+      "name": "Thao Ngo",
+      "needs_attention": false,
+      "phase": null,
+      "plan_type": "coached",
+      "prev_weeks": [],
+      "race_date": null,
+      "recovery": null,
+      "runner_level": "intermediate",
+      "signals": [
+        {
+          "code": "needs_plan",
+          "params": {},
+          "severity": "review_build"
+        }
+      ],
+      "status": "review_build",
+      "week": null
     }
   ],
-  "athletes_without_race": 0,
+  "athletes_without_race": 1,
+  "generated_at": "2026-10-22T21:17:38.302736+00:00",
   "missed_by_day": [
+    {
+      "count": 1,
+      "day_of_week": "Tuesday"
+    },
+    {
+      "count": 1,
+      "day_of_week": "Wednesday"
+    },
     {
       "count": 1,
       "day_of_week": "Friday"
@@ -103,35 +551,68 @@
   ],
   "most_consistent": [
     {
-      "adherence_pct": 0.8,
+      "adherence_pct": 1.0,
+      "athlete_id": 10,
+      "name": "Anh Vu"
+    },
+    {
+      "adherence_pct": 1.0,
       "athlete_id": 7,
-      "name": "Preview Runner"
+      "name": "Huy Le"
+    },
+    {
+      "adherence_pct": 1.0,
+      "athlete_id": 9,
+      "name": "Quan Do"
     }
   ],
   "phase_alerts": [],
   "race_readiness": {
-    "at_risk": 0,
+    "at_risk": 1,
     "behind": 0,
-    "on_track": 1
+    "on_track": 4
   },
   "races": [
     {
       "athletes": [
         {
-          "athlete_id": 7,
+          "athlete_id": 10,
+          "name": "Anh Vu"
+        },
+        {
+          "athlete_id": 6,
+          "name": "Minh Tran"
+        },
+        {
+          "athlete_id": 3,
           "name": "Preview Runner"
+        },
+        {
+          "athlete_id": 9,
+          "name": "Quan Do"
+        }
+      ],
+      "count": 4,
+      "race_date": "2026-11-01",
+      "race_name": "Vietnam Mountain Marathon 42K"
+    },
+    {
+      "athletes": [
+        {
+          "athlete_id": 7,
+          "name": "Huy Le"
         }
       ],
       "count": 1,
-      "race_date": "2026-12-19",
-      "race_name": "Vietnam Mountain Marathon 42K"
+      "race_date": "2027-01-09",
+      "race_name": "Dalat Ultra Trail 50K"
     }
   ],
   "roster_totals": {
-    "distance_km": 37.5,
-    "duration_hours": 4.25,
-    "elevation_gain_m": 1050.0,
-    "workout_count": 4
+    "distance_km": 228.0,
+    "duration_hours": 25.83,
+    "elevation_gain_m": 6040.0,
+    "workout_count": 27
   },
   "rpe_distribution": {
     "avg_rpe": null,
@@ -139,23 +620,23 @@
   },
   "workout_type_mix": [
     {
-      "count": 1,
-      "pct": 0.25,
-      "type": "Hill Repeats"
-    },
-    {
-      "count": 1,
-      "pct": 0.25,
+      "count": 11,
+      "pct": 0.407,
       "type": "Easy Run"
     },
     {
-      "count": 1,
-      "pct": 0.25,
+      "count": 8,
+      "pct": 0.296,
+      "type": "Hill Repeats"
+    },
+    {
+      "count": 4,
+      "pct": 0.148,
       "type": "Long Run"
     },
     {
-      "count": 1,
-      "pct": 0.25,
+      "count": 4,
+      "pct": 0.148,
       "type": "Recovery Run"
     }
   ]

@@ -15,7 +15,11 @@ DEFAULT_LLM_PRICES_USD_PER_M = {
     "gemini-3.8-flash": [
         {"until": "2026-12-31", "input": 0.75, "cached_input": 0.075, "output": 3.75},
         {"from": "2027-01-01", "input": 1.50, "cached_input": 0.15, "output": 7.50},
-    ]
+    ],
+    # prompts up to 100K tokens; plan prompts stay well below
+    "claude-haiku-5-5": [{"input": 0.10, "cached_input": 0.01, "output": 0.50}],
+    # Optional coach chat override (CLAUDE_COACH_MODEL); prices for prompts up to the standard context.
+    "claude-sonnet-5-5": [{"input": 2.00, "cached_input": 0.20, "output": 10.00}],
 }
 
 
@@ -71,6 +75,31 @@ class Config:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
     GEMINI_THINKING_LEVEL: str = os.getenv("GEMINI_THINKING_LEVEL", "low")
+    # Plan generation only: gemini | claude. Everything else stays on Gemini.
+    PLAN_LLM_PROVIDER: str = os.getenv("PLAN_LLM_PROVIDER", "gemini")
+    # low beat medium on quality and halved latency (docs/superpowers/haiku-latency/results.md)
+    PLAN_LLM_EFFORT: str = os.getenv("PLAN_LLM_EFFORT", "low")
+    PLAN_LLM_THINKING: str = os.getenv("PLAN_LLM_THINKING", "adaptive")  # adaptive | disabled
+    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+    CLAUDE_PLAN_MODEL: str = os.getenv("CLAUDE_PLAN_MODEL", "claude-haiku-5-5")
+    # One-shot features moved off Gemini (services/claude_llm.py); each has its own provider flag below.
+    CLAUDE_TEXT_MODEL: str = os.getenv("CLAUDE_TEXT_MODEL", "claude-haiku-5-5")
+    CLAUDE_TEXT_EFFORT: str = os.getenv("CLAUDE_TEXT_EFFORT", "low")
+    GEAR_LLM_PROVIDER: str = os.getenv("GEAR_LLM_PROVIDER", "gemini")
+    NUTRITION_LLM_PROVIDER: str = os.getenv("NUTRITION_LLM_PROVIDER", "gemini")
+    GOAL_JUDGE_LLM_PROVIDER: str = os.getenv("GOAL_JUDGE_LLM_PROVIDER", "gemini")
+    # Haiku without thinking wrote reasoning that its A/B/C numbers contradicted; one call per assessment, so Sonnet.
+    CLAUDE_GOAL_MODEL: str = os.getenv("CLAUDE_GOAL_MODEL", "claude-sonnet-5-5")
+    WEEK_BRIEF_LLM_PROVIDER: str = os.getenv("WEEK_BRIEF_LLM_PROVIDER", "gemini")
+    COACH_NUDGE_LLM_PROVIDER: str = os.getenv("COACH_NUDGE_LLM_PROVIDER", "gemini")
+    LLM_JUDGE_PROVIDER: str = os.getenv("LLM_JUDGE_PROVIDER", "gemini")
+    KNOWLEDGE_LLM_PROVIDER: str = os.getenv("KNOWLEDGE_LLM_PROVIDER", "gemini")
+    KB_DISTILL_LLM_PROVIDER: str = os.getenv("KB_DISTILL_LLM_PROVIDER", "gemini")
+    COACH_COPILOT_LLM_PROVIDER: str = os.getenv("COACH_COPILOT_LLM_PROVIDER", "gemini")
+    COACH_CHAT_LLM_PROVIDER: str = os.getenv("COACH_CHAT_LLM_PROVIDER", "gemini")
+    CLAUDE_COACH_MODEL: str = os.getenv("CLAUDE_COACH_MODEL", "claude-haiku-5-5")
+    CLAUDE_COACH_EFFORT: str = os.getenv("CLAUDE_COACH_EFFORT", "low")
+    CLAUDE_COACH_THINKING: str = os.getenv("CLAUDE_COACH_THINKING", "adaptive")  # adaptive | disabled
     API_PORT: int = int(os.getenv("PORT", "8000"))
     API_HOST: str = os.getenv("HOST", "0.0.0.0")
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
@@ -247,6 +276,15 @@ class Config:
         "production" if os.getenv("ENVIRONMENT") == "production" else "staging",
     )
     COACH_CHAT_PROMPT_CACHE_TTL_SECONDS: int = int(os.getenv("COACH_CHAT_PROMPT_CACHE_TTL_SECONDS", "300"))
+
+    NOTIFICATION_WORKER_ENABLED: bool = os.getenv("NOTIFICATION_WORKER_ENABLED", "false").lower() == "true"
+    NOTIFICATION_DELIVERY_ENABLED: bool = os.getenv("NOTIFICATION_DELIVERY_ENABLED", "false").lower() == "true"
+    NOTIFICATION_ALLOWLIST: str = os.getenv("NOTIFICATION_ALLOWLIST", "")
+    APNS_ALLOWED_ENVIRONMENTS: str = os.getenv("APNS_ALLOWED_ENVIRONMENTS", "sandbox,production")
+    APNS_KEY_ID: str = os.getenv("APNS_KEY_ID", "")
+    APNS_TEAM_ID: str = os.getenv("APNS_TEAM_ID", "")
+    APNS_PRIVATE_KEY_PATH: str = os.getenv("APNS_PRIVATE_KEY_PATH", "")
+    APNS_TOPIC: str = os.getenv("APNS_TOPIC", "uphill.ai.app")
 
 
 settings = Config()

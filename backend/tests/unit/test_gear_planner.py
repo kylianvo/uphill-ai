@@ -152,3 +152,21 @@ def test_road_request_sends_only_road_capable_catalog_entries(monkeypatch):
     prompt_sent = fake_client.models.generate_content.call_args.kwargs["contents"]
     assert "Road 0" in prompt_sent
     assert "Speedgoat 7" not in prompt_sent
+
+
+def test_claude_provider_uses_server_anthropic_key_and_structured_output(monkeypatch):
+    from tests.unit.test_claude_llm import fake_message
+
+    monkeypatch.setattr(settings, "GEAR_LLM_PROVIDER", "claude")
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "anthropic-key")
+    chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka", "price": "$155"}}]
+    with (
+        patch("db.get_kb_chunks", return_value=chunks),
+        patch("services.claude_llm.generate", return_value=fake_message(GEAR_JSON)) as generate,
+        patch("google.genai.Client") as gemini,
+    ):
+        result = asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="trail")))
+    assert result["recommendations"][0]["model"] == "Speedgoat 7"
+    assert generate.call_args.kwargs["schema"] is gp.GearResponse
+    assert "Speedgoat 7" in generate.call_args.args[0]
+    gemini.assert_not_called()

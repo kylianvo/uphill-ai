@@ -19,6 +19,8 @@ makes tests/unit/ safe to run in the pre-commit hook with no DB available.
 
 import os
 
+os.environ.setdefault("NOTIFICATION_WORKER_ENABLED", "false")
+
 # setdefault (not a plain assignment): if something already exported
 # DATABASE_URL before pytest started -- CI's backend-tests.yml, or
 # deploy_server.sh's preflight step -- that value must win. Only fall back

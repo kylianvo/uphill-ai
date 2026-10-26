@@ -3,6 +3,8 @@ import SwiftUI
 /// Whether training is on the path to the B and A goals, from measured aerobic speed. Absent until there is data.
 struct GoalPathRow: View {
     let path: GoalPath?
+    /// False inside a card that already draws its own frame (the Progress tab's Goal card).
+    var framed = true
 
     var body: some View {
         if let path {
@@ -17,9 +19,16 @@ struct GoalPathRow: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .trainingCard()
+            .modifier(Framed(on: framed))
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("goal.path")
+        }
+    }
+
+    private struct Framed: ViewModifier {
+        let on: Bool
+        func body(content: Content) -> some View {
+            if on { content.trainingCard() } else { content }
         }
     }
 

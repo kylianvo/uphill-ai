@@ -83,14 +83,18 @@ final class FakePlanService: PlanServicing {
         return try reviewResult.withLock { $0 }.get()
     }
 
+    let journeyResult = Mutex<PlanJourney?>(nil)
+    let nudgeResult = Mutex<CoachNudge?>(nil)
+
     func journey(planID: Int) async throws -> PlanJourney {
         record("journey \(planID)")
-        throw URLError(.notConnectedToInternet)
+        guard let journey = journeyResult.withLock({ $0 }) else { throw URLError(.notConnectedToInternet) }
+        return journey
     }
 
     func coachNudge(planID: Int) async throws -> CoachNudge? {
         record("nudge \(planID)")
-        return nil
+        return nudgeResult.withLock { $0 }
     }
 
     func goal(planID: Int) async throws -> PlanGoal {
@@ -137,20 +141,5 @@ final class FakePlanService: PlanServicing {
     func scoped(toAthlete athleteId: Int?) -> any PlanServicing {
         record("scoped \(athleteId.map(String.init) ?? "self")")
         return self
-    }
-
-    func knowledgeCard(topic: String, lang: String) async -> KnowledgeCardModel? {
-        return KnowledgeCardModel(
-            id: 1,
-            chapterTitle: "Find your Zone 2 heart rate",
-            summary: "Accurately identifying your Zone 2 limits is crucial for effective aerobic development.",
-            keyPoints: [
-                "Utilize the simple Talk Test or Nose Breathing to gauge effort.",
-                "Conduct a Heart Rate Drift Test to pinpoint your Aerobic Threshold."
-            ],
-            tags: ["heart-rate", "talk-test", "aerobic-threshold"],
-            topic: topic,
-            sourceLabel: "Uphill Athlete"
-        )
     }
 }

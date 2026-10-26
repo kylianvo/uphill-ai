@@ -54,6 +54,14 @@ enum PlanCalendar {
         return calendar.date(byAdding: .day, value: -(raceWeek - 1) * 7, to: monday(of: race, calendar: calendar))
     }
 
+    /// Two or more days past with no outcome: probably missed, never marked. The one-day grace leaves
+    /// time for a watch match. Mirrors the backend's `calendar_rules.is_unlogged_past`.
+    static func isUnloggedPast(_ w: Workout, on date: Date?, now: Date = Date(), calendar: Calendar = calendar) -> Bool {
+        guard let date, !w.isRest, !w.isDone, !w.isMissedFlag, !w.isMatched,
+              let cutoff = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now)) else { return false }
+        return date < cutoff
+    }
+
     static func date(week: Int, weekday: Weekday, plan: Plan, workouts: [Workout], calendar: Calendar = calendar) -> Date? {
         guard let weekOne = weekOneMonday(plan: plan, workouts: workouts, calendar: calendar) else { return nil }
         return calendar.date(byAdding: .day, value: (week - 1) * 7 + weekday.offset, to: weekOne)

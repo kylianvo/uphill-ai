@@ -96,7 +96,7 @@ public struct ConnectedAccountsView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Your past workouts and health metrics from COROS will no longer automatically sync.")
+            Text("This deletes your COROS workouts and health data from Uphill. If sync just stopped working, use Reconnect instead: it keeps your data.")
         }
     }
 
@@ -208,6 +208,22 @@ public struct ConnectedAccountsView: View {
                     .buttonStyle(.plain)
                     .disabled(isSyncing || isSyncingFitness)
 
+                }
+                HStack(spacing: 8) {
+                    // An expired COROS login only needs a fresh login; Disconnect deletes the athlete's COROS data.
+                    Button {
+                        Task { await handleConnect() }
+                    } label: {
+                        Text("Reconnect")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(UH.Palette.accentInk)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isSyncing || isSyncingFitness || isLoading)
+                    .accessibilityIdentifier("coros.reconnect")
+
                     Spacer()
 
                     Button {
@@ -303,7 +319,8 @@ public struct ConnectedAccountsView: View {
             await loadStatus()
         } catch {
             UINotificationFeedbackGenerator().notificationOccurred(.error)
-            errorMessage = L("Sync failed. Please try again.")
+            // The server's own text, e.g. "Your COROS login has expired…", tells the athlete to reconnect.
+            errorMessage = (error as? APIError)?.userMessage ?? L("Sync failed. Please try again.")
         }
         isSyncing = false
     }

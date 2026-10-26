@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import settings  # noqa: E402
 from services import goal_demands, goal_feasibility, plan_lint  # noqa: E402
-from services.athlete_tier import get_profile  # noqa: E402
+from services.athlete_tier import for_race, get_profile  # noqa: E402
 from services.plan_generator import PlanGenerator  # noqa: E402
 from services.training_mountains import long_run_climb_rate  # noqa: E402
 
@@ -56,7 +56,14 @@ MOUNTAIN_MINIMUM_CODES = {
     "VOLUME_JUMP",
     "VERT_JUMP",
 }  # the 180-min mountain long run (owner-kept, #142)
-DEMAND_CODES = {"TIME_ON_FEET", "SPECIFICITY_LATE", "CLIMB_SPECIFICITY"}
+DEMAND_CODES = {
+    "TIME_ON_FEET",
+    "SPECIFICITY_LATE",
+    "CLIMB_SPECIFICITY",
+    "WEEKDAY_SHORT",
+    "ULTRA_LADDER",
+    "QUALITY_COUNT",
+}
 
 
 @dataclass(frozen=True)
@@ -133,11 +140,17 @@ def run(s: Scenario) -> Result:
         )
     finally:
         settings.PLAN_DEMANDS_ENABLED, settings.PLAN_LINT_ENABLED = saved
-    prof = get_profile(tier)
+    prof = for_race(get_profile(tier), dist, mountain)  # mountain days: an ultra follows Quang's ladder
     venue_rate = long_run_climb_rate(MOUNTAIN) if mountain else None
     demands = goal_demands.compute(dist, gain, target_h, cutoff, venue_climb_rate=venue_rate)
     prefs = plan_lint.Prefs(
-        long_run_day=long_day, days_per_week=dpw, demands=demands, flat_only=not mountain, total_weeks=s.weeks
+        long_run_day=long_day,
+        days_per_week=dpw,
+        demands=demands,
+        flat_only=not mountain,
+        total_weeks=s.weeks,
+        mountain_day=mountain,
+        quality_gated=True,  # PROFILE's thresholds are estimates (no threshold_source): the AeT gate is on
     )
     found = plan_lint.lint_weeks(workouts, {w["week_number"] for w in workouts}, prof, prefs)
     codes = {i.code for i in found}
@@ -152,6 +165,7 @@ def run(s: Scenario) -> Result:
         False,
         mountain_min_minutes=MOUNTAIN_MIN if mountain else None,
         flat_only=not mountain,
+        mountain_day=mountain,
     )
     result = Result(s, tier, feas.verdict, sorted(codes), feas.levers)
     if codes & HARD_RULES:

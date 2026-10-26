@@ -1,5 +1,5 @@
 import { translations } from "../app/translations";
-import { TrainingVenueFields } from "./TrainingVenueFields";
+import { LongRunDaySelect, TrainingVenueFields } from "./TrainingVenueFields";
 
 export interface ScheduleFieldsValue {
   days_per_week: number;
@@ -53,17 +53,8 @@ export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange }: Sch
           <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
             {t("plan_long_run_day")}
           </label>
-          <select className="chat-input" style={{ borderRadius: "8px", width: "100%", height: "38px", padding: "0 8px", fontSize: "13px" }}
-            value={value.long_run_day} onChange={e => onChange({ long_run_day: e.target.value })}>
-            {FULL_DAYS.map(d => {
-              const label = lang === "vi"
-                ? d.replace("Monday", "Thứ Hai").replace("Tuesday", "Thứ Ba").replace("Wednesday", "Thứ Tư").replace("Thursday", "Thứ Năm").replace("Friday", "Thứ Sáu").replace("Saturday", "Thứ Bảy").replace("Sunday", "Chủ Nhật")
-                : d;
-              return (
-                <option key={d} value={d}>{label}</option>
-              );
-            })}
-          </select>
+          <LongRunDaySelect lang={lang} t={t} className="chat-input" style={{ borderRadius: "8px", width: "100%", height: "38px", padding: "0 8px", fontSize: "13px" }}
+            value={value.long_run_day} trailDays={value.mountain_days} onChange={day => onChange({ long_run_day: day })} />
         </div>
       </div>
 
@@ -130,6 +121,8 @@ export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange }: Sch
         useTreadmill={value.use_treadmill}
         onTreadmillChange={enabled => onChange({ use_treadmill: enabled })}
         onChange={onChange}
+        longRunDay={value.long_run_day}
+        onLongRunDayChange={day => onChange({ long_run_day: day })}
       />
 
       <div style={{ marginTop: "12px" }}>

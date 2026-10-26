@@ -1,0 +1,226 @@
+<title>Uphill Plan Rulebook</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column with wide tables in scroll boxes; contour-line accent from trail maps */
+:root {
+  --bg: #f6f7f4; --surface: #ffffff; --fg: #1d2a24; --muted: #5a6b62; --line: #d9e0db;
+  --accent: #2f6b4f; --accent-soft: #e3efe8; --z3: #b5532e; --z3-soft: #f6e6de; --warn: #8a6a12; --warn-soft: #f5edd6;
+  --display: "Fraunces", Georgia, serif; --body: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121815; --surface: #1a221e; --fg: #e4ebe6; --muted: #9aaba1; --line: #2c3832;
+  --accent: #7cc4a0; --accent-soft: #1f3329; --z3: #e88b63; --z3-soft: #3a241b; --warn: #e2c05a; --warn-soft: #33290f; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121815; --surface: #1a221e; --fg: #e4ebe6; --muted: #9aaba1; --line: #2c3832;
+  --accent: #7cc4a0; --accent-soft: #1f3329; --z3: #e88b63; --z3-soft: #3a241b; --warn: #e2c05a; --warn-soft: #33290f; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--body); }
+.wrap { max-width: 880px; margin: 0 auto; padding-block: 32px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 2.1rem; } h2 { font-size: 1.45rem; } h3 { font-size: 1.1rem; font-family: var(--body); }
+p { margin: 0; max-width: 68ch; }
+section { display: grid; gap: 14px; }
+.eyebrow { font: 500 .72rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.lede { color: var(--muted); font-size: 1.02rem; }
+.box { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: .9rem; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 .82rem/1.3 var(--body); color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td.num, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.z3 { background: var(--z3-soft); color: var(--z3); font-weight: 600; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 99px; font: 500 .75rem/1.6 var(--mono); }
+.chip.z3c { background: var(--z3-soft); color: var(--z3); }
+.chip.ok { background: var(--accent-soft); color: var(--accent); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.note { border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); background: var(--warn-soft); padding: 12px 16px; border-radius: 8px; display: grid; gap: 6px; }
+.note strong { color: var(--warn); }
+ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; max-width: 70ch; }
+.phases { display: grid; gap: 6px; }
+.strip { display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: center; }
+.strip .lbl { font: 500 .8rem var(--mono); color: var(--muted); }
+.cells { display: flex; gap: 2px; min-width: 0; }
+.cells span { flex: 1; min-width: 0; height: 26px; border-radius: 3px; font: 500 .62rem/26px var(--mono); text-align: center; color: var(--fg); overflow: hidden; }
+.Ba { background: var(--accent-soft); } .Bu { background: color-mix(in srgb, var(--accent) 35%, var(--surface)); }
+.Pe { background: color-mix(in srgb, var(--accent) 50%, var(--surface)); font-weight: 600; }
+.Ta { background: var(--line); } .Ra, .Re { background: var(--bg); outline: 1px dashed var(--line); }
+.cells span.q { box-shadow: inset 0 -4px 0 var(--z3); }
+.cells span.d { opacity: .55; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -2px; margin-right: 5px; }
+.weeks { display: grid; gap: 16px; }
+.week { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); display: grid; }
+.week header { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
+.week header h3 { margin-right: auto; }
+.week header small { color: var(--muted); font-family: var(--mono); font-size: .78rem; }
+.days { display: grid; }
+.day { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); align-items: baseline; }
+.day:last-child { border-bottom: 0; }
+.day b { font: 500 .8rem var(--mono); color: var(--muted); }
+.day em { font-style: normal; font: 500 .8rem var(--mono); color: var(--muted); white-space: nowrap; }
+.day.q { background: var(--z3-soft); } .day.q b, .day.q em { color: var(--z3); }
+footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+
+<div class="wrap">
+
+<header style="display:grid;gap:10px">
+  <div class="eyebrow">Uphill AI · plan rules as coded · 26 Oct 2026</div>
+  <h1>Uphill Plan Rulebook</h1>
+  <p class="lede">Every rule the plan generator enforces today, split by athlete tier, training phase and race distance, with sample weeks. The model drafts each week; code then enforces these rules, so they hold whichever model wrote it. Rule IDs (R-…) match <span class="mono">docs/plan-rules.md</span>.</p>
+  <div class="note">
+    <strong>Waiting to deploy (committed as 92295d3, not on prod yet)</strong>
+    <p>Zone 3 changes from the KB answers on 25–26 Oct: the double dose (2 × 40–60 min) needs an elite athlete in a 15 h+ week, Zone 3 stays under 9% of each week, the first taper week keeps one short Zone 3 session, and in short ultra plans the protected 8 weeks before the taper are labelled Build instead of Base. Marked <span class="chip warn">pending</span> below.</p>
+  </div>
+</header>
+
+<section>
+  <div class="eyebrow">1 · Tiers</div>
+  <h2>What each tier is allowed</h2>
+  <p>The tier comes from recent load, race results, measured thresholds and experience. Caps then follow the volume actually trained: once a plan builds into the next tier's weekly band, that tier's session caps apply.</p>
+  <div class="box"><table>
+    <thead><tr><th>Tier</th><th>Weekly km</th><th>Weekday runs</th><th>Long run share</th><th>Easy share</th><th>Zone 4 / week</th><th>Intensity</th><th>ME</th><th>AeT–AnT gap</th></tr></thead>
+    <tbody>
+      <tr><td>Beginner</td><td class="num">0–15</td><td class="num">20–45 min</td><td class="num">≤40%</td><td class="num">100%</td><td>none</td><td>none, run/walk</td><td>no</td><td class="num">—</td></tr>
+      <tr><td>Novice</td><td class="num">15–40</td><td class="num">25–50 min</td><td class="num">≤35%</td><td class="num">100%</td><td>none</td><td>strides, hill sprints</td><td>no</td><td class="num">≤30%</td></tr>
+      <tr><td>Recreational</td><td class="num">40–80</td><td class="num">45–75 min</td><td class="num">≤33%</td><td class="num">85%</td><td class="num">40 min</td><td>yes</td><td>yes</td><td class="num">≤30%</td></tr>
+      <tr><td>Sub-elite</td><td class="num">80–160</td><td class="num">60–100 min</td><td class="num">≤30%</td><td class="num">90%</td><td class="num">40 min</td><td>yes</td><td>yes, up to 2/wk in Base–Build</td><td class="num">≤10%</td></tr>
+      <tr><td>Elite</td><td class="num">160+</td><td class="num">60–120 min</td><td class="num">≤28%</td><td class="num">90%</td><td class="num">40 min</td><td>yes</td><td>yes, up to 2/wk in Base–Build</td><td class="num">≤7%</td></tr>
+    </tbody></table></div>
+  <ul>
+    <li>Weekly growth: at most +10% on the week before, every tier. Week 1 is at most 10% above what you run now.</li>
+    <li>Longest single session: 300 min. Sub-elite 100-milers: 480 min. Mountain-day ultras use the ladder caps in section 3.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="eyebrow">2 · Phases</div>
+  <h2>How a plan's weeks are split</h2>
+  <p>Code sets phases, never the model. Race week and a recovery week close every plan. Plans of 12+ weeks taper in two steps (about 70% then 50% of peak); shorter plans in one step. A deload week (at most 80% of the week before) falls on every 4th week, never the last build week.</p>
+  <div class="legend">
+    <span><i class="Ba"></i>Base</span><span><i class="Bu"></i>Build</span><span><i class="Pe"></i>Peak</span><span><i class="Ta"></i>Taper</span>
+    <span><i style="box-shadow:inset 0 -4px 0 var(--z3);background:var(--surface);outline:1px solid var(--line)"></i>Zone 3 week (ultra, mountain day)</span>
+    <span><i style="background:var(--line);opacity:.55"></i>deload (faded)</span>
+  </div>
+  <div class="phases" id="phases"></div>
+  <p class="lede" style="font-size:.9rem">The Zone 3 window is the 8 weeks up to the peak week, deloads skipped. In the 13-week strip the window starts in week 2, so weeks 2–4 move from Base to Build <span class="chip warn">pending</span>.</p>
+</section>
+
+<section>
+  <div class="eyebrow">3 · Distance</div>
+  <h2>Which rule set a race gets</h2>
+  <div class="box"><table>
+    <thead><tr><th>Race</th><th>Rule set</th><th>Long run</th><th>Quality work</th></tr></thead>
+    <tbody>
+      <tr><td>Under 45 km, any terrain</td><td>Standard</td><td>Grows toward race time on feet, +20%/wk max, inside the tier's share</td><td>Sub-elite: one 30–40 min tempo in Build/Peak weeks that have none</td></tr>
+      <tr><td>Road marathon (30–48 km, &lt;12 m D+/km)</td><td>Standard + marathon</td><td>Up to 180 min (or 75% of race time); marathon-pace long runs in Build</td><td>As standard</td></tr>
+      <tr><td>Ultra 45 km+, <strong>no</strong> mountain day</td><td>Standard + ultra</td><td>Back-to-back weekends in the last build weeks</td><td>As standard</td></tr>
+      <tr><td>50 km band (45–90 km) with a mountain day</td><td>Quang's ladder (R-U)</td><td class="mono">3h ×4 → 4 → 4.5 → 5h peak; deload 3h; cap 300 min</td><td rowspan="3" class="z3">Zone 3 window, section 4</td></tr>
+      <tr><td>100 km band (90–140 km) with a mountain day</td><td>Quang's ladder (R-U)</td><td class="mono">3, 3, 4, 4, 5 … 6, 7h peak; deload 4h; cap 420 min</td></tr>
+      <tr><td>100 mi band (140 km+) with a mountain day</td><td>Quang's ladder (R-U)</td><td class="mono">as 100 km; 8h peak for sub-elite/elite; cap 420–480 min</td></tr>
+    </tbody></table></div>
+  <ul>
+    <li>Ladder runs are never more than 60 min above the last two weeks' longest run. Long-run share cap is 60% for ladder plans.</li>
+    <li>Mountain-day weeks: weekday easy runs 45–90 min (50 km) or 60–90 min (100 km+; 150 for advanced 100 mi). The other weekend day is at most 90 / 60 / 45 min after a ≤4 h / 5 h / 6 h+ mountain day. No ME in a week with a 6 h+ long run.</li>
+    <li>The long run goes on a trail day; a long-run day without trail access moves to the nearest one.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="eyebrow">4 · Intensity and ME by phase</div>
+  <h2>Zone 3, ME and hill sprints</h2>
+  <p>Mountain-day ultras follow the left half of this table, all other plans the right half. Hill sprints (8–12 s) and strides stay in every phase for every tier except beginners, and only on a venue the athlete has: a 20%+ hill, steep stairs or a treadmill, otherwise flat strides.</p>
+  <div class="box"><table>
+    <thead><tr><th>Phase</th><th>Ultra with mountain day: Zone 3</th><th>Ultra with mountain day: ME</th><th>Other plans: Zone 3–4</th><th>Other plans: ME</th></tr></thead>
+    <tbody>
+      <tr><td>Base</td><td>None</td><td>Yes. Precursor to Zone 3. 1/wk (2 for sub-elite/elite), ≤10% of time beyond one</td><td>None while thresholds are estimates; allowed once measured and the gap is ≤10%</td><td>16+ weeks to go: 8–14 week block starts in Base. Under 16: a short 6–8 session block now</td></tr>
+      <tr><td>Short plan (&lt;16 weeks): first 2–3 weeks <span class="chip warn">pending</span></td><td>None</td><td>2 ME a week, 48 h apart and from the long run (about 6 sessions). Up to 3 weeks, never more than half the Zone 3 window. Skipped when the watch shows 1,500 m+ climbing a week</td><td colspan="2">—</td></tr>
+      <tr class="z3"><td>Protected 8 weeks (Build/Peak)</td><td>Zone 3 replaces ME. Uphill or rolling intervals, no Zone 4, ≤90 min session, 48 h from long run and ME</td><td>Replaced by Zone 3</td><td>Zone 3 ≤60 min per session (≤75 min total), Zone 4 ≤30 min (≤70 min); per week Zone 3 ≤120, Zone 4 ≤40</td><td>Continues; flat athletes on a steep race get climbing ME (incline treadmill, stairs, step-ups)</td></tr>
+      <tr><td>Taper</td><td>First taper week: one 2 × 8 min session to stay sharp <span class="chip warn">pending</span></td><td>None in the last 10–14 days</td><td>No new hard work</td><td>None in the last 10–14 days</td></tr>
+    </tbody></table></div>
+
+  <h3>Zone 3 dose in the protected 8 weeks (ultra, mountain day)</h3>
+  <div class="box"><table>
+    <thead><tr><th>Athlete</th><th>Sessions / week</th><th>Zone 3 work / session</th><th>Sample session</th></tr></thead>
+    <tbody>
+      <tr><td>Beginner / novice</td><td colspan="3">No Zone 3 (beginners get no intensity at all)</td></tr>
+      <tr><td>Recreational, sub-elite <span class="chip warn">pending</span></td><td class="num">1</td><td class="num">20–30 min</td><td class="mono">15 min easy → 3 × 10 min Z3, 3 min easy → 10 min easy (65 min)</td></tr>
+      <tr><td>Any tier, AeT–AnT gap &gt;10% (measured)</td><td class="num">1</td><td class="num">20–30 min</td><td>Still added: a runner can't go into the race without race-specific work</td></tr>
+      <tr><td>Elite, gap ≤10%, week of 15 h+ <span class="chip warn">pending</span></td><td class="num">2</td><td class="num">40–60 min</td><td class="mono">15 min easy → 4 × 12 min Z3, 3 min easy → 10 min easy (82 min)</td></tr>
+      <tr><td>Every athlete <span class="chip warn">pending</span></td><td colspan="3">Reps drop (never below 2 × 10 min) until Zone 3 is at most 9% of the week's time</td></tr>
+      <tr><td>First taper week <span class="chip warn">pending</span></td><td class="num">1</td><td class="num">16 min</td><td class="mono">15 min easy → 2 × 8 min Z3, 3 min easy → 10 min easy (44 min); none in the final taper week</td></tr>
+    </tbody></table></div>
+  <ul>
+    <li>Venue: only a hill, an 8–12% treadmill or stairs the athlete has on that day. With none, the same work runs on flat or rolling road as "Zone 3 Intervals".</li>
+    <li>Field tests count as measured thresholds (heart-rate drift test for AeT, 30–40 min time trial for AnT).</li>
+    <li>No three hard days in a row: a Zone 3 day stays one day clear of the long run, ME, hill sprints and any 120 min+ session.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="eyebrow">5 · Sample weeks</div>
+  <h2>A recreational 100 km runner, 13-week plan</h2>
+  <p>Flat home city, Saturday on Núi Dinh, no gym or treadmill, about 50 km a week now. Minutes are approximate; the generator fits the week to the athlete's own volume.</p>
+  <div class="weeks" id="weeks"></div>
+</section>
+
+<section>
+  <div class="eyebrow">6 · Gaps</div>
+  <h2>Where the code and the doctrine still differ</h2>
+  <ul>
+    <li><strong>Sore legs after long runs.</strong> The doctrine drops ME when long runs already leave the legs sore for 2–3 days. Code uses weekly climbing from the watch instead; a yes/no question in the block review would be the better signal.</li>
+  </ul>
+</section>
+
+<footer>Generated from the plan code (athlete_tier.py, ultra_rules.py, plan_generator.py, plan_lint.py) and docs/plan-rules.md. Ask Coach Quang or the NotebookLM KB before changing a rule.</footer>
+</div>
+
+<script>
+const PLANS = {
+  8:  {ph:"Ba Ba Bu Bu Pe Ta Ra Re", d:[4], q:[1,2,3,5]},
+  13: {ph:"Ba Ba Ba Ba Bu Bu Bu Bu Pe Ta Ta Ra Re", d:[4,8], q:[2,3,5,6,7,9]},
+  16: {ph:"Ba Ba Ba Ba Ba Ba Bu Bu Bu Bu Bu Pe Ta Ta Ra Re", d:[4,8], q:[5,6,7,9,10,11,12]},
+  20: {ph:"Ba Ba Ba Ba Ba Ba Ba Ba Bu Bu Bu Bu Bu Bu Bu Pe Ta Ta Ra Re", d:[4,8,12], q:[9,10,11,13,14,15,16]},
+  24: {ph:"Ba Ba Ba Ba Ba Ba Ba Ba Ba Ba Bu Bu Bu Bu Bu Bu Bu Bu Bu Pe Ta Ta Ra Re", d:[4,8,12,16], q:[13,14,15,17,18,19,20]},
+};
+const box = document.getElementById("phases");
+for (const [n, p] of Object.entries(PLANS)) {
+  const row = document.createElement("div"); row.className = "strip";
+  row.innerHTML = `<span class="lbl">${n} wk</span><div class="cells"></div>`;
+  p.ph.split(" ").forEach((c, i) => {
+    const w = i + 1, s = document.createElement("span");
+    s.className = c + (p.q.includes(w) ? " q" : "") + (p.d.includes(w) ? " d" : "");
+    s.textContent = w; s.title = `Week ${w}`; row.lastChild.appendChild(s);
+  });
+  box.appendChild(row);
+}
+const WEEKS = [
+  {t:"Week 1 · Base", m:"~7 h · long run 180 min", d:[
+    ["Mon","Rest",""],["Tue","Easy run, Zone 1–2, 6 × 20 s strides at the end","60"],
+    ["Wed","ME, bodyweight: step-ups, lunges, squats; backpack step-ups","55"],["Thu","Easy run, Zone 1","60"],
+    ["Fri","Easy run, Zone 2","45"],["Sat","Mountain long run at Núi Dinh, Zone 1–2, power-hike the climbs","180"],["Sun","Easy run, Zone 1","90"]]},
+  {t:"Week 6 · Build (protected 8 weeks)", m:"~10 h · long run 300 min", d:[
+    ["Mon","Rest",""],["Tue","Zone 3 Intervals on flat or rolling road: 15 easy → 3 × 10 min Z3 / 3 min easy → 10 easy","65",1],
+    ["Wed","Easy run, Zone 1","60"],["Thu","Easy run, Zone 2, flat strides","75"],
+    ["Fri","Easy run, Zone 1","60"],["Sat","Mountain long run at Núi Dinh","300"],["Sun","Easy run, Zone 1","60"]]},
+  {t:"Week 8 · Deload", m:"≤80% of week 7 · long run 240 min", d:[
+    ["Mon","Rest",""],["Tue","Easy run, Zone 1, strides","60"],["Wed","Easy run, Zone 1","60"],
+    ["Thu","Rest",""],["Fri","Easy run, Zone 1","45"],["Sat","Mountain long run, mostly power-hiking","240"],["Sun","Easy run, Zone 1","60"]]},
+  {t:"Week 9 · Peak", m:"~11 h · long run 420 min", d:[
+    ["Mon","Rest",""],["Tue","Zone 3 Intervals: 15 easy → 3 × 10 min Z3 / 3 min easy → 10 easy","65",1],
+    ["Wed","Easy run, Zone 1","75"],["Thu","Easy run, Zone 2, strides","90"],
+    ["Fri","Easy run, Zone 1","60"],["Sat","Mountain long run at Núi Dinh (peak)","420"],["Sun","Easy run, Zone 1","45"]]},
+  {t:"Week 10 · Taper step 1", m:"~70% of peak · no new hard work", d:[
+    ["Mon","Rest",""],["Tue","Easy run, Zone 1, strides","60"],["Wed","Easy run, Zone 1","60"],
+    ["Thu","Easy run, Zone 2","45"],["Fri","Rest",""],["Sat","Long run, about 60% of peak","250"],["Sun","Easy run, Zone 1","45"]]},
+];
+const wk = document.getElementById("weeks");
+for (const w of WEEKS) {
+  const el = document.createElement("article"); el.className = "week";
+  el.innerHTML = `<header><h3>${w.t}</h3><small>${w.m}</small></header><div class="days">` +
+    w.d.map(([d, s, m, q]) => `<div class="day${q ? " q" : ""}"><b>${d}</b><span>${s}</span><em>${m ? m + " min" : "—"}</em></div>`).join("") +
+    `</div>`;
+  wk.appendChild(el);
+}
+</script>
