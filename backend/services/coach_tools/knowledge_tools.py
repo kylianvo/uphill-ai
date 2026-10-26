@@ -117,21 +117,36 @@ def _named_shoes(query: str, chunks: list[dict[str, Any]]) -> list[dict[str, Any
     return hits
 
 
+_SHOE_FIELDS = (
+    "foam_material", "outsole_compound", "lug_depth", "drop", "stack", "weight", "price", "pros", "cons",
+    "best_for", "terrain",
+)  # fmt: skip
+
+
+def _shoe(chunk: dict[str, Any]) -> dict[str, str]:
+    """A catalog entry in the Gear Vault recommendation shape (the iOS shoe card decodes it); every field a string."""
+    payload = _payload(chunk)
+    shoe = {"brand": str(payload.get("brand") or ""), "model": str(payload.get("model") or chunk.get("title") or "")}
+    for key in _SHOE_FIELDS:
+        value = payload.get(key)
+        shoe[key] = ", ".join(map(str, value)) if isinstance(value, list) else str(value or "")
+    return shoe
+
+
 def _gear_search(query: str) -> tuple[list[dict[str, Any]], bool]:
-    """(citations, exact_match): the shoes named in the query; else that brand's models; else a shortlist for the
-    surface the query names, ranked by how many of its words the shoe's description shares."""
+    """(catalog entries, exact_match): the shoes named in the query; else that brand's models; else a shortlist for
+    the surface the query names, ranked by how many of its words the shoe's description shares."""
     chunks = db.get_kb_chunks("gear", kind="catalog_item")
     if named := _named_shoes(query, chunks):
-        return [_citation_from_gear_chunk(c) for c in named[:6]], True
+        return named[:6], True
     q = _norm(query)
-    brand = [c for c in chunks if (b := _norm(_payload(c).get("brand"))) and b in q]
-    if brand:
-        return [_citation_from_gear_chunk(c) for c in brand[:_SHORTLIST]], False
+    if brand := [c for c in chunks if (b := _norm(_payload(c).get("brand"))) and b in q]:
+        return brand[:_SHORTLIST], False
     words = {w for w in query.lower().split() if len(w) >= 4}
     surface = "road" if "road" in words else "trail"
     pool = [c for c in filter_catalog(chunks, surface, None) if surface_of(_payload(c)) != "unknown"] or chunks
     ranked = sorted(pool, key=lambda c: -sum(w in json.dumps(_payload(c)).lower() for w in words))
-    return [_citation_from_gear_chunk(c) for c in ranked[:_SHORTLIST]], False
+    return ranked[:_SHORTLIST], False
 
 
 def kb_search_impl(
@@ -145,7 +160,11 @@ def kb_search_impl(
     if domain == "race_courses":
         citations = _race_citations(query)
     elif domain == "gear":
-        citations, card_data["exact_match"] = _gear_search(query)
+        shoes, exact = _gear_search(query)
+        card_data.update(exact_match=exact, recommendations=[_shoe(c) for c in shoes], tips=[])
+        return ToolResult(
+            tool_call_id="", name="kb_search", status="success", card_type="shoe_recommendations", card_data=card_data
+        )
     elif domain == "scheduler":
         hits = kb_retrieval.search_scheduler_chunks(query=query, api_key=api_key)
         citations = [_citation_from_chunk(h, domain) for h in hits]
