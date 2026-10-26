@@ -1644,7 +1644,15 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     </div>
                   }
                   extraRows={!isCoachActingAsAthlete ? (
-                    <CorosPushButton lang={lang} refreshKey={workouts} onReconnect={() => ctx.setProfileSettingsOpen(true)} />
+                    <>
+                      <CorosPushButton lang={lang} refreshKey={workouts} onReconnect={() => ctx.setProfileSettingsOpen(true)} />
+                      <CorosPushButton
+                        lang={lang}
+                        provider="garmin"
+                        refreshKey={workouts}
+                        onReconnect={() => ctx.setProfileSettingsOpen(true)}
+                      />
+                    </>
                   ) : null}
                   recentPlans={recentPlans || []}
                   activePlanId={activePlan?.id}
@@ -1779,11 +1787,19 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   )}
                   </div>
                   {!isCoachActingAsAthlete && (
-                    <CorosPushButton
-                      lang={lang}
-                      refreshKey={workouts}
-                      onReconnect={() => ctx.setProfileSettingsOpen(true)}
-                    />
+                    <>
+                      <CorosPushButton
+                        lang={lang}
+                        refreshKey={workouts}
+                        onReconnect={() => ctx.setProfileSettingsOpen(true)}
+                      />
+                      <CorosPushButton
+                        lang={lang}
+                        provider="garmin"
+                        refreshKey={workouts}
+                        onReconnect={() => ctx.setProfileSettingsOpen(true)}
+                      />
+                    </>
                   )}
 
                   <button

@@ -32,7 +32,16 @@ import db
 from config import settings
 from db import verify_session
 from log_utils import get_logger
-from services import coros_oauth, coros_push, coros_sync, garmin_ingest, garmin_oauth, recovery_baseline, token_crypto
+from services import (
+    coros_oauth,
+    coros_push,
+    coros_sync,
+    garmin_ingest,
+    garmin_oauth,
+    garmin_push,
+    recovery_baseline,
+    token_crypto,
+)
 from services.calendar_rules import resolve_today
 from services.matching import runner as matching_runner
 from services.matching.quality_scorer import score_workout_quality
@@ -967,6 +976,23 @@ async def garmin_disconnect(user: dict[str, Any] = Depends(get_current_user)):
             )
     db.delete_provider_data(user["id"], GARMIN)
     return {"status": "disconnected"}
+
+
+@router.post("/garmin/push")
+async def garmin_push_now(body: CorosPushRequest, user: dict[str, Any] = Depends(get_current_user)):
+    """Send the next four weeks of the caller's own runs to their Garmin calendar."""
+    _require_garmin(user)
+    today = resolve_today(body.client_today, date.today())
+    try:
+        return await garmin_push.push(user["id"], today, body.lang)
+    except garmin_push.PushError as exc:
+        raise HTTPException(status_code=exc.status, detail={"code": exc.code, "params": exc.params}) from exc
+
+
+@router.get("/garmin/push-status")
+async def garmin_push_status(client_today: str | None = None, user: dict[str, Any] = Depends(get_current_user)):
+    _require_garmin(user)
+    return garmin_push.push_status(user["id"], resolve_today(client_today, date.today()))
 
 
 @router.post("/garmin/webhook/{token}")

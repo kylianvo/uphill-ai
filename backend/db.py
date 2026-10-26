@@ -845,6 +845,22 @@ def init_db():
         )
         """)
         )
+        # What Uphill last sent to the athlete's Garmin calendar, and today's send count.
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS garmin_push_links (
+            user_id         INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            plan_id         INTEGER REFERENCES plans(id) ON DELETE SET NULL,
+            day_hashes      JSONB NOT NULL DEFAULT '{}'::jsonb,  -- ISO date -> hash of what was sent
+            scheduled       JSONB NOT NULL DEFAULT '{}'::jsonb,  -- ISO date -> [[workoutId, scheduleId]]
+            last_pushed_at  TIMESTAMPTZ,
+            last_summary    JSONB,
+            partial         BOOLEAN NOT NULL DEFAULT FALSE,
+            usage_date      DATE,
+            pushes          INTEGER NOT NULL DEFAULT 0
+        )
+        """)
+        )
 
         conn.execute(
             text("""
@@ -4094,6 +4110,8 @@ def delete_provider_data(user_id: int, provider: str) -> None:
             text("DELETE FROM athlete_connections WHERE user_id = :u AND provider = :p"),
             {"u": user_id, "p": provider},
         )
+        if provider == "garmin":
+            conn.execute(text("DELETE FROM garmin_push_links WHERE user_id = :u"), {"u": user_id})
         if provider == "coros":
             conn.execute(text("DELETE FROM coros_plan_links WHERE user_id = :u"), {"u": user_id})
             conn.execute(text("DELETE FROM coros_push_usage WHERE user_id = :u"), {"u": user_id})
@@ -4153,6 +4171,62 @@ def claim_coros_push_slot(user_id: int, usage_date, limit: int) -> bool:
         ).fetchone()
         conn.commit()
     return row is not None
+
+
+def claim_garmin_push_slot(user_id: int, usage_date, limit: int) -> bool:
+    """Atomically counts one Garmin send; False once `limit` is reached for the day."""
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("""
+            INSERT INTO garmin_push_links (user_id, usage_date, pushes) VALUES (:u, :d, 1)
+            ON CONFLICT (user_id) DO UPDATE SET
+                usage_date = :d,
+                pushes = CASE WHEN garmin_push_links.usage_date = :d THEN garmin_push_links.pushes + 1 ELSE 1 END
+            WHERE garmin_push_links.usage_date IS DISTINCT FROM :d OR garmin_push_links.pushes < :limit
+            RETURNING pushes
+            """),
+            {"u": user_id, "d": usage_date, "limit": limit},
+        ).fetchone()
+    return row is not None
+
+
+def get_garmin_push_link(user_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT * FROM garmin_push_links WHERE user_id = :u"), {"u": user_id}).fetchone()
+    return dict(row._mapping) if row else None
+
+
+def save_garmin_push_link(
+    user_id: int,
+    *,
+    plan_id: int,
+    day_hashes: dict[str, str],
+    scheduled: dict[str, list[list[str | None]]],
+    last_summary: dict[str, Any],
+    partial: bool,
+) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+            INSERT INTO garmin_push_links (user_id, plan_id, day_hashes, scheduled, last_pushed_at, last_summary, partial)
+            VALUES (:u, :pid, CAST(:hashes AS JSONB), CAST(:scheduled AS JSONB), NOW(), CAST(:summary AS JSONB), :partial)
+            ON CONFLICT (user_id) DO UPDATE SET
+                plan_id = EXCLUDED.plan_id,
+                day_hashes = EXCLUDED.day_hashes,
+                scheduled = EXCLUDED.scheduled,
+                last_pushed_at = EXCLUDED.last_pushed_at,
+                last_summary = EXCLUDED.last_summary,
+                partial = EXCLUDED.partial
+            """),
+            {
+                "u": user_id,
+                "pid": plan_id,
+                "hashes": json.dumps(day_hashes),
+                "scheduled": json.dumps(scheduled),
+                "summary": json.dumps(last_summary),
+                "partial": partial,
+            },
+        )
 
 
 def get_coros_plan_link(user_id: int) -> dict[str, Any] | None:

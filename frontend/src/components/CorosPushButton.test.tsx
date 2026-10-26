@@ -8,7 +8,11 @@ const fetchPushStatus = vi.fn();
 const pushToCoros = vi.fn();
 vi.mock("../lib/corosPush", async (orig) => {
   const actual = (await orig()) as Record<string, unknown>;
-  return { ...actual, fetchPushStatus: () => fetchPushStatus(), pushToCoros: (l: string) => pushToCoros(l) };
+  return {
+    ...actual,
+    fetchPushStatus: (p?: string) => fetchPushStatus(...(p && p !== "coros" ? [p] : [])),
+    pushToCoros: (l: string, p?: string) => pushToCoros(l, ...(p && p !== "coros" ? [p] : [])),
+  };
 });
 
 beforeEach(() => {
@@ -17,6 +21,17 @@ beforeEach(() => {
 });
 
 describe("CorosPushButton", () => {
+  it("sends to Garmin with Garmin wording and no COROS mark", async () => {
+    fetchPushStatus.mockResolvedValue({ connected: true, last_pushed_at: null });
+    pushToCoros.mockResolvedValue({ kind: "error", code: "GARMIN_no_workout_permission", params: {} });
+    render(<CorosPushButton lang="en" refreshKey={1} provider="garmin" />);
+    await userEvent.click(await screen.findByRole("button", { name: /send to garmin/i }));
+    expect(fetchPushStatus).toHaveBeenCalledWith("garmin");
+    expect(pushToCoros).toHaveBeenCalledWith("en", "garmin");
+    expect(screen.queryByAltText("COROS")).toBeNull();
+    expect(await screen.findByText(/Allow workout import for Uphill AI in Garmin Connect/)).toBeInTheDocument();
+  });
+
   it("renders nothing when COROS is not connected", async () => {
     fetchPushStatus.mockResolvedValue({ connected: false });
     const { container } = render(<CorosPushButton lang="en" refreshKey={1} />);
