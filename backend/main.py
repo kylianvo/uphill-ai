@@ -116,6 +116,7 @@ from routers.notifications import router as notifications_router
 from routers.progress import router as progress_router
 from services import (
     apple_auth,
+    b_race,
     beginner_milestones,
     calendar_ops,
     claude_llm,
@@ -251,6 +252,16 @@ class LinkIngestRequest(BaseModel):
     url: str
 
 
+class BRaceInput(BaseModel):
+    """A tune-up race inside a race plan (services/b_race.py)."""
+
+    race_name: str = Field(min_length=1, max_length=200)
+    race_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    distance_km: float | None = Field(default=None, gt=0, le=400)
+    elevation_gain_m: float | None = Field(default=None, ge=0, le=20000)
+    effort: Literal["race", "training"] = "race"
+
+
 class PlanGenerateRequest(BaseModel):
     lang: str | None = "en"
     race_name: str | None = None
@@ -284,6 +295,7 @@ class PlanGenerateRequest(BaseModel):
     plan_start_date: str | None = None  # YYYY-MM-DD
     # Beginner milestones (services/beginner_milestones.py): only read for goal_type 'start_running'
     milestone_target: Literal["5k", "10k"] | None = None
+    b_races: list[BRaceInput] = Field(default_factory=list, max_length=3)  # B-races, race plans only
     current_jog_min: int | None = Field(default=None, ge=0, le=120)
     event_name: str | None = None
     event_date: str | None = None  # YYYY-MM-DD
@@ -487,6 +499,7 @@ class OnboardingRequest(BaseModel):
     goal_type: str  # race|distance|start_running|return|recovery
     # Beginner milestones (services/beginner_milestones.py): only read for goal_type 'start_running'
     milestone_target: Literal["5k", "10k"] | None = None
+    b_races: list[BRaceInput] = Field(default_factory=list, max_length=3)  # B-races, race plans only
     current_jog_min: int | None = Field(default=None, ge=0, le=120)
     event_name: str | None = None
     event_date: str | None = None  # YYYY-MM-DD
@@ -1372,6 +1385,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     )
     if beginner_shape:
         beginner_milestones.safe_apply_creation(user["id"], plan_id, request.milestone_target, request.current_jog_min)
+    if request.b_races:
+        b_race.save_setup_races(user, plan_id, [r.model_dump() for r in request.b_races])
     _assess_new_plan(user["id"], plan_id)
 
     # Mark onboarding complete immediately so the user can enter the app
@@ -2372,6 +2387,10 @@ async def _generate_plan_for_athlete(
     )
     if beginner_shape:
         beginner_milestones.safe_apply_creation(athlete_id, plan_id, request.milestone_target, request.current_jog_min)
+    if request.b_races:
+        b_race.save_setup_races(
+            get_user_by_id(athlete_id) or {"id": athlete_id}, plan_id, [r.model_dump() for r in request.b_races]
+        )
     _assess_new_plan(athlete_id, plan_id)
 
     # Fetch latest athlete details from database to ensure fresh physiological values
@@ -2570,7 +2589,7 @@ def get_user_recent_plans(user: dict[str, Any] = Depends(get_current_user)):
 
 
 def _attach_milestones(plan: dict[str, Any]) -> dict[str, Any]:
-    """Adds `beginner_milestones` (None for plans without a target) to a plan payload."""
+    """Adds `beginner_milestones` (None for plans without a target) and `b_races` to a plan payload."""
     target = plan.get("milestone_target")
     plan["beginner_milestones"] = (
         beginner_milestones.serialize(
@@ -2579,6 +2598,7 @@ def _attach_milestones(plan: dict[str, Any]) -> dict[str, Any]:
         if target
         else None
     )
+    plan["b_races"] = b_race.safe_serialize_plan(plan.get("user_id") or 0, plan)
     return plan
 
 
@@ -2587,6 +2607,14 @@ def _verify_plan_ownership(plan_id: int, user_id: int):
     recent = get_recent_plans(user_id, limit=100)
     if not any(p["id"] == plan_id for p in recent):
         raise HTTPException(status_code=404, detail="Plan not found.")
+
+
+class BRacePatch(BaseModel):
+    race_name: str | None = Field(default=None, min_length=1, max_length=200)
+    race_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    distance_km: float | None = Field(default=None, gt=0, le=400)
+    elevation_gain_m: float | None = Field(default=None, ge=0, le=20000)
+    effort: Literal["race", "training"] | None = None
 
 
 class MilestoneTargetRequest(BaseModel):
@@ -2644,6 +2672,70 @@ def upgrade_milestone_target(
     )
     plan = db.get_plan_by_id(plan_id) or plan
     return {"plan": _attach_milestones(plan)}
+
+
+# ─── B-races (services/b_race.py) ────────────────────────────────────────────
+
+_B_RACE_ERRORS = {
+    "not_a_race_plan": 400,
+    "date_out_of_range": 400,
+    "distance_required": 422,
+    "too_many_races": 409,
+    "not_found": 404,
+}
+
+
+def _b_race_call(fn: Any, *args: Any) -> Any:
+    try:
+        return fn(*args)
+    except ValueError as exc:
+        code = str(exc)
+        if code in _B_RACE_ERRORS:
+            raise HTTPException(status_code=_B_RACE_ERRORS[code], detail=code)
+        raise
+
+
+def _owned_race_plan(plan_id: int, user_id: int) -> dict[str, Any]:
+    _verify_plan_ownership(plan_id, user_id)
+    plan = db.get_plan_by_id(plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    if not b_race.is_race_plan(plan):
+        raise HTTPException(status_code=400, detail="not_a_race_plan")
+    return plan
+
+
+@app.get("/api/plans/{plan_id}/races")
+def list_b_races(plan_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    plan = _owned_race_plan(plan_id, user["id"])
+    return {"races": b_race.serialize(user["id"], plan, db.get_plan_races(plan_id))}
+
+
+@app.post("/api/plans/{plan_id}/races/assess")
+def assess_b_race(plan_id: int, request: BRaceInput, user: dict[str, Any] = Depends(get_current_user)):
+    plan = _owned_race_plan(plan_id, user["id"])
+    return _b_race_call(b_race.evaluate, user, plan, request.model_dump())
+
+
+@app.post("/api/plans/{plan_id}/races")
+def add_b_race(plan_id: int, request: BRaceInput, user: dict[str, Any] = Depends(get_current_user)):
+    plan = _owned_race_plan(plan_id, user["id"])
+    race = _b_race_call(b_race.create, user, plan, request.model_dump())
+    return {"race": race, "rebuild_job_ids": []}
+
+
+@app.patch("/api/plans/{plan_id}/races/{race_id}")
+def change_b_race(plan_id: int, race_id: int, request: BRacePatch, user: dict[str, Any] = Depends(get_current_user)):
+    plan = _owned_race_plan(plan_id, user["id"])
+    race = _b_race_call(b_race.update, user, plan, race_id, request.model_dump(exclude_unset=True))
+    return {"race": race, "rebuild_job_ids": []}
+
+
+@app.delete("/api/plans/{plan_id}/races/{race_id}")
+def cancel_b_race(plan_id: int, race_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    plan = _owned_race_plan(plan_id, user["id"])
+    race = _b_race_call(b_race.cancel, user, plan, race_id)
+    return {"race": race, "rebuild_job_ids": []}
 
 
 @app.get("/api/coach/block-completion/{plan_id}")

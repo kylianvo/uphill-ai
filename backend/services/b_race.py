@@ -6,7 +6,7 @@ never from the model. Spec: docs/superpowers/specs/2026-10-26-b-race-design.md
 
 import math
 from dataclasses import asdict, dataclass, replace
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
 from log_utils import get_logger
@@ -181,6 +181,11 @@ MAX_PLANNED = 3
 LONGEST_RUN_WINDOW_DAYS = 42
 
 
+def current_date() -> date:
+    """Today, as one hook tests can pin."""
+    return date.today()
+
+
 def is_race_plan(plan: dict[str, Any]) -> bool:
     return plan.get("goal_type") in ELIGIBLE_GOALS
 
@@ -205,7 +210,7 @@ def facts_for_plan(
     import db
     from services.calendar_rules import start_monday
 
-    today = today or date.today()
+    today = today or current_date()
     km, minutes = db.longest_recent_run(user_id, today - timedelta(days=LONGEST_RUN_WINDOW_DAYS))
     others = tuple(_row_race(r) for r in db.get_plan_races(plan["id"]) if r["id"] != exclude_race_id)
     return PlanFacts(
@@ -280,3 +285,112 @@ def evaluate(
     out = asdict(verdict)
     out["cost"] = None
     return {"race": race, "verdict": out, "predicted": predict_band(user, race) if predict else None}
+
+
+# ─── The races a plan holds (used by the routes and the plan payload) ─────────
+
+
+def validate(plan: dict[str, Any], race_date: date, today: date | None = None) -> None:
+    """Raises ValueError with an API code when the race can't belong to this plan."""
+    from services.calendar_rules import start_monday
+
+    if not is_race_plan(plan):
+        raise ValueError("not_a_race_plan")
+    today = today or current_date()
+    monday = start_monday(plan.get("start_date")) or today
+    if race_date < max(today, monday) or race_date >= _date(plan["race_date"]):
+        raise ValueError("date_out_of_range")
+
+
+def serialize(user_id: int, plan: dict[str, Any], rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Planned races with a verdict recomputed now (the A-race or the athlete's fitness may have moved)."""
+    out = []
+    for row in rows:
+        facts = facts_for_plan(user_id, plan, exclude_race_id=row["id"])
+        race = _row_race(row)
+        verdict = asdict(assess(race, facts))
+        verdict["cost"] = None
+        week, day = week_and_day(facts.plan_monday, race.race_date)
+        out.append({**row, "race_date": race.race_date.isoformat(), "verdict": verdict, "week": week, "day": day})
+    return out
+
+
+def safe_serialize_plan(user_id: int, plan: dict[str, Any]) -> list[dict[str, Any]]:
+    """The plan payload's `b_races`: never fails the plan request it rides on."""
+    import db
+
+    if not is_race_plan(plan):
+        return []
+    try:
+        return serialize(user_id, plan, db.get_plan_races(plan["id"]))
+    except Exception:
+        logger.warning("b-race list failed", exc_info=True, extra={"fields": {"plan_id": plan.get("id")}})
+        return []
+
+
+def _store_fields(user: dict[str, Any], plan: dict[str, Any], data: dict[str, Any], race_id: int | None):
+    result = evaluate(user, plan, data, race_id=race_id, predict=True)
+    race, verdict = result["race"], result["verdict"]
+    validate(plan, race["race_date"])
+    level = verdict["level"]
+    if level == "not_recommended":
+        race["effort"] = "training"  # the runner may still enter it; the plan never tapers for it
+    return {
+        **race,
+        "verdict": verdict,
+        "predicted": result["predicted"],
+        "kept_against": level if level in ("risky", "not_recommended") else None,
+    }
+
+
+def _one(user_id: int, plan: dict[str, Any], race_id: int) -> dict[str, Any]:
+    import db
+
+    return serialize(user_id, plan, [db.get_plan_race(plan["id"], race_id)])[0]
+
+
+def create(user: dict[str, Any], plan: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    import db
+
+    validate(plan, _date(data["race_date"]))
+    if len(db.get_plan_races(plan["id"])) >= MAX_PLANNED:
+        raise ValueError("too_many_races")
+    race_id = db.insert_plan_race(plan["id"], _store_fields(user, plan, data, None))
+    return _one(user["id"], plan, race_id)
+
+
+def update(user: dict[str, Any], plan: dict[str, Any], race_id: int, changes: dict[str, Any]) -> dict[str, Any]:
+    import db
+
+    row = db.get_plan_race(plan["id"], race_id)
+    if not row or row["status"] != "planned":
+        raise ValueError("not_found")
+    data = {k: row.get(k) for k in ("race_name", "race_date", "distance_km", "elevation_gain_m", "effort")}
+    data.update({k: v for k, v in changes.items() if v is not None})
+    db.update_plan_race(race_id, _store_fields(user, plan, data, race_id))
+    return _one(user["id"], plan, race_id)
+
+
+def cancel(user: dict[str, Any], plan: dict[str, Any], race_id: int) -> dict[str, Any]:
+    import db
+
+    row = db.get_plan_race(plan["id"], race_id)
+    if not row or row["status"] != "planned":
+        raise ValueError("not_found")
+    db.update_plan_race(race_id, {"status": "cancelled", "cancelled_at": datetime.now(UTC)})
+    return {**db.get_plan_race(plan["id"], race_id), "race_date": _date(row["race_date"]).isoformat()}
+
+
+def save_setup_races(user: dict[str, Any], plan_id: int, races: list[dict[str, Any]]) -> int:
+    """B-races given while creating the plan. A bad one is skipped and logged: the plan is already created."""
+    import db
+
+    plan = db.get_plan_by_id(plan_id)
+    saved = 0
+    for data in races or []:
+        try:
+            create(user, plan, data)
+            saved += 1
+        except Exception:
+            logger.warning("setup b-race skipped", exc_info=True, extra={"fields": {"plan_id": plan_id}})
+    return saved
