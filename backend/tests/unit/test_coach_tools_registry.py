@@ -5,10 +5,10 @@ from services.coach_tools import ProposalContext
 from services.coach_tools.registry import build_tools
 
 
-def test_build_tools_returns_all_four_tools():
+def test_build_tools_returns_the_read_only_tools():
     tools = build_tools(user_id=1, kb_api_key="k")
     names = {t.name for t in tools}
-    assert names == {"get_week", "pace_strategy", "week_review", "kb_search"}
+    assert names == {"get_week", "pace_strategy", "week_review", "kb_search", "assess_b_race"}
 
 
 def test_tool_schemas_never_expose_user_id():

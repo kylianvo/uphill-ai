@@ -58,6 +58,8 @@ struct Plan: Codable, Sendable, Equatable, Identifiable {
     var milestoneTarget: String? = nil
     var hasTargetEvent: Bool? = nil
     var beginnerMilestones: PlanMilestones? = nil
+    /// Tune-up races inside a race plan (`services/b_race.py`); nil from older servers.
+    var bRaces: [BRace]? = nil
 }
 
 /// Week-to-date for a matched workout's week, from GET /api/integrations/matching.

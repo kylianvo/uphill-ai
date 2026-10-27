@@ -931,4 +931,84 @@ final class PlanViewModel {
             actionError = error.localizedDescription
         }
     }
+
+    // MARK: B-races (services/b_race.py)
+
+    var isRacePlan: Bool { ["finish", "time", "optimal"].contains(snapshot?.plan.goalType ?? "") }
+    var canAddRaces: Bool { isRacePlan && athleteId == nil && cachedAt == nil }
+    var bRaces: [BRace] { (snapshot?.plan.bRaces ?? []).filter { $0.status != "cancelled" } }
+
+    /// The B-races and the A-race by date, for the Next races card; empty on other plans.
+    var nextRaces: [NextRace] {
+        guard isRacePlan, let plan = snapshot?.plan else { return [] }
+        var rows = bRaces.compactMap { r in
+            PlanCalendar.day(from: r.raceDate, calendar: calendar).map { NextRace(id: "b-\(r.id)", name: r.raceName, date: $0, race: r) }
+        }
+        if let aDate = PlanCalendar.day(from: plan.raceDate, calendar: calendar) {
+            rows.append(NextRace(id: "a", name: plan.raceName, date: aDate, race: nil))
+        }
+        return rows.sorted { $0.date < $1.date }
+    }
+
+    func raceNeedsDebrief(_ race: BRace) -> Bool { race.needsDebrief(today: now(), calendar: calendar) }
+
+    func assessRace(_ input: BRaceInput) async -> Result<BRaceAssessment, APIError> {
+        guard let planID = snapshot?.plan.id else { return .failure(.http(status: 404, message: nil, code: nil)) }
+        do { return .success(try await service.assessRace(planID: planID, input: input)) }
+        catch let error as APIError { return .failure(error) }
+        catch { return .failure(.http(status: 0, message: error.localizedDescription, code: nil)) }
+    }
+
+    /// Adds a race (or changes `raceID`), follows the weeks it re-plans, then reloads. Returns an error message or nil.
+    func saveRace(_ input: BRaceInput, raceID: Int? = nil) async -> String? {
+        guard canAddRaces, let planID = snapshot?.plan.id else { return L("Couldn't save this race. Try again.") }
+        do {
+            let change = if let raceID {
+                try await service.updateRace(planID: planID, raceID: raceID, input: input)
+            } else {
+                try await service.addRace(planID: planID, input: input)
+            }
+            trackRebuilds(change.rebuildJobIds)
+            await load()
+            return nil
+        } catch let error as APIError {
+            return error.userMessage
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    func cancelRace(_ raceID: Int) async -> String? {
+        guard let planID = snapshot?.plan.id else { return L("Couldn't cancel this race. Try again.") }
+        do {
+            let change = try await service.cancelRace(planID: planID, raceID: raceID)
+            trackRebuilds(change.rebuildJobIds)
+            await load()
+            return nil
+        } catch let error as APIError {
+            return error.userMessage
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    func submitRaceDebrief(_ race: BRace, seconds: Int?, answers: BRaceDebriefAnswers) async -> Result<BRaceDebriefResult, APIError> {
+        guard let planID = snapshot?.plan.id else { return .failure(.http(status: 404, message: nil, code: nil)) }
+        do {
+            if let seconds, seconds != race.resultSeconds {
+                try await service.submitRaceResult(planID: planID, raceID: race.id, seconds: seconds)
+            }
+            let result = try await service.submitRaceDebrief(planID: planID, raceID: race.id, answers: answers)
+            await load()
+            return .success(result)
+        } catch let error as APIError {
+            return .failure(error)
+        } catch {
+            return .failure(.http(status: 0, message: error.localizedDescription, code: nil))
+        }
+    }
+
+    private func trackRebuilds(_ jobIDs: [String]) {
+        for job in jobIDs { generation?.track(kind: .adaptWeek, jobID: job, summary: []) }
+    }
 }

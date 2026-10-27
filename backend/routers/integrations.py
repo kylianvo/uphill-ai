@@ -29,7 +29,7 @@ import db
 from config import settings
 from db import verify_session
 from log_utils import get_logger
-from services import beginner_milestones, coros_oauth, coros_push, coros_sync, recovery_baseline, token_crypto
+from services import b_race, beginner_milestones, coros_oauth, coros_push, coros_sync, recovery_baseline, token_crypto
 from services.calendar_rules import resolve_today
 from services.matching import runner as matching_runner
 from services.matching.quality_scorer import score_workout_quality
@@ -749,6 +749,7 @@ async def apple_health_sync(body: AppleHealthSyncRequest, user: dict[str, Any] =
         accepted += 1
     deleted = db.delete_activities_by_external_ids(user_id, APPLE_HEALTH, body.deleted_ids)
     beginner_milestones.safe_refresh_milestones(user_id)  # after deletes: a removed run must not tick a distance
+    b_race.safe_refresh_results(user_id)
     daily_metrics = _store_daily_metrics(user_id, body.daily_metrics)
     db.mark_connection_synced(user_id, APPLE_HEALTH)
     if rejected:

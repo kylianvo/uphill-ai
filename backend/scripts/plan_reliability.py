@@ -22,7 +22,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import settings  # noqa: E402
-from services import goal_demands, goal_feasibility, plan_lint, ultra_rules  # noqa: E402
+from services import b_race, goal_demands, goal_feasibility, plan_lint, ultra_rules  # noqa: E402
+from services import plan_generator as plan_generator_module  # noqa: E402
 from services.athlete_tier import for_race, get_profile  # noqa: E402
 from services.plan_generator import PlanGenerator  # noqa: E402
 from services.training_mountains import long_run_climb_rate  # noqa: E402
@@ -194,6 +195,94 @@ def run(s: Scenario) -> Result:
     return result
 
 
+# B-races (services/b_race.py) on "65km 6d | 50K | time | flat": (name, races as (days before A, km, gain), levels)
+A_RACE_DAY = START + timedelta(weeks=24, days=5)
+B_CASES = [
+    ("25K at 6 weeks", [(42, 25, 1000)], ["good"]),
+    ("50K at 3 weeks", [(21, 50, 2500)], ["risky"]),
+    ("25K at 10 days", [(10, 25, 1000)], ["not_recommended"]),
+    ("two 25Ks 2 weeks apart", [(56, 25, 1000), (42, 25, 1000)], ["good", "risky"]),  # the second one stacks
+]
+
+
+def _generate(races: list[dict]) -> list[dict]:
+    """The rule-based plan for the B-race athlete, with `races` loaded as the plan's B-races (no database)."""
+    saved = (b_race.safe_races_for_plan, plan_generator_module.get_plan_by_id, settings.PLAN_LINT_ENABLED)
+    b_race.safe_races_for_plan = lambda plan_id: races
+    plan_generator_module.get_plan_by_id = lambda plan_id: {"start_date": START.isoformat()}
+    settings.PLAN_LINT_ENABLED = False
+    km, days, long_day, dpw = ATHLETES["65km 6d"]
+    dist, gain, cutoff, target = RACES["50K"]
+    try:
+        workouts, _ = asyncio.run(
+            PlanGenerator.generate_plan_workouts(
+                plan_id=0,
+                user_profile={**PROFILE, "current_weekly_km": float(km)},
+                race_info={
+                    "name": "VHT 50K",
+                    "date": A_RACE_DAY.isoformat(),
+                    "plan_start_date": START.isoformat(),
+                    "terrain": "trail",
+                    "course_distance_km": dist,
+                    "course_elevation_gain_m": gain,
+                    "goal_type": "time",
+                    "target_time_hours": target,
+                    "preferred_days": days,
+                    "long_run_day": long_day,
+                    "days_per_week": dpw,
+                    "training_environment": "flat",
+                },  # fmt: skip
+                total_weeks=26,
+                api_key=None,
+                cutoff_time_hours=cutoff,
+                block_number=1,
+                weeks_per_block=26,
+            )
+        )
+    finally:
+        b_race.safe_races_for_plan, plan_generator_module.get_plan_by_id, settings.PLAN_LINT_ENABLED = saved
+    return workouts
+
+
+def run_b_race(name: str, specs: list[tuple[int, float, float]], levels: list[str], baseline: list[dict]) -> list[str]:
+    races, rows, failures = [], [], []
+    for i, (days_before, km, gain) in enumerate(specs, 1):
+        row = {"id": i, "race_name": f"B{i}", "race_date": (A_RACE_DAY - timedelta(days=days_before)).isoformat(),
+               "distance_km": km, "elevation_gain_m": gain, "effort": "race", "kept_against": None}  # fmt: skip
+        facts = b_race.PlanFacts(A_RACE_DAY, 56.4, 2946, START, 26, 30.0, 210.0,
+                                 tuple(b_race._row_race(r) for r in rows))  # fmt: skip
+        level = b_race.assess(b_race._row_race(row), facts).level
+        if level != levels[i - 1]:
+            failures.append(f"B{i}: level {level}, expected {levels[i - 1]}")
+        if level == "not_recommended":
+            row = {**row, "effort": "training", "kept_against": "not_recommended"}
+        elif level == "risky":
+            row = {**row, "kept_against": "risky"}
+        rows.append(row)
+        races.append(row)
+    workouts = _generate(races)
+    view = b_race.lint_view(races, START)
+    weeks = {w["week_number"] for w in workouts}
+    if issues := plan_lint._b_race_issues(workouts, weeks, view):
+        failures.append(f"guard broken: {sorted({i.code for i in issues})}")
+
+    def a_taper(ws: list[dict]) -> list[tuple]:
+        race_days = {(v["week"], v["day"]) for v in view}  # a B-race inside the taper takes only its own day
+        return sorted((w["week_number"], w["day_of_week"], w["type"], w["duration_minutes"])
+                      for w in ws if w.get("phase") in ("Taper", "Race Week")
+                      and (w["week_number"], w["day_of_week"]) not in race_days)  # fmt: skip
+
+    before = {(wk, d, t): m for wk, d, t, m in a_taper(baseline)}
+    after = {(wk, d, t): m for wk, d, t, m in a_taper(workouts)}
+    # the taper may get lighter (its long-share fit reacts to the race's minutes), never heavier or reshaped
+    if set(after) != set(before) or any(after[k] > before[k] for k in after):
+        failures.append("the A-race taper gained load or changed shape")
+    print(f"{'B-race | ' + name:58} {'':12} {','.join(levels):12} {len(failures) and 'FAIL' or 'ok'}")
+    for f in failures:
+        print(f"    FAIL {f}")
+    return failures
+
+
 def main() -> int:
     failed = 0
     print(f"{'scenario':58} {'tier':12} {'verdict':12} issues")
@@ -203,7 +292,11 @@ def main() -> int:
         print(f"{s.name:58} {r.tier:12} {r.verdict:12} {','.join(r.issues) or '-'}")
         for f in r.failures:
             print(f"    FAIL {f}")
-    print(f"\n{len(SCENARIOS) - failed}/{len(SCENARIOS)} scenarios pass")
+    baseline = _generate([])
+    for name, specs, levels in B_CASES:
+        failed += bool(run_b_race(name, specs, levels, baseline))
+    total = len(SCENARIOS) + len(B_CASES)
+    print(f"\n{total - failed}/{total} scenarios pass")
     return 1 if failed else 0
 
 

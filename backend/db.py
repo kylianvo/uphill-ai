@@ -480,6 +480,40 @@ def init_db():
         """)
         )
 
+        # B-races (services/b_race.py): tune-up races inside a race plan; the A-race stays on plans.race_*.
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS plan_races (
+            id               SERIAL PRIMARY KEY,
+            plan_id          INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            race_name        TEXT NOT NULL,
+            course_ref       TEXT,
+            race_date        DATE NOT NULL,
+            distance_km      REAL NOT NULL,
+            elevation_gain_m REAL,
+            options_km       JSONB NOT NULL DEFAULT '[]'::jsonb,
+            effort           TEXT NOT NULL DEFAULT 'race',  -- 'race' | 'training'
+            status           TEXT NOT NULL DEFAULT 'planned',  -- 'planned' | 'cancelled' | 'done'
+            kept_against     TEXT,  -- the level the runner overruled, e.g. 'risky'
+            verdict          JSONB,
+            verdict_text     JSONB,
+            predicted        JSONB,
+            result_seconds   INTEGER,
+            activity_id      INTEGER REFERENCES activities(id) ON DELETE SET NULL,
+            debrief          JSONB,
+            created_at       TIMESTAMPTZ DEFAULT NOW(),
+            cancelled_at     TIMESTAMPTZ
+        )
+        """)
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_plan_races_plan_status ON plan_races (plan_id, status)"))
+        conn.execute(
+            text(
+                "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS plan_race_id INTEGER "
+                "REFERENCES plan_races(id) ON DELETE SET NULL"
+            )
+        )
+
         conn.execute(
             text("""
         CREATE TABLE IF NOT EXISTS race_profile_claims (
@@ -1350,12 +1384,14 @@ _WORKOUT_INSERT_SQL = """
         duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
         treadmill_incline, treadmill_speed, elevation_gain_m, grade_percent,
         interval_reps, interval_rep_value, interval_rep_unit, walk_interval_value,
-        description, fueling_tip, session_slot, approved_at, is_priority, mountain_mode, mountain_climb_rate)
+        description, fueling_tip, session_slot, approved_at, is_priority, mountain_mode, mountain_climb_rate,
+        plan_race_id)
     VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
         :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
         :treadmill_incline, :treadmill_speed, :elevation_gain_m, :grade_percent,
         :interval_reps, :interval_rep_value, :interval_rep_unit, :walk_interval_value,
-        :description, :fueling_tip, :session_slot, :approved_at, :is_priority, :mountain_mode, :mountain_climb_rate)
+        :description, :fueling_tip, :session_slot, :approved_at, :is_priority, :mountain_mode, :mountain_climb_rate,
+        :plan_race_id)
 """
 
 
@@ -1390,6 +1426,7 @@ def _workout_insert_params(plan_id: int, wo: dict[str, Any], auto_approve: bool)
         "is_priority": wo.get("is_priority") is True,
         "mountain_mode": wo.get("mountain_mode"),
         "mountain_climb_rate": wo.get("mountain_climb_rate"),
+        "plan_race_id": wo.get("plan_race_id"),  # a B-race row (services/b_race.py)
     }
 
 
@@ -2399,6 +2436,102 @@ def set_plan_milestone_target(
             {"t": target, "w": total_weeks, "clear": clear_event, "rn": race_name, "rd": race_date, "p": plan_id},
         )
         conn.commit()
+
+
+_PLAN_RACE_JSON = ("options_km", "verdict", "verdict_text", "predicted", "debrief")
+_PLAN_RACE_FIELDS = (
+    "race_name", "course_ref", "race_date", "distance_km", "elevation_gain_m", "effort", "status", "kept_against",
+    "result_seconds", "activity_id", "cancelled_at", *_PLAN_RACE_JSON,
+)  # fmt: skip
+
+
+def _plan_race_params(fields: dict[str, Any]) -> dict[str, Any]:
+    """Whitelisted columns only; JSONB values serialised for CAST(... AS JSONB)."""
+    return {
+        k: (json.dumps(v) if k in _PLAN_RACE_JSON and v is not None else v)
+        for k, v in fields.items()
+        if k in _PLAN_RACE_FIELDS
+    }
+
+
+def _plan_race_value(col: str) -> str:
+    return f"CAST(:{col} AS JSONB)" if col in _PLAN_RACE_JSON else f":{col}"
+
+
+def insert_plan_race(plan_id: int, fields: dict[str, Any]) -> int:
+    params = _plan_race_params(fields)
+    cols = list(params)
+    with engine.connect() as conn:
+        rid = conn.execute(
+            text(
+                f"INSERT INTO plan_races (plan_id, {', '.join(cols)}) "
+                f"VALUES (:plan_id, {', '.join(_plan_race_value(c) for c in cols)}) RETURNING id"
+            ),
+            {**params, "plan_id": plan_id},
+        ).scalar()
+        conn.commit()
+    return int(rid)
+
+
+def get_plan_races(plan_id: int, include_cancelled: bool = False) -> list[dict[str, Any]]:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT * FROM plan_races WHERE plan_id = :p"
+                + ("" if include_cancelled else " AND status <> 'cancelled'")
+                + " ORDER BY race_date, id"
+            ),
+            {"p": plan_id},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def get_plan_race(plan_id: int, race_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM plan_races WHERE plan_id = :p AND id = :r"), {"p": plan_id, "r": race_id}
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def update_plan_race(race_id: int, fields: dict[str, Any]) -> None:
+    params = _plan_race_params(fields)
+    if not params:
+        return
+    sets = ", ".join(f"{c} = {_plan_race_value(c)}" for c in params)
+    with engine.connect() as conn:
+        conn.execute(text(f"UPDATE plan_races SET {sets} WHERE id = :rid"), {**params, "rid": race_id})
+        conn.commit()
+
+
+def delete_race_workouts(plan_race_id: int) -> int:
+    """Removes a cancelled B-race's own session, unless it was already logged."""
+    with engine.connect() as conn:
+        n = conn.execute(
+            text(
+                "DELETE FROM workouts WHERE plan_race_id = :r AND COALESCE(is_completed, 0) = 0 "
+                "AND matched_activity_id IS NULL"
+            ),
+            {"r": plan_race_id},
+        ).rowcount
+        conn.commit()
+    return n
+
+
+def longest_recent_run(user_id: int, since: datetime.date) -> tuple[float | None, float | None]:
+    """(max km, max minutes) of the athlete's running activities since `since`."""
+    from services.matching.bundler import RUN_TYPES
+
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(
+                "SELECT MAX(distance_km), MAX(duration_seconds) / 60.0 FROM activities "
+                "WHERE user_id = :u AND activity_type = ANY(:types) AND start_time >= :since AND duplicate_of IS NULL"
+            ),
+            {"u": user_id, "types": sorted(RUN_TYPES), "since": since},
+        ).fetchone()
+    km, minutes = (row or (None, None))[:2]
+    return (float(km) if km is not None else None, float(minutes) if minutes is not None else None)
 
 
 def get_completed_run_workouts(plan_id: int) -> list[dict[str, Any]]:

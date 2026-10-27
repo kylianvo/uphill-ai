@@ -60,6 +60,7 @@ export interface ActivePlan {
   milestone_target?: "5k" | "10k" | null;
   has_target_event?: boolean;
   beginner_milestones?: import("../lib/beginnerMilestones").PlanMilestones | null;
+  b_races?: import("../lib/bRace").BRace[] | null;
   // R-C8: m D+ each build week should climb, keyed by week number (backend goal_service.vert_targets_for)
   weekly_vert_targets?: Record<string, number>;
   race_name: string;

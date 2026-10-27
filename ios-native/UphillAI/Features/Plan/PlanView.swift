@@ -41,6 +41,7 @@ struct PlanView: View {
     @State private var adaptAfterManage = false
     @State private var showReview = false
     @State private var showGoal = false
+    @State private var raceSheet: RaceSheet?
     @State private var showAddWorkout = false
     @State private var readyBanner: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -127,6 +128,13 @@ struct PlanView: View {
                 .sheet(isPresented: $showSchedule) { ScheduleChangeSheet(model: model) }
                 .sheet(isPresented: $showAdapt) { AdaptWeekSheet(model: model, week: model.selectedWeek) }
                 .sheet(isPresented: $showGoal) { GoalSheet(model: model) }
+                .sheet(item: $raceSheet) { sheet in
+                    switch sheet {
+                    case .add: AddBRaceSheet(model: model)
+                    case .edit(let race): AddBRaceSheet(model: model, race: race)
+                    case .debrief(let race): RaceDebriefSheet(model: model, race: race)
+                    }
+                }
                 .sheet(isPresented: $showReview) { WeekReviewSheet(model: model, week: model.selectedWeek) }
                 .sheet(isPresented: $showNextWeek) {
                     if let offer = model.nextWeekOffer { NextWeekSheet(model: model, offer: offer) }
@@ -242,6 +250,15 @@ struct PlanView: View {
                         SummaryCarousel(model: model,
                                         onGoal: { showGoal = true },
                                         initialVolumeMode: initialVolumeMode)
+
+                        // 3b. B-races: the next races on race plans
+                        if model.isRacePlan, !model.nextRaces.isEmpty {
+                            NextRacesCard(model: model,
+                                          onAdd: { raceSheet = .add },
+                                          onOpen: { raceSheet = .edit($0) },
+                                          onDebrief: { raceSheet = .debrief($0) })
+                                .padding(.horizontal, UH.Space.regular)
+                        }
 
                         // 4. Coach review card
                         CoachReviewCard(model: model, onOpenReview: { showReview = true })
@@ -557,4 +574,18 @@ struct PlanView: View {
         .padding(.horizontal, UH.Space.regular)
     }
 
+}
+
+
+/// Which B-race sheet the Plan screen shows.
+enum RaceSheet: Identifiable {
+    case add, edit(BRace), debrief(BRace)
+
+    var id: String {
+        switch self {
+        case .add: "add"
+        case .edit(let race): "edit-\(race.id)"
+        case .debrief(let race): "debrief-\(race.id)"
+        }
+    }
 }

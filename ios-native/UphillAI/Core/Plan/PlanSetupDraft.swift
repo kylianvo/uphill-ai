@@ -82,7 +82,7 @@ enum SetupStep: Equatable, Sendable {
 }
 
 enum SetupField: Hashable, Sendable {
-    case goal, raceName, raceDate, distance, targetTime, beginnerEventDate, timeAway, fitnessFeel, raceCompleted, daysSinceRace, recoveryFeel
+    case goal, raceName, raceDate, bRaces, distance, targetTime, beginnerEventDate, timeAway, fitnessFeel, raceCompleted, daysSinceRace, recoveryFeel
     case preferredDays, longRunDay, weeklyKm, startDate, height, weight, maxHr, restingHr, trainingZones
 }
 
@@ -130,6 +130,8 @@ struct PlanSetupDraft: Equatable, Sendable {
     var fitnessFeel: String?
     // Beginner (start running): the milestone target, today's longest jog and an optional event
     var milestoneTarget: MilestoneTarget = .fiveK
+    /// Tune-up races before the goal race (race plans only), at most 3.
+    var bRaces: [SetupBRace] = []
     var currentJogMin = 0
     var hasBeginnerEvent = false
     var beginnerEventName = ""
@@ -247,6 +249,9 @@ struct PlanSetupDraft: Equatable, Sendable {
             let earliest = calendar.date(byAdding: .day, value: 14, to: start)!
             if raceDate.map({ $0 < earliest }) ?? true {
                 add(.raceDate, L("Pick a date at least 2 weeks away so the plan has room to build."))
+            }
+            if goal == .race, bRaces.contains(where: { !$0.isSavable(before: raceDate, calendar: calendar) }) {
+                add(.bRaces, L("Add the name, distance and a date before your goal race, or remove it."))
             }
         case .raceGoal:
             if raceGoal == .time, !(1...6000).contains(targetMinutes ?? 0) {
@@ -389,7 +394,8 @@ struct PlanSetupDraft: Equatable, Sendable {
             milestoneTarget: beginnerBody ? milestoneTarget.rawValue : nil,
             currentJogMin: beginnerBody ? currentJogMin : nil,
             eventName: beginnerBody && hasBeginnerEvent ? nonEmpty(beginnerEventName) : nil,
-            eventDate: beginnerBody && hasBeginnerEvent ? beginnerEventDate.map { PlanCalendar.ymd($0, calendar: calendar) } : nil
+            eventDate: beginnerBody && hasBeginnerEvent ? beginnerEventDate.map { PlanCalendar.ymd($0, calendar: calendar) } : nil,
+            bRaces: setupRaces(calendar: calendar)
         )
     }
 
@@ -429,7 +435,8 @@ struct PlanSetupDraft: Equatable, Sendable {
             milestoneTarget: beginnerBody ? milestoneTarget.rawValue : nil,
             currentJogMin: beginnerBody ? currentJogMin : nil,
             eventName: beginnerBody && hasBeginnerEvent ? nonEmpty(beginnerEventName) : nil,
-            eventDate: beginnerBody && hasBeginnerEvent ? beginnerEventDate.map { PlanCalendar.ymd($0, calendar: calendar) } : nil
+            eventDate: beginnerBody && hasBeginnerEvent ? beginnerEventDate.map { PlanCalendar.ymd($0, calendar: calendar) } : nil,
+            bRaces: setupRaces(calendar: calendar)
         )
     }
 
@@ -486,6 +493,17 @@ struct PlanSetupDraft: Equatable, Sendable {
         if let pace = nonEmpty(zone2PaceMax) { items.append((L("Easy pace, faster end: %@ /km", pace), .trainingZones)) }
         if let pace = nonEmpty(thresholdPace) { items.append((L("Threshold pace: %@ /km", pace), .trainingZones)) }
         return items
+    }
+
+    /// B-races with a name, for a race plan; nil otherwise so the key is left out.
+    func setupRaces(calendar: Calendar) -> [BRaceInput]? {
+        guard goal == .race else { return nil }
+        let races = bRaces.compactMap { r -> BRaceInput? in
+            let name = r.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { return nil }
+            return BRaceInput(raceName: name, raceDate: PlanCalendar.ymd(r.date, calendar: calendar), distanceKm: r.distanceKm)
+        }
+        return races.isEmpty ? nil : races
     }
 
     /// The course's climb in m D+/km, or nil before a distance and a gain are set.
@@ -548,6 +566,7 @@ struct OnboardingBody: Encodable, Sendable {
     var currentJogMin: Int? = nil
     var eventName: String? = nil
     var eventDate: String? = nil
+    var bRaces: [BRaceInput]? = nil
 }
 
 /// POST /api/coach/generate-plan. Nil fields are omitted from the JSON.
@@ -586,4 +605,5 @@ struct PlanBody: Encodable, Sendable {
     var currentJogMin: Int? = nil
     var eventName: String? = nil
     var eventDate: String? = nil
+    var bRaces: [BRaceInput]? = nil
 }

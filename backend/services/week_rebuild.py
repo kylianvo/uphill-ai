@@ -16,7 +16,7 @@ from typing import Any
 
 import db
 from config import settings
-from services import beginner_milestones, calendar_ops
+from services import b_race, beginner_milestones, calendar_ops
 from services.block_history import build_history_lines, missed_rules_for_week
 from services.calendar_rules import (
     DAYS,
@@ -457,6 +457,8 @@ def build_rebuild_inputs(
     )
     if milestone_fact:
         decision_log.append(milestone_fact)
+    if b_fact := b_race.safe_brief_fact(plan["id"], request.week_number):
+        decision_log.append(b_fact)
 
     # Note any workouts already completed/matched in the target week
     curr_completed = [
