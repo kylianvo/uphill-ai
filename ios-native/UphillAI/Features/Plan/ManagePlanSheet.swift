@@ -8,6 +8,8 @@ struct ManagePlanSheet: View {
     /// Set only when the selected week can still be adapted.
     var onAdapt: (() -> Void)? = nil
     var onTool: ((TrainingDestination) -> Void)? = nil
+    /// Set only on race plans: opens the plan's races.
+    var onRaces: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var plans: [Plan]?
     @State private var loadError: String?
@@ -17,12 +19,13 @@ struct ManagePlanSheet: View {
     @State private var showExportCalendar = false
     @State private var connectionStatus: DeviceConnectionStatus? = nil
 
-    init(model: PlanViewModel, deviceService: (any DeviceConnectionServicing)? = nil, onStartNew: @escaping () -> Void, onSchedule: @escaping () -> Void = {}, onAdapt: (() -> Void)? = nil, onTool: ((TrainingDestination) -> Void)? = nil, initialPlans: [Plan]? = nil, initialConfirmDelete: Bool = false) {
+    init(model: PlanViewModel, deviceService: (any DeviceConnectionServicing)? = nil, onStartNew: @escaping () -> Void, onSchedule: @escaping () -> Void = {}, onAdapt: (() -> Void)? = nil, onRaces: (() -> Void)? = nil, onTool: ((TrainingDestination) -> Void)? = nil, initialPlans: [Plan]? = nil, initialConfirmDelete: Bool = false) {
         self.model = model
         self.deviceService = deviceService
         self.onStartNew = onStartNew
         self.onSchedule = onSchedule
         self.onAdapt = onAdapt
+        self.onRaces = onRaces
         self.onTool = onTool
         _plans = State(initialValue: initialPlans)
         _confirmDelete = State(initialValue: initialConfirmDelete)
@@ -56,6 +59,29 @@ struct ManagePlanSheet: View {
                         .padding(UH.Space.small)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(UH.Palette.danger.opacity(0.1), in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                    }
+
+                    if let onRaces {
+                        Button {
+                            onRaces()
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Label(L("Next races"), systemImage: "flag.checkered")
+                                    .font(UH.TextStyle.label)
+                                    .foregroundStyle(UH.Palette.ink)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(UH.Palette.muted)
+                            }
+                            .padding(UH.Space.regular)
+                            .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+                            .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("manage.races")
                     }
 
                     // 1. Plan Actions (Adapt this week, New Plan, Plan Settings): the week's action comes first

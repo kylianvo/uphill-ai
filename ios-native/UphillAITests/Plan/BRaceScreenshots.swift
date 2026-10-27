@@ -67,6 +67,12 @@ struct BRaceScreenshots {
             try await save(AddBRaceSheet(model: model, race: riskyModel).environment(\.locale, lang.locale), name: "brace-add-risky-\(s)", height: 1300, wait: 1200)
             try await save(AddBRaceSheet(model: model, race: raceModel).environment(\.locale, lang.locale), name: "brace-open-good-\(s)", height: 900, wait: 300)
             try await save(RaceDebriefSheet(model: model, race: raceModel).environment(\.locale, lang.locale), name: "brace-debrief-\(s)", height: 874)
+            // The card lives in Manage now; the Plan screen only carries the due-debrief prompt.
+            try await save(PlanView(model: model, generation: GenerationCenter(service: FakeGenerationService(), defaults: UserDefaults(suiteName: UUID().uuidString)!), onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list)
+                .environment(\.locale, lang.locale), name: "brace-plan-debrief-prompt-\(s)", height: 1100, wait: 800)
+            try await save(ManagePlanSheet(model: model, onStartNew: {}, onRaces: {}, initialPlans: [])
+                .environment(\.locale, lang.locale), name: "brace-manage-races-row-\(s)", height: 700)
+            try await save(RacesSheet(model: model).environment(\.locale, lang.locale), name: "brace-races-sheet-\(s)", height: 600)
         }
     }
 }
