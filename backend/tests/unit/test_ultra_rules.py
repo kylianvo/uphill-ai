@@ -16,18 +16,18 @@ def test_applies_needs_a_mountain_day():
 
 
 def test_100k_ladder_20_weeks():
-    lad = u.ladder("100k", False, 20)  # peak_week = 20 - 3 - 1 = 16; deloads 4, 8, 12
+    lad = u.ladder("100k", False, 20)  # peak_week = 20 - 3 - 1 = 16; deloads 4, 8, 12 and 15 (before the peak)
     assert [lad[w] for w in (1, 2, 3, 5)] == [180, 180, 240, 240]
-    assert lad[4] == 180 and lad[8] == lad[12] == 240  # a rung below the last build week, 4 h at most
-    assert lad[15] == 360 and lad[16] == 420
+    assert lad[4] == 180 and lad[8] == lad[12] == lad[15] == 240  # a rung below the last build week, 4 h at most
+    assert lad[14] == 360 and lad[16] == 420
     assert set(lad) == set(range(1, 17))
 
 
 def test_100mi_advanced_peaks_at_8h_and_50k_at_5h():
     assert u.ladder("100mi", True, 20)[16] == 480
     assert u.ladder("100mi", False, 20)[16] == 420
-    lad = u.ladder("50k", False, 16)  # peak 12
-    assert lad[12] == 300 and lad[11] == 270 and lad[1] == 180 and lad[4] == 180
+    lad = u.ladder("50k", False, 16)  # peak 12, recovery week 11
+    assert lad[12] == 300 and lad[10] == 270 and lad[11] == 180 and lad[1] == 180 and lad[4] == 180
 
 
 def test_short_plan_enters_late_and_never_jumps_more_than_an_hour():
@@ -40,7 +40,8 @@ def test_short_plan_enters_late_and_never_jumps_more_than_an_hour():
 def test_deload_matches_plan_generator():
     for total in range(6, 30):
         for w in range(1, total + 1):
-            assert u.is_deload(w, total) == PlanGenerator.is_deload_week(w, total)
+            for km in (None, 56.4, 104.2):
+                assert u.is_deload(w, total, km) == PlanGenerator.is_deload_week(w, total, km)
 
 
 def test_numbers():
@@ -56,7 +57,7 @@ def test_numbers():
 
 
 def test_quality_window_is_8_weeks_to_peak_without_deloads():
-    assert u.quality_weeks(20) == frozenset({9, 10, 11, 13, 14, 15, 16})  # peak 16, deload 12
+    assert u.quality_weeks(20) == frozenset({9, 10, 11, 13, 14, 16})  # peak 16, deloads 12 and 15
     assert u.quality_weeks(8) == frozenset({1, 2, 3, 5})  # short plan: the whole build, deload 4
 
 
@@ -112,3 +113,19 @@ def test_a_100k_short_plan_tapers_two_weeks_and_keeps_the_7h_rung():
 def test_a_short_ladder_drops_its_earliest_rungs_not_the_filler():
     # 9 training weeks: the 4 h step stays, so 3 h -> 5 h never needs the step cap to fill a 1.5 h gap
     assert u.ladder("50k", False, 10, 56.4) == {1: 180, 2: 180, 3: 180, 4: 180, 5: 240, 6: 270, 7: 300}
+
+
+def test_a_peak_on_a_fourth_week_gets_its_recovery_week_just_before_it():
+    # 12-week 100 km plan, peak week 8: weeks 5-8 would load four weeks in a row into the peak
+    assert [w for w in range(1, 13) if u.is_deload(w, 12, 104.2)] == [4, 7]
+    assert u.ladder("100k", False, 12, 104.2) == {1: 180, 2: 240, 3: 240, 4: 180, 5: 300, 6: 360, 7: 240, 8: 420}
+    # 10-week 50 km plan, peak week 8: 4 h, 4 h 30, recovery, then the 5 h peak
+    assert u.ladder("50k", False, 11, 56.4) == {1: 180, 2: 180, 3: 180, 4: 180, 5: 240, 6: 270, 7: 180, 8: 300}
+
+
+def test_no_plan_loads_more_than_three_weeks_in_a_row_before_its_peak():
+    for total in range(9, 31):
+        for km in (21.1, 56.4, 104.2):
+            peak = u.peak_week(total, km)
+            last = max([w for w in range(1, peak) if u.is_deload(w, total, km)], default=0)
+            assert peak - last <= 3 or last == 0, (total, km, peak, last)

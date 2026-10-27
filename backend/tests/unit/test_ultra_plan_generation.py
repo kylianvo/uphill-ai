@@ -489,11 +489,11 @@ def test_back_to_back_weekend_replaces_the_6_and_7_hour_days(rule_based_plan):
     )
     b2b = {w["week_number"]: w for w in wos if plan_lint.is_b2b_day(w)}
     longs = _longs(wos)
-    assert set(b2b) == {15, 16}
-    assert (longs[15], b2b[15]["duration_minutes"]) == (240, 150)
+    assert set(b2b) == {14, 16}  # the 6 h and 7 h rungs; week 15 is the recovery week before the peak
+    assert (longs[14], b2b[14]["duration_minutes"]) == (240, 150)
     assert (longs[16], b2b[16]["duration_minutes"]) == (300, 165)
     assert all(w["day_of_week"] == "Sunday" and w["target_zone"] == "Zone 2" for w in b2b.values())
-    assert not any(w["type"] == "Muscular Endurance" for w in wos if w["week_number"] in (15, 16))
+    assert not any(w["type"] == "Muscular Endurance" for w in wos if w["week_number"] in (14, 16))
 
 
 def test_single_long_day_stays_the_default(rule_based_plan):
