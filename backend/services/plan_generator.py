@@ -1805,7 +1805,16 @@ class PlanGenerator:
             for key in ("distance_km", "elevation_gain_m"):
                 if wo.get(key):
                     wo[key] = round(float(wo[key]) * ratio, 1)
-            _set_steps(wo, _long_text(minutes, bool(wo.get("elevation_gain_m"))), why)
+            climbing = bool(wo.get("elevation_gain_m"))
+            if wo.get("type") == "Long Run":
+                steps = _long_text(minutes, climbing)
+            else:  # an easy run keeps its zone and its strides, which the kept notes still describe
+                steps = _easy_text(minutes, wo.get("target_zone"), 0, climbing)
+                old_body = _split_notes(wo.get("description") or "")[0]
+                for step in old_body.rstrip(". ").split(" → "):
+                    if re.search(r"stride|sprint", step, re.I):
+                        steps = _insert_before_cooldown(steps, step.strip())
+            _set_steps(wo, steps, why)
 
         def _gate_hard(wos: list[dict[str, Any]]) -> None:
             """Book: with a measured AeT-AnT gap above 10% (or, while the thresholds are only estimates, in the Base

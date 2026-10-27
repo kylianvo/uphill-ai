@@ -40,7 +40,7 @@ def ai_plan(monkeypatch):
     monkeypatch.setattr(settings, "PLAN_LLM_PROVIDER", "gemini")
     monkeypatch.setattr(plan_generator, "get_plan_workouts", lambda plan_id: [])
 
-    def build(weeks, lang="en"):
+    def build(weeks, lang="en", edit=None):
         race_info = {
             "name": "VHT 100K",
             "date": (START + timedelta(weeks=weeks - 2, days=5)).isoformat(),
@@ -69,6 +69,8 @@ def ai_plan(monkeypatch):
             else w
             for w in rules
         ]
+        if edit:
+            draft = edit(draft)
         resp = MagicMock(text=json.dumps(draft), candidates=[])
         client = MagicMock()
         client.models.generate_content.return_value = resp
@@ -107,6 +109,23 @@ def test_every_session_reaches_the_app_with_all_four_notes(ai_plan):
         notes = parse_notes(w["description"])
         need = ("Overall", "Warning") if w["type"] == "Race" else plan_generator.NOTE_KEYS
         assert all(notes.get(k) for k in need), (w["week_number"], w["title"])
+
+
+def test_a_lengthened_easy_run_keeps_its_zone_and_strides(ai_plan):
+    # prod plan 138: a 40 min Zone 1 run with strides was raised to the weekday minimum and came back as
+    # "steady Zone 2" with no strides, under notes that still described the strides
+    def short_strides_run(draft):
+        wo = next(w for w in draft if w["week_number"] == 1 and w["day_of_week"] == "Wednesday")
+        wo.update(type="Easy", target_zone="Zone 1", duration_minutes=40, title="Easy Zone 1 Run with Strides",
+                  description="Warm-up 10 min easy → 20 min very easy Zone 1 → 6 x 20s relaxed strides, 60s jog "
+                  "→ Cool-down 5 min easy." + AI_NOTES)  # fmt: skip
+        return draft
+
+    wo = next(w for w in ai_plan(13, edit=short_strides_run) if w["title"] == "Easy Zone 1 Run with Strides")
+    steps = wo["description"].split(" Overall:")[0]
+    assert wo["duration_minutes"] > 40 and "Zone 1" in steps and "Zone 2" not in steps
+    assert "6 x 20s relaxed strides" in steps and "fueling" not in steps
+    assert "AI-BENEFIT" in wo["description"]
 
 
 def test_a_note_sentence_with_an_invented_number_is_dropped():
