@@ -60,6 +60,7 @@ export interface ActivePlan {
   milestone_target?: "5k" | "10k" | null;
   has_target_event?: boolean;
   beginner_milestones?: import("../lib/beginnerMilestones").PlanMilestones | null;
+  b_races?: import("../lib/bRace").BRace[] | null;
   race_name: string;
   race_date: string;
   start_date?: string;

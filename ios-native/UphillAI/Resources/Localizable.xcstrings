@@ -1,6 +1,586 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Your plan is still updating. Try again in a minute.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan đang cập nhật. Thử lại sau một phút nhé."
+          }
+        }
+      }
+    },
+    "Good test": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài test tốt"
+          }
+        }
+      }
+    },
+    "OK with conditions": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Được, có điều kiện"
+          }
+        }
+      }
+    },
+    "Risky": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rủi ro"
+          }
+        }
+      }
+    },
+    "Not recommended": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không nên"
+          }
+        }
+      }
+    },
+    "%@ · as a training run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · chạy như buổi tập"
+          }
+        }
+      }
+    },
+    "Longer than your longest recent run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dài hơn buổi chạy dài nhất gần đây"
+          }
+        }
+      }
+    },
+    "Close to your goal race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gần race mục tiêu"
+          }
+        }
+      }
+    },
+    "Recovery runs into your goal-race taper": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồi phục lấn vào Taper của race mục tiêu"
+          }
+        }
+      }
+    },
+    "Lands on your peak block": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rơi vào giai đoạn peak"
+          }
+        }
+      }
+    },
+    "Another race is too close": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có race khác quá gần"
+          }
+        }
+      }
+    },
+    "Big for this early in the plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khá lớn so với đầu plan"
+          }
+        }
+      }
+    },
+    "Add race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm race"
+          }
+        }
+      }
+    },
+    "Add as a training run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm như buổi tập"
+          }
+        }
+      }
+    },
+    "Keep %@ km anyway": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vẫn giữ %@ km"
+          }
+        }
+      }
+    },
+    "Add it as %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm với %@"
+          }
+        }
+      }
+    },
+    "Next races": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các race sắp tới"
+          }
+        }
+      }
+    },
+    "+ Add race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ Thêm race"
+          }
+        }
+      }
+    },
+    "How did %@ go?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ thế nào?"
+          }
+        }
+      }
+    },
+    "A-race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A-race"
+          }
+        }
+      }
+    },
+    "B-race · %@ km · training run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "B-race · %@ km · buổi tập"
+          }
+        }
+      }
+    },
+    "B-race · %@ km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "B-race · %@ km"
+          }
+        }
+      }
+    },
+    "Couldn't save this race. Try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa lưu được race này. Thử lại nhé."
+          }
+        }
+      }
+    },
+    "Couldn't cancel this race. Try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa huỷ được race này. Thử lại nhé."
+          }
+        }
+      }
+    },
+    "Date": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày"
+          }
+        }
+      }
+    },
+    "Climbing (m)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Độ cao (m)"
+          }
+        }
+      }
+    },
+    "How will you run it?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn sẽ chạy thế nào?"
+          }
+        }
+      }
+    },
+    "Race it": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy hết sức"
+          }
+        }
+      }
+    },
+    "As a training run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Như buổi tập"
+          }
+        }
+      }
+    },
+    "Coach Uphill is checking…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill đang xem…"
+          }
+        }
+      }
+    },
+    "Cancel this race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Huỷ race này"
+          }
+        }
+      }
+    },
+    "Cancel this race? Your plan goes back to normal.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Huỷ race này? Plan sẽ trở lại như cũ."
+          }
+        }
+      }
+    },
+    "Cancel race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Huỷ race"
+          }
+        }
+      }
+    },
+    "Add a race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm race"
+          }
+        }
+      }
+    },
+    "Your B-race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "B-race của bạn"
+          }
+        }
+      }
+    },
+    "We couldn't find this race in our list: add its distance.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy race này trong danh sách: hãy nhập cự ly."
+          }
+        }
+      }
+    },
+    "Pick a date after today and before your goal race.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn ngày sau hôm nay và trước race mục tiêu."
+          }
+        }
+      }
+    },
+    "A plan holds up to 3 B-races.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mỗi plan có tối đa 3 B-race."
+          }
+        }
+      }
+    },
+    "%lld easy days before, %lld easy days after.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld ngày nhẹ trước, %2$lld ngày nhẹ sau."
+          }
+        }
+      }
+    },
+    "Predicted: %@–%@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dự đoán: %1$@–%2$@"
+          }
+        }
+      }
+    },
+    "What it would change": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Những gì sẽ thay đổi"
+          }
+        }
+      }
+    },
+    "Fuel": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fueling"
+          }
+        }
+      }
+    },
+    "Went to plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đúng kế hoạch"
+          }
+        }
+      }
+    },
+    "Stomach trouble": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khó chịu bụng"
+          }
+        }
+      }
+    },
+    "Skipped some": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ lỡ vài lần"
+          }
+        }
+      }
+    },
+    "Too fast early": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đầu quá nhanh"
+          }
+        }
+      }
+    },
+    "Held back": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dè dặt"
+          }
+        }
+      }
+    },
+    "All good": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ổn cả"
+          }
+        }
+      }
+    },
+    "Something to change": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần đổi món"
+          }
+        }
+      }
+    },
+    "Your goal-race estimate moved to %@. Review it in Goal.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ước tính race mục tiêu đã đổi thành %@. Xem lại ở mục Goal."
+          }
+        }
+      }
+    },
+    "Finish time (h:mm:ss)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian về đích (h:mm:ss)"
+          }
+        }
+      }
+    },
+    "How did the rehearsal go?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi tập dượt thế nào?"
+          }
+        }
+      }
+    },
+    "Enter a time like 3:11:00.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập thời gian dạng 3:11:00."
+          }
+        }
+      }
+    },
+    "Get my debrief": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem nhận xét"
+          }
+        }
+      }
+    },
+    "%@ · Debrief": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · Nhìn lại"
+          }
+        }
+      }
+    },
+    "Other races before your goal (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các race khác trước race mục tiêu (không bắt buộc)"
+          }
+        }
+      }
+    },
+    "Coach Uphill checks each one and plans the taper and recovery around it.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill xem từng race và sắp xếp Taper, hồi phục quanh nó."
+          }
+        }
+      }
+    },
+    "+ Add a tune-up race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ Thêm race tập dượt"
+          }
+        }
+      }
+    },
     "First 5K": {
       "localizations": {
         "vi": {
@@ -1427,6 +2007,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ghi chú buổi tập (chân, địa hình, thời tiết)…"
+          }
+        }
+      }
+    },
+    "Add the name, distance and a date before your goal race, or remove it.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm tên, cự ly và ngày trước race mục tiêu, hoặc xoá race này."
           }
         }
       }

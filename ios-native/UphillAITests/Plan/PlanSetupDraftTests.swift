@@ -107,6 +107,21 @@ struct PlanSetupDraftTests {
         #expect(d.issues(for: .details, today: today, calendar: cal).first?.message == "Add the race name.")
     }
 
+    @Test func startedTuneUpRaceNeedsNameDistanceAndEarlierDate() {
+        var d = raceDraft()
+        let ok = SetupBRace(name: "Ta Xua", date: day("2026-11-08"), distanceKm: 25)
+        d.bRaces = [SetupBRace(name: " ", date: day("2026-11-08"), distanceKm: nil), ok]  // a blank row is ignored
+        #expect(d.issues(for: .raceDate, today: today, calendar: cal).isEmpty)
+        for bad in [SetupBRace(name: "Ta Xua", date: day("2026-11-08"), distanceKm: nil),
+                    SetupBRace(name: "", date: day("2026-11-08"), distanceKm: 25),
+                    SetupBRace(name: "Ta Xua", date: day("2026-12-19"), distanceKm: 25)] {
+            d.bRaces = [ok, bad]
+            let issues = d.issues(for: .raceDate, today: today, calendar: cal)
+            #expect(issues.map(\.field) == [.bRaces])
+            #expect(issues.first?.message == "Add the name, distance and a date before your goal race, or remove it.")
+        }
+    }
+
     @Test func distanceGoalNeedsNoName() {
         var d = raceDraft()
         d.goal = .distance

@@ -35,6 +35,11 @@ import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { GoalPill } from "../components/GoalPill";
 import PlanSummaryCarousel from "../components/PlanSummaryCarousel";
 import MilestonePath from "../components/MilestonePath";
+import NextRaces from "../components/NextRaces";
+import BRaceSetupFields from "../components/BRaceSetupFields";
+import AddRaceModal from "../components/AddRaceModal";
+import RaceDebriefModal from "../components/RaceDebriefModal";
+import type { BRace } from "../lib/bRace";
 import BeginnerGoalFields from "../components/BeginnerGoalFields";
 import { daysToRace } from "../utils/planSummary";
 import { weekVolume } from "../utils/planSummary";
@@ -60,7 +65,7 @@ const WEEKS_PER_BLOCK = 1;
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { markMilestone, undoMilestone, upgradeMilestoneTarget, handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
+  const { assessRace, saveRace, cancelRace, submitRaceResult, submitRaceDebrief, markMilestone, undoMilestone, upgradeMilestoneTarget, handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
   const [addWorkoutTarget, setAddWorkoutTarget] = useState<{ week: number; day: string } | null>(null);
   const { lang, activePlan, planLoading, planErrorMsg, setPlanErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName, handleTabSwitch, activePlanLoading } = ctx;
@@ -319,6 +324,40 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   }, [isCoachActingAsAthlete, API_BASE_URL]);
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
   // The beginner's path to First 5K / 10K: the carousel's goal slot (v2 shell) and under the plan header (v1).
+  // B-races (lib/bRace.ts): the next-races card on race plans, plus its add/edit and debrief sheets.
+  const [raceSheet, setRaceSheet] = useState<{ mode: "add" } | { mode: "edit" | "debrief"; race: BRace } | null>(null);
+  const isRacePlan = ["finish", "time", "optimal"].includes(activePlan?.goal_type || "");
+  const [todayIso] = useState(() => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10));
+  const nextRaces = activePlan && isRacePlan && !actingAsAthleteId ? (
+    <NextRaces
+      plan={activePlan}
+      lang={lang}
+      today={todayIso}
+      onAdd={() => setRaceSheet({ mode: "add" })}
+      onOpen={(race) => setRaceSheet({ mode: "edit", race })}
+      onDebrief={(race) => setRaceSheet({ mode: "debrief", race })}
+    />
+  ) : null;
+  const raceSheetEl = raceSheet ? (
+    raceSheet.mode === "debrief" ? (
+      <RaceDebriefModal
+        race={raceSheet.race}
+        lang={lang}
+        submitResult={(sec) => submitRaceResult(raceSheet.race.id, sec)}
+        submitDebrief={(answers) => submitRaceDebrief(raceSheet.race.id, answers as Record<string, string>)}
+        onClose={() => setRaceSheet(null)}
+      />
+    ) : (
+      <AddRaceModal
+        lang={lang}
+        race={raceSheet.mode === "edit" ? raceSheet.race : undefined}
+        assess={(input) => assessRace(raceSheet.mode === "edit" ? { ...input, race_id: raceSheet.race.id } : input)}
+        save={(input) => saveRace(input, raceSheet.mode === "edit" ? raceSheet.race.id : undefined)}
+        onCancelRace={raceSheet.mode === "edit" ? () => { cancelRace(raceSheet.race.id); setRaceSheet(null); } : undefined}
+        onClose={() => setRaceSheet(null)}
+      />
+    )
+  ) : null;
   const milestonePath = activePlan?.beginner_milestones ? (
     <MilestonePath
       milestones={activePlan.beginner_milestones}
@@ -1153,6 +1192,10 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 </div>
               </div>
 
+              {["race", "distance"].includes(planForm.plan_goal_category) && (
+                <BRaceSetupFields lang={lang} goalDate={planForm.race_date} value={planForm.b_races ?? []} onChange={(b_races) => setPlanForm({ ...planForm, b_races })} />
+              )}
+
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "12px" : "16px", marginBottom: "16px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>{t("plan_terrain")}</label>
@@ -1552,6 +1595,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     Manage
                   </button>
                 </div>
+                {nextRaces && <div style={{ marginBottom: "12px" }}>{nextRaces}</div>}
+                {raceSheetEl}
                 <PlanSummaryCarousel
                   activePlan={activePlan}
                   workouts={workouts}
@@ -1721,6 +1766,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   )}
                 </div>
                 {milestonePath && <div style={{ marginTop: "12px", maxWidth: "520px" }}>{milestonePath}</div>}
+                {nextRaces && <div style={{ marginTop: "12px", maxWidth: "520px" }}>{nextRaces}</div>}
+                {raceSheetEl}
               </div>
 
               <div style={{ display: "flex", background: "rgba(0,0,0,0.05)", border: "1px solid var(--border-color)", borderRadius: "999px", padding: "3px", gap: "2px", alignSelf: "flex-start" }}>

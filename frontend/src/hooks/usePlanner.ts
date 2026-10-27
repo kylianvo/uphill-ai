@@ -4,6 +4,8 @@ import { useAppContext } from "../contexts/AppContext";
 import { ActivePlan, Workout } from "../types";
 import { resolveCurrentWeek, computeWorkoutDate } from "../utils/planDate";
 import { describeGuard, describeWarning, localToday, tr } from "../lib/scheduleProposals";
+import type { BRaceAssessment, BRaceInput } from "../lib/bRace";
+import { completeRaces, racesBlocked } from "../components/BRaceSetupFields";
 
 export type CalendarNotice = { kind: "error" | "warning"; text: string };
 
@@ -317,6 +319,10 @@ export function usePlanner() {
       setPlanErrorMsg("Please enter your current weekly mileage.");
       return;
     }
+    if (isRaceOrDistVal && racesBlocked(planForm.b_races, planForm.race_date)) {
+      setPlanErrorMsg(lang === "vi" ? "Một race tập dượt chưa đủ thông tin. Sửa hoặc xoá nó." : "A tune-up race is missing details. Fix or remove it.");
+      return;
+    }
     setPlanLoading(true);
     setPlanErrorMsg("");
 
@@ -365,6 +371,7 @@ export function usePlanner() {
         lang: lang,
         coach_notes: actingAsAthleteId ? (planForm.coach_notes || null) : null,
         athlete_notes: planForm.athlete_notes || null,
+        ...(isRaceOrDist && completeRaces(planForm.b_races).length ? { b_races: completeRaces(planForm.b_races) } : {}),
       };
 
       // Combine H/M/S into decimal hours
@@ -589,6 +596,58 @@ export function usePlanner() {
       // the card keeps showing the last known state
     }
   };
+  // ─── B-races (backend services/b_race.py) ──────────────────────────────
+  const raceCall = async (method: "GET" | "POST" | "PATCH" | "DELETE", path: string, body?: object) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!activePlan?.id || !token) return { ok: false, token: null, data: { detail: "failed" } };
+    const res = await fetch(`${API_BASE_URL}/api/plans/${activePlan.id}/races${path}`, {
+      method,
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return { ok: res.ok, token, data: await res.json().catch(() => ({})) };
+  };
+  /** Waits for the weeks the race re-planned, then reloads the plan so the calendar shows them. */
+  const afterRaceChange = async (token: string | null, jobIds: string[] = []) => {
+    if (!token) return;
+    for (const jobId of jobIds) {
+      for (let i = 0; i < 90; i++) {
+        const res = await fetch(`${API_BASE_URL}/api/coach/plan-status/${jobId}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
+        const data = res?.ok ? await res.json() : null;
+        if (!data || data.status !== "generating") break;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
+    await fetchActivePlanWithToken(token);
+  };
+  const assessRace = async (input: BRaceInput): Promise<BRaceAssessment | { error: string }> => {
+    const r = await raceCall("POST", "/assess", input).catch(() => null);
+    if (!r) return { error: "failed" };
+    return r.ok ? r.data : { error: typeof r.data?.detail === "string" ? r.data.detail : "failed" };
+  };
+  const saveRace = async (input: BRaceInput, raceId?: number): Promise<boolean> => {
+    const r = await (raceId ? raceCall("PATCH", `/${raceId}`, input) : raceCall("POST", "", input)).catch(() => null);
+    if (!r?.ok) return false;
+    await afterRaceChange(r.token, r.data.rebuild_job_ids);
+    return true;
+  };
+  const cancelRace = async (raceId: number): Promise<boolean> => {
+    const r = await raceCall("DELETE", `/${raceId}`).catch(() => null);
+    if (!r?.ok) return false;
+    await afterRaceChange(r.token, r.data.rebuild_job_ids);
+    return true;
+  };
+  const submitRaceResult = async (raceId: number, seconds: number): Promise<boolean> => {
+    const r = await raceCall("POST", `/${raceId}/result`, { finish_time_sec: seconds }).catch(() => null);
+    return !!r?.ok;
+  };
+  const submitRaceDebrief = async (raceId: number, answers: Record<string, string>) => {
+    const r = await raceCall("POST", `/${raceId}/debrief`, answers).catch(() => null);
+    if (!r?.ok) return null;
+    await afterRaceChange(r.token);
+    return r.data as { debrief: { text?: string }; goal: { suggested_target_hours: number | null } };
+  };
+
   const markMilestone = (key: string) => callMilestone("POST", `milestones/${key}`);
   const undoMilestone = (key: string) => callMilestone("DELETE", `milestones/${key}`);
   const upgradeMilestoneTarget = (clearEvent = false) => callMilestone("PATCH", "milestone-target", { target: "10k", clear_event: clearEvent });
@@ -657,5 +716,5 @@ export function usePlanner() {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  return { markMilestone, undoMilestone, upgradeMilestoneTarget, handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing, fetchActivePlanWithToken };
+  return { assessRace, saveRace, cancelRace, submitRaceResult, submitRaceDebrief, markMilestone, undoMilestone, upgradeMilestoneTarget, handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing, fetchActivePlanWithToken };
 }

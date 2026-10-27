@@ -12,6 +12,7 @@ from config import settings
 from db import block_number_for_week, get_plan_by_id, get_plan_workouts, week_range_for_block
 from log_utils import get_logger
 from services import (
+    b_race,
     beginner_milestones,
     claude_llm,
     goal_demands,
@@ -157,7 +158,7 @@ def _claude_text(message: Any) -> str | None:
 def rows_after_race(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """The sessions planned after the goal race in its week: the day after a race is rest, never a recovery run.
     Only the last race counts, so a mid-plan tune-up race keeps the rest of its week."""
-    races = [w for w in workouts if w.get("type") == "Race"]
+    races = [w for w in workouts if w.get("type") == "Race" and not w.get("plan_race_id")]  # B-races keep their week
     if not races:
         return []
     goal = max(races, key=lambda w: (w.get("week_number") or 0, _PRIORITY_DAY_ORDER.get(w.get("day_of_week"), 7)))
@@ -1194,7 +1195,13 @@ class PlanGenerator:
                 else frozenset()
             ),
         )
-        issues = plan_lint.lint_weeks(combined, weeks, profile, prefs)
+        b_view = None
+        if b_rows := b_race.safe_races_for_plan(plan_id):
+            from services.calendar_rules import start_monday
+
+            if monday := start_monday((get_plan_by_id(plan_id) or {}).get("start_date")):
+                b_view = b_race.lint_view(b_rows, monday)
+        issues = plan_lint.lint_weeks(combined, weeks, profile, prefs, races=b_view)
         first = min(weeks) if weeks else 1
         if cutoff := race_readiness.target_vs_cutoff_issue(
             race_info.get("target_time_hours"), cutoff_time_hours, first
@@ -1317,6 +1324,14 @@ class PlanGenerator:
 
         # 1. Base Variables Extract
         lang = (race_info.get("lang") or user_profile.get("lang") or "en").lower()
+        # B-races (services/b_race.py): the prompt is told the fixed days and the guard pins them after generation.
+        b_races = b_race.safe_races_for_plan(plan_id)
+        b_monday = None
+        if b_races:
+            from services.calendar_rules import start_monday
+
+            b_monday = start_monday((get_plan_by_id(plan_id) or {}).get("start_date"))
+            b_races = b_races if b_monday else []
         all_notes = (
             str(race_info.get("athlete_notes") or "")
             + str(race_info.get("coach_notes") or "")
@@ -2325,7 +2340,8 @@ class PlanGenerator:
                 except ValueError:
                     incline = 0.0
                 if typ == "Race":
-                    wo["description"] = _race_text(minutes, float(wo.get("distance_km") or course_distance_km or 0))
+                    if not wo.get("plan_race_id"):  # a B-race keeps the guard's rehearsal text (services/b_race.py)
+                        wo["description"] = _race_text(minutes, float(wo.get("distance_km") or course_distance_km or 0))
                     continue
                 if (
                     any(kw in title_l for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
@@ -3007,6 +3023,8 @@ class PlanGenerator:
                     wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
                         "Zone 1", minutes, est_zones
                     )
+            if b_races:
+                wos = b_race.enforce(wos, b_races, b_monday, lang)
             _normalise_sessions(wos)
             _fit_taper_long_share(wos)
             for wo in rows_after_race(wos):
@@ -3388,6 +3406,8 @@ class PlanGenerator:
                     f"  • OPTIMAL / FRESH (ACWR 0.8-1.3): Athlete is adapting well; proceed with planned progressive overload.\n"
                 )
 
+            if b_races:
+                feedback_instruction += "\n" + b_race.prompt_block(b_races, b_monday)
             if block_context:
                 feedback_instruction += (
                     f"\nATHLETE FEEDBACK FROM PREVIOUS BLOCKS & COACH EVALUATION:\n{block_context}\n"

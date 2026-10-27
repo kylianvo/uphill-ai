@@ -254,7 +254,7 @@ async def test_run_turn_constructs_model_with_tools_bound(auth_headers):
     tools = kwargs.get("tools")
     assert tools
     tool_names = {t.name for t in tools}
-    assert tool_names == {"get_week", "pace_strategy", "week_review", "kb_search"}
+    assert tool_names == {"get_week", "pace_strategy", "week_review", "kb_search", "assess_b_race"}
 
 
 @pytest.mark.asyncio

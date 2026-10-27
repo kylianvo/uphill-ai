@@ -52,6 +52,16 @@ class PaceStrategyInput(BaseModel):
     )
 
 
+class AssessBRaceInput(BaseModel):
+    race_name: str = Field(description="The tune-up race the athlete mentions (it is matched against the race list).")
+    race_date: str = Field(description="Race date, YYYY-MM-DD.")
+    distance_km: float | None = Field(default=None, description="Distance in km, if the athlete says which one.")
+    elevation_gain_m: float | None = Field(default=None, description="Course climbing in m, if known.")
+    effort: Literal["race", "training"] = Field(
+        default="race", description="'training' when the athlete plans to run it as a training run, not all-out."
+    )
+
+
 class WeekReviewInput(BaseModel):
     weeks_ago: int = Field(
         default=0,
@@ -150,7 +160,31 @@ def build_tools(user_id: int, *, kb_api_key: str, proposals: ProposalContext | N
     def _kb_search(query: str, domain: Literal["all", "scheduler", "nutrition", "race_courses"] = "all") -> dict:
         return knowledge_tools.kb_search_impl(user_id=user_id, query=query, domain=domain, api_key=kb_api_key).__dict__
 
+    def _assess_b_race(
+        race_name: str,
+        race_date: str,
+        distance_km: float | None = None,
+        elevation_gain_m: float | None = None,
+        effort: str = "race",
+    ) -> dict:
+        return plan_tools.assess_b_race_impl(
+            user_id=user_id,
+            race_name=race_name,
+            race_date=race_date,
+            distance_km=distance_km,
+            elevation_gain_m=elevation_gain_m,
+            effort=effort,
+        ).__dict__
+
     tools = [
+        StructuredTool.from_function(
+            func=_assess_b_race,
+            name="assess_b_race",
+            description="Judge a tune-up race (B-race) the athlete is thinking of entering before their goal race: "
+            "good test, OK with conditions, risky or not recommended, with the coach's safer option, taper and "
+            "recovery days. Read-only; the athlete adds it on the Plan screen.",
+            args_schema=AssessBRaceInput,
+        ),
         StructuredTool.from_function(
             func=_get_week,
             name="get_week",
