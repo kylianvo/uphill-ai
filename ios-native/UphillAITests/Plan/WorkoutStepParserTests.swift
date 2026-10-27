@@ -158,7 +158,8 @@ struct WorkoutStepParserTests {
     func productionNotesLandInTheirOwnSections(newlines: Bool) {
         let parsed = WorkoutStepParser.parseDescription(productionWorkout(newlines: newlines).description)
         #expect(parsed.intent == "Short, non-fatiguing morning aerobic run…")
-        #expect(parsed.benefit == "Acts as an aerobic primer…\nEnhances capillary circulation…")
+        #expect(parsed.reason == "Acts as an aerobic primer…")  // its own section: the sheet's "Why today"
+        #expect(parsed.benefit == "Enhances capillary circulation…")
         #expect(parsed.warning == "Strictly keep heart rate below 140 bpm; do not push pace on flat stretches.")
         #expect(parsed.coachNotes == nil)
         #expect(parsed.process == "Warm up 5 min easy jogging\n25 min steady continuous running @ Zone 1-2\nTarget pace: 6:24 - 5:42 /km\nCool-down 5-10 min")

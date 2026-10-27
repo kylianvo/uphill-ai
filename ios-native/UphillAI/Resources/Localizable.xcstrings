@@ -1,6 +1,56 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "For your race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cho race của bạn"
+          }
+        }
+      }
+    },
+    "Opens About this session": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Về buổi tập này"
+          }
+        }
+      }
+    },
+    "Watch for": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu ý"
+          }
+        }
+      }
+    },
+    "What it builds": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi này giúp gì"
+          }
+        }
+      }
+    },
+    "Why today": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vì sao hôm nay"
+          }
+        }
+      }
+    },
     "Your plan is still updating. Try again in a minute.": {
       "localizations": {
         "vi": {
@@ -16497,26 +16547,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Về buổi tập này"
-          }
-        }
-      }
-    },
-    "Benefit": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lợi ích"
-          }
-        }
-      }
-    },
-    "Caution": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lưu ý"
           }
         }
       }

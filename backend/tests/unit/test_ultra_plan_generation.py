@@ -315,6 +315,21 @@ def test_short_plan_opens_with_me_weeks_then_zone3(rule_based_plan):
     assert not any(w["type"] == "Muscular Endurance" for w in wos if w["week_number"] in z3_weeks)  # Z3 replaces ME
 
 
+def test_code_made_me_is_the_gym_progression_with_descents_as_a_step(rule_based_plan):
+    """Plan 131: the ME day the ME-week rule adds read 3 x 12 rounds, and the descent work landed in About."""
+    wos = rule_based_plan(km=104.2, weeks=13, mountain_days=["Saturday"], tier="recreational", weekly_km=50,
+                          aet_hr=159, ant_hr=174, threshold_source="field")  # fmt: skip
+    me = sorted((w for w in wos if w["type"] == "Muscular Endurance"), key=lambda w: w["week_number"])
+    assert me and not any("Step-ups 3 x 12" in w["description"] for w in me)
+    for w in me:
+        steps = w["description"].split(" Overall:")[0]
+        assert "3 x 10 slow step-downs per leg" in steps  # a step, not a note the app shows under About
+        assert steps.rstrip(".").split(" → ")[-1].startswith("Cool-down")
+    made = [w for w in me if w["title"] == "Muscular Endurance (ME)"]
+    assert made and all(k in w["description"] for w in made for k in ("Reason:", "Benefit:", "Warning:"))
+    assert "Split Jump Squats 4x10" in made[0]["description"]  # soft start
+
+
 def test_me_first_weeks_rules():
     assert ultra_rules.me_first_weeks(8, legs_loaded=False) == {1, 2}  # never more than half the Zone 3 window
     assert ultra_rules.me_first_weeks(16, legs_loaded=False) == frozenset()  # long plans: ME block in Base

@@ -103,7 +103,9 @@ def test_gym_session_gets_warmup_and_cooldown_steps_around_its_exercises():
     steps = body.removeprefix("Process: ").rstrip(".").split(" → ")
     assert steps[0].startswith("Warm-up") and steps[-1].startswith("Cool-down")
     assert steps[1:3] == ["Step-ups 4x10/leg, 30s rest", "Walking Lunges 4x10/leg, 30s rest"]
-    assert note.strip() == "climbing legs."
+    overall, rest = note.split(" Reason:")
+    assert overall.strip() == "climbing legs."  # the AI's note stays; the missing sections come from the defaults
+    assert " Benefit:" in rest and " Warning:" in rest
 
 
 def test_run_plus_strength_keeps_its_exercises():

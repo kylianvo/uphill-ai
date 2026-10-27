@@ -90,12 +90,12 @@ enum WorkoutStepParser {
     private static let labels: [(String, Section)] = [
         ("coach uphill note", .coach), ("coach note", .coach), ("coach", .coach),
         ("what it builds", .builds), ("benefit", .builds), ("builds", .builds),
-        ("reason", .builds), ("why", .builds),
+        ("reason", .reason), ("why", .reason),
         ("common mistake", .warning), ("warning", .warning), ("mistake", .warning),
         ("how to execute", .process), ("process", .process), ("execution", .process), ("steps", .process),
         ("overall", .intent), ("overview", .intent),
         // Vietnamese plans: the server's copy lexicon rewrites the English labels to these.
-        ("tổng quan", .intent), ("lý do", .builds), ("lợi ích", .builds), ("lưu ý", .warning), ("cách làm", .process),
+        ("tổng quan", .intent), ("lý do", .reason), ("lợi ích", .builds), ("lưu ý", .warning), ("cách làm", .process),
     ]
 
     /// Descriptions arrive with sections separated by newlines or by " / ".

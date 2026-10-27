@@ -182,6 +182,21 @@ def run(s: Scenario) -> Result:
         mountain_day=mountain,
     )
     result = Result(s, tier, feas.verdict, sorted(codes), feas.levers)
+    bare = [  # the app's "About this session": every session explains itself
+        w
+        for w in workouts
+        if w.get("type") != "Rest"
+        and float(w.get("duration_minutes") or 0) > 0
+        and not all(
+            f" {k}:" in (w.get("description") or "")
+            for k in (("Overall", "Warning") if w.get("type") == "Race" else plan_generator_module.NOTE_KEYS)
+        )
+    ]
+    if bare:
+        result.failures.append(
+            f"{len(bare)} sessions without all four About notes (first: week {bare[0]['week_number']} "
+            f"{bare[0].get('title')})"
+        )
     if codes & HARD_RULES:
         result.failures.append(f"hard rules broken: {sorted(codes & HARD_RULES)}")
     if feas.verdict != "unsupported":

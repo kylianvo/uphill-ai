@@ -78,6 +78,7 @@ struct WorkoutDetailSheet: View {
                             headerSection(workout)
                             statTiles(workout)
                             quietLine(workout)
+                            whyTodayLine
 
                             // Done action first, so it is never below the fold
                             if workout.approvedAt == nil {
@@ -130,6 +131,9 @@ struct WorkoutDetailSheet: View {
                                 linkWatchRunRow
                             }
 
+                            // Before the session the reasons matter most; once it's done, the log comes first.
+                            if !workout.isDone { aboutFold(workout) }
+
                             if workout.approvedAt != nil {
                                 if model.athleteId == nil && !workout.isRest && !workout.isDone && isTodayOrFuture(workout) {
                                     sendToCorosSection(workout)
@@ -139,7 +143,7 @@ struct WorkoutDetailSheet: View {
                                 }
                             }
 
-                            aboutFold(workout)
+                            if workout.isDone { aboutFold(workout) }
 
                             // Coach / Athlete Note Thread
                             if content != nil,
@@ -492,7 +496,8 @@ struct WorkoutDetailSheet: View {
 
     @ViewBuilder
     private func aboutFold(_ w: Workout) -> some View {
-        let lines = content?.about ?? []
+        // A one-sentence reason is already the "Why today" under the title.
+        let lines = (content?.about ?? []).filter { !($0.kind == .reason && $0.text == content?.whyToday) }
         let quote = content?.description.coachNotes.flatMap { $0.isEmpty ? nil : $0 }
         if !lines.isEmpty || quote != nil {
             DisclosureGroup(isExpanded: $aboutExpanded) {
@@ -524,18 +529,46 @@ struct WorkoutDetailSheet: View {
         }
     }
 
+    /// The coach's reason for today, under the title: the first thing the runner reads. Tapping opens About.
+    @ViewBuilder private var whyTodayLine: some View {
+        if let why = content?.whyToday {
+            Button { withAnimation(.easeOut(duration: 0.2)) { aboutExpanded = true } } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Why today")
+                        .font(UH.TextStyle.disclosure)
+                        .foregroundStyle(UH.Palette.accentInk)
+                    Text(verbatim: why)
+                        .font(UH.TextStyle.body)
+                        .foregroundStyle(UH.Palette.ink)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 4)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityHint(L("Opens About this session"))
+            .accessibilityIdentifier("detail.whyToday")
+        }
+    }
+
     private func aboutLine(_ line: WorkoutDetailContent.AboutLine) -> some View {
         let title: String? = switch line.kind {
         case .overall: nil
-        case .reason: L("Why")
-        case .benefit: L("Benefit")
-        case .caution: L("Caution")
+        case .reason: L("Why today")
+        case .benefit: L("What it builds")
+        case .raceFit: L("For your race")
+        case .caution: L("Watch for")
         }
         return VStack(alignment: .leading, spacing: 2) {
             if let title {
                 Text(verbatim: title)
                     .font(UH.TextStyle.disclosure)
-                    .foregroundStyle(line.kind == .caution ? UH.Palette.danger : UH.Palette.secondary)
+                    .foregroundStyle(
+                        line.kind == .caution ? UH.Palette.danger : line.kind == .raceFit ? UH.Palette.accentInk : UH.Palette.secondary
+                    )
             }
             Text(verbatim: line.text)
                 .font(UH.TextStyle.body)

@@ -128,6 +128,7 @@ from services import (
     observability,
     plan_adequacy,
     plan_lint,
+    race_fit,
     race_history,
     race_readiness,
     race_review,
@@ -1720,7 +1721,7 @@ def get_athlete_active_plan(athlete_id: int, acting_user: dict[str, Any] = Depen
     plan = get_active_plan(athlete_id)
     if not plan:
         return {"active": False}
-    workouts = get_plan_workouts(plan["id"])
+    workouts = race_fit.annotate(plan, get_plan_workouts(plan["id"]), acting_user.get("lang"))
     return {"active": True, "plan": _plan_payload(plan), "workouts": workouts}
 
 
@@ -2278,7 +2279,7 @@ def get_current_active_plan(user: dict[str, Any] = Depends(get_current_user)):
     if not plan:
         return {"active": False}
 
-    workouts = get_plan_workouts(plan["id"])
+    workouts = race_fit.annotate(plan, get_plan_workouts(plan["id"]), user.get("lang"))
     return {"active": True, "plan": _plan_payload(plan), "workouts": workouts}
 
 
