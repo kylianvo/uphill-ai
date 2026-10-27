@@ -103,14 +103,14 @@ def _minutes(w: dict[str, Any]) -> int:
     return int(round(float(w.get("duration_minutes") or 0)))
 
 
-def _focus(rows: list[dict[str, Any]], earlier: list[dict[str, Any]], week: int, total: int) -> str:
+def _focus(rows: list[dict[str, Any]], earlier: list[dict[str, Any]], week: int, total: int, km: float | None) -> str:
     """What this week is for, in one word the messages are built around."""
     from services.plan_generator import PlanGenerator
 
     phase = next((w.get("phase") for w in rows if w.get("phase")), "")
     if phase in ("Taper", "Race Week", "Recovery"):
         return {"Taper": "taper", "Race Week": "race_week", "Recovery": "recovery"}[phase]
-    if PlanGenerator.is_deload_week(week, total):
+    if PlanGenerator.is_deload_week(week, total, km):
         return "deload"
     if sum(w.get("type") == "Muscular Endurance" for w in rows) >= 2:
         return "leg_strength"
@@ -119,7 +119,7 @@ def _focus(rows: list[dict[str, Any]], earlier: list[dict[str, Any]], week: int,
     return "aerobic_base"
 
 
-def _this_week(workouts: list[dict[str, Any]], week: int, total: int) -> dict[str, Any] | None:
+def _this_week(workouts: list[dict[str, Any]], week: int, total: int, km: float | None) -> dict[str, Any] | None:
     order = {d: i for i, d in enumerate(plan_journey.plan_lint.DAYS)}
     rows = sorted(
         (w for w in workouts if w.get("week_number") == week and w.get("type") != "Rest"),
@@ -137,7 +137,7 @@ def _this_week(workouts: list[dict[str, Any]], week: int, total: int) -> dict[st
         return {"day": w.get("day_of_week"), "title": w.get("title") or w.get("type"), "minutes": _minutes(w)}
 
     return {
-        "focus": _focus(rows, earlier, week, total),
+        "focus": _focus(rows, earlier, week, total, km),
         "sessions": len(rows),
         "total_minutes": sum(_minutes(w) for w in rows),
         "key_sessions": [brief(w) for w in key],
@@ -204,7 +204,7 @@ def facts_for(
             "distance_km": plan.get("course_distance_km"),
             "elevation_gain_m": plan.get("course_elevation_gain_m"),
         },
-        "this_week": _this_week(workouts, week, total),
+        "this_week": _this_week(workouts, week, total, plan.get("course_distance_km")),
         "b_race_this_week": b_race.this_week(b_races, week, start),
         "readiness_flag": readiness_flag,
         "feasibility_verdict": feasibility_verdict,

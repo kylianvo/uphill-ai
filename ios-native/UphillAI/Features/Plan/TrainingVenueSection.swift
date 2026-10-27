@@ -13,6 +13,8 @@ struct TrainingVenueSection: View {
     /// When set, picking trail days moves the long run onto the nearest one that is also a run day.
     var longRunDay: Binding<Weekday?>? = nil
     var runDays: Set<Weekday> = Set(Weekday.allCases)
+    /// Only where the plan saves it (setup, next block): one 6-7 h mountain day or a back-to-back weekend.
+    var longDayFormat: Binding<LongDayFormat>? = nil
     @State private var mountains: [TrainingMountain] = []
     @State private var loadError = false
     @State private var loadAttempt = 0
@@ -27,6 +29,13 @@ struct TrainingVenueSection: View {
     }
     static let steepCourseMPerKm = 25.0
     /// Steep course, and the athlete named no mountain, no stairs and no treadmill.
+    /// The chosen mountain climbs under 60% of the course's steepness (backend goal_feasibility.VENUE_SHARE), and
+    /// the athlete has no stairs or treadmill for weekday climbing.
+    private var venueTooGentle: TrainingMountain? {
+        guard let mountain, let courseSteepness, courseSteepness >= Self.steepCourseMPerKm,
+              mountain.climbRate < 0.6 * courseSteepness, !stairAccess, !useTreadmill else { return nil }
+        return mountain
+    }
     var needsClimbVenue: Bool {
         (courseSteepness ?? 0) >= Self.steepCourseMPerKm && trainingMountain == nil && mountainDays.isEmpty
             && !stairAccess && !useTreadmill
@@ -148,6 +157,20 @@ struct TrainingVenueSection: View {
                         }
                         .tint(UH.Palette.accentInk)
                     }
+                    if let longDayFormat {
+                        VStack(alignment: .leading, spacing: UH.Space.compact) {
+                            Text("Your longest days").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                            Picker("Your longest days", selection: longDayFormat) {
+                                Text("One long mountain day").tag(LongDayFormat.single)
+                                Text("Back-to-back weekend").tag(LongDayFormat.backToBack)
+                            }
+                            .pickerStyle(.segmented)
+                            .accessibilityIdentifier("trail.longDayFormat")
+                            Text("For 100 km+ races. The 6-7 h days are one run, or a shorter mountain day plus an easy run on the other weekend day: longer in all, but less climbing.")
+                                .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
             }
 
@@ -161,7 +184,16 @@ struct TrainingVenueSection: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("trail.climbVenueNeeded")
                 }
-                Toggle("I can use stairs (fire stairs or a Stairmaster)", isOn: $stairAccess)
+                if let gentle = venueTooGentle, let courseSteepness {
+                    Label(L("%@ climbs about %lld m D+ per km; this course about %lld. Add stairs (a building or an overpass) or a treadmill so the plan can add climbing on weekdays.",
+                            AppLanguage.current == .vi ? gentle.nameVi : gentle.nameEn,
+                            Int(gentle.climbRate.rounded()), Int(courseSteepness.rounded())),
+                          systemImage: "exclamationmark.circle")
+                        .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.warningInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("trail.venueTooGentle")
+                }
+                Toggle("I can use stairs (fire stairs, an overpass, a Stairmaster)", isOn: $stairAccess)
                 Toggle("I can use a treadmill", isOn: $useTreadmill)
                 if let treadmillMaxIncline, useTreadmill {
                     Text("Treadmill max incline").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
@@ -219,6 +251,12 @@ struct TrainingVenueSection: View {
         .accessibilityIdentifier(enabled ? "trail.access.yes" : "trail.access.no")
         .accessibilityAddTraits(hasAccess == enabled ? .isSelected : [])
     }
+}
+
+/// plans.long_day_format; nil on the server means single (backend services/ultra_rules.b2b_split).
+enum LongDayFormat: String, Sendable {
+    case single
+    case backToBack = "back_to_back"
 }
 
 struct TrainingMountain: Decodable, Sendable, Identifiable {

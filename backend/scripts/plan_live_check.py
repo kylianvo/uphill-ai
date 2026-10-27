@@ -83,7 +83,12 @@ async def run(name: str, key: str) -> None:
     engines = [e for e in before if used(e) > before[e]] or ["rules"]
     d = goal_demands.compute(dist, gain, target if goal == "time" else None, cutoff)
     prefs = plan_lint.Prefs(
-        long_run_day=long_day, days_per_week=len(days), demands=d, flat_only=not mountain, total_weeks=weeks
+        long_run_day=long_day,
+        days_per_week=len(days),
+        demands=d,
+        flat_only=not mountain,
+        total_weeks=weeks,
+        race_km=dist,
     )
     issues = plan_lint.lint_weeks(workouts, {w["week_number"] for w in workouts}, get_profile(tier), prefs)
     active = [w for w in workouts if w["type"] != "Rest"]

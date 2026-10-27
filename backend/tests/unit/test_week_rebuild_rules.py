@@ -158,3 +158,16 @@ def test_warnings_flag_volume_shift_and_hard_before_long_run():
     draft2 = filter_draft([gen("Thursday", type_="Tempo", zone="Zone 3"), gen("Friday", type_="Long Run")], rng)
     w1 = [x for x in rebuild_warnings(ROWS, rng, draft2) if x["code"] == "W1_hard_stacking"]
     assert w1 == [{"code": "W1_hard_stacking", "params": {"kind": "before_long_run", "week": 3, "day": "Thursday"}}]
+
+
+def test_current_weekly_minutes_uses_the_athletes_own_easy_pace():
+    """Adapt Week's last-resort reference volume is measured like plan creation's (R-V1), not at a flat 6:00/km."""
+    from services.plan_generator import PlanGenerator
+    from services.week_rebuild import current_weekly_minutes
+
+    user = {"current_weekly_km": 52, "zone2_pace_min": "6:23", "zone2_pace_max": "5:13"}
+    plan = {"goal_type": "time", "athlete_tier": "recreational"}
+    pace = PlanGenerator.flat_zone2_pace(user, "time", "recreational")
+    assert pace != 6.0
+    assert current_weekly_minutes(user, plan) == 52 * pace
+    assert current_weekly_minutes({"current_weekly_km": None}, plan) == 0.0

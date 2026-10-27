@@ -627,7 +627,8 @@ struct SetupSteps: View {
                 treadmillMaxIncline: model.draft.useTreadmill ? $model.draft.treadmillMaxIncline : nil,
                 courseSteepness: model.draft.courseSteepness,
                 longRunDay: Binding(get: { model.draft.longRunDay }, set: { if let day = $0 { model.draft.longRunDay = day } }),
-                runDays: model.draft.preferredDays
+                runDays: model.draft.preferredDays,
+                longDayFormat: $model.draft.longDayFormat
             )
         }
         .trainingCard()

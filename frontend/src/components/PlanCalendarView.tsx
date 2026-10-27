@@ -50,7 +50,12 @@ interface PlanCalendarViewProps {
   onApproveWorkout?: (id: number) => void;
   onRemoveWorkout?: (id: number) => void;
   onEditWorkout?: (id: number, fields: Record<string, any>) => void;
-  plan?: { start_date?: string | null; total_weeks?: number | null; race_date?: string | null };
+  plan?: {
+    start_date?: string | null;
+    total_weeks?: number | null;
+    race_date?: string | null;
+    weekly_vert_targets?: Record<string, number> | null;
+  };
   onMoveWorkout?: (workoutId: number, targetWeek: number, targetDay: string) => void;
 }
 
@@ -208,6 +213,7 @@ export default function PlanCalendarView({ focusWeek, onWeekChange,
             onToggleComplete={onToggleComplete}
             phaseLabel={phaseLabel}
             zoneColorOf={zoneColorOf}
+            vertTargets={plan?.weekly_vert_targets}
           />
         ))}
       </div>
@@ -313,6 +319,7 @@ export default function PlanCalendarView({ focusWeek, onWeekChange,
 
 function CalendarWeekRow({
   row, byDate, today, viewMonth, lang, isMobile, onSwapDays, onOpenDay, onToggleComplete, phaseLabel, zoneColorOf,
+  vertTargets,
 }: {
   row: Date[];
   byDate: Map<string, any[]>;
@@ -325,6 +332,7 @@ function CalendarWeekRow({
   onToggleComplete: (id: number, completed: boolean) => void;
   phaseLabel: (p: string) => string;
   zoneColorOf: (wo: any) => string;
+  vertTargets?: Record<string, number> | null;
 }) {
   const dayEntries = row.map((d) => ({ date: d, key: isoDate(d), wos: byDate.get(isoDate(d)) || [] }));
   const anchorWo = dayEntries.find((e) => e.wos.length > 0)?.wos[0];
@@ -359,6 +367,8 @@ function CalendarWeekRow({
 
   const weekMins = dayEntries.reduce((s, e) => s + e.wos.reduce((s2: number, w: any) => s2 + (w.duration_minutes || 0), 0), 0);
   const weekKm = dayEntries.reduce((s, e) => s + e.wos.reduce((s2: number, w: any) => s2 + (w.distance_km || 0), 0), 0);
+  const weekVert = dayEntries.reduce((s, e) => s + e.wos.reduce((s2: number, w: any) => s2 + (w.elevation_gain_m || 0), 0), 0);
+  const vertTarget = weekNumber != null ? vertTargets?.[String(weekNumber)] : undefined;
   const maxDayMins = Math.max(1, ...dayEntries.map((e) => e.wos.reduce((s: number, w: any) => s + (w.duration_minutes || 0), 0)));
   const hasRaceInRow = dayEntries.some((e) => e.wos.some((w: any) => w.type?.toLowerCase() === "race"));
 
@@ -399,6 +409,12 @@ function CalendarWeekRow({
             </span>
             <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)" }}>
               <b style={{ color: "var(--text-secondary)" }}>~{weekKm.toFixed(0)} km</b> · {(weekMins / 60).toFixed(1)}h
+              {(vertTarget || weekVert > 0) && (
+                <span data-testid="week-vert" title={lang === "vi" ? "D+ tuần này / mục tiêu" : "This week's D+ / target"}>
+                  {" · "}{Math.round(weekVert).toLocaleString(lang === "vi" ? "vi-VN" : "en-US")}
+                  {vertTarget ? ` / ${vertTarget.toLocaleString(lang === "vi" ? "vi-VN" : "en-US")}` : ""} m D+
+                </span>
+              )}
             </span>
           </div>
           {!hasRaceInRow && (

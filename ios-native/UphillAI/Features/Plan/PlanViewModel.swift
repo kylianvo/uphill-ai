@@ -342,7 +342,8 @@ final class PlanViewModel {
     var selectedVolume: WeekVolume { PlanSummary.volume(week: selectedWeek, workouts: snapshot?.workouts ?? []) }
 
     var weekComparison: WeekVolumeComparison {
-        PlanSummary.volumeComparison(week: selectedWeek, workouts: snapshot?.workouts ?? [])
+        PlanSummary.volumeComparison(week: selectedWeek, workouts: snapshot?.workouts ?? [],
+                                     vertTargets: snapshot?.plan.weeklyVertTargets)
     }
 
     var weeklyVolumes: [WeekVolume] {

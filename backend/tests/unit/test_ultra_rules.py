@@ -1,4 +1,5 @@
 from services import ultra_rules as u
+from services.athlete_tier import taper_weeks
 from services.plan_generator import PlanGenerator
 
 
@@ -17,7 +18,7 @@ def test_applies_needs_a_mountain_day():
 def test_100k_ladder_20_weeks():
     lad = u.ladder("100k", False, 20)  # peak_week = 20 - 3 - 1 = 16; deloads 4, 8, 12
     assert [lad[w] for w in (1, 2, 3, 5)] == [180, 180, 240, 240]
-    assert lad[4] == lad[8] == lad[12] == 240
+    assert lad[4] == 180 and lad[8] == lad[12] == 240  # a rung below the last build week, 4 h at most
     assert lad[15] == 360 and lad[16] == 420
     assert set(lad) == set(range(1, 17))
 
@@ -77,3 +78,37 @@ def test_prompt_block_outside_the_window_has_no_zone3():
 
 def test_prompt_block_vietnamese():
     assert "420" in u.prompt_block("100k", False, {16: 420}, 20, False, "vi")
+
+
+def test_13_week_100k_recovery_weeks_step_down_a_rung():
+    """Plan 131 (13 weeks): the first recovery week drops to 3 h instead of repeating week 3's 4 h; the 7 h peak
+    (Quang: 6-7 h for finishers too) comes after the week-8 recovery week, not straight after the 6 h week."""
+    lad = u.ladder("100k", False, 13)
+    assert lad == {1: 180, 2: 180, 3: 240, 4: 180, 5: 240, 6: 300, 7: 360, 8: 240, 9: 420}
+
+
+def test_back_to_back_split_adds_up_to_more_than_the_single_day():
+    assert u.b2b_split(420) == (300, 165)
+    assert u.b2b_split(360) == (240, 150)
+    assert u.b2b_split(300) is None
+    day1, day2 = u.b2b_split(420)
+    assert day1 + day2 > 420
+
+
+def test_prompt_block_states_the_back_to_back_weekend_only_when_chosen():
+    single = u.prompt_block("100k", False, {9: 420}, 13, True, "en")
+    b2b = u.prompt_block("100k", False, {9: 420}, 13, True, "en", back_to_back=True)
+    assert "Long Run 420 min" in single and "No back-to-back weekend" in single
+    assert "Long Run 300 min on the mountain day, then 165 min" in b2b and "No other back-to-back" in b2b
+    assert "60-90 g carbs per hour" in single
+
+
+def test_a_100k_short_plan_tapers_two_weeks_and_keeps_the_7h_rung():
+    # 10 training weeks + recovery week: the 7 h run lands 3 weeks before the race, not 13 days
+    assert taper_weeks(11, 104.2) == 2 and taper_weeks(11, 56.4) == 1
+    assert u.ladder("100k", False, 11, 104.2) == {1: 180, 2: 240, 3: 240, 4: 180, 5: 300, 6: 360, 7: 420}
+
+
+def test_a_short_ladder_drops_its_earliest_rungs_not_the_filler():
+    # 9 training weeks: the 4 h step stays, so 3 h -> 5 h never needs the step cap to fill a 1.5 h gap
+    assert u.ladder("50k", False, 10, 56.4) == {1: 180, 2: 180, 3: 180, 4: 180, 5: 240, 6: 270, 7: 300}

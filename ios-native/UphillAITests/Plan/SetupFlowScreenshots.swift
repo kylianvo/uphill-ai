@@ -62,6 +62,26 @@ struct SetupFlowScreenshots {
         }
     }
 
+    @Test func renderLongDayFormat() async throws {
+        guard outDir != nil else { return }
+        let oldLanguage = UserDefaults.standard.string(forKey: AppLanguage.storageKey)
+        defer { UserDefaults.standard.set(oldLanguage, forKey: AppLanguage.storageKey) }
+        for language in [AppLanguage.en, .vi] {
+            UserDefaults.standard.set(language.rawValue, forKey: AppLanguage.storageKey)
+            let venue = ScrollView {
+                TrainingVenueSection(
+                    mountainDays: .constant([.saturday]), trainingMountain: .constant("nui_dinh"),
+                    mountainMinMinutes: .constant(180), stairAccess: .constant(false), useTreadmill: .constant(false),
+                    treadmillMaxIncline: nil, longDayFormat: .constant(.backToBack)
+                )
+                .padding(UH.Space.regular)
+            }
+            .background(UH.Palette.surface)
+            .environment(\.locale, language.locale)
+            try await capture(venue, name: "long-day-format-\(language.rawValue)")
+        }
+    }
+
     @Test func renderEffortColorBar() async throws {
         guard outDir != nil else { return }
         let oldLanguage = UserDefaults.standard.string(forKey: AppLanguage.storageKey)

@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import settings  # noqa: E402
-from services import b_race, goal_demands, goal_feasibility, plan_lint  # noqa: E402
+from services import b_race, goal_demands, goal_feasibility, plan_lint, ultra_rules  # noqa: E402
 from services import plan_generator as plan_generator_module  # noqa: E402
 from services.athlete_tier import for_race, get_profile  # noqa: E402
 from services.plan_generator import PlanGenerator  # noqa: E402
@@ -64,6 +64,7 @@ DEMAND_CODES = {
     "WEEKDAY_SHORT",
     "ULTRA_LADDER",
     "QUALITY_COUNT",
+    "VERT_SHORT",
 }
 
 
@@ -75,6 +76,7 @@ class Scenario:
     goal: str  # finish | time
     venue: str  # flat | mountain
     weeks: int = 26
+    back_to_back: bool = False  # the athlete's long-day format: a back-to-back weekend for the 6-7 h rungs
 
 
 @dataclass
@@ -95,6 +97,10 @@ def _scenarios() -> list[Scenario]:
                 for v in ("flat", "mountain"):
                     out.append(Scenario(f"{a} | {r} | {g} | {v}", a, r, g, v))
     out.append(Scenario("40km 4d | 100K | finish | flat | short runway", "40km 4d", "100K", "finish", "flat", 8))
+    out.append(
+        Scenario("65km 6d | 100K | time | mountain | back-to-back", "65km 6d", "100K", "time", "mountain", 26, True)
+    )
+    out.append(Scenario("65km 6d | 100K | time | mountain | 13 weeks", "65km 6d", "100K", "time", "mountain", 13))
     return out
 
 
@@ -122,6 +128,7 @@ def run(s: Scenario) -> Result:
         "training_mountain": MOUNTAIN if mountain else None,
         "mountain_days": json.dumps(["Saturday", "Sunday"]) if mountain else None,
         "mountain_min_minutes": MOUNTAIN_MIN if mountain else None,
+        "long_day_format": "back_to_back" if s.back_to_back else None,
     }
     profile = {**PROFILE, "current_weekly_km": float(km)}
     saved = (settings.PLAN_DEMANDS_ENABLED, settings.PLAN_LINT_ENABLED)
@@ -150,8 +157,14 @@ def run(s: Scenario) -> Result:
         demands=demands,
         flat_only=not mountain,
         total_weeks=s.weeks,
+        race_km=dist,
         mountain_day=mountain,
         quality_gated=True,  # PROFILE's thresholds are estimates (no threshold_source): the AeT gate is on
+        back_to_back=s.back_to_back,
+        vert_targets=PlanGenerator.vert_targets_for(race_info, demands, s.weeks),
+        # as the generator's lint: a short ultra plan opens with ME weeks (2 a week), not Zone 3
+        me_first_weeks=ultra_rules.me_first_weeks(s.weeks, False, dist) if prof.allows_me_blocks else frozenset(),
+        start_load_minutes=float(km) * (PlanGenerator.flat_zone2_pace(profile, race_info["goal_type"], tier) or 6.0),
     )
     found = plan_lint.lint_weeks(workouts, {w["week_number"] for w in workouts}, prof, prefs)
     codes = {i.code for i in found}

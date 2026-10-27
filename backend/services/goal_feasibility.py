@@ -119,3 +119,30 @@ def assess(
         levers=tuple(levers),
         confidence="estimated" if pace_is_estimated else "measured",
     )
+
+
+_LEVER_WORDS = {
+    "more_days": "more training days",
+    "double_sessions": "double sessions",
+    "more_weeks": "more weeks before the race",
+    "shorter_race": "a shorter race",
+    "finish_only": "a finish-only goal",
+    "fewer_mountain_minimum": "a shorter minimum mountain day",
+    "steeper_venue": "a steeper training mountain",
+    "mountain_access": "access to hills or a mountain",
+}
+
+
+def brief_line(feasibility: dict | None) -> str | None:
+    """A fact for the week brief when the goal is a stretch or unsupported (goal_service.feasibility_for), so the
+    athlete hears it in the plan as well as on the Goal screen. None when supported."""
+    if not feasibility or feasibility.get("verdict") not in ("stretch", "unsupported"):
+        return None
+    levers = [_LEVER_WORDS[k] for k in feasibility.get("levers") or [] if k in _LEVER_WORDS]
+    line = (
+        f"Goal check: {feasibility['verdict']}. The goal needs about {feasibility['needed_h']} h of running in the "
+        f"peak week; this athlete's week holds about {feasibility['capacity_h']} h."
+    )
+    if feasibility.get("weeks_needed"):
+        line += f" Building there takes about {feasibility['weeks_needed']} weeks."
+    return line + (f" What would help: {', '.join(levers[:3])}." if levers else "")

@@ -151,6 +151,7 @@ struct PlanSetupDraft: Equatable, Sendable {
     var mountainDays: Set<Weekday> = []
     var trainingMountain: String?
     var mountainMinMinutes: Int?
+    var longDayFormat: LongDayFormat = .single
     var stairAccess = false
     var hasGymAccess = false
     var useTreadmill = false
@@ -378,6 +379,7 @@ struct PlanSetupDraft: Equatable, Sendable {
             mountainDays: Weekday.allCases.filter(mountainDays.contains).map(\.rawValue),
             trainingMountain: trainingMountain,
             mountainMinMinutes: mountainMinMinutes,
+            longDayFormat: longDayFormat.rawValue,
             stairAccess: stairAccess,
             treadmillMaxIncline: useTreadmill ? treadmillMaxIncline : nil,
             doubleSessionDays: requestDoubleDays,
@@ -419,6 +421,7 @@ struct PlanSetupDraft: Equatable, Sendable {
             mountainDays: Weekday.allCases.filter(mountainDays.contains).map(\.rawValue),
             trainingMountain: trainingMountain,
             mountainMinMinutes: mountainMinMinutes,
+            longDayFormat: longDayFormat.rawValue,
             stairAccess: stairAccess,
             treadmillMaxIncline: useTreadmill ? treadmillMaxIncline : nil,
             doubleSessionDays: requestDoubleDays,
@@ -547,6 +550,7 @@ struct OnboardingBody: Encodable, Sendable {
     var mountainDays: [String]
     var trainingMountain: String? = nil
     var mountainMinMinutes: Int? = nil
+    var longDayFormat: String? = nil
     var stairAccess: Bool
     var treadmillMaxIncline: Int?
     var doubleSessionDays: [String]
@@ -586,6 +590,7 @@ struct PlanBody: Encodable, Sendable {
     var mountainDays: [String]
     var trainingMountain: String? = nil
     var mountainMinMinutes: Int? = nil
+    var longDayFormat: String? = nil
     var stairAccess: Bool
     var treadmillMaxIncline: Int?
     var doubleSessionDays: [String]

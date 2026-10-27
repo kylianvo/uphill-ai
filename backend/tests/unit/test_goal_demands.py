@@ -70,7 +70,8 @@ def test_long_run_line_grows_the_long_run_toward_the_target_within_the_weekly_ca
     d = goal_demands.compute(104.2, 5533, 14.67, 29)  # longest session target 300 min
     ws = _plan_with_long_runs([110, 115, 120])
     line = goal_demands.long_run_line(ws, week=4, total_weeks=11, demands=d, profile_long_cap_min=185)
-    assert line and "at least 131" in line and "185" in line  # the even climb from 120 to the 185 the days can hold
+    # the even climb from 120 to the 185 the days can hold, by week 7 (a 100 km race tapers two weeks)
+    assert line and "at least 134" in line and "185" in line and "week 7" in line
 
 
 def test_long_run_line_is_silent_without_history_or_after_the_build():
@@ -108,3 +109,31 @@ def test_back_to_back_targets_keep_the_long_run_near_last_weeks_and_add_a_long_s
     ws = _plan_with_long_runs([120, 140, 145])
     sat, sun = b2b_targets(ws, week=6, longest_target=300)
     assert 145 <= sun <= 145 * 1.25 and 90 <= sat <= sun  # within the 25% weekly long-run growth cap
+
+
+def test_ladder_plans_get_no_second_longest_session_target():
+    """A mountain-day ultra's long runs come from the ladder (7 h); the 300 min demand line contradicted it."""
+    d = goal_demands.compute(104.2, 5533, 15.75, None)
+    assert "longest session should reach about 300 min" in goal_demands.prompt_block(d, "en")
+    assert "longest session" not in goal_demands.prompt_block(d, "en", ladder=True)
+    assert "buổi dài nhất" not in goal_demands.prompt_block(d, "vi", ladder=True)
+
+
+def test_vert_targets_ramp_from_recent_vert_to_40_percent_of_race_d_plus():
+    """VHT 100K (5533 m D+), 13 weeks, a runner climbing 589 m a week now: the peak build week asks 40% of race
+    D+, no week grows more than 20%, and recovery weeks have no target."""
+    d = goal_demands.compute(104.2, 5533, 15.75, None)
+    t = goal_demands.vert_targets(d, 13, 589, indoor_only=False)
+    assert 4 not in t and 8 not in t  # recovery weeks
+    assert t[9] == round(0.40 * 5533, -1)
+    weeks = sorted(t)
+    assert all(t[b] <= t[a] * 1.2 ** (b - a) + 10 for a, b in zip(weeks, weeks[1:]))
+    assert t[1] >= 589
+
+
+def test_vert_targets_indoor_only_and_flat_courses():
+    d = goal_demands.compute(104.2, 5533, 15.75, None)
+    assert max(goal_demands.vert_targets(d, 13, None, indoor_only=True).values()) == round(0.25 * 5533, -1)
+    flat = goal_demands.compute(50, 400, 5, None)
+    assert goal_demands.vert_targets(flat, 13, 500, indoor_only=False) == {}
+    assert goal_demands.vert_targets(None, 13, 500, indoor_only=False) == {}

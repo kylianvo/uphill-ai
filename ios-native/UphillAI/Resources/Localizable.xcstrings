@@ -5931,12 +5931,12 @@
         }
       }
     },
-    "I can use stairs (fire stairs or a Stairmaster)": {
+    "I can use stairs (fire stairs, an overpass, a Stairmaster)": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tôi leo cầu thang được (cầu thang bộ hoặc Stairmaster)"
+            "value": "Tôi leo cầu thang được (cầu thang bộ, cầu vượt, Stairmaster)"
           }
         }
       }
@@ -15427,6 +15427,76 @@
           "stringUnit": {
             "state": "translated",
             "value": "Long Run tối thiểu: %lld phút"
+          }
+        }
+      }
+    },
+    "Your longest days": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày tập dài nhất"
+          }
+        }
+      }
+    },
+    "One long mountain day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một ngày dài trên núi"
+          }
+        }
+      }
+    },
+    "Back-to-back weekend": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back-to-back cuối tuần"
+          }
+        }
+      }
+    },
+    "For 100 km+ races. The 6-7 h days are one run, or a shorter mountain day plus an easy run on the other weekend day: longer in all, but less climbing.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race từ 100 km. Ngày 6-7 h là một buổi, hoặc ngày núi ngắn hơn cộng buổi chạy nhẹ vào ngày cuối tuần còn lại: tổng dài hơn nhưng leo ít hơn."
+          }
+        }
+      }
+    },
+    "%@ climbs about %lld m D+ per km; this course about %lld. Add stairs (a building or an overpass) or a treadmill so the plan can add climbing on weekdays.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ leo khoảng %2$lld m D+/km, race khoảng %3$lld. Thêm cầu thang (tòa nhà, cầu vượt) hoặc treadmill để plan thêm bài leo vào ngày thường."
+          }
+        }
+      }
+    },
+    "%@ of %@ m D+ target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ / %2$@ m D+ mục tiêu"
+          }
+        }
+      }
+    },
+    "%@ m D+": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ m D+"
           }
         }
       }

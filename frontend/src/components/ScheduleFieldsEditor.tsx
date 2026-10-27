@@ -1,4 +1,5 @@
 import { translations } from "../app/translations";
+import type { LongDayFormat } from "../types";
 import { LongRunDaySelect, TrainingVenueFields } from "./TrainingVenueFields";
 
 export interface ScheduleFieldsValue {
@@ -11,6 +12,7 @@ export interface ScheduleFieldsValue {
   mountain_days: string[];
   training_mountain?: string | null;
   mountain_min_minutes?: number | null;
+  long_day_format?: LongDayFormat | null;
   stair_access: boolean;
   treadmill_max_incline: number;
   double_session_days: string[];
@@ -23,13 +25,15 @@ interface ScheduleFieldsEditorProps {
   isMobile: boolean;
   value: ScheduleFieldsValue;
   onChange: (patch: Partial<ScheduleFieldsValue>) => void;
+  // The course's climb in m D+/km on the plan form, for the venue prompts in TrainingVenueFields.
+  courseSteepness?: number;
 }
 
 const FULL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHORT_DAYS_VI = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
-export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange }: ScheduleFieldsEditorProps) {
+export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange, courseSteepness }: ScheduleFieldsEditorProps) {
   return (
     <div style={{ marginBottom: "16px", padding: "14px", background: "rgba(255,255,255,0.15)", border: "1px solid var(--border-color)", borderRadius: "12px" }}>
       <label style={{ display: "block", fontSize: "12px", fontWeight: "700", marginBottom: "10px", color: "var(--text-secondary)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
@@ -121,8 +125,10 @@ export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange }: Sch
         useTreadmill={value.use_treadmill}
         onTreadmillChange={enabled => onChange({ use_treadmill: enabled })}
         onChange={onChange}
+        courseSteepness={courseSteepness}
         longRunDay={value.long_run_day}
         onLongRunDayChange={day => onChange({ long_run_day: day })}
+        showLongDayFormat
       />
 
       <div style={{ marginTop: "12px" }}>

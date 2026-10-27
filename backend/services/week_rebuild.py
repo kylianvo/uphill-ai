@@ -39,6 +39,13 @@ from services.plan_rules import count_me_sessions, is_me_session
 REBUILD_FINGERPRINT_FIELDS = FINGERPRINT_FIELDS + ("title", "type", "duration_minutes", "session_slot")
 
 
+def current_weekly_minutes(user: dict[str, Any], plan: dict[str, Any]) -> float:
+    """The athlete's weekly km in minutes at their own easy pace, as plan creation measures it (R-V1); 6 min/km
+    only when the pace is unknown."""
+    pace = PlanGenerator.flat_zone2_pace(user, plan.get("goal_type"), plan.get("athlete_tier")) or 6.0
+    return float(user.get("current_weekly_km") or 0.0) * pace
+
+
 @dataclass(frozen=True)
 class RebuildRange:
     week: int
@@ -508,9 +515,7 @@ def build_rebuild_inputs(
         uncompleted_count = max(1, len(target_wos) - len(completed_target))
 
         target_planned_min = sum(w.get("duration_minutes") or 0 for w in target_wos)
-        # current_weekly_km -> minutes needs a pace; 6 min/km is the same rough
-        # conversion the rule-based fallback uses for its own volume estimate.
-        user_weekly_min = float(fresh_user.get("current_weekly_km") or 0.0) * 6.0
+        user_weekly_min = current_weekly_minutes(fresh_user, plan)
 
         prior_planned_min = planned_min if prev_wos else 0.0
         if target_planned_min > 0:
@@ -683,6 +688,7 @@ def build_rebuild_inputs(
         "training_mountain": request.training_mountain
         if request.training_mountain is not None or request.clear_training_mountain
         else plan.get("training_mountain"),
+        "long_day_format": plan.get("long_day_format"),
         "mountain_min_minutes": request.mountain_min_minutes
         if request.mountain_min_minutes is not None or request.clear_mountain_min_minutes
         else plan.get("mountain_min_minutes"),

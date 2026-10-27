@@ -964,6 +964,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       mountain_days: parseDayList(p.mountain_days),
       training_mountain: p.training_mountain ?? null,
       mountain_min_minutes: p.mountain_min_minutes ?? null,
+      long_day_format: p.long_day_format ?? null,
       stair_access: !!p.stair_access,
       treadmill_max_incline: p.treadmill_max_incline || 15,
       double_session_days: doubleSessionDays,
@@ -1005,6 +1006,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           mountain_days: nextBlockSchedule.mountain_days,
           ...(nextBlockSchedule.training_mountain !== (activePlan?.training_mountain ?? null) ? { training_mountain: nextBlockSchedule.training_mountain ?? null } : {}),
           ...(nextBlockSchedule.mountain_min_minutes !== (activePlan?.mountain_min_minutes ?? null) ? { mountain_min_minutes: nextBlockSchedule.mountain_min_minutes ?? null } : {}),
+          long_day_format: nextBlockSchedule.long_day_format ?? null,
           stair_access: nextBlockSchedule.stair_access,
           treadmill_max_incline: nextBlockSchedule.treadmill_max_incline,
           athlete_notes: nextBlockSchedule.athlete_notes || null,
@@ -1069,6 +1071,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       mountain_days: parseDayList(p.mountain_days),
       training_mountain: p.training_mountain ?? null,
       mountain_min_minutes: p.mountain_min_minutes ?? null,
+      long_day_format: p.long_day_format ?? null,
       stair_access: !!p.stair_access,
       treadmill_max_incline: p.treadmill_max_incline || 15,
       double_session_days: doubleSessionDays,
@@ -1508,12 +1511,17 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 mountain_days: planForm.mountain_days || [],
                 training_mountain: planForm.training_mountain,
                 mountain_min_minutes: planForm.mountain_min_minutes,
+                long_day_format: planForm.long_day_format,
                 stair_access: !!planForm.stair_access,
                 treadmill_max_incline: planForm.treadmill_max_incline || 15,
                 double_session_days: planForm.double_session_days,
                 athlete_notes: planForm.athlete_notes,
               }}
               onChange={(patch) => setPlanForm({ ...planForm, ...patch })}
+              courseSteepness={
+                (parseFloat(String(planForm.course_elevation_gain_m)) || 0) /
+                (parseFloat(String(planForm.course_distance_km)) || Infinity)
+              }
             />
 
             {isCoachActingAsAthlete && (

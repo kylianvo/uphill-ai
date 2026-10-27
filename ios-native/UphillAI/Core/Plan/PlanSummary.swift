@@ -51,6 +51,9 @@ struct WeekVolumeComparison: Equatable, Sendable {
     let plannedKm: Double
     let actualKm: Double
     let adherencePct: Int
+    var plannedVertM: Double = 0
+    /// The week's climbing target (R-C8), when the plan has one.
+    var vertTargetM: Int? = nil
 }
 
 enum DayState: Equatable, Sendable {
@@ -108,7 +111,7 @@ enum PlanSummary {
         )
     }
 
-    static func volumeComparison(week: Int, workouts: [Workout]) -> WeekVolumeComparison {
+    static func volumeComparison(week: Int, workouts: [Workout], vertTargets: [String: Int]? = nil) -> WeekVolumeComparison {
         let currentItems = workouts.filter { $0.weekNumber == week }
         let currentMins = currentItems.reduce(0.0) { $0 + $1.durationMinutes }
         let currentHours = (currentMins / 60.0 * 10).rounded() / 10
@@ -135,7 +138,9 @@ enum PlanSummary {
             diffHours: diffHours,
             plannedKm: plannedKm,
             actualKm: actualKm,
-            adherencePct: adherence
+            adherencePct: adherence,
+            plannedVertM: active.reduce(0.0) { $0 + ($1.elevationGainM ?? 0) },
+            vertTargetM: vertTargets?[String(week)]
         )
     }
 

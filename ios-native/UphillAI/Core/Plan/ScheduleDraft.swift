@@ -13,6 +13,7 @@ struct ScheduleDraft {
     var mountainDays: Set<Weekday>
     var trainingMountain: String?
     var mountainMinMinutes: Int?
+    var longDayFormat: LongDayFormat
     /// Fire stairs in a tall building, a stadium, or a Stairmaster.
     var stairAccess: Bool
     /// The treadmill's top incline in %: 15 on a standard gym treadmill, 25+ on an incline trainer.
@@ -32,6 +33,7 @@ struct ScheduleDraft {
         mountainDays = Self.days(plan?.mountainDays)
         trainingMountain = plan?.trainingMountain
         mountainMinMinutes = plan?.mountainMinMinutes
+        longDayFormat = plan?.longDayFormat.flatMap(LongDayFormat.init(rawValue:)) ?? .single
         stairAccess = plan?.stairAccess ?? false
         treadmillMaxIncline = plan?.treadmillMaxIncline ?? 15
         maxContinuousJogMin = plan?.maxContinuousJogMin ?? 0
@@ -106,6 +108,7 @@ struct ScheduleDraft {
         if mountainDays != before.mountainDays { body.mountainDays = Weekday.allCases.filter(mountainDays.contains).map(\.rawValue) }
         if trainingMountain != before.trainingMountain { body.trainingMountain = .some(trainingMountain) }
         if mountainMinMinutes != before.mountainMinMinutes { body.mountainMinMinutes = .some(mountainMinMinutes) }
+        if longDayFormat != before.longDayFormat { body.longDayFormat = longDayFormat.rawValue }
         if stairAccess != before.stairAccess { body.stairAccess = stairAccess }
         if treadmillMaxIncline != before.treadmillMaxIncline { body.treadmillMaxIncline = treadmillMaxIncline }
     }
@@ -117,7 +120,7 @@ struct ScheduleDraft {
             || useTreadmill != before.useTreadmill || environment != before.environment
             || trainingMountain != before.trainingMountain || mountainMinMinutes != before.mountainMinMinutes
             || mountainDays != before.mountainDays || stairAccess != before.stairAccess
-            || treadmillMaxIncline != before.treadmillMaxIncline
+            || treadmillMaxIncline != before.treadmillMaxIncline || longDayFormat != before.longDayFormat
             || (isGettingStarted && maxContinuousJogMin != before.maxContinuousJogMin)
     }
 

@@ -411,3 +411,18 @@ def test_no_mountain_day_keeps_book_caps():
     rec = TIER_PROFILES["recreational"]
     assert for_race(rec, 104) == rec
     assert session_cap_minutes(rec, 104) == 300
+
+
+def test_start_load_holds_while_the_athlete_is_fatigued():
+    from services.athlete_tier import RECENT_LOAD_GROWTH, start_load_growth
+
+    assert start_load_growth("fatigued") == start_load_growth("overreaching") == 1.0
+    assert start_load_growth("optimal") == start_load_growth(None) == RECENT_LOAD_GROWTH
+
+
+def test_first_week_share_after_a_mid_week_start():
+    from services.athlete_tier import first_week_share
+
+    assert first_week_share("2026-10-22") == 4 / 7  # plan 131: a Thursday
+    assert first_week_share("2026-10-19") == 1.0  # a Monday
+    assert first_week_share(None) == 1.0 and first_week_share("not a date") == 1.0

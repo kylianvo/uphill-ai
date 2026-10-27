@@ -76,21 +76,24 @@ def _pace(p: float) -> str:
     return f"{int(p)}:{round((p - int(p)) * 60):02d}"
 
 
-def prompt_block(d: Demands, lang: str) -> str:
-    """Short lines for the generator. Technical terms stay in English in Vietnamese."""
+def prompt_block(d: Demands, lang: str, ladder: bool = False) -> str:
+    """Short lines for the generator. Technical terms stay in English in Vietnamese. `ladder`: a mountain-day ultra,
+    whose long runs come from ultra_rules.prompt_block, so no second (shorter) longest-session target here."""
     h, m = divmod(round(d.target_time_min), 60)
     longest = round(d.longest_session_min)
     if lang == "vi":
         lines = [
             f"Yêu cầu của mục tiêu ({d.source}: {h}h{m:02d}): giữ khoảng {_pace(d.required_flat_pace_min_km)} min/km quy đổi đường bằng.",
             f"Cung đường leo {round(d.gain_m)} m D+ ({round(d.steepness_m_per_km)} m D+/km), tốc độ leo cần có khoảng {round(d.climb_rate_m_per_h)} m D+/h.",
-            f"Peak week mục tiêu {round(d.peak_week_km_lo)}-{round(d.peak_week_km_hi)} km quy đổi; buổi dài nhất cần đạt khoảng {longest} phút.",
+            f"Peak week mục tiêu {round(d.peak_week_km_lo)}-{round(d.peak_week_km_hi)} km quy đổi"
+            + ("." if ladder else f"; buổi dài nhất cần đạt khoảng {longest} phút."),
         ]
     else:
         lines = [
             f"Goal demands ({d.source}, {h}h{m:02d}): hold about {_pace(d.required_flat_pace_min_km)} min/km flat-equivalent.",
             f"The course climbs {round(d.gain_m)} m D+ ({round(d.steepness_m_per_km)} m D+/km), needing about {round(d.climb_rate_m_per_h)} m D+/h.",
-            f"Peak-week target {round(d.peak_week_km_lo)}-{round(d.peak_week_km_hi)} flat-equivalent km; the longest session should reach about {longest} min.",
+            f"Peak-week target {round(d.peak_week_km_lo)}-{round(d.peak_week_km_hi)} flat-equivalent km"
+            + ("." if ladder else f"; the longest session should reach about {longest} min."),
         ]
     if d.venue_climb_rate:
         lines.append(
@@ -109,7 +112,7 @@ def long_run_ask(
 ) -> tuple[float, float, int] | None:
     """(ask, recent, last_build): how long this week's long run should be so the longest session reaches the
     goal's time on feet by the last build week instead of staying where it started."""
-    last_build = total_weeks - 3 - taper_shift(total_weeks)
+    last_build = total_weeks - 3 - taper_shift(total_weeks, demands.distance_km)
     if week > last_build:
         return None
     prior = [
@@ -153,7 +156,7 @@ def back_to_back_line(
     if demands.distance_km < ULTRA_KM or (days_per_week or B2B_DAYS) < B2B_DAYS or not total_weeks:
         return None
     lo, _hi = B2B_WINDOW
-    shift = taper_shift(total_weeks)
+    shift = taper_shift(total_weeks, demands.distance_km)
     if week not in (total_weeks - lo + 1 - shift, total_weeks - lo + 2 - shift, total_weeks - lo + 3 - shift):
         return None
     from services.plan_lint import b2b_targets
@@ -176,4 +179,44 @@ def climb_line(week: int, total_weeks: int, demands: Demands, flat_only: bool) -
         f"and the athlete has no hills: make this week's Muscular Endurance session the outdoor weighted carries, "
         f"stair or incline-treadmill format (climbing laps of 5+ min with a 5-15% bodyweight pack), not gym straight "
         f"sets, and finish with eccentric step-downs."
+    )
+
+
+VERT_MIN_M_PER_KM = 20.0  # flatter courses need no weekly climbing target (R-C1's threshold)
+VERT_PEAK_SHARE = 0.40  # the peak week climbs 40% of race D+ (quality bar #1) ...
+VERT_PEAK_SHARE_INDOOR = 0.25  # ... 25% when only a treadmill or stairs can deliver it
+VERT_START_SHARE = 0.10  # an athlete with no watch vert starts from 10% of race D+
+VERT_WEEKLY_GROWTH = 0.20  # under the lint's VERT_JUMP (+25%)
+
+
+def vert_targets(d: Demands | None, total_weeks: int, start_vert_m: float | None, indoor_only: bool) -> dict[int, int]:
+    """m D+ each build week should climb (R-C8): from the athlete's recent weekly vert toward the peak share of race
+    D+ by the last build week, at most +20% a week. Recovery weeks have none (they climb less on purpose)."""
+    from services import ultra_rules  # ultra_rules imports athlete_tier, like this module
+
+    if d is None or d.steepness_m_per_km < VERT_MIN_M_PER_KM or not total_weeks:
+        return {}
+    last_build = total_weeks - 3 - taper_shift(total_weeks, d.distance_km)
+    peak = d.gain_m * (VERT_PEAK_SHARE_INDOOR if indoor_only else VERT_PEAK_SHARE)
+    start = max(float(start_vert_m or 0), VERT_START_SHARE * d.gain_m)
+    out: dict[int, int] = {}
+    for week in range(1, last_build + 1):
+        if ultra_rules.is_deload(week, total_weeks, d.distance_km):
+            continue
+        ramp = start * (peak / start) ** (week / last_build) if peak > start else start
+        out[week] = int(round(min(ramp, start * (1 + VERT_WEEKLY_GROWTH) ** week, peak) / 10) * 10)
+    return out
+
+
+def vert_block(targets: dict[int, int], weeks: range, gain_m: float, lang: str) -> str | None:
+    """Prompt lines with this block's weekly D+ targets."""
+    lines = [(w, targets[w]) for w in weeks if w in targets]
+    if not lines:
+        return None
+    if lang == "vi":
+        return "MỤC TIÊU D+ MỖI TUẦN (leo núi, buổi Climb, cầu thang, treadmill dốc):\n" + "\n".join(
+            f"- Tuần {w}: khoảng {t} m D+ ({t / gain_m * 100:.0f}% D+ của race)." for w, t in lines
+        )
+    return "WEEKLY CLIMBING TARGET (mountain day, climb sessions, stairs, incline treadmill):\n" + "\n".join(
+        f"- Week {w}: about {t} m D+ ({t / gain_m * 100:.0f}% of race D+)." for w, t in lines
     )

@@ -166,3 +166,55 @@ async def generate_week_brief(
             decision_log=decision_log,
             api_key=api_key,
         )
+
+
+def week_one_facts(
+    workouts: list[dict[str, Any]],
+    race_info: dict[str, Any],
+    current_weekly_km: float | None,
+    goal_line: str | None = None,
+) -> list[str]:
+    """The decision log for a new plan's week 1 (it has no block before it): why the week is this big, on these
+    days, and what the goal check says. Plain facts; the brief model only words them."""
+    from services import athlete_tier, ultra_rules
+    from services.training_venues import parse_days
+
+    snapshot = race_info.get("fitness_snapshot")
+    flag = (getattr(snapshot, "readiness", None) or {}).get("readiness_flag")
+    facts = []
+    if current_weekly_km:
+        facts.append(
+            f"Weeks 1-2 stay near the athlete's current volume ({current_weekly_km:.0f} km a week, their typical "
+            "week lately)"
+            + (
+                "; the watch shows fatigue, so they hold there with no increase."
+                if athlete_tier.start_load_growth(flag) == 1.0
+                else ", at most 10% above it."
+            )
+        )
+    share = athlete_tier.first_week_share(race_info.get("plan_start_date"))
+    if share < 1:
+        days = round(7 * share)
+        facts.append(
+            f"The plan starts mid-week, so week 1 has {days} days and about {share * 100:.0f}% of a normal week."
+        )
+    else:
+        days = 7
+    wanted = min(int(race_info.get("days_per_week") or 7), days)
+    run_days = {
+        w.get("day_of_week") for w in _active(workouts) if w.get("type") not in ("Strength", "Muscular Endurance")
+    }
+    if len(run_days) < wanted:
+        band = ultra_rules.applies(race_info.get("course_distance_km"), parse_days(race_info.get("mountain_days")))
+        minimum = (
+            f" (weekday runs for this race are at least {ultra_rules.weekday_minutes(band, False)[0]} min)"
+            if band
+            else ""
+        )
+        facts.append(
+            f"Week 1 runs on {len(run_days)} days, not {wanted}: to stay near current volume, whole easy runs were "
+            f"left out rather than cut too short to be worth it{minimum}."
+        )
+    if goal_line:
+        facts.append(goal_line)
+    return facts

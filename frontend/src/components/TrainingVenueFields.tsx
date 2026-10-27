@@ -1,6 +1,6 @@
 import { useEffect, useId, useState, type CSSProperties } from "react";
 import { getApiBaseUrl } from "../lib/apiUrlOverride";
-import type { TrainingMountain } from "../types";
+import type { LongDayFormat, TrainingMountain } from "../types";
 import { translations } from "../app/translations";
 import styles from "./TrainingVenueFields.module.css";
 
@@ -11,6 +11,7 @@ export interface TrainingVenueValue {
   mountain_days: string[];
   training_mountain?: string | null;
   mountain_min_minutes?: number | null;
+  long_day_format?: LongDayFormat | null;
   stair_access: boolean;
   treadmill_max_incline: number;
 }
@@ -28,9 +29,12 @@ interface TrainingVenueFieldsProps {
   // The long run belongs on a trail day: picking trail days moves it there (mirrors training_venues.long_run_day).
   longRunDay?: string;
   onLongRunDayChange?: (day: string) => void;
+  // Where the plan saves it (create, onboarding, next block): one 6-7 h mountain day or a back-to-back weekend.
+  showLongDayFormat?: boolean;
 }
 
 export const STEEP_COURSE_M_PER_KM = 25;
+const VENUE_SHARE = 0.6;
 
 const FULL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -84,7 +88,7 @@ const SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHORT_DAYS_VI = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const INCLINES = [15, 20, 25];
 
-export function TrainingVenueFields({ lang, t, value, useTreadmill, onTreadmillChange, onChange, courseSteepness, longRunDay, onLongRunDayChange }: TrainingVenueFieldsProps) {
+export function TrainingVenueFields({ lang, t, value, useTreadmill, onTreadmillChange, onChange, courseSteepness, longRunDay, onLongRunDayChange, showLongDayFormat }: TrainingVenueFieldsProps) {
   const id = useId();
   const [mountains, setMountains] = useState<TrainingMountain[]>([]);
   const [loadError, setLoadError] = useState(false);
@@ -98,6 +102,9 @@ export function TrainingVenueFields({ lang, t, value, useTreadmill, onTreadmillC
   const mountain = mountains.find(m => m.key === value.training_mountain);
   const minimum = value.mountain_min_minutes || mountain?.default_min_minutes;
   const needsClimbVenue = (courseSteepness ?? 0) >= STEEP_COURSE_M_PER_KM && !hasSavedTrail && !value.stair_access && !useTreadmill;
+  // A mountain under 60% of the course's steepness can't rehearse it (backend goal_feasibility.VENUE_SHARE).
+  const venueTooGentle = !!mountain && (courseSteepness ?? 0) >= STEEP_COURSE_M_PER_KM
+    && mountain.climb_rate < VENUE_SHARE * (courseSteepness ?? 0) && !value.stair_access && !useTreadmill;
   useEffect(() => {
     let active = true;
     fetch(`${getApiBaseUrl()}/api/training-mountains`)
@@ -189,11 +196,31 @@ export function TrainingVenueFields({ lang, t, value, useTreadmill, onTreadmillC
             onChange({ mountain_min_minutes: mountain?.default_min_minutes ?? null }); setShowDuration(false);
           }}>{t("plan_trail_duration_reset")}</button>
         </div>}
+        {showLongDayFormat && <div className={styles.override} role="radiogroup" aria-labelledby={`${id}-long-day`}>
+          <span id={`${id}-long-day`} className={styles.question}>{t("plan_long_day_format")}</span>
+          <div className={styles.choices}>
+            {(["single", "back_to_back"] as const).map(format => (
+              <label key={format} className={styles.choice}>
+                <input type="radio" name={`${id}-long-day`}
+                  checked={(value.long_day_format ?? "single") === format}
+                  onChange={() => onChange({ long_day_format: format })} />
+                {t(format === "single" ? "plan_long_day_single" : "plan_long_day_b2b")}
+              </label>
+            ))}
+          </div>
+          <p className={styles.help}>{t("plan_long_day_help")}</p>
+        </div>}
       </div>}
       <div className={styles.alternatives}>
         <h3 className={styles.heading}>{t("plan_trail_alternatives")}</h3>
         {needsClimbVenue && <p role="status" data-testid="climb-venue-needed" className={styles.help}>
           {t("plan_climb_venue_needed").replace("{gradient}", String(Math.round(courseSteepness ?? 0)))}
+        </p>}
+        {venueTooGentle && mountain && <p role="status" data-testid="venue-too-gentle" className={styles.help}>
+          {t("plan_venue_too_gentle")
+            .replace("{mountain}", lang === "vi" ? mountain.name_vi : mountain.name_en)
+            .replace("{venue}", String(Math.round(mountain.climb_rate)))
+            .replace("{course}", String(Math.round(courseSteepness ?? 0)))}
         </p>}
         <label className={styles.toggle}>
           <input type="checkbox" checked={value.stair_access} onChange={e => onChange({ stair_access: e.target.checked })} />

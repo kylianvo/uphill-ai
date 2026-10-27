@@ -150,7 +150,7 @@ from services.rag_service import RagService
 from services.training_mountains import MOUNTAINS
 from services.training_rules import TrainingRules, resolve_zone2_pace
 from services.weather_service import WeatherService
-from services.week_brief import generate_week_brief
+from services.week_brief import generate_week_brief, week_one_facts
 from services.week_review_narrative import generate_week_narrative
 from telemetry import plan_job_duration_seconds
 
@@ -291,6 +291,8 @@ class PlanGenerateRequest(BaseModel):
     mountain_days: list[str] | None = None
     training_mountain: str | None = None
     mountain_min_minutes: int | None = Field(default=None, ge=0)
+    # One 6-7 h mountain day, or a back-to-back weekend longer in all (services/ultra_rules.b2b_split)
+    long_day_format: Literal["single", "back_to_back"] | None = None
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     # Non-race / start date fields
@@ -371,6 +373,8 @@ class GenerateNextBlockRequest(BaseModel):
     mountain_days: list[str] | None = None
     training_mountain: str | None = None
     mountain_min_minutes: int | None = Field(default=None, ge=0)
+    # One 6-7 h mountain day, or a back-to-back weekend longer in all (services/ultra_rules.b2b_split)
+    long_day_format: Literal["single", "back_to_back"] | None = None
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     athlete_notes: str | None = None
@@ -560,6 +564,8 @@ class OnboardingRequest(BaseModel):
     mountain_days: list[str] | None = None
     training_mountain: str | None = None
     mountain_min_minutes: int | None = Field(default=None, ge=0)
+    # One 6-7 h mountain day, or a back-to-back weekend longer in all (services/ultra_rules.b2b_split)
+    long_day_format: Literal["single", "back_to_back"] | None = None
     stair_access: bool | None = None
     treadmill_max_incline: int | None = None
     # Goal-specific extras
@@ -1379,6 +1385,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         mountain_min_minutes=request.mountain_min_minutes,
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
+        long_day_format=request.long_day_format,
         athlete_notes=request.athlete_notes,
         milestone_target=request.milestone_target if beginner_shape else None,
         has_target_event=bool(beginner_shape and beginner_shape.has_event),
@@ -1419,6 +1426,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "mountain_min_minutes": request.mountain_min_minutes,
         "stair_access": bool(request.stair_access),
         "treadmill_max_incline": request.treadmill_max_incline,
+        "long_day_format": request.long_day_format,
         "plan_start_date": onboarding_start_date,
         "athlete_notes": request.athlete_notes or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,
@@ -1459,6 +1467,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
             plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="onboarding", status="done").observe(time.monotonic() - _t0)
             print(f"[PlanJob][{job_id}] Onboarding plan generation complete — {len(workouts)} workouts saved.")
+            await _week_one_brief(plan_id, race_info, workouts, fresh_user, model_api_key)
         except Exception as ex:
             notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"
@@ -1712,7 +1721,7 @@ def get_athlete_active_plan(athlete_id: int, acting_user: dict[str, Any] = Depen
     if not plan:
         return {"active": False}
     workouts = get_plan_workouts(plan["id"])
-    return {"active": True, "plan": _attach_milestones(plan), "workouts": workouts}
+    return {"active": True, "plan": _plan_payload(plan), "workouts": workouts}
 
 
 @app.get("/api/coaching/athletes/{athlete_id}/recent-plans")
@@ -2270,7 +2279,7 @@ def get_current_active_plan(user: dict[str, Any] = Depends(get_current_user)):
         return {"active": False}
 
     workouts = get_plan_workouts(plan["id"])
-    return {"active": True, "plan": _attach_milestones(plan), "workouts": workouts}
+    return {"active": True, "plan": _plan_payload(plan), "workouts": workouts}
 
 
 async def _generate_plan_for_athlete(
@@ -2379,6 +2388,7 @@ async def _generate_plan_for_athlete(
         mountain_min_minutes=request.mountain_min_minutes,
         stair_access=bool(request.stair_access),
         treadmill_max_incline=request.treadmill_max_incline,
+        long_day_format=request.long_day_format,
         milestone_target=request.milestone_target if beginner_shape else None,
         has_target_event=bool(beginner_shape and beginner_shape.has_event),
         created_by_user_id=created_by_user_id,
@@ -2425,6 +2435,7 @@ async def _generate_plan_for_athlete(
         "mountain_min_minutes": request.mountain_min_minutes,
         "stair_access": bool(request.stair_access),
         "treadmill_max_incline": request.treadmill_max_incline,
+        "long_day_format": request.long_day_format,
         # Start date
         "plan_start_date": start_date_str,
         "athlete_notes": request.athlete_notes or fresh_user.get("athlete_notes"),
@@ -2490,6 +2501,7 @@ async def _generate_plan_for_athlete(
             plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="generate", status="done").observe(time.monotonic() - _t0)
             print(f"[PlanJob][{job_id}] generate-plan complete — {len(workouts)} workouts saved.")
+            await _week_one_brief(plan_id, race_info, workouts, fresh_user, model_api_key)
         except Exception as ex:
             notification_store.fail_generation(job_id)
             plan_jobs[job_id]["status"] = "error"
@@ -2592,6 +2604,13 @@ def get_user_recent_plans(user: dict[str, Any] = Depends(get_current_user)):
 # ─── Sequential Plan Endpoints ────────────────────────────────────────────────
 
 
+def _plan_payload(plan: dict[str, Any]) -> dict[str, Any]:
+    """A plan for the plan views: beginner milestones and the weekly D+ targets (R-C8) the week rows show."""
+    plan = _attach_milestones(plan)
+    plan["weekly_vert_targets"] = goal_service.vert_targets_for(plan)
+    return plan
+
+
 def _attach_milestones(plan: dict[str, Any]) -> dict[str, Any]:
     """Adds `beginner_milestones` (None for plans without a target) and `b_races` to a plan payload."""
     target = plan.get("milestone_target")
@@ -2675,7 +2694,7 @@ def upgrade_milestone_target(
         plan_id, "10k", weeks, clear_event=request.clear_event, race_name=end_name, race_date=end_date
     )
     plan = db.get_plan_by_id(plan_id) or plan
-    return {"plan": _attach_milestones(plan)}
+    return {"plan": _plan_payload(plan)}
 
 
 # ─── B-races (services/b_race.py) ────────────────────────────────────────────
@@ -3005,6 +3024,7 @@ async def _generate_next_block_for_athlete(
         request.mountain_min_minutes,
         request.stair_access,
         request.treadmill_max_incline,
+        request.long_day_format,
     )
     if (
         any(f is not None for f in _schedule_fields)
@@ -3029,6 +3049,7 @@ async def _generate_next_block_for_athlete(
             and request.mountain_min_minutes is None,
             stair_access=request.stair_access,
             treadmill_max_incline=request.treadmill_max_incline,
+            long_day_format=request.long_day_format,
         )
         if updated_plan:
             plan = updated_plan
@@ -3148,6 +3169,10 @@ async def _generate_next_block_for_athlete(
         from services import goal_service
 
         brief_decision_log.extend(plan_adequacy.summary_lines(goal_service.plan_adequacy_for(plan)))
+        from services import goal_feasibility
+
+        if line := goal_feasibility.brief_line(goal_service.feasibility_for({**plan, "user_id": athlete_id})):
+            brief_decision_log.append(line)
     except Exception:
         _goal_logger.exception("plan support for brief failed", extra={"fields": {"plan_id": request.plan_id}})
     if gate is not None:
@@ -3206,6 +3231,7 @@ async def _generate_next_block_for_athlete(
         "mountain_days": plan.get("mountain_days"),
         "training_mountain": plan.get("training_mountain"),
         "mountain_min_minutes": plan.get("mountain_min_minutes"),
+        "long_day_format": plan.get("long_day_format"),
         "stair_access": plan.get("stair_access"),
         "treadmill_max_incline": plan.get("treadmill_max_incline"),
         "plan_start_date": plan.get("start_date"),
@@ -3556,7 +3582,7 @@ def select_plan_endpoint(request: SelectPlanRequest, user: dict[str, Any] = Depe
     workouts = get_plan_workouts(request.plan_id)
     return {
         "active": True,
-        "plan": _attach_milestones(updated_plan) if updated_plan else updated_plan,
+        "plan": _plan_payload(updated_plan) if updated_plan else updated_plan,
         "workouts": workouts,
     }
 
@@ -4756,6 +4782,38 @@ async def _plan_snapshot(user_id: int, typed_weekly_km: float | None = None, typ
 def _store_plan_snapshot(plan_id: int, snapshot) -> None:
     if snapshot is not None:
         set_plan_fitness_snapshot(plan_id, snapshot.to_dict())
+
+
+async def _week_one_brief(
+    plan_id: int, race_info: dict[str, Any], workouts: list[dict[str, Any]], user: dict[str, Any], api_key: str | None
+) -> None:
+    """A new plan's week 1 gets a brief too (R-N5): start load, a mid-week start, dropped run days and the goal
+    check. Best-effort, after the plan is saved: a failure never touches the plan."""
+    try:
+        from services import goal_feasibility, goal_service
+
+        plan = get_plan_by_id(plan_id) or {}
+        snapshot = race_info.get("fitness_snapshot")
+        week1 = [w for w in workouts if w.get("week_number") == 1]
+        facts = week_one_facts(
+            week1,
+            race_info,
+            getattr(snapshot, "weekly_km", None) or user.get("current_weekly_km"),
+            goal_feasibility.brief_line(goal_service.feasibility_for(plan)) if plan else None,
+        )
+        brief = await generate_week_brief(
+            race_info=race_info,
+            block_context="",
+            week_number=1,
+            workouts=week1,
+            prev_workouts=[],
+            decision_log=facts,
+            api_key=api_key,
+        )
+        if brief:
+            upsert_week_brief(plan_id, 1, brief)
+    except Exception:
+        _snapshot_logger.exception("week 1 brief failed (non-fatal)")
 
 
 _goal_logger = get_logger("goal_assessment")

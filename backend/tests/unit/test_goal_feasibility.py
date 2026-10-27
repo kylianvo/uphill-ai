@@ -113,3 +113,20 @@ def test_sub_elite_hundred_milers_get_longer_weekday_runs_and_a_larger_long_run_
     with_exception = _assess(mile100, profile=ELITE, days=6, weeks=30, current=90.0)
     plain = _assess(goal_demands.compute(104.2, 5533, None, 29), profile=ELITE, days=6, weeks=30, current=90.0)
     assert with_exception.capacity_h > plain.capacity_h
+
+
+def test_brief_line_says_the_verdict_and_what_would_help():
+    from services.goal_feasibility import brief_line
+
+    line = brief_line(
+        {
+            "verdict": "unsupported",
+            "needed_h": 11.6,
+            "capacity_h": 14.5,
+            "weeks_needed": 14,
+            "levers": ["more_weeks", "shorter_race", "finish_only", "steeper_venue"],
+        }
+    )
+    assert line.startswith("Goal check: unsupported.") and "about 14 weeks" in line
+    assert "more weeks before the race, a shorter race, a finish-only goal." in line
+    assert brief_line({"verdict": "supported", "levers": []}) is None and brief_line(None) is None
