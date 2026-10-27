@@ -39,6 +39,7 @@ struct PlanView: View {
     @State private var showNextWeek = false
     @State private var showAdapt = false
     @State private var adaptAfterManage = false
+    @State private var racesAfterManage = false
     @State private var showReview = false
     @State private var showGoal = false
     @State private var raceSheet: RaceSheet?
@@ -128,13 +129,7 @@ struct PlanView: View {
                 .sheet(isPresented: $showSchedule) { ScheduleChangeSheet(model: model) }
                 .sheet(isPresented: $showAdapt) { AdaptWeekSheet(model: model, week: model.selectedWeek) }
                 .sheet(isPresented: $showGoal) { GoalSheet(model: model) }
-                .sheet(item: $raceSheet) { sheet in
-                    switch sheet {
-                    case .add: AddBRaceSheet(model: model)
-                    case .edit(let race): AddBRaceSheet(model: model, race: race)
-                    case .debrief(let race): RaceDebriefSheet(model: model, race: race)
-                    }
-                }
+                .sheet(item: $raceSheet) { $0.content(model, app: app) }
                 .sheet(isPresented: $showReview) { WeekReviewSheet(model: model, week: model.selectedWeek) }
                 .sheet(isPresented: $showNextWeek) {
                     if let offer = model.nextWeekOffer { NextWeekSheet(model: model, offer: offer) }
@@ -143,6 +138,7 @@ struct PlanView: View {
                     if startNewAfterManage { startNewAfterManage = false; onBuildPlan() }
                     if scheduleAfterManage { scheduleAfterManage = false; showSchedule = true }
                     if adaptAfterManage { adaptAfterManage = false; showAdapt = true }
+                    if racesAfterManage { racesAfterManage = false; raceSheet = .list }
                     if let tool = toolAfterManage {
                         toolAfterManage = nil
                         onSharpen(tool)
@@ -153,6 +149,7 @@ struct PlanView: View {
                                     onStartNew: { startNewAfterManage = true },
                                     onSchedule: { scheduleAfterManage = true },
                                     onAdapt: model.canAdaptWeek(model.selectedWeek) ? { adaptAfterManage = true } : nil,
+                                    onRaces: model.isRacePlan ? { racesAfterManage = true } : nil,
                                     onTool: { dest in toolAfterManage = dest })
                 }
         }
@@ -251,13 +248,27 @@ struct PlanView: View {
                                         onGoal: { showGoal = true },
                                         initialVolumeMode: initialVolumeMode)
 
-                        // 3b. B-races: the next races on race plans
-                        if model.isRacePlan, !model.nextRaces.isEmpty {
-                            NextRacesCard(model: model,
-                                          onAdd: { raceSheet = .add },
-                                          onOpen: { raceSheet = .edit($0) },
-                                          onDebrief: { raceSheet = .debrief($0) })
-                                .padding(.horizontal, UH.Space.regular)
+                        // 3b. B-races live in Manage; only a due debrief shows here
+                        if let race = model.bRaces.first(where: model.raceNeedsDebrief) {
+                            Button { raceSheet = .debrief(race) } label: {
+                                HStack {
+                                    Label(L("How did %@ go?", race.raceName), systemImage: "flag.checkered")
+                                        .font(UH.TextStyle.label)
+                                        .foregroundStyle(UH.Palette.ink)
+                                        .lineLimit(2)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(UH.Palette.muted)
+                                }
+                                .padding(UH.Space.regular)
+                                .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+                                .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, UH.Space.regular)
+                            .accessibilityIdentifier("races.debrief.\(race.id)")
                         }
 
                         // 4. Coach review card
@@ -579,13 +590,26 @@ struct PlanView: View {
 
 /// Which B-race sheet the Plan screen shows.
 enum RaceSheet: Identifiable {
-    case add, edit(BRace), debrief(BRace)
+    case list, add, edit(BRace), debrief(BRace)
 
     var id: String {
         switch self {
+        case .list: "list"
         case .add: "add"
         case .edit(let race): "edit-\(race.id)"
         case .debrief(let race): "debrief-\(race.id)"
+        }
+    }
+
+    @MainActor @ViewBuilder
+    func content(_ model: PlanViewModel, app: AppModel?) -> some View {
+        switch self {
+        case .list: RacesSheet(model: model, app: app)
+        case .add: AddBRaceSheet(model: model, raceMatch: app?.raceMatchService, goalService: app?.goalEstimateService,
+                                 raceHistory: app?.raceHistoryService)
+        case .edit(let race): AddBRaceSheet(model: model, race: race, raceMatch: app?.raceMatchService,
+                                            goalService: app?.goalEstimateService, raceHistory: app?.raceHistoryService)
+        case .debrief(let race): RaceDebriefSheet(model: model, race: race)
         }
     }
 }
