@@ -13,6 +13,47 @@ Paths are under `backend/services/` unless stated.
 
 ---
 
+## 0. Where the rules come from (read this before changing plan code)
+
+**Order of authority** when two sources disagree:
+1. **Coach Quang Tran** for ultras (45 km+) trained on a weekly mountain day: the target user is a HCMC runner on
+   flat roads on weekdays with Núi Dinh (60 m D+/km) at the weekend. His rules, as he gave them on 2026-10-22/23:
+   - Long run on the mountain day, in hours: weeks 1–2 3 h, weeks 3–5 4 h, weeks 6–8 5 h, peak 6–7 h (30–35 km
+     at Dinh); recovery weeks 4 h. 50 km: 3 h ×4 → 4 h → 4.5 h → 5 h peak, recovery 3 h.
+   - Weekday easy runs 1 h–1 h 30 for 100 km+ (45 min is too little).
+   - Quality (hill repeats or intervals, ≤1 h 30 each): finishers 1 a week, advanced/elite 2 a week.
+   - +20% volume, all of it on the weekdays, never on the long run.
+   - A runner at 50–60 km/week stays at 50–60 km for the first 2 weeks.
+   - A back-to-back weekend is allowed as the athlete's choice (owner, 2026-10-27).
+2. **Uphill Athlete** (*Training for the Uphill Athlete*, the KB in `kb_seed/scheduler.json`) for everything else:
+   aerobic base first (80/20, Zone 1–2), the AeT gate for aerobic deficiency, 3:1 loading, growth of about 10% a
+   week, ME on top of the running and not in the last 10–14 days, a 2–3 week taper, specificity (climbing, descents,
+   time on feet) in the last 8 weeks, and no making up missed sessions.
+3. **Code defaults** fill the gaps and must not contradict 1 or 2.
+
+Where Quang and the book disagree (session cap, long-run share, ladder growth, weekday minimum, start hold) the
+table in `docs/superpowers/specs/2026-10-23-ultra-rules-design.md` records the decision and why.
+
+**Where code still differs from Quang (open, ask him):**
+- Quality sessions run only in the 8 weeks up to the peak (book), not every week. Short plans open with up to
+  3 ME weeks before them.
+- Advanced runners get 1 Zone 3 session a week, not 2: since 2026-10-25 the double dose needs an elite runner on
+  15 h+ weeks (KB; `quality_dose`, `ultra_gated` in `plan_generator.py`).
+- Long plans hold 5 h for many weeks and reach 6 h and 7 h once each, a recovery week apart.
+
+**Before you change plan generation, next block or adapt week:**
+1. Find the rule ID below that covers the change. A new behaviour gets a new rule ID here, with its source
+   (Quang, the book, or the owner) and the code that enforces it.
+2. Enforce it in code after the model (post-processing), and add a `plan_lint` check when the model could break it.
+   A rule that only lives in the prompt is not a rule.
+3. Write the failing test first; keep `python backend/scripts/plan_reliability.py` at all scenarios passing.
+4. Update this page in the same PR. If the change departs from Quang or the book, add it to the spec's deviation
+   table and to the list above.
+5. For a bigger change, run the persona plans (`scripts/plan_live_personas.py`, Quang personas `q_*`) and judge them
+   against this page before shipping.
+
+---
+
 ## 1. Inputs and who decides what
 
 | Input | Where it comes from | Used for |
@@ -46,8 +87,9 @@ Paths are under `backend/services/` unless stated.
   **at most 80% of the week before**, cut from easy runs (`_ramp_volume`), checked again against the week
   before as it finally stands (`_cap_growth`). On a mountain-day ultra the deload's easy minutes go into runs of
   at least 30 min, not runs too short to keep. *UA: 3:1 loading.*
-- **R-P3 Two-step taper** for plans of 12+ weeks (code: about 70%, then 50% of the peak week; one step at 50%
-  for shorter plans; the lint holds each taper week to ≤85% of the week before). Taper weeks
+- **R-P3 Two-step taper** for plans of 12+ weeks and for every 100 km+ race (`taper_weeks(total, km)`; a 10-week
+  100 km plan puts its 7 h long run 3 weeks out, not 13 days) (code: about 70%, then 50% of the peak week; one step
+  at 50% for shorter plans; the lint holds each taper week to ≤85% of the week before). Taper weeks
   are built by code from the real peak (`TAPER_BY_RULES`), with no new hard work. *UA taper.*
 
 ### Volume
@@ -91,8 +133,9 @@ Paths are under `backend/services/` unless stated.
 Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
 `docs/superpowers/specs/2026-10-23-ultra-rules-design.md`, which records where this departs from the book).
 - **R-U1 Long-run ladder** in hours, read back from the peak week: 100 km 3, 3, 4, 4, 5 … 6, 7 h; 50 km
-  3 h ×4 → 4 → 4.5 → 5 h; 100 mi as 100 km, 8 h peak for sub-elite/elite; a short plan keeps the top steps
-  (a 13-week 100 km: 3, 3, 4, (3), 4, 5, 6, (4), 7 h). A recovery week's long run is **a rung below the last
+  3 h ×4 → 4 → 4.5 → 5 h; 100 mi as 100 km, 8 h peak for sub-elite/elite; a short plan drops its earliest
+  rungs and keeps one filler step, so no rung is 2 h above the last (a 13-week 100 km: 3, 3, 4, (3), 4, 5, 6, (4),
+  7 h; a 10-week 100 km: 3, 4, 4, (3), 5, 6, 7 h, then two taper weeks). A recovery week's long run is **a rung below the last
   build week**, 4 h at most (3 h at the first one). Never more than 60 min above the last two weeks'
   longest. Session cap 300 / 420 / 420–480 min, long-run share 60%; ladder steps are exempt from
   `LONG_RUN_JUMP` and the weekly growth checks measure the rest of the week.
@@ -108,8 +151,8 @@ Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
   (Quang: a 50–60 km runner stays at 50–60 km), so the weekday minimum sets each run's length, not the
   number of runs: a short week has fewer 60-min runs (R-V4), never shorter ones.
 - **R-U3 Quality sessions** only in the 8 weeks up to the peak (deloads excluded): Zone 3 uphill or
-  rolling intervals, ≤90 min, 1 a week (2 for ungated sub-elite/elite), none before or in the taper; no
-  Zone 4. Gated runners (R-I1) still get one at 20–30 min of work. `QUALITY_COUNT`, `_add_tempo`,
+  rolling intervals, ≤90 min, 1 a week (2 only for an ungated elite on 15 h+ weeks, `ELITE_DOSE_WEEK_MIN`; Quang
+  asked 2 for advanced runners, see section 0), none before or in the taper; no Zone 4. Gated runners (R-I1) still get one at 20–30 min of work. `QUALITY_COUNT`, `_add_tempo`,
   `_gate_hard`.
 
 ### All plans (2026-10-23)

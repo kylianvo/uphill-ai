@@ -182,6 +182,14 @@ Single-context layout: one `CONTEXT.md` + `docs/adr/` at the repo root (created 
 
 Any prompt edit, new Gemini call, or new LLM-powered service goes through Langfuse prompt versioning, a golden-set eval pushed to Langfuse, and staging → production label promotion. Follow `.claude/skills/llm-change-process/SKILL.md` and put its checklist in the PR description.
 
+### Plan rules
+
+`docs/plan-rules.md` is the rulebook for every training plan (create, next block, adapt week): coach Quang's rules
+for HCMC mountain-day ultras first, then Uphill Athlete, each rule with an ID, a source and the code that enforces
+it. Read its section 0 before touching `plan_generator.py`, `plan_lint.py`, `ultra_rules.py`, `athlete_tier.py`,
+`goal_demands.py`, `week_layout.py`, `week_rebuild.py` or the plan prompt; update it in the same PR; keep
+`python backend/scripts/plan_reliability.py` passing. Judge plans against it when asked whether a plan is right.
+
 ### UI changes
 
 Never call a frontend change done on the strength of `tsc`/`eslint`/`vitest` alone — run it locally and capture a screenshot as evidence. See `.claude/skills/ui-screenshot-evidence/SKILL.md`.
