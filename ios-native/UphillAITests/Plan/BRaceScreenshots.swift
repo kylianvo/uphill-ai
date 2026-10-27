@@ -59,6 +59,19 @@ struct BRaceScreenshots {
         let raceModel = try #require(model.bRaces.first)
         let riskyModel = try #require(model.bRaces.last)
 
+        // The race list knows Dalat Ultra Trail and its distances, as /api/kb/match-race does in production.
+        let base = StubURLProtocol.register { _ in
+            (200, json(["matched": true, "auto_apply": true, "candidates": [],
+                        "match": ["race_name": "Dalat Ultra Trail", "distances": [
+                            ["label": "21km", "distance_km": 21, "elevation_gain_m": 900],
+                            ["label": "50km", "distance_km": 50, "elevation_gain_m": 2300],
+                            ["label": "75km", "distance_km": 75, "elevation_gain_m": 3600],
+                            ["label": "100km", "distance_km": 100, "elevation_gain_m": 5000]]]]))
+        }
+        let raceMatch = RaceMatchService(client: APIClient(baseURL: { base }, tokenStore: InMemoryTokenStore(), session: StubURLProtocol.session()))
+        let dalat = try decode(BRace.self, BRaceDecodingTests.race(level: "risky", ["id": 6, "race_name": "Dalat Ultra Trail", "race_date": "2026-11-28",
+                                                                                     "distance_km": 50, "elevation_gain_m": 2300]))
+
         for lang in [AppLanguage.en, .vi] {
             UserDefaults.standard.set(lang.rawValue, forKey: AppLanguage.storageKey)
             let s = lang.rawValue
@@ -67,6 +80,8 @@ struct BRaceScreenshots {
             try await save(AddBRaceSheet(model: model, race: riskyModel).environment(\.locale, lang.locale), name: "brace-add-risky-\(s)", height: 1300, wait: 1200)
             try await save(AddBRaceSheet(model: model, race: raceModel).environment(\.locale, lang.locale), name: "brace-open-good-\(s)", height: 900, wait: 300)
             try await save(RaceDebriefSheet(model: model, race: raceModel).environment(\.locale, lang.locale), name: "brace-debrief-\(s)", height: 874)
+            try await save(AddBRaceSheet(model: model, race: dalat, raceMatch: raceMatch).environment(\.locale, lang.locale),
+                           name: "brace-add-matched-\(s)", height: 1300, wait: 2000)
             // The card lives in Manage now; the Plan screen only carries the due-debrief prompt.
             try await save(PlanView(model: model, generation: GenerationCenter(service: FakeGenerationService(), defaults: UserDefaults(suiteName: UUID().uuidString)!), onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list)
                 .environment(\.locale, lang.locale), name: "brace-plan-debrief-prompt-\(s)", height: 1100, wait: 800)

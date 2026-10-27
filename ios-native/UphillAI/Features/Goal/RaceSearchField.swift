@@ -10,6 +10,8 @@ struct RaceSearchField: View {
     let onPick: (RaceDistance) -> Void
     /// Called when the name is edited away from a matched race, so stale course values can be dropped.
     var onClear: (() -> Void)? = nil
+    /// The distance already chosen (editing a saved race): picked again when the race matches.
+    var selectedKm: Double? = nil
 
     @State private var candidates: [RaceMatch] = []
     @State private var selected: RaceMatch?
@@ -108,6 +110,8 @@ struct RaceSearchField: View {
             pick(RaceDistance(label: race.distanceLabel, distanceKm: km, elevationGainM: race.elevationGainM))
         } else if distances.count == 1, let only = distances.first {
             pick(only)
+        } else if let km = selectedKm, let saved = distances.first(where: { abs($0.distanceKm - km) < 0.05 }) {
+            pick(saved)
         }
     }
 

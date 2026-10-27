@@ -3,6 +3,7 @@ import SwiftUI
 /// The plan's races, opened from Manage: the Next races card with its add, edit and debrief sheets.
 struct RacesSheet: View {
     let model: PlanViewModel
+    var app: AppModel? = nil
     @State private var raceSheet: RaceSheet?
     @Environment(\.dismiss) private var dismiss
 
@@ -23,7 +24,7 @@ struct RacesSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .sheet(item: $raceSheet) { $0.content(model) }
+            .sheet(item: $raceSheet) { $0.content(model, app: app) }
         }
         .presentationDetents([.medium, .large])
         .presentationBackground(UH.Palette.surface)

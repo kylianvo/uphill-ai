@@ -351,16 +351,6 @@
         }
       }
     },
-    "We couldn't find this race in our list: add its distance.": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Không tìm thấy race này trong danh sách: hãy nhập cự ly."
-          }
-        }
-      }
-    },
     "Pick a date after today and before your goal race.": {
       "localizations": {
         "vi": {
@@ -18997,6 +18987,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bật lại"
+          }
+        }
+      }
+    },
+    "Not in our race list: enter the distance below.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có trong danh sách race: hãy nhập cự ly bên dưới."
+          }
+        }
+      }
+    },
+    "Estimate your finish time": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ước tính thời gian về đích"
           }
         }
       }

@@ -1039,7 +1039,7 @@ private struct SetupError: View {
     }
 }
 
-private struct SetupOption: View {
+struct SetupOption: View {
     let title: String
     var subtitle: String? = nil
     var symbol: String? = nil

@@ -129,7 +129,7 @@ struct PlanView: View {
                 .sheet(isPresented: $showSchedule) { ScheduleChangeSheet(model: model) }
                 .sheet(isPresented: $showAdapt) { AdaptWeekSheet(model: model, week: model.selectedWeek) }
                 .sheet(isPresented: $showGoal) { GoalSheet(model: model) }
-                .sheet(item: $raceSheet) { $0.content(model) }
+                .sheet(item: $raceSheet) { $0.content(model, app: app) }
                 .sheet(isPresented: $showReview) { WeekReviewSheet(model: model, week: model.selectedWeek) }
                 .sheet(isPresented: $showNextWeek) {
                     if let offer = model.nextWeekOffer { NextWeekSheet(model: model, offer: offer) }
@@ -602,11 +602,13 @@ enum RaceSheet: Identifiable {
     }
 
     @MainActor @ViewBuilder
-    func content(_ model: PlanViewModel) -> some View {
+    func content(_ model: PlanViewModel, app: AppModel?) -> some View {
         switch self {
-        case .list: RacesSheet(model: model)
-        case .add: AddBRaceSheet(model: model)
-        case .edit(let race): AddBRaceSheet(model: model, race: race)
+        case .list: RacesSheet(model: model, app: app)
+        case .add: AddBRaceSheet(model: model, raceMatch: app?.raceMatchService, goalService: app?.goalEstimateService,
+                                 raceHistory: app?.raceHistoryService)
+        case .edit(let race): AddBRaceSheet(model: model, race: race, raceMatch: app?.raceMatchService,
+                                            goalService: app?.goalEstimateService, raceHistory: app?.raceHistoryService)
         case .debrief(let race): RaceDebriefSheet(model: model, race: race)
         }
     }
