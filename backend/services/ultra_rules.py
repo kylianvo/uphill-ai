@@ -93,6 +93,8 @@ def peak_week(total_weeks: int, km: float | None = None) -> int:
 def is_deload(week: int, total_weeks: int, km: float | None = None) -> bool:
     """Same rule as PlanGenerator.is_deload_week (kept here to avoid an import cycle; a test pins the two)."""
     last_build = total_weeks - 3 - (taper_weeks(total_weeks, km) - 1)
+    if last_build > 4 and last_build % 4 == 0 and week == last_build - 1:
+        return True  # the peak falls on a 4th week: recover the week before, never load 4 weeks into it (book: 3:1)
     return week > 1 and week % 4 == 0 and week < last_build
 
 

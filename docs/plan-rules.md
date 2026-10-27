@@ -34,12 +34,22 @@ Paths are under `backend/services/` unless stated.
 Where Quang and the book disagree (session cap, long-run share, ladder growth, weekday minimum, start hold) the
 table in `docs/superpowers/specs/2026-10-23-ultra-rules-design.md` records the decision and why.
 
-**Where code still differs from Quang (open, ask him):**
-- Quality sessions run only in the 8 weeks up to the peak (book), not every week. Short plans open with up to
-  3 ME weeks before them.
-- Advanced runners get 1 Zone 3 session a week, not 2: since 2026-10-25 the double dose needs an elite runner on
-  15 h+ weeks (KB; `quality_dose`, `ultra_gated` in `plan_generator.py`).
-- Long plans hold 5 h for many weeks and reach 6 h and 7 h once each, a recovery week apart.
+**Where code differs from what Quang said, decided with the book** (NotebookLM on the KB sources, 2026-10-28):
+- **Quality only in the last 8 weeks before the taper**, 0 in Base (firm rule). Short plans open with up to 3 ME
+  weeks, then Zone 3 replaces ME for the rest of the Specific weeks (firm rule). The exception, Zone 3 in Base for a
+  tested runner with an AeT–AnT gap ≤10%, is not built (owner: too few such runners).
+- **Advanced runners get 1 Zone 3 session a week**, not 2: two need tested thresholds, an elite engine and 15–20 h+
+  weeks (`quality_dose`, `ultra_gated` in `plan_generator.py`). Estimated thresholds keep the Base gate on, which
+  holds every week to one session.
+- **Estimated thresholds are treated as aerobic deficiency** (firm rule): Base in Zones 1–2. No scheduled AeT drift
+  test (owner, 2026-10-22 and 2026-10-28).
+- **Recovery weeks stay at ≤80% of the week before** (book: cut 30–50%), because Quang's recovery long run (3–4 h)
+  and the weekday minimums leave no room for less; recorded as C9 in the spec.
+- **Never 4 loading weeks into the peak** (firm rule, modulation): when the peak lands on a 4th week, the week
+  before it is the recovery week (R-P2). Long plans hold 5 h for many weeks and reach 6 h and 7 h once each, a
+  recovery week apart.
+- **Taper**: 50 km keeps one taper week plus race week (= the book's 2 weeks; the 5 h run is 14 days out); 100 km+
+  tapers two weeks plus race week (R-P3).
 
 **Before you change plan generation, next block or adapt week:**
 1. Find the rule ID below that covers the change. A new behaviour gets a new rule ID here, with its source
@@ -83,7 +93,9 @@ table in `docs/superpowers/specs/2026-10-23-ultra-rules-design.md` records the d
 ### Phases
 - **R-P1 Phases set by code**, not by the model (`PlanGenerator.phase_for_week`): Base → Build →
   Peak → Taper → Race week → Recovery.
-- **R-P2 Deload every 4th week**, never the last build week (`is_deload_week`). A deload week is
+- **R-P2 Deload every 4th week**, never the last build week (`is_deload_week`). When the last build week is itself
+  a 4th week, the week before it is the deload, so no plan loads 4 weeks in a row into its peak (2026-10-28; e.g. a
+  10-week 50 km: 4 h, 4 h 30, recovery, 5 h peak). A deload week is
   **at most 80% of the week before**, cut from easy runs (`_ramp_volume`), checked again against the week
   before as it finally stands (`_cap_growth`). On a mountain-day ultra the deload's easy minutes go into runs of
   at least 30 min, not runs too short to keep. *UA: 3:1 loading.*

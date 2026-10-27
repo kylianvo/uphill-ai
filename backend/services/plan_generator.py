@@ -640,8 +640,11 @@ class PlanGenerator:
 
     @staticmethod
     def is_deload_week(w: int, total_weeks: int, km: float | None = None) -> bool:
-        """Every 4th build week is a deload, but never the last build week: that is the plan's peak."""
+        """Every 4th build week is a deload, but never the last build week: that is the plan's peak. When the peak
+        falls on a 4th week, the week before it is the deload, so no plan loads 4 weeks in a row into its peak."""
         last_build = total_weeks - 3 - (taper_weeks(total_weeks, km) - 1)
+        if last_build > 4 and last_build % 4 == 0 and w == last_build - 1:
+            return True
         return w > 1 and w % 4 == 0 and w < last_build
 
     @staticmethod
