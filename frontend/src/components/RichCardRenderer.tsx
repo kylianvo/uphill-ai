@@ -195,6 +195,16 @@ function PacingSplitsCard({
   );
 }
 
+const SHOE_SPECS: [string, string][] = [["terrain", "Terrain"], ["lug_depth", "Lug depth"], ["drop", "Drop"], ["stack", "Stack"], ["weight", "Weight"], ["pros", "Pros"], ["cons", "Cons"]];
+
+/** kb_search gear results (the iOS shoe card's shape) shown as Gear knowledge cards. */
+const shoeCitations = (data: any) => ({
+  citations: (data.recommendations || []).map((s: any) => ({
+    topic: "Gear", chapter_title: `${s.brand} ${s.model}`.trim(), summary: s.best_for || "", tags: ["Uphill AI Gear Catalog"],
+    key_points: SHOE_SPECS.filter(([k]) => s[k]).map(([k, label]) => `${label}: ${s[k]}`),
+  })),
+});
+
 function KnowledgeCitationsCard({ data }: { data: any }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "6px", marginBottom: "6px" }}>
@@ -222,6 +232,9 @@ function RichCard({ result, lang, onOpenPaceStrategy, isMobile, proposalStates, 
     case "knowledge_citations":
       if (!isValidKnowledgeCitations(data)) return null;
       return <KnowledgeCitationsCard data={data} />;
+    case "shoe_recommendations":
+      if (!Array.isArray(data?.recommendations)) return null;
+      return <KnowledgeCitationsCard data={shoeCitations(data)} />;
     case "schedule_proposal":
       if (!isValidScheduleProposal(data)) return null;
       return (

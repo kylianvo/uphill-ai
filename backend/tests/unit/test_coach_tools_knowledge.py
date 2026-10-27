@@ -27,7 +27,10 @@ def test_kb_search_scheduler_domain_falls_back_to_title_when_no_chapter():
 
 
 def test_kb_search_all_domain_uses_search_principles():
-    with patch("services.kb_retrieval.search_principles", return_value=[]) as mock_search:
+    with (
+        patch("services.kb_retrieval.search_principles", return_value=[]) as mock_search,
+        patch("db.get_kb_chunks", return_value=[]),
+    ):
         kb_search_impl(user_id=1, query="fueling rate", domain="all", api_key="k")
     mock_search.assert_called_once_with(query="fueling rate", api_key="k")
 
@@ -49,7 +52,10 @@ def test_kb_search_all_domain_uses_hit_domain_for_topic_and_tags():
             "source_label": "Training for the Uphill Athlete",
         },
     ]
-    with patch("services.kb_retrieval.search_principles", return_value=hits):
+    with (
+        patch("services.kb_retrieval.search_principles", return_value=hits),
+        patch("db.get_kb_chunks", return_value=[]),
+    ):
         result = kb_search_impl(user_id=1, query="q", domain="all", api_key="k")
     citations = result.card_data["citations"]
     assert citations[0]["topic"] == "Nutrition"
@@ -66,7 +72,7 @@ def test_kb_search_race_courses_domain_uses_db_lookup_not_qdrant():
     ):
         result = kb_search_impl(user_id=1, query="Dalat", domain="race_courses", api_key="k")
     mock_qdrant.assert_not_called()
-    mock_db.assert_called_once_with("race_courses", kind="race_profile")
+    mock_db.assert_called_with("race_courses", kind="race_profile")
     assert result.status == "success"
     citation = result.card_data["citations"][0]
     assert citation["topic"] == "Pacing"

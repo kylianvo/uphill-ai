@@ -1,5 +1,5 @@
 import { it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import RichCardRenderer from "./RichCardRenderer";
 import { ToolResultEvent } from "../lib/coachChatStream";
 
@@ -175,6 +175,18 @@ it("renders knowledge_citations as real KnowledgeCard components", () => {
   render(<RichCardRenderer result={knowledgeResult} lang="en" onOpenPaceStrategy={() => {}} />);
   expect(screen.getByText("Chapter 6")).toBeInTheDocument();
   expect(screen.getByText(/80\/20 intensity distribution/)).toBeInTheDocument();
+});
+
+it("renders shoe_recommendations as knowledge cards with the shoe's specs", () => {
+  const shoes: ToolResultEvent = {
+    type: "tool_result", tool_call_id: "call_5", name: "kb_search", status: "success", card_type: "shoe_recommendations",
+    card_data: { query: "Norda 005", exact_match: true, tips: [], recommendations: [
+      { brand: "Norda", model: "005", overview: "", lug_depth: "3.5 mm", drop: "6 mm", stack: "", weight: "", pros: "Grippy", cons: "" },
+    ] },
+  };
+  render(<RichCardRenderer result={shoes} lang="en" onOpenPaceStrategy={() => {}} />);
+  fireEvent.click(screen.getByText("Norda 005"));  // the card opens to its points
+  expect(screen.getByText(/Lug depth: 3.5 mm/)).toBeInTheDocument();
 });
 
 it("renders nothing (or an inline error note) for a failed tool, never crashing", () => {
