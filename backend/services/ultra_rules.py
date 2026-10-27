@@ -85,28 +85,28 @@ def other_day_minutes(long_run_min: float) -> int:
     return 90 if long_run_min <= 240 else 60 if long_run_min <= 300 else 45
 
 
-def peak_week(total_weeks: int) -> int:
+def peak_week(total_weeks: int, km: float | None = None) -> int:
     """The last build week, as in goal_demands.long_run_ask."""
-    return total_weeks - 3 - taper_shift(total_weeks)
+    return total_weeks - 3 - taper_shift(total_weeks, km)
 
 
-def is_deload(week: int, total_weeks: int) -> bool:
+def is_deload(week: int, total_weeks: int, km: float | None = None) -> bool:
     """Same rule as PlanGenerator.is_deload_week (kept here to avoid an import cycle; a test pins the two)."""
-    last_build = total_weeks - 3 - (taper_weeks(total_weeks) - 1)
+    last_build = total_weeks - 3 - (taper_weeks(total_weeks, km) - 1)
     return week > 1 and week % 4 == 0 and week < last_build
 
 
-def ladder(band: Band, advanced: bool, total_weeks: int) -> dict[int, int]:
+def ladder(band: Band, advanced: bool, total_weeks: int, km: float | None = None) -> dict[int, int]:
     start, filler, end, recovery = _LADDERS[(band, advanced and band == "100mi")]
-    peak = peak_week(total_weeks)
-    n = sum(1 for w in range(1, peak + 1) if not is_deload(w, total_weeks))
-    steps = start + end
-    seq = start + [filler] * (n - len(steps)) + end if n >= len(steps) else steps[-n:] if n > 0 else []
+    peak = peak_week(total_weeks, km)
+    n = sum(1 for w in range(1, peak + 1) if not is_deload(w, total_weeks, km))
+    # a short plan drops its earliest rungs and keeps one filler step, so no rung is 2 h above the last
+    seq = (start + [filler] * max(1, n - len(start) - len(end)) + end)[-n:] if n > 0 else []
     out: dict[int, int] = {}
     it = iter(seq)
     last = 0
     for w in range(1, peak + 1):
-        if is_deload(w, total_weeks):  # a recovery week's long run is a rung below the last build week's
+        if is_deload(w, total_weeks, km):  # a recovery week's long run is a rung below the last build week's
             out[w] = max(start[0], min(recovery, last - STEP_CAP_MIN)) if last else recovery
         else:
             out[w] = last = next(it)
@@ -124,28 +124,28 @@ def b2b_split(rung_min: int) -> tuple[int, int] | None:
 
 
 def long_run_target(
-    band: Band, advanced: bool, week: int, total_weeks: int, recent_longest: float | None
+    band: Band, advanced: bool, week: int, total_weeks: int, recent_longest: float | None, km: float | None = None
 ) -> int | None:
-    target = ladder(band, advanced, total_weeks).get(week)
+    target = ladder(band, advanced, total_weeks, km).get(week)
     if target is None:
         return None
     return int(min(target, recent_longest + STEP_CAP_MIN)) if recent_longest else target
 
 
-def quality_weeks(total_weeks: int) -> frozenset[int]:
-    peak = peak_week(total_weeks)
+def quality_weeks(total_weeks: int, km: float | None = None) -> frozenset[int]:
+    peak = peak_week(total_weeks, km)
     return frozenset(
-        w for w in range(max(1, peak - QUALITY_WINDOW_WEEKS + 1), peak + 1) if not is_deload(w, total_weeks)
+        w for w in range(max(1, peak - QUALITY_WINDOW_WEEKS + 1), peak + 1) if not is_deload(w, total_weeks, km)
     )
 
 
-def me_first_weeks(total_weeks: int, legs_loaded: bool) -> frozenset[int]:
+def me_first_weeks(total_weeks: int, legs_loaded: bool, km: float | None = None) -> frozenset[int]:
     """Short plans (under 16 weeks) open with up to 3 ME weeks before the Zone 3 weeks: never more than half the
     Zone 3 window. None when the athlete's climbing already loads the legs (the KB's "omit ME" case)."""
     if legs_loaded or total_weeks >= 16:
         return frozenset()
-    k = min(ME_FIRST_MAX_WEEKS, len(quality_weeks(total_weeks)) // 2)
-    return frozenset([w for w in range(1, total_weeks + 1) if not is_deload(w, total_weeks)][:k])
+    k = min(ME_FIRST_MAX_WEEKS, len(quality_weeks(total_weeks, km)) // 2)
+    return frozenset([w for w in range(1, total_weeks + 1) if not is_deload(w, total_weeks, km)][:k])
 
 
 def legs_loaded(weekly_vert_m: float | None) -> bool:
@@ -161,6 +161,7 @@ def prompt_block(
     lang: str,
     me_weeks: frozenset[int] = frozenset(),
     back_to_back: bool = False,
+    km: float | None = None,
 ) -> str:
     """Rule lines for the generator: this block's ladder long runs and quality sessions. Technical terms stay in
     English in Vietnamese, like goal_demands.prompt_block. `back_to_back`: the athlete chose a back-to-back weekend
@@ -168,7 +169,7 @@ def prompt_block(
     lo, hi = weekday_minutes(band, advanced)
     n = quality_per_week(advanced, aet_gated)
     work_lo, work_hi = quality_work_minutes(advanced, aet_gated)
-    window = quality_weeks(total_weeks)
+    window = quality_weeks(total_weeks, km)
     vi = lang == "vi"
     lines = [
         "MOUNTAIN-DAY ULTRA RULES (coach's ladder; they override the long-run share and growth rules):"

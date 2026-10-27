@@ -1,4 +1,5 @@
 from services import ultra_rules as u
+from services.athlete_tier import taper_weeks
 from services.plan_generator import PlanGenerator
 
 
@@ -100,3 +101,14 @@ def test_prompt_block_states_the_back_to_back_weekend_only_when_chosen():
     assert "Long Run 420 min" in single and "No back-to-back weekend" in single
     assert "Long Run 300 min on the mountain day, then 165 min" in b2b and "No other back-to-back" in b2b
     assert "60-90 g carbs per hour" in single
+
+
+def test_a_100k_short_plan_tapers_two_weeks_and_keeps_the_7h_rung():
+    # 10 training weeks + recovery week: the 7 h run lands 3 weeks before the race, not 13 days
+    assert taper_weeks(11, 104.2) == 2 and taper_weeks(11, 56.4) == 1
+    assert u.ladder("100k", False, 11, 104.2) == {1: 180, 2: 240, 3: 240, 4: 180, 5: 300, 6: 360, 7: 420}
+
+
+def test_a_short_ladder_drops_its_earliest_rungs_not_the_filler():
+    # 9 training weeks: the 4 h step stays, so 3 h -> 5 h never needs the step cap to fill a 1.5 h gap
+    assert u.ladder("50k", False, 10, 56.4) == {1: 180, 2: 180, 3: 180, 4: 180, 5: 240, 6: 270, 7: 300}

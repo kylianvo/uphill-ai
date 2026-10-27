@@ -156,12 +156,13 @@ def run(s: Scenario) -> Result:
         demands=demands,
         flat_only=not mountain,
         total_weeks=s.weeks,
+        race_km=dist,
         mountain_day=mountain,
         quality_gated=True,  # PROFILE's thresholds are estimates (no threshold_source): the AeT gate is on
         back_to_back=s.back_to_back,
         vert_targets=PlanGenerator.vert_targets_for(race_info, demands, s.weeks),
         # as the generator's lint: a short ultra plan opens with ME weeks (2 a week), not Zone 3
-        me_first_weeks=ultra_rules.me_first_weeks(s.weeks, False) if prof.allows_me_blocks else frozenset(),
+        me_first_weeks=ultra_rules.me_first_weeks(s.weeks, False, dist) if prof.allows_me_blocks else frozenset(),
         start_load_minutes=float(km) * (PlanGenerator.flat_zone2_pace(profile, race_info["goal_type"], tier) or 6.0),
     )
     found = plan_lint.lint_weeks(workouts, {w["week_number"] for w in workouts}, prof, prefs)

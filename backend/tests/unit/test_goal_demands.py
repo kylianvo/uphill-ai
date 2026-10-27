@@ -70,7 +70,8 @@ def test_long_run_line_grows_the_long_run_toward_the_target_within_the_weekly_ca
     d = goal_demands.compute(104.2, 5533, 14.67, 29)  # longest session target 300 min
     ws = _plan_with_long_runs([110, 115, 120])
     line = goal_demands.long_run_line(ws, week=4, total_weeks=11, demands=d, profile_long_cap_min=185)
-    assert line and "at least 131" in line and "185" in line  # the even climb from 120 to the 185 the days can hold
+    # the even climb from 120 to the 185 the days can hold, by week 7 (a 100 km race tapers two weeks)
+    assert line and "at least 134" in line and "185" in line and "week 7" in line
 
 
 def test_long_run_line_is_silent_without_history_or_after_the_build():

@@ -112,7 +112,7 @@ def long_run_ask(
 ) -> tuple[float, float, int] | None:
     """(ask, recent, last_build): how long this week's long run should be so the longest session reaches the
     goal's time on feet by the last build week instead of staying where it started."""
-    last_build = total_weeks - 3 - taper_shift(total_weeks)
+    last_build = total_weeks - 3 - taper_shift(total_weeks, demands.distance_km)
     if week > last_build:
         return None
     prior = [
@@ -156,7 +156,7 @@ def back_to_back_line(
     if demands.distance_km < ULTRA_KM or (days_per_week or B2B_DAYS) < B2B_DAYS or not total_weeks:
         return None
     lo, _hi = B2B_WINDOW
-    shift = taper_shift(total_weeks)
+    shift = taper_shift(total_weeks, demands.distance_km)
     if week not in (total_weeks - lo + 1 - shift, total_weeks - lo + 2 - shift, total_weeks - lo + 3 - shift):
         return None
     from services.plan_lint import b2b_targets
@@ -196,12 +196,12 @@ def vert_targets(d: Demands | None, total_weeks: int, start_vert_m: float | None
 
     if d is None or d.steepness_m_per_km < VERT_MIN_M_PER_KM or not total_weeks:
         return {}
-    last_build = total_weeks - 3 - taper_shift(total_weeks)
+    last_build = total_weeks - 3 - taper_shift(total_weeks, d.distance_km)
     peak = d.gain_m * (VERT_PEAK_SHARE_INDOOR if indoor_only else VERT_PEAK_SHARE)
     start = max(float(start_vert_m or 0), VERT_START_SHARE * d.gain_m)
     out: dict[int, int] = {}
     for week in range(1, last_build + 1):
-        if ultra_rules.is_deload(week, total_weeks):
+        if ultra_rules.is_deload(week, total_weeks, d.distance_km):
             continue
         ramp = start * (peak / start) ** (week / last_build) if peak > start else start
         out[week] = int(round(min(ramp, start * (1 + VERT_WEEKLY_GROWTH) ** week, peak) / 10) * 10)

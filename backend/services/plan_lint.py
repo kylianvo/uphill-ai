@@ -54,6 +54,7 @@ class Prefs:
     demands: "Demands | None" = None  # the goal's physical demands (enables the specificity checks)
     flat_only: bool = False  # no training mountain or local hills: climbing cannot be judged on gain
     total_weeks: int | None = None  # lets the specificity checks find the last pre-taper week
+    race_km: float | None = None  # with total_weeks: a 100 km+ race tapers two weeks (athlete_tier.taper_weeks)
     mountain_day: bool = False  # a weekly mountain day: an ultra follows Quang's ladder (services/ultra_rules.py)
     me_first_weeks: frozenset[int] = frozenset()  # short ultra plans: ME weeks before the Zone 3 weeks
     quality_gated: bool = False  # AeT gate on (gap > 10% or estimated thresholds): one quality session at most
@@ -193,7 +194,7 @@ def in_ultra_window(prefs: Prefs | None, week: int) -> bool:
     if d is None or not prefs.total_weeks or d.distance_km < ULTRA_KM or (prefs.days_per_week or 5) < 5:
         return False
     lo, hi = _B2B_WINDOW_FROM_END
-    shift = taper_shift(prefs.total_weeks)
+    shift = taper_shift(prefs.total_weeks, prefs.race_km)
     return prefs.total_weeks - lo - shift <= week <= prefs.total_weeks - hi - shift
 
 
@@ -309,7 +310,7 @@ def lint_week(
     b2b_ok = False
     if in_ultra_window(prefs, week) and is_b2b_week(ws):
         lo, hi = _B2B_WINDOW_FROM_END
-        lo += taper_shift(prefs.total_weeks)
+        lo += taper_shift(prefs.total_weeks, prefs.race_km)
         earlier = sum(1 for wk in range(prefs.total_weeks - lo, week) if wk in weeks and is_b2b_week(weeks[wk]))
         b2b_ok = earlier < B2B_MAX_WEEKS
     long_cap = profile.long_run_share_cap + (B2B_LONG_SHARE_BONUS if b2b_ok else 0.0)
@@ -369,7 +370,7 @@ def lint_week(
 
     # An ultra's back-to-back weekend belongs in the last build weeks: asked at total-4, and again at total-3 when
     # the first ask fell on a recovery week (a recovery week is excused).
-    shift = taper_shift(prefs.total_weeks) if prefs and prefs.total_weeks else 0
+    shift = taper_shift(prefs.total_weeks, prefs.race_km) if prefs and prefs.total_weeks else 0
     if (
         in_ultra_window(prefs, week)
         and d is not None
@@ -472,7 +473,7 @@ def lint_week(
         default=0.0,
     )
     longest_now = max((_min(w) for w in long_runs), default=0.0)
-    ladder = ultra_rules.ladder(ultra[0], ultra[1], prefs.total_weeks) if ultra else {}
+    ladder = ultra_rules.ladder(ultra[0], ultra[1], prefs.total_weeks, prefs.race_km) if ultra else {}
     if (
         recent_long
         and not (ultra and longest_now <= ladder.get(week, 0))  # a ladder step is Quang's, not a jump
@@ -556,12 +557,14 @@ def _ultra_issues(
                     )
                 )
                 break
-        target = ultra_rules.long_run_target(band, advanced, week, prefs.total_weeks, recent_long or None)
+        target = ultra_rules.long_run_target(
+            band, advanced, week, prefs.total_weeks, recent_long or None, prefs.race_km
+        )
         # a back-to-back weekend holds the rung over two days (R-U1)
         longest = (
             long_block_minutes(ws) if prefs.back_to_back else max((_min(w) for w in ws if is_long(w)), default=0.0)
         )
-        if target and not ultra_rules.is_deload(week, prefs.total_weeks) and longest < target * 0.9:
+        if target and not ultra_rules.is_deload(week, prefs.total_weeks, prefs.race_km) and longest < target * 0.9:
             out.append(
                 Issue(
                     "ULTRA_LADDER",
@@ -581,7 +584,9 @@ def _ultra_issues(
             )
         )
     elif phase in ("Base", "Build", "Peak"):
-        in_window = week in ultra_rules.quality_weeks(prefs.total_weeks) and week not in prefs.me_first_weeks
+        in_window = (
+            week in ultra_rules.quality_weeks(prefs.total_weeks, prefs.race_km) and week not in prefs.me_first_weeks
+        )
         want, reps, rep = ultra_rules.quality_dose(advanced, prefs.quality_gated, week_minutes(ws))
         want = want if in_window else 0
         if not _is_down(weeks, week) and len(quality) != want:
@@ -666,7 +671,7 @@ def _specificity(
     by = _by_week(workouts)
     peaks = sorted(w for w in weeks if any(x.get("phase") == "Peak" for x in by.get(w, [])))
     last_build = (
-        prefs.total_weeks - SPECIFICITY_WEEKS_BEFORE_END - taper_shift(prefs.total_weeks)
+        prefs.total_weeks - SPECIFICITY_WEEKS_BEFORE_END - taper_shift(prefs.total_weeks, prefs.race_km)
         if prefs and prefs.total_weeks
         else None
     )

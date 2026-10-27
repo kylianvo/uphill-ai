@@ -276,6 +276,14 @@ def test_sub_elite_gets_one_zone3_and_the_window_is_labelled_build(rule_based_pl
     assert all(w["phase"] != "Base" for w in wos if w["week_number"] in window)
 
 
+def test_recovery_week_inside_the_window_keeps_the_build_label(rule_based_plan):
+    """VHT 100K, 10 weeks: the week-4 recovery week sat between Build weeks labelled "Base" (persona run 2026-10-27)."""
+    wos = rule_based_plan(km=104.2, weeks=11, mountain_days=["Saturday"], tier="sub_elite", weekly_km=100)
+    window = ultra_rules.quality_weeks(11)
+    assert ultra_rules.is_deload(4, 11) and 4 not in window and min(window) < 4 < max(window)
+    assert {w["phase"] for w in wos if w["week_number"] == 4} == {"Build"}
+
+
 def test_quality_dose_needs_elite_volume_and_keeps_zone3_under_9_percent():
     assert ultra_rules.quality_dose(True, False, 1200) == (2, 4, 12)  # 96 min of 1200 = 8%
     assert ultra_rules.quality_dose(True, False, 960) == (2, 3, 12)  # 4 reps would be 10%
@@ -569,3 +577,14 @@ def test_vert_targets_need_somewhere_to_climb():
     assert max(PlanGenerator.vert_targets_for(dinh, d_dinh, 20).values()) == round(0.40 * 5533, -1)
     d_gentle = goal_demands.compute(104.2, 5533, None, 29, venue_climb_rate=28)
     assert PlanGenerator.vert_targets_for({**dinh, "training_mountain": "chau_thoi"}, d_gentle, 20) == {}
+
+
+def test_a_100k_short_plan_peaks_three_weeks_out_with_a_two_week_taper(rule_based_plan):
+    wos = rule_based_plan(km=104.2, weeks=11, mountain_days=["Saturday"], tier="sub_elite", weekly_km=100)
+    phase = {w["week_number"]: w["phase"] for w in wos}
+    longest = {
+        wk: max(w["duration_minutes"] for w in wos if w["week_number"] == wk and w["type"] == "Long Run")
+        for wk in (7, 8)
+    }
+    assert phase[8] == phase[9] == "Taper" and phase[7] != "Taper"
+    assert longest[7] == 420 and longest[8] < 420

@@ -580,21 +580,21 @@ class PlanGenerator:
         return f"{pace_str} /km", distance_km
 
     @staticmethod
-    def taper_weeks(total_weeks: int) -> int:
-        """Book: taper over 2-3 weeks (40-60% less volume). Plans of 12+ weeks get two steps, shorter ones one."""
-        return taper_weeks(total_weeks)
+    def taper_weeks(total_weeks: int, km: float | None = None) -> int:
+        """Book: taper over 2-3 weeks (40-60% less volume). Plans of 12+ weeks and 100 km+ races get two steps."""
+        return taper_weeks(total_weeks, km)
 
     @staticmethod
-    def is_deload_week(w: int, total_weeks: int) -> bool:
+    def is_deload_week(w: int, total_weeks: int, km: float | None = None) -> bool:
         """Every 4th build week is a deload, but never the last build week: that is the plan's peak."""
-        last_build = total_weeks - 3 - (taper_weeks(total_weeks) - 1)
+        last_build = total_weeks - 3 - (taper_weeks(total_weeks, km) - 1)
         return w > 1 and w % 4 == 0 and w < last_build
 
     @staticmethod
-    def phase_for_week(w: int, total_weeks: int) -> str:
+    def phase_for_week(w: int, total_weeks: int, km: float | None = None) -> str:
         """The plan's phase for week `w`: structural, so it is set here and never left to the model."""
         last = total_weeks - 1  # race week
-        taper = PlanGenerator.taper_weeks(total_weeks)
+        taper = PlanGenerator.taper_weeks(total_weeks, km)
         peak_weeks = 2 if last >= 6 else (1 if last >= 2 else 0)
         remaining = last - taper - peak_weeks
         builds = remaining // 2
@@ -1249,6 +1249,7 @@ class PlanGenerator:
             demands=None if target_week is not None else PlanGenerator.goal_demands_for(race_info, cutoff_time_hours),
             flat_only=not venues.local_hills and not venues.training_mountain and not venues.mountain_days,
             total_weeks=total_weeks,
+            race_km=race_info.get("course_distance_km"),
             mountain_day=bool(venues.mountain_days),
             # same dose rule as the generator's ultra_gated: two Zone 3 sessions a week are for elites only
             quality_gated=get_profile(tier).key != "elite",
@@ -1267,6 +1268,7 @@ class PlanGenerator:
                 ultra_rules.me_first_weeks(
                     total_weeks,
                     ultra_rules.legs_loaded(getattr(race_info.get("fitness_snapshot"), "weekly_vert_m", None)),
+                    race_info.get("course_distance_km"),
                 )
                 if get_profile(tier).allows_me_blocks
                 else frozenset()
@@ -1542,10 +1544,12 @@ class PlanGenerator:
         # An ultra trained on a weekly mountain day follows Quang's ladder (services/ultra_rules.py).
         ultra = ultra_rules.applies(course_distance_km, venues.mountain_days)
         ultra_advanced = ultra_rules.is_advanced(tier_profile.key)
-        ultra_window = ultra_rules.quality_weeks(total_weeks) if ultra else frozenset()
+        ultra_window = ultra_rules.quality_weeks(total_weeks, course_distance_km) if ultra else frozenset()
         _snap = race_info.get("fitness_snapshot")
         ultra_me_weeks = (
-            ultra_rules.me_first_weeks(total_weeks, ultra_rules.legs_loaded(_snap.weekly_vert_m if _snap else None))
+            ultra_rules.me_first_weeks(
+                total_weeks, ultra_rules.legs_loaded(_snap.weekly_vert_m if _snap else None), course_distance_km
+            )
             if ultra and tier_profile.allows_me_blocks
             else frozenset()
         )
@@ -1734,7 +1738,9 @@ class PlanGenerator:
             for wo in wos:
                 if (
                     wo.get("phase") in hard_banned
-                    and not PlanGenerator.is_deload_week(wo.get("week_number") or 0, total_weeks)  # softened later
+                    and not PlanGenerator.is_deload_week(
+                        wo.get("week_number") or 0, total_weeks, course_distance_km
+                    )  # softened later
                     and wo.get("target_zone") in ("Zone 3", "Zone 4", "Zone 5")
                     and wo.get("type") not in ("Race", "Muscular Endurance", "Strength", "Rest")
                     and not any(
@@ -1841,12 +1847,16 @@ class PlanGenerator:
             for week_no, rows in sorted(batch.items()):
                 if week_no <= 2 or rows[0].get("phase") not in ("Base", "Build", "Peak"):
                     continue
-                if PlanGenerator.is_deload_week(week_no, total_weeks):
+                if PlanGenerator.is_deload_week(week_no, total_weeks, course_distance_km):
                     # R-P2 again on the week before as it now stands (the cap above may have shortened it)
                     if before := weeks.get(week_no - 1):
                         _fit_week(wos, rows, 0.8 * plan_lint.week_minutes(before), _DELOAD_FLOOR_MIN)
                     continue
-                ref = week_no - 2 if PlanGenerator.is_deload_week(week_no - 1, total_weeks) else week_no - 1
+                ref = (
+                    week_no - 2
+                    if PlanGenerator.is_deload_week(week_no - 1, total_weeks, course_distance_km)
+                    else week_no - 1
+                )
                 before = weeks.get(ref) or []
                 if not plan_lint.week_minutes(before):
                     continue
@@ -1922,7 +1932,7 @@ class PlanGenerator:
                 title = wo.get("title") or ""
                 if not title or wo.get("type") == "Race":
                     continue
-                if not PlanGenerator.is_deload_week(wo.get("week_number") or 0, total_weeks):
+                if not PlanGenerator.is_deload_week(wo.get("week_number") or 0, total_weeks, course_distance_km):
                     title = re.sub(r"\bDeload\s+", "", title, flags=re.IGNORECASE)
                 if str(wo.get("treadmill_incline") or "0").split("-")[-1] in ("0", "") and not wo.get("mountain_mode"):
                     title = re.sub(r"\b(?:Incline[- ]Simulated|Incline)[- ]?\s*", "", title, flags=re.IGNORECASE)
@@ -1945,7 +1955,7 @@ class PlanGenerator:
             speed = TrainingRules.calculate_treadmill_settings((slower + faster) / 2, incline)["speed_kph"]
             for week_no, rows in _week_rows(wos).items():
                 if rows[0].get("phase") not in ("Base", "Build", "Peak") or PlanGenerator.is_deload_week(
-                    week_no, total_weeks
+                    week_no, total_weeks, course_distance_km
                 ):
                     continue
                 long = next((r for r in rows if r.get("type") == "Long Run"), None)
@@ -2001,7 +2011,7 @@ class PlanGenerator:
             for week_no, rows in sorted(by_week.items()):
                 if rows[0].get("phase") not in ("Base", "Build", "Peak"):
                     continue
-                if PlanGenerator.is_deload_week(week_no, total_weeks):
+                if PlanGenerator.is_deload_week(week_no, total_weeks, course_distance_km):
                     # 3:1 needs a real down week: at most 80% of the week before, taken off the easy runs
                     before = by_week.get(week_no - 1) or [w for w in prior_rows if w.get("week_number") == week_no - 1]
                     excess = plan_lint.week_minutes(rows) - 0.8 * plan_lint.week_minutes(before) if before else 0.0
@@ -2073,7 +2083,7 @@ class PlanGenerator:
             for wo in wos:
                 if isinstance(wo.get("week_number"), int):
                     by_week.setdefault(wo["week_number"], []).append(wo)
-            shift = taper_weeks(total_weeks) - 1
+            shift = taper_weeks(total_weeks, course_distance_km) - 1
             for week_no in sorted(by_week):
                 rows = by_week[week_no]
                 if rows[0].get("phase") == "Taper":
@@ -2086,7 +2096,7 @@ class PlanGenerator:
                         ),
                         default=0.0,
                     )
-                    first_taper = total_weeks - taper_weeks(total_weeks) - 1
+                    first_taper = total_weeks - taper_weeks(total_weeks, course_distance_km) - 1
                     cap = peak_long * (0.6 if week_no == first_taper else 0.4)
                     if long and cap and float(long["duration_minutes"]) > cap * 1.05:
                         _resize(long, int(round(cap / 5) * 5))  # taper long run: about 60% then 40% of the peak
@@ -2095,13 +2105,15 @@ class PlanGenerator:
                     long = next((r for r in rows if r.get("type") == "Long Run"), None)
                     held = _week_rows([w for w in prior + wos if week_no - 2 <= (w.get("week_number") or 0) < week_no])
                     recent = max((plan_lint.rung_minutes(ws) for ws in held.values()), default=0.0)
-                    target = ultra_rules.long_run_target(ultra, ultra_advanced, week_no, total_weeks, recent or None)
+                    target = ultra_rules.long_run_target(
+                        ultra, ultra_advanced, week_no, total_weeks, recent or None, course_distance_km
+                    )
                     if long and target:
                         _resize(long, target)
                         _back_to_back(wos, rows, long, target)
                     continue
                 if rows[0].get("phase") not in ("Base", "Build", "Peak") or PlanGenerator.is_deload_week(
-                    week_no, total_weeks
+                    week_no, total_weeks, course_distance_km
                 ):
                     continue
                 long = next((r for r in rows if r.get("type") == "Long Run"), None)
@@ -2233,7 +2245,7 @@ class PlanGenerator:
             if demands is None:
                 return
             steep = demands.steepness_m_per_km >= _DOWNHILL_M_PER_KM
-            last_build = ultra_rules.peak_week(total_weeks)
+            last_build = ultra_rules.peak_week(total_weeks, course_distance_km)
             vi = lang == "vi"
 
             def add(wo: dict[str, Any], key: str, text: str) -> None:
@@ -2260,7 +2272,7 @@ class PlanGenerator:
                     if (
                         rows[0].get("phase") not in ("Build", "Peak")
                         or week_no <= last_build - _DESCENT_WEEKS
-                        or PlanGenerator.is_deload_week(week_no, total_weeks)
+                        or PlanGenerator.is_deload_week(week_no, total_weeks, course_distance_km)
                     ):
                         continue
                     easy = [
@@ -2285,7 +2297,7 @@ class PlanGenerator:
                 if (
                     wo.get("type") != "Long Run"
                     or wo.get("phase") not in ("Build", "Peak")
-                    or PlanGenerator.is_deload_week(week_no, total_weeks)
+                    or PlanGenerator.is_deload_week(week_no, total_weeks, course_distance_km)
                 ):
                     continue
                 if steep and wo.get("mountain_mode") and week_no > last_build - _DESCENT_WEEKS:
@@ -2305,7 +2317,7 @@ class PlanGenerator:
                     continue
                 long = next((r for r in rows if r.get("type") == "Long Run"), None)
                 long_min = plan_lint.long_block_minutes(rows)  # a back-to-back weekend is the rung's load
-                deload = ultra_rules.is_deload(week_no, total_weeks)
+                deload = ultra_rules.is_deload(week_no, total_weeks, course_distance_km)
                 for wo in rows:
                     day, kind = wo.get("day_of_week"), wo.get("type")
                     minutes = float(wo.get("duration_minutes") or 0)
@@ -2336,7 +2348,12 @@ class PlanGenerator:
                         if want != minutes:
                             _resize(wo, int(want))
                 before = by_week.get(week_no - 1)
-                if not deload and before and not ultra_rules.is_deload(week_no - 1, total_weeks) and week_no > 1:
+                if (
+                    not deload
+                    and before
+                    and not ultra_rules.is_deload(week_no - 1, total_weeks, course_distance_km)
+                    and week_no > 1
+                ):
                     # the ladder step is Quang's; the rest of the week still grows by the tier's weekly cap
                     def rest_of(ws: list[dict[str, Any]]) -> float:
                         return plan_lint.week_minutes(ws) - plan_lint.long_block_minutes(ws)
@@ -2690,7 +2707,12 @@ class PlanGenerator:
                 return
             days = list(_PRIORITY_DAY_ORDER)
             first_taper_week = next(
-                (w for w in range(1, total_weeks + 1) if PlanGenerator.phase_for_week(w, total_weeks) == "Taper"), None
+                (
+                    w
+                    for w in range(1, total_weeks + 1)
+                    if PlanGenerator.phase_for_week(w, total_weeks, course_distance_km) == "Taper"
+                ),
+                None,
             )
             for week_no, rows in _week_rows(wos).items():
                 if ultra:  # Quang's quality sessions: uphill/rolling Zone 3 intervals, only in the final 8 weeks
@@ -2741,7 +2763,7 @@ class PlanGenerator:
                 if (
                     rows[0].get("phase") not in ("Build", "Peak")
                     or rows[0].get("phase") in hard_banned
-                    or PlanGenerator.is_deload_week(week_no, total_weeks)
+                    or PlanGenerator.is_deload_week(week_no, total_weeks, course_distance_km)
                 ):
                     continue
                 if any(
@@ -3015,7 +3037,7 @@ class PlanGenerator:
                     continue
                 # book: vert is the mountain runner's main load. Build/Peak weeks get a second climb session while the
                 # week is under its D+ target (R-C8; 40% of race D+ without one); a taper week keeps one short one.
-                deload = PlanGenerator.is_deload_week(week_no, total_weeks)
+                deload = PlanGenerator.is_deload_week(week_no, total_weeks, course_distance_km)
                 for _round in range(2 if phase in ("Build", "Peak") and not deload else 1):
                     week_vert = sum(float(r.get("elevation_gain_m") or 0) for r in rows if _vert(r))
                     target = vert_goal.get(week_no, 0.4 * float(course_elevation_gain_m))
@@ -3242,7 +3264,7 @@ class PlanGenerator:
                         mode = "skip"
                     elif wo["phase"] in ("Recovery", "Taper") or (
                         wo["phase"] in ("Base", "Build", "Peak")
-                        and PlanGenerator.is_deload_week(wo["week_number"], total_weeks)
+                        and PlanGenerator.is_deload_week(wo["week_number"], total_weeks, course_distance_km)
                     ):  # taper, recovery and deload weeks: the trip minimum does not apply
                         mode = "chill"
                     else:
@@ -3262,9 +3284,14 @@ class PlanGenerator:
                 )
             for wo in wos:
                 if isinstance(wo.get("week_number"), int):
-                    wo["phase"] = PlanGenerator.phase_for_week(wo["week_number"], total_weeks)
-                    # A short ultra plan protects the final 8 weeks before the taper as the Specific block (book).
-                    if wo["phase"] == "Base" and wo["week_number"] in ultra_window:
+                    wo["phase"] = PlanGenerator.phase_for_week(wo["week_number"], total_weeks, course_distance_km)
+                    # A short ultra plan protects the final 8 weeks before the taper as the Specific block (book);
+                    # a recovery week inside that span stays part of it.
+                    if (
+                        wo["phase"] == "Base"
+                        and ultra_window
+                        and min(ultra_window) <= wo["week_number"] <= max(ultra_window)
+                    ):
                         wo["phase"] = "Build"
             _cap_hard_dose(wos)
             _respect_days(wos)
@@ -3568,7 +3595,7 @@ class PlanGenerator:
                 ):
                     goal_description += "\n" + vert_lines
             if ultra:  # Quang's ladder for this block's weeks (services/ultra_rules.py)
-                block_ladder = ultra_rules.ladder(ultra, ultra_advanced, total_weeks)
+                block_ladder = ultra_rules.ladder(ultra, ultra_advanced, total_weeks, course_distance_km)
                 goal_description += "\n" + ultra_rules.prompt_block(
                     ultra,
                     ultra_advanced,
@@ -3578,6 +3605,7 @@ class PlanGenerator:
                     lang,
                     ultra_me_weeks,
                     back_to_back=race_info.get("long_day_format") == "back_to_back",
+                    km=course_distance_km,
                 )
 
             if is_event_goal:
@@ -4062,7 +4090,7 @@ class PlanGenerator:
         # then -50%), which the model has no way to guarantee, and it has little coaching to add there.
         _taper_by_rules = (
             block_start_week == block_end_week
-            and PlanGenerator.phase_for_week(block_start_week, total_weeks) == "Taper"
+            and PlanGenerator.phase_for_week(block_start_week, total_weeks, course_distance_km) == "Taper"
             and settings.TAPER_BY_RULES
         )
         for _reduced in (False, True):
@@ -4099,12 +4127,12 @@ class PlanGenerator:
         me_seen = (race_info.get("me_history") or {}).get("done") or 0
         W = total_weeks - 1
         num_peak_weeks = 2 if W >= 6 else (1 if W >= 2 else 0)
-        remaining_weeks = W - PlanGenerator.taper_weeks(total_weeks) - num_peak_weeks
+        remaining_weeks = W - PlanGenerator.taper_weeks(total_weeks, course_distance_km) - num_peak_weeks
         num_build_weeks = remaining_weeks // 2
         num_base_weeks = remaining_weeks - num_build_weeks
 
         def get_phase_for_week(w: int) -> str:
-            return PlanGenerator.phase_for_week(w, total_weeks)
+            return PlanGenerator.phase_for_week(w, total_weeks, course_distance_km)
 
         # With a known goal the volume climbs toward the weekly time the race needs, at 90% of the
         # tier's weekly progression cap; week_layout then holds every week within the tier's caps.
@@ -4128,7 +4156,11 @@ class PlanGenerator:
                 return max(1.4 - (0.05 * (w - num_base_weeks - num_build_weeks - 1)), ramp(w))
             if ph == "Taper":
                 # Two-step taper on long plans: about -30% then -50% of the peak.
-                return 0.7 if w < total_weeks - 2 and PlanGenerator.taper_weeks(total_weeks) == 2 else 0.5
+                return (
+                    0.7
+                    if w < total_weeks - 2 and PlanGenerator.taper_weeks(total_weeks, course_distance_km) == 2
+                    else 0.5
+                )
             if ph == "Race Week":
                 return 0.6
             return 0.4
@@ -4139,7 +4171,9 @@ class PlanGenerator:
             volume_multiplier = multiplier_for(week)
 
             # A recovery week after every three builds (week_layout scales it to 80%).
-            is_recovery_week = phase in ("Base", "Build", "Peak") and PlanGenerator.is_deload_week(week, total_weeks)
+            is_recovery_week = phase in ("Base", "Build", "Peak") and PlanGenerator.is_deload_week(
+                week, total_weeks, course_distance_km
+            )
             week_minutes = base_weekly_minutes * volume_multiplier
             if phase == "Taper":
                 try:
