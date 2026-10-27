@@ -22,8 +22,8 @@ from sqlalchemy import text  # noqa: E402
 
 import db  # noqa: E402
 from main import app  # noqa: E402
-from services import goal_demands, plan_lint  # noqa: E402
-from services.athlete_tier import for_race, get_profile  # noqa: E402
+from services import goal_demands, goal_service, plan_lint, ultra_rules  # noqa: E402
+from services.athlete_tier import for_race, get_profile, graduated_profile  # noqa: E402
 
 START = date(2026, 10, 19)  # a Monday
 ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -482,8 +482,62 @@ PERSONAS: dict[str, dict] = {
     ),
 }  # fmt: skip
 
+# Coach Quang review matrix: HCMC runners (flat city weekdays, Núi Dinh on the long-run day), 2 levels x with/without
+# treadmill+stairs x two races. Courses from kb_seed/race_courses.json; DUT 100 km is the 2026 100PRO (the only DUT
+# distance with D+ in the KB, COT 20 h); DUT 50 km D+ is that course's 21 m/km scaled, its 16 h cutoff read off the
+# slowest 2025-26 finishers.
+_Q_RACES = {
+    "vht50": dict(
+        name="Vietnam Highlands Trail by UTMB 50km", date="2027-01-09", km=56.4, gain=2946, cutoff=18.5, target=9.5
+    ),
+    "vht100": dict(
+        name="Vietnam Highlands Trail by UTMB 100km", date="2027-01-09", km=104.2, gain=5533, cutoff=29, target=17
+    ),
+    "dut50": dict(name="Dalat Ultra Trail 50km", date="2027-03-20", km=49.92, gain=1050, cutoff=16, target=7.5),
+    "dut100": dict(name="Dalat Ultra Trail 100km", date="2027-03-20", km=99.18, gain=2079, cutoff=20, target=13),
+}
+_Q_LEVELS = {
+    "rec": dict(
+        user=dict(aet_hr=145, ant_hr=166, max_hr=188, resting_hr=56, zone2_pace_min="6:40", zone2_pace_max="6:00",
+                  threshold_pace="5:10"),
+        km={50: 40, 100: 60}, long_day="Sunday",
+    ),
+    "sub": dict(
+        user=dict(aet_hr=156, ant_hr=174, max_hr=190, resting_hr=45, zone2_pace_min="5:10", zone2_pace_max="4:40",
+                  threshold_pace="4:00"),
+        km={50: 90, 100: 100}, long_day="Saturday",
+    ),
+}  # fmt: skip
+for _lvl, _L in _Q_LEVELS.items():
+    for _race, _R in _Q_RACES.items():
+        _dist = 100 if _race.endswith("100") else 50
+        _days = (
+            ["Tuesday", "Wednesday", "Thursday", "Saturday", "Sunday"] if (_lvl, _dist) == ("rec", 50) else ALL_DAYS[1:]
+        )
+        for _gear in ("gear", "bare"):
+            PERSONAS[f"q_{_lvl}_{_race}_{_gear}"] = dict(
+                user=_L["user"],
+                plan=dict(
+                    goal_type="finish" if _lvl == "rec" else "time", terrain="trail", course_distance_km=_R["km"],
+                    course_elevation_gain_m=_R["gain"], cutoff_time_hours=_R["cutoff"],
+                    **({} if _lvl == "rec" else {"target_time_hours": _R["target"]}),
+                    current_weekly_km=_L["km"][_dist], days_per_week=len(_days), preferred_days=_days,
+                    long_run_day=_L["long_day"], training_environment="flat", training_mountain="nui_dinh",
+                    mountain_days=[_L["long_day"]], mountain_min_minutes=180, use_treadmill=_gear == "gear",
+                    treadmill_max_incline=15, stair_access=_gear == "gear", plan_start_date="2026-11-02",
+                    race_date=_R["date"], lang="vi", race_name=f"{_R['name']} (ZZ q_{_lvl}_{_race}_{_gear})",
+                ),
+                weeks=10 if _race.startswith("vht") else 20,
+                expect=dict(mountain=True, min_mountain_long_run=180, ladder=True, vietnamese=True,
+                            stair_me=_gear == "gear"),
+            )  # fmt: skip
 
-def poll(client, headers, job_id, timeout=480):
+POLL_TIMEOUT = {"s": 480}
+BLOCK = {"weeks": 1, "resume": False}
+
+
+def poll(client, headers, job_id, timeout=None):
+    timeout = timeout or POLL_TIMEOUT["s"]
     t0 = time.time()
     while time.time() - t0 < timeout:
         r = client.get(f"/api/coach/plan-status/{job_id}", headers=headers).json()
@@ -506,6 +560,9 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict, feasibility: 
         rows.append({"check": check, "ok": bool(ok), "detail": detail})
 
     tier = plan.get("athlete_tier") or "recreational"
+    # the profile the generator lints with: caps follow the trained volume
+    profile = for_race(graduated_profile(get_profile(tier), p.get("current_weekly_km")), p["course_distance_km"],
+                       bool(p.get("mountain_days")))  # fmt: skip
     dist, gain = p["course_distance_km"], p["course_elevation_gain_m"]
     demands = goal_demands.compute(dist, gain, p.get("target_time_hours"), p.get("cutoff_time_hours"))
     venues_flat = not (
@@ -513,10 +570,14 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict, feasibility: 
     )
     prefs = plan_lint.Prefs(
         long_run_day=p.get("long_run_day"), days_per_week=p.get("days_per_week"), demands=demands,
-        flat_only=venues_flat, total_weeks=plan["total_weeks"], mountain_day=bool(p.get("mountain_days")),
+        flat_only=venues_flat, total_weeks=plan["total_weeks"], race_km=dist, mountain_day=bool(p.get("mountain_days")),
+        # as the generator lints them: short ultra plans open with ME weeks, and climbing has weekly targets
+        me_first_weeks=ultra_rules.me_first_weeks(plan["total_weeks"], False, dist)
+        if ultra_rules.applies(dist, p.get("mountain_days") or []) and profile.allows_me_blocks else frozenset(),
+        vert_targets={int(k): v for k, v in goal_service.vert_targets_for(plan).items()},
     )  # fmt: skip
     weeks = sorted({w["week_number"] for w in ws})
-    issues = plan_lint.lint_weeks(ws, set(weeks), for_race(get_profile(tier), dist, prefs.mountain_day), prefs)
+    issues = plan_lint.lint_weeks(ws, set(weeks), profile, prefs)
     hard = {
         "ME_SPACING",
         "HARD_ADJACENT",
@@ -544,7 +605,7 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict, feasibility: 
 
     by = plan_lint._by_week(ws)
     active = {wk: [w for w in by[wk] if w["type"] != "Rest"] for wk in weeks}
-    minutes = {wk: sum(_mins(w) for w in active[wk]) for wk in weeks}
+    minutes = {wk: plan_lint.week_minutes(by[wk]) for wk in weeks}  # run time: ME sits on top (book)
     phases = {wk: (active[wk][0].get("phase") if active[wk] else "") for wk in weeks}
     build = [wk for wk in weeks if phases[wk] in ("Base", "Build", "Peak")]
     peak = max((minutes[wk] for wk in build), default=0)
@@ -652,6 +713,14 @@ def evaluate(name: str, persona: dict, ws: list[dict], plan: dict, feasibility: 
         )
         rates = [w for w in ml if w.get("mountain_climb_rate")]
         add("mountain long runs carry a climb rate", len(rates) >= max(1, len(ml) // 2), f"{len(rates)}/{len(ml)}")
+    if exp.get("stair_me"):
+        stair = [
+            w["week_number"]
+            for w in ws
+            if w["type"] == "Muscular Endurance"
+            and re.search(r"stair|cầu thang", f"{w.get('title', '')} {w.get('description', '')}", re.I)
+        ]
+        add("stair ME sessions (athlete has stairs)", bool(stair), f"weeks {stair}")
     if exp.get("vietnamese"):
         blob = " ".join(f"{w.get('title','')} {w.get('description','')}" for w in ws).lower()
         blob = blob.replace("thể tích tâm thu", "")  # stroke volume is physiology, not training volume
@@ -742,13 +811,30 @@ def run_persona(name: str, out: Path, budget_usd: float = float("inf")) -> dict:
         runs: dict[int, dict] = {}
         stopped = None
         before = _counters()
-        first = client.post("/api/coach/generate-plan", headers=headers, json=body).json()
-        plan_id, total = first["plan"]["id"], first["plan"]["total_weeks"]
-        if first.get("job_id"):
-            poll(client, headers, first["job_id"])
-        _record(runs, 1, before)
+        with db.engine.begin() as c:  # --resume: carry on the persona's latest plan from its first empty week
+            prior = c.execute(
+                text("SELECT p.id, p.total_weeks, COALESCE(MAX(w.week_number), 0) FROM plans p LEFT JOIN workouts w "
+                     "ON w.plan_id = p.id WHERE p.user_id = :u AND p.race_name LIKE :n GROUP BY p.id ORDER BY p.id DESC"),
+                {"u": uid, "n": f"%ZZ {name}%"},
+            ).first() if BLOCK["resume"] else None  # fmt: skip
+        if prior:
+            plan_id, total, week = prior[0], prior[1], prior[2] + 1
+            for w in db.get_plan_workouts(plan_id):
+                if w["week_number"] < week and w["type"] != "Rest":
+                    db.update_workout_log(w["id"], is_completed=1)
+        else:
+            first = client.post("/api/coach/generate-plan", headers=headers, json=body).json()
+            plan_id, total, week = first["plan"]["id"], first["plan"]["total_weeks"], 1
+            if first.get("job_id"):
+                poll(client, headers, first["job_id"])
+            _record(runs, 1, before)
         status = {}
-        for week in range(1, total):  # through the race week
+        import services.plan_generator as _pg
+
+        while week < total:  # through the race week
+            span = 1 if week == 1 else min(BLOCK["weeks"], total - week)
+            # shortcut: several weeks per model call (test runs only); prod builds one week per call
+            _pg.week_range_for_block = lambda b, n=1, _s=span: (b, b + _s - 1)
             if week > 1:
                 if over_budget(SPENT["usd"], budget_usd):
                     stopped = "budget"
@@ -770,8 +856,9 @@ def run_persona(name: str, out: Path, budget_usd: float = float("inf")) -> dict:
                 status[week] = poll(client, headers, started.json()["job_id"]).get("status")
                 _record(runs, week, before)
             for w in db.get_plan_workouts(plan_id):
-                if w["week_number"] == week and w["type"] != "Rest":
+                if week <= w["week_number"] < week + span and w["type"] != "Rest":
                     db.update_workout_log(w["id"], is_completed=1)
+            week += span
         ws = db.get_plan_workouts(plan_id)
         plan = db.get_plan_by_id(plan_id)
         journey = client.get(f"/api/plans/{plan_id}/journey", headers=headers).json()
@@ -850,6 +937,57 @@ def install_replay(dirs: list[Path]) -> None:
     anthropic.Anthropic = _Anthropic
 
 
+def install_bridge(bridge: Path) -> None:
+    """FREE of API spend: each plan-generation prompt is written to <bridge>/<persona>_w<week>_<n>.prompt.txt and the
+    call waits for <same>.answer.txt, written by whoever stands in for the model (a Sonnet agent fed the exact prompt).
+    Any other Claude call (briefs, summaries) fails, which those features already tolerate."""
+    from types import SimpleNamespace
+
+    import anthropic
+
+    bridge.mkdir(parents=True, exist_ok=True)
+
+    class _Stream:
+        def __init__(self, prompt):
+            m = re.search(r"weeks (\d+) through (\d+)", prompt)
+            persona = next((n for n in PERSONAS if f"ZZ {n}" in prompt), None)
+            if not m or not persona:
+                raise RuntimeError("bridge: not a plan prompt")
+            n = 1
+            while (bridge / f"{persona}_w{m.group(1)}_{n}.prompt.txt").exists():
+                n += 1
+            stem = bridge / f"{persona}_w{m.group(1)}_{n}"
+            Path(f"{stem}.prompt.txt").write_text(prompt)
+            answer, t0 = Path(f"{stem}.answer.txt"), time.time()
+            while not answer.exists():
+                if time.time() - t0 > 1800:
+                    raise RuntimeError(f"bridge: no answer for {stem.name}")
+                time.sleep(2)
+            time.sleep(1)  # let the writer finish
+            self.text = answer.read_text()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def get_final_message(self):
+            return SimpleNamespace(
+                stop_reason="end_turn", content=[SimpleNamespace(type="text", text=self.text)], usage=None
+            )
+
+    class _Messages:
+        def stream(self, messages=(), **kw):
+            return _Stream(str(messages[0]["content"]))
+
+    class _Anthropic:
+        def __init__(self, *a, **k):
+            self.messages = _Messages()
+
+    anthropic.Anthropic = _Anthropic
+
+
 def install_prompt_dump(out: Path) -> None:
     """FREE: write every plan prompt to <out>/<persona>_w<first week>.txt and fail the call, so the block is built
     by the rules and the run goes on. Feed the files to any model by hand."""
@@ -888,6 +1026,11 @@ def main() -> int:
     ap.add_argument("--thinking", choices=["adaptive", "disabled"], default=None)
     ap.add_argument("--budget-usd", type=float, default=5.0, help="stop before the next block once spent")
     ap.add_argument("--dump-prompts", default="", help="FREE: write each plan prompt to this dir, build on rules")
+    ap.add_argument("--block-weeks", type=int, default=1, help="weeks per model call after week 1 (prod: 1)")
+    ap.add_argument(
+        "--resume", action="store_true", help="continue each persona's latest plan from its first empty week"
+    )
+    ap.add_argument("--bridge", default="", help="FREE of API spend: plan prompts go to files an agent answers")
     args = ap.parse_args()
     from config import settings
 
@@ -902,6 +1045,11 @@ def main() -> int:
         install_prompt_dump(Path(args.dump_prompts))
     if args.replay:
         install_replay([Path(d) for d in args.replay.split(",")])
+    BLOCK.update(weeks=args.block_weeks, resume=args.resume)
+    if args.bridge:
+        settings.PLAN_LLM_PROVIDER = "claude"
+        POLL_TIMEOUT["s"] = 3600  # an agent answer plus a lint retry
+        install_bridge(Path(args.bridge))
     if args.list:
         print("\n".join(PERSONAS))
         return 0
