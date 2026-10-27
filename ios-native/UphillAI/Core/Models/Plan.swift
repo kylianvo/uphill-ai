@@ -117,12 +117,14 @@ struct Workout: Codable, Sendable, Equatable, Identifiable {
     var matchedWeekContext: WeekContext?
     /// Why a missed session was missed (busy, sick, pain, tired, weather, other).
     var missedReason: String?
+    /// "For your race": how this session compares with the plan's race (backend services/race_fit.py).
+    var raceFit: String?
 
     enum CodingKeys: String, CodingKey {
         case id, planId, weekNumber, dayOfWeek, phase, title, type, durationMinutes, distanceKm, targetZone
         case targetHrRange, targetPace, treadmillIncline, treadmillSpeed, elevationGainM, gradePercent
         case intervalReps, intervalRepValue, intervalRepUnit, walkIntervalValue, description, fuelingTip
-        case source, isCompleted, isMissed, approvedAt, rpe, notes, sessionSlot, isPriority, matchedActivityId, matchedDeviceModel, matchedDistanceKm, matchedDurationSeconds, matchedAvgHr, matchedSourceProvider, matchedWeekContext, missedReason
+        case source, isCompleted, isMissed, approvedAt, rpe, notes, sessionSlot, isPriority, matchedActivityId, matchedDeviceModel, matchedDistanceKm, matchedDurationSeconds, matchedAvgHr, matchedSourceProvider, matchedWeekContext, missedReason, raceFit
     }
 
     init(from decoder: any Decoder) throws {
@@ -166,6 +168,7 @@ struct Workout: Codable, Sendable, Equatable, Identifiable {
         matchedSourceProvider = try c.decodeIfPresent(String.self, forKey: .matchedSourceProvider)
         matchedWeekContext = try c.decodeIfPresent(WeekContext.self, forKey: .matchedWeekContext)
         missedReason = try c.decodeIfPresent(String.self, forKey: .missedReason)
+        raceFit = try c.decodeIfPresent(String.self, forKey: .raceFit)
     }
 
     /// The web defaults unknown days to Monday; so do we.
