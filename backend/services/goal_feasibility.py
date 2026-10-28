@@ -7,6 +7,7 @@ plan can reach, not a guess about the athlete.
 
 from dataclasses import dataclass
 
+from services import ultra_rules
 from services.athlete_tier import (
     DEFAULT_TRAINING_DAYS,
     TierProfile,
@@ -39,7 +40,9 @@ class Feasibility:
 def week_capacity_minutes(
     profile: TierProfile, days_per_week: int | None, race_km: float | None = None, mountain_day: bool = False
 ) -> float:
-    return sum(week_capacity_parts(profile, days_per_week, session_cap_minutes(profile, race_km, mountain_day)))
+    ultra = mountain_day and ultra_rules.band_for(race_km) is not None
+    cap = session_cap_minutes(profile, race_km, mountain_day)
+    return sum(week_capacity_parts(profile, days_per_week, cap, strength_day=not ultra))
 
 
 def _weeks_needed(current_km: float, peak_km: float, max_prog: float) -> int | None:

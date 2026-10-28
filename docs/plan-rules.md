@@ -173,6 +173,19 @@ Races of 45 km+ with `mountain_days` set (`services/ultra_rules.py`; spec
   session a week (two for sub-elite/elite in Base/Build), and what goes beyond one stays under 10%.
 - **R-G2 Rest after the race.** Sessions after the goal race in its week become rest (`rows_after_race`); tune-up races are left alone.
 
+### Run days (2026-10-28)
+The days the athlete picks are run days (iOS ties "Runs per week" to them; the prompt makes every other day rest).
+- **R-W1 Seven-day runners recover on Monday.** When all 7 days are picked, the Monday after a weekend long run is a
+  30–40 min Zone 1 flat recovery run (30 after a 5 h+ weekend), exempt from the R-U2 weekday minimum
+  (`_seven_day_monday`). Week 1 keeps its Monday (no weekend before it). *UA: no weekly day off is required; the
+  day after a hammering long run stays easy.*
+- **R-W2 Rest instead.** That Monday is rest after a 6 h+ long day (or back-to-back weekend), and always for a
+  beginner or novice who picked 7 days: seven run days is too many at that level. The rest day says why.
+- **R-W3 Too few run days for an ultra.** Setup (web plan form and onboarding, iOS setup) warns when a race of 45 km+
+  has fewer than 4 run days, or 90 km+ fewer than 5, and asks the runner to confirm before creating the plan. It never
+  blocks. The feasibility verdict (R-D2) stays the measure after creation; a mountain-day ultra counts every picked day
+  as run time (ME goes on top of the runs, R-G1), so a fourth day adds capacity (`week_capacity_parts(strength_day=)`).
+
 ### Intensity
 - **R-I1 AeT gate.** *UA: aerobic deficiency.*
   - Measured gap (`threshold_source` lab/field) **>10%**: no Zone 3–5 work in any phase.

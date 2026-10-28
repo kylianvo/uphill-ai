@@ -542,6 +542,10 @@ struct SetupSteps: View {
                 DayGrid(selected: model.draft.preferredDays, available: Set(Weekday.allCases), label: "run day") { model.toggleDay($0) }
                     .id(SetupField.preferredDays)
                 SetupError(model: model, field: .preferredDays)
+                if let warning = model.draft.fewRunDaysWarning {
+                    Text(warning).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.warningInk)
+                        .accessibilityIdentifier("few-run-days")
+                }
             }
 
             LongRunDayRow(title: "Long run",

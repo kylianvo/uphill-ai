@@ -3,11 +3,13 @@
 import asyncio
 import json
 from datetime import date, timedelta
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from config import settings
 from services import plan_generator, plan_lint, ultra_rules
+from services.athlete_tier import get_profile
 from services.plan_generator import PlanGenerator
 
 START = date(2026, 10, 19)  # a Monday
@@ -603,3 +605,119 @@ def test_a_100k_short_plan_peaks_three_weeks_out_with_a_two_week_taper(rule_base
     }
     assert phase[8] == phase[9] == "Taper" and phase[7] != "Taper"
     assert longest[7] == 420 and longest[8] < 420
+
+
+@pytest.fixture
+def seven_day_ai_plan(monkeypatch):
+    """A mountain-day plan for a runner who picked all 7 days, built on the AI path: the draft is the rules' own
+    week with an easy hour on every Monday, as a model fills a 7-day week."""
+    monkeypatch.setattr(settings, "PLAN_DEMANDS_ENABLED", True)
+    monkeypatch.setattr(settings, "PLAN_LINT_ENABLED", False)
+    monkeypatch.setattr(settings, "PLAN_LLM_PROVIDER", "gemini")
+    monkeypatch.setattr(plan_generator, "get_plan_workouts", lambda plan_id: [])
+
+    def build(km, weeks, tier, weekly_km=60):
+        race_info = {
+            "name": "VHT",
+            "date": (START + timedelta(weeks=weeks - 2, days=5)).isoformat(),
+            "plan_start_date": START.isoformat(),
+            "terrain": "trail",
+            "course_distance_km": km,
+            "course_elevation_gain_m": 5533 if km > 90 else 2946,
+            "goal_type": "finish",
+            "preferred_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+            "long_run_day": "Saturday",
+            "days_per_week": 7,
+            "training_environment": "flat",
+            "training_mountain": "nui_dinh",
+            "mountain_days": json.dumps(["Saturday"]),
+            "athlete_tier": tier,
+        }
+        user = {
+            "max_hr": 185,
+            "resting_hr": 55,
+            "zone2_pace_min": "6:30",
+            "zone2_pace_max": "5:45",
+            "current_weekly_km": float(weekly_km),
+        }
+        kw = dict(
+            plan_id=0,
+            user_profile=user,
+            race_info=race_info,
+            total_weeks=weeks,
+            cutoff_time_hours=29,
+            block_number=1,
+            weeks_per_block=weeks,
+        )
+        rules, _ = asyncio.run(PlanGenerator.generate_plan_workouts(api_key=None, **kw))
+        draft = [w for w in rules if not (w["day_of_week"] == "Monday" and w["type"] == "Rest")]
+        draft += [
+            {
+                "week_number": wk,
+                "day_of_week": "Monday",
+                "phase": "Build",
+                "title": "Easy Run",
+                "type": "Easy",
+                "duration_minutes": 60,
+                "distance_km": 10,
+                "target_zone": "Zone 1",
+                "description": "Easy hour.",
+            }
+            for wk in range(1, weeks - 2)
+        ]
+        client = MagicMock()
+        client.models.generate_content.return_value = MagicMock(text=json.dumps(draft), candidates=[])
+        with (
+            patch("google.genai.Client", return_value=client),
+            patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+            patch("services.race_history.prompt_summary", return_value=""),
+            patch("services.race_history.tier_distance", return_value=None),
+        ):
+            out, _ = asyncio.run(PlanGenerator.generate_plan_workouts(api_key="fake", **kw))
+        assert client.models.generate_content.called
+        return out
+
+    return build
+
+
+def _monday_runs(wos, week):
+    return [
+        w
+        for w in wos
+        if w["week_number"] == week
+        and w["day_of_week"] == "Monday"
+        and w["type"] not in ("Rest", "Muscular Endurance", "Strength")
+        and w["duration_minutes"] > 0
+    ]
+
+
+def test_a_seven_day_runner_recovers_on_the_monday_after_the_weekend(seven_day_ai_plan):
+    wos = seven_day_ai_plan(104.2, 20, "recreational")
+    runs = _monday_runs(wos, 3)
+    assert len(runs) == 1 and runs[0]["type"] == "Recovery" and runs[0]["target_zone"] == "Zone 1"
+    assert 30 <= runs[0]["duration_minutes"] <= 40
+    assert not any(
+        i.code == "WEEKDAY_SHORT" and i.week == 3
+        for i in plan_lint.lint_weeks(
+            wos,
+            {3},
+            get_profile("recreational"),
+            plan_lint.Prefs(total_weeks=20, race_km=104.2, mountain_day=True, days_per_week=7),
+        )
+    )
+
+
+def test_the_monday_after_a_six_hour_mountain_day_is_rest(seven_day_ai_plan):
+    wos = seven_day_ai_plan(104.2, 20, "recreational")
+    six = next(wk for wk in range(1, 20) if _longs(wos).get(wk, 0) >= 360)
+    assert not _monday_runs(wos, six + 1)
+
+
+def test_a_novice_who_picks_seven_days_rests_on_monday(seven_day_ai_plan):
+    wos = seven_day_ai_plan(56.4, 16, "novice", weekly_km=35)
+    assert not any(_monday_runs(wos, wk) for wk in range(2, 12))
+
+
+def test_week_one_monday_has_no_weekend_before_it(seven_day_ai_plan):
+    wos = seven_day_ai_plan(104.2, 20, "recreational")
+    assert [w["type"] for w in _monday_runs(wos, 1)] == ["Easy"]

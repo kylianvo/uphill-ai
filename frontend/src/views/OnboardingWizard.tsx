@@ -11,6 +11,8 @@ import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 import WatchZonesGuideModal from "../components/WatchZonesGuideModal";
 import RaceHistoryPanel from "../components/RaceHistoryPanel";
 import { LongRunDaySelect, TrainingVenueFields } from "../components/TrainingVenueFields";
+import { fewRunDaysText } from "../components/ScheduleFieldsEditor";
+import { recommendedRunDays } from "../lib/runDays";
 import BRaceSetupFields, { completeRaces, racesBlocked } from "../components/BRaceSetupFields";
 
 export default function OnboardingWizard() {
@@ -85,6 +87,11 @@ export default function OnboardingWizard() {
     const token = localStorage.getItem("uphill_session_token");
 
     if (!token || !user) return;
+
+    const raceKm = parseFloat(onboardingAnswers.course_distance_km) || null;
+    const days = onboardingAnswers.days_per_week || 4;
+    const minDays = recommendedRunDays(raceKm, days);
+    if (!skipPlan && minDays && !window.confirm(fewRunDaysText(t, raceKm, minDays, days, "plan_few_run_days_confirm"))) return;
 
     setOnboardingGenerating(true);
 
@@ -1502,6 +1509,13 @@ export default function OnboardingWizard() {
                   ))}
 
                 </div>
+
+                {(() => {
+                  const raceKm = parseFloat(onboardingAnswers.course_distance_km) || null;
+                  const days = onboardingAnswers.days_per_week || 4;
+                  const minDays = recommendedRunDays(raceKm, days);
+                  return minDays ? <p role="status" data-testid="few-run-days" style={{ fontSize: "11.5px", color: "var(--warning-color, #b45309)", margin: "6px 0 0 0" }}>{fewRunDaysText(t, raceKm, minDays, days)}</p> : null;
+                })()}
 
               </div>
 

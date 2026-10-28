@@ -87,3 +87,15 @@ describe("ScheduleFieldsEditor", () => {
     expect(onChange).toHaveBeenCalledWith({ treadmill_max_incline: 25 });
   });
 });
+
+describe("ScheduleFieldsEditor run-days warning", () => {
+  it("warns a 4-day 100 km runner that the race needs 5 run days", () => {
+    render(<ScheduleFieldsEditor lang="en" t={t} isMobile={false} value={baseValue} onChange={vi.fn()} raceKm={104.2} />);
+    expect(screen.getByTestId("few-run-days").textContent).toContain("A 104 km race usually needs at least 5 run days");
+  });
+
+  it("stays quiet for a 50 km runner on 4 days", () => {
+    render(<ScheduleFieldsEditor lang="en" t={t} isMobile={false} value={baseValue} onChange={vi.fn()} raceKm={56.4} />);
+    expect(screen.queryByTestId("few-run-days")).toBeNull();
+  });
+});

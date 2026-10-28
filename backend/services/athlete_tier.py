@@ -392,12 +392,13 @@ def session_cap_minutes(profile: TierProfile, race_km: float | None, mountain_da
 
 
 def week_capacity_parts(
-    profile: TierProfile, days_per_week: int | None, session_cap: int = MAX_SESSION_MIN
+    profile: TierProfile, days_per_week: int | None, session_cap: int = MAX_SESSION_MIN, strength_day: bool = True
 ) -> tuple[float, float]:
     """(minutes of the other run sessions, minutes of the long run) the tier's own caps allow in a week.
-    From four training days one day is strength, which is not run time (my call: conservative)."""
+    From four training days one day is strength, which is not run time (my call: conservative), unless
+    `strength_day` is off: a mountain-day ultra adds ME on top of the runs (R-U, R-G1)."""
     n = max(1, days_per_week or DEFAULT_TRAINING_DAYS)
-    others = (n - 1 - (1 if n >= 4 else 0)) * profile.weekday_minutes[1]
+    others = (n - 1 - (1 if n >= 4 and strength_day else 0)) * profile.weekday_minutes[1]
     cap = profile.long_run_share_cap
     long_run = min(session_cap, cap / (1 - cap) * others) if n > 1 else session_cap
     return others, long_run

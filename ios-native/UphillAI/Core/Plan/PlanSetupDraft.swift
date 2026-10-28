@@ -324,6 +324,22 @@ struct PlanSetupDraft: Equatable, Sendable {
         return parts.count == 2 ? parts[0] * 60 + parts[1] : 0
     }
 
+    // MARK: Run days
+
+    /// The run days an ultra needs before its weekly time fits (docs/plan-rules.md R-W3), when fewer are picked.
+    /// Guidance only: the runner can still create the plan.
+    var recommendedRunDays: Int? {
+        guard goal?.isEvent == true, let km = distanceKm else { return nil }
+        let minimum = km >= 90 ? 5 : km >= 45 ? 4 : 0
+        return daysPerWeek < minimum ? minimum : nil
+    }
+
+    var fewRunDaysWarning: String? {
+        guard let minimum = recommendedRunDays, let km = distanceKm else { return nil }
+        return L("A %lld km race usually needs at least %lld run days a week. With %lld, the plan can't fit the training time it needs: add days or double sessions, give it more weeks, or pick a shorter race. You can still create the plan.",
+                 Int(km.rounded()), minimum, daysPerWeek)
+    }
+
     // MARK: Request bodies
 
     private var trimmedName: String { raceName.trimmingCharacters(in: .whitespacesAndNewlines) }
