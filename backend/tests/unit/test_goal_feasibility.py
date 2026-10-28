@@ -130,3 +130,11 @@ def test_brief_line_says_the_verdict_and_what_would_help():
     assert line.startswith("Goal check: unsupported.") and "about 14 weeks" in line
     assert "more weeks before the race, a shorter race, a finish-only goal." in line
     assert brief_line({"verdict": "supported", "levers": []}) is None and brief_line(None) is None
+
+
+def test_a_fourth_day_adds_run_time_on_a_mountain_day_ultra():
+    # Quang's ultras add ME on top of the runs, so no training day is held back for strength
+    rec = TIER_PROFILES["recreational"]
+    three, four = (goal_feasibility.week_capacity_minutes(rec, d, 104.2, mountain_day=True) for d in (3, 4))
+    assert four > three
+    assert goal_feasibility.week_capacity_minutes(rec, 4, 21.1) == goal_feasibility.week_capacity_minutes(rec, 3, 21.1)

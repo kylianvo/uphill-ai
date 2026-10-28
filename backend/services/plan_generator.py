@@ -2710,6 +2710,70 @@ class PlanGenerator:
                                 ),
                             )
 
+        def _seven_day_monday(wos: list[dict[str, Any]]) -> None:
+            """R-W1: a runner who chose all 7 days gets the Monday after a weekend long run as a 30-40 min Zone 1
+            recovery run (exempt from the ultra weekday minimum), and rest instead after a 6 h+ long day or when a
+            beginner or novice chose 7 days (R-W2): the book has no weekly day off, but the legs need that day."""
+            if int(days_per_week or 0) < 7:
+                return
+            try:
+                prior = get_plan_workouts(plan_id) if plan_id else []
+            except Exception:  # noqa: BLE001
+                prior = []
+            by_week = _week_rows(list(prior) + wos)
+            for wo in wos:
+                if (
+                    wo.get("day_of_week") != "Monday"
+                    or wo.get("type") not in ("Easy", "Aerobic Capacity", "Recovery")
+                    or wo.get("mountain_mode")
+                    or wo.get("phase") not in ("Base", "Build", "Peak")
+                ):
+                    continue
+                before = [
+                    r
+                    for r in by_week.get((wo.get("week_number") or 0) - 1, [])
+                    if r.get("day_of_week") in ("Saturday", "Sunday")
+                ]
+                long_min = plan_lint.long_block_minutes(before)
+                if not long_min:
+                    continue  # no weekend long run before it (week 1)
+                if athlete_tier in ("beginner", "novice") or long_min >= ultra_rules.B2B_MIN_RUNG:
+                    _make_rest(wo)
+                    wo["description"] += " " + _say(
+                        "Rest after the weekend: "
+                        + (
+                            f"the {_hm(long_min)} long day needs it."
+                            if long_min >= ultra_rules.B2B_MIN_RUNG
+                            else "seven run days is too many at your level, so Monday stays off."
+                        ),
+                        "Nghỉ sau cuối tuần: "
+                        + (
+                            f"buổi chạy dài {_hm(long_min)} cần một ngày nghỉ."
+                            if long_min >= ultra_rules.B2B_MIN_RUNG
+                            else "chạy cả 7 ngày là quá nhiều ở level của bạn, nên thứ Hai nghỉ."
+                        ),
+                    )
+                    continue
+                minutes = 30 if long_min >= 300 else 40
+                wo["type"], wo["target_zone"], wo["target_hr_range"] = "Recovery", "Zone 1", z1_range
+                wo["title"] = "Recovery Run" if lang != "vi" else "Recovery Run nhẹ"
+                for key in ("interval_reps", "interval_rep_value", "interval_rep_unit", "walk_interval_value"):
+                    wo[key] = None
+                wo["duration_minutes"] = float(minutes)
+                wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                    "Zone 1", minutes, est_zones
+                )
+                wo["elevation_gain_m"], wo["grade_percent"] = 0.0, 0.0
+                _set_steps(
+                    wo,
+                    _easy_text(minutes, "Zone 1", 0, False),
+                    _say(
+                        f"The day after your {_hm(long_min)} weekend: a short, very easy run on the flat, no strides.",
+                        f"Ngày sau cuối tuần {_hm(long_min)}: chạy ngắn, rất nhẹ trên đường bằng, không strides.",
+                    ),
+                    keep=False,
+                )
+
         def _make_rest(wo: dict[str, Any]) -> None:
             wo.update(
                 type="Rest",
@@ -3887,6 +3951,7 @@ class PlanGenerator:
                 _add_tempo(wos)  # weekday runs are clamped now (no 2 h+ "hard" days): top up the window's quality
                 _cap_start_load(wos, weeks=(1, 2), floor=ultra_rules.weekday_minutes(ultra, ultra_advanced)[0])
                 _cap_growth(wos, floor=ultra_rules.weekday_minutes(ultra, ultra_advanced)[0])
+            _seven_day_monday(wos)
             _race_specifics(wos)
             # The long run (often a mountain day) is the whole day: no second run beside it, only strength.
             long_days = {(w.get("week_number"), w.get("day_of_week")) for w in wos if w.get("type") == "Long Run"}

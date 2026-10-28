@@ -19040,6 +19040,46 @@
           }
         }
       }
+    },
+    "A %lld km race usually needs at least %lld run days a week. With %lld, the plan can't fit the training time it needs: add days or double sessions, give it more weeks, or pick a shorter race. You can still create the plan.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race %lld km thường cần ít nhất %lld ngày chạy mỗi tuần. Với %lld ngày, plan không đủ thời gian tập: thêm ngày hoặc buổi đôi, thêm tuần, hoặc chọn cự ly ngắn hơn. Bạn vẫn có thể tạo plan."
+          }
+        }
+      }
+    },
+    "Fewer run days than this race needs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ít ngày chạy hơn race này cần"
+          }
+        }
+      }
+    },
+    "Create anyway": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vẫn tạo plan"
+          }
+        }
+      }
+    },
+    "Change run days": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi ngày chạy"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -1,4 +1,5 @@
 import { translations } from "../app/translations";
+import { recommendedRunDays } from "../lib/runDays";
 import type { LongDayFormat } from "../types";
 import { LongRunDaySelect, TrainingVenueFields } from "./TrainingVenueFields";
 
@@ -27,13 +28,23 @@ interface ScheduleFieldsEditorProps {
   onChange: (patch: Partial<ScheduleFieldsValue>) => void;
   // The course's climb in m D+/km on the plan form, for the venue prompts in TrainingVenueFields.
   courseSteepness?: number;
+  // The race distance, for the too-few-run-days warning (R-W3).
+  raceKm?: number | null;
 }
 
 const FULL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHORT_DAYS_VI = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
-export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange, courseSteepness }: ScheduleFieldsEditorProps) {
+export function fewRunDaysText(
+  t: (key: keyof typeof translations.en) => string, raceKm: number | null | undefined, min: number, days: number,
+  key: "plan_few_run_days" | "plan_few_run_days_confirm" = "plan_few_run_days",
+): string {
+  return t(key).replace("{distance}", String(Math.round(raceKm || 0))).replace("{min}", String(min)).replace("{days}", String(days));
+}
+
+export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange, courseSteepness, raceKm }: ScheduleFieldsEditorProps) {
+  const minDays = recommendedRunDays(raceKm, value.days_per_week);
   return (
     <div style={{ marginBottom: "16px", padding: "14px", background: "rgba(255,255,255,0.15)", border: "1px solid var(--border-color)", borderRadius: "12px" }}>
       <label style={{ display: "block", fontSize: "12px", fontWeight: "700", marginBottom: "10px", color: "var(--text-secondary)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
@@ -52,6 +63,9 @@ export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange, cours
               >{n}</button>
             ))}
           </div>
+          {minDays && <p role="status" data-testid="few-run-days" style={{ fontSize: "11.5px", color: "var(--warning-color, #b45309)", margin: "6px 0 0 0" }}>
+            {fewRunDaysText(t, raceKm, minDays, value.days_per_week)}
+          </p>}
         </div>
         <div>
           <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>

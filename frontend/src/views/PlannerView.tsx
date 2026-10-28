@@ -19,7 +19,8 @@ import { CoachNoteThread } from "../components/CoachNoteThread";
 import { WorkoutTypeSelect } from "../components/WorkoutTypeSelect";
 import { minsToHms, isTaperPhase, buildPaceHandoffFromPlan } from "../lib/planHandoff";
 import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
-import { ScheduleFieldsEditor, ScheduleFieldsValue } from "../components/ScheduleFieldsEditor";
+import { fewRunDaysText, ScheduleFieldsEditor, ScheduleFieldsValue } from "../components/ScheduleFieldsEditor";
+import { recommendedRunDays } from "../lib/runDays";
 import { parseDayList } from "../components/TrainingVenueFields";
 import { useMatching, type RawMatchActivity } from "../hooks/useMatching";
 import MatchedActivityCard from "../components/MatchedActivityCard";
@@ -135,6 +136,11 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     }
     if (!isRaceOrDistVal && !planForm.plan_start_date) {
       setPlanErrorMsg?.(lang === "en" ? "Please select a Plan Start Date." : "Vui lòng chọn Ngày bắt đầu giáo án.");
+      return;
+    }
+    const raceKm = parseFloat(String(planForm.course_distance_km)) || null;
+    const minDays = recommendedRunDays(raceKm, planForm.days_per_week);
+    if (minDays && !window.confirm(fewRunDaysText(t, raceKm, minDays, planForm.days_per_week, "plan_few_run_days_confirm"))) {
       return;
     }
     if (!planForm.current_weekly_km) {
@@ -1522,6 +1528,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 (parseFloat(String(planForm.course_elevation_gain_m)) || 0) /
                 (parseFloat(String(planForm.course_distance_km)) || Infinity)
               }
+              raceKm={parseFloat(String(planForm.course_distance_km)) || null}
             />
 
             {isCoachActingAsAthlete && (
@@ -2641,6 +2648,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   isMobile={isMobile}
                   value={nextBlockSchedule}
                   onChange={(patch) => setNextBlockSchedule({ ...nextBlockSchedule, ...patch })}
+                  raceKm={getPlanDistance(activePlan) || null}
                 />
               </div>
 

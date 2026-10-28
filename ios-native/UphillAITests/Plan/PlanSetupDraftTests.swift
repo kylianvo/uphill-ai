@@ -349,4 +349,19 @@ struct PlanSetupDraftTests {
         #expect(Weekday.longRunChoices(runDays: run, trailDays: [.monday]) == run)
         #expect(Weekday.longRunChoices(runDays: run, trailDays: []) == run)
     }
+
+    @Test func fewRunDaysWarnsBelowTheUltraMinimum() {
+        var d = raceDraft()
+        d.distanceKm = 104.2
+        d.daysPerWeek = 4
+        #expect(d.recommendedRunDays == 5)
+        #expect(d.fewRunDaysWarning?.contains("104 km") == true)
+        d.daysPerWeek = 5
+        #expect(d.recommendedRunDays == nil && d.fewRunDaysWarning == nil)
+        d.distanceKm = 56.4
+        d.daysPerWeek = 3
+        #expect(d.recommendedRunDays == 4)
+        d.distanceKm = 42
+        #expect(d.recommendedRunDays == nil)
+    }
 }

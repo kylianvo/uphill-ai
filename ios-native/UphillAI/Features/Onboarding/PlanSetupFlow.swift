@@ -4,6 +4,7 @@ struct PlanSetupFlow: View {
     @Bindable var model: PlanSetupViewModel
     let onClose: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var confirmFewRunDays = false
 
     private var transition: AnyTransition {
         if reduceMotion { return .opacity }
@@ -45,7 +46,9 @@ struct PlanSetupFlow: View {
                 VStack(spacing: UH.Space.small) {
                     if let error = model.submitError { Text(error).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.danger) }
                     Button {
-                        if model.isLastStep { Task { await model.submit() } } else { model.next() }
+                        if model.isLastStep {
+                            if model.draft.recommendedRunDays != nil { confirmFewRunDays = true } else { Task { await model.submit() } }
+                        } else { model.next() }
                     } label: {
                         if model.isSubmitting { ProgressView() } else { Text(model.primaryTitle) }
                     }.buttonStyle(.uhPrimary).disabled(model.isSubmitting).accessibilityIdentifier("setup.primary")
@@ -58,6 +61,12 @@ struct PlanSetupFlow: View {
         }
         .background(UH.Palette.surface.ignoresSafeArea())
         .foregroundStyle(UH.Palette.ink)
+        .alert("Fewer run days than this race needs", isPresented: $confirmFewRunDays) {
+            Button("Create anyway") { Task { await model.submit() } }
+            Button("Change run days", role: .cancel) {}
+        } message: {
+            Text(model.draft.fewRunDaysWarning ?? "")
+        }
         .tint(UH.Palette.accentInk)
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : UH.Motion.standard, value: model.stepIndex)
         .alert("Continue with estimated zones?", isPresented: $model.showZoneEstimateWarning) {
